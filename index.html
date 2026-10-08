@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="NV Pocket">
 <title>Nightvault Pocket</title>
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230f1115'/%3E%3Cpath d='M18.6 14.2A7.6 7.6 0 1 1 9.8 5.4a6.4 6.4 0 0 0 8.8 8.8z' fill='%236ea8ff'/%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%230f1115'/%3E%3Cpath d='M18.6 14.2A7.6 7.6 0 1 1 9.8 5.4a6.4 6.4 0 0 0 8.8 8.8z' fill='%236ea8ff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
@@ -37,6 +38,7 @@ button{cursor:pointer}
 .logo{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px}
 .logo i{color:var(--accent);font-size:20px}
 .logo small{font-weight:400;color:var(--dim);font-size:13px}
+.hbtn{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--line2);background:var(--ctl);color:var(--text);display:grid;place-items:center;font-size:17px;margin-right:-4px}
 #scst{margin-left:auto;font-size:12px;color:var(--dim);text-align:right;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #main{flex:1;min-height:0;overflow-y:auto;padding:14px 16px 24px}
 
@@ -167,6 +169,7 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 .gdot{width:18px;height:18px;border-radius:50%;display:block;box-shadow:0 0 0 3px var(--ctl),0 0 0 4px var(--line2)}
 .mitem .mdot{display:grid;place-items:center}.mitem .mdot span{width:12px;height:12px;border-radius:50%;display:block}
 .mitem.sel b{color:var(--pb)}
+.steps{font-size:13.5px}.steps ol{margin:4px 0 10px;padding-left:22px;color:var(--mut)}.steps li{margin:2px 0}
 .mfoot{display:flex;justify-content:space-between;gap:8px;margin-top:14px}
 .scanbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .optrow{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--sub)}.optrow:last-child{border-bottom:0}
@@ -216,7 +219,7 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 </head>
 <body>
 <div id="app">
-  <header id="top"><div class="logo"><i class="ti ti-moon-stars"></i>Nightvault <small>Pocket</small></div><div id="scst"></div></header>
+  <header id="top"><div class="logo"><i class="ti ti-moon-stars"></i>Nightvault <small>Pocket</small></div><div id="scst"></div><button id="fsbtn" class="hbtn" hidden aria-label="Full screen"><i class="ti ti-maximize"></i></button></header>
   <main id="main"></main>
   <nav id="tabs">
     <button data-v="scan" class="on"><i class="ti ti-camera"></i>Scan cards</button>
@@ -297,6 +300,17 @@ function dreport(){
   const scans = DLOG.scans.map((c, i) => [`--- scan ${i + 1} at ${c.when} (${c.how}, chip ${c.mode})`, ...c.steps.map(([t, k, x]) => `${String(t).padStart(5)} ms  ${k}: ${x}`)].join('\n'));
   return head.concat(DLOG.notes || [], scans.length ? scans : ['(no scans yet)']).join('\n');
 }
+/* full screen and installing as an app (no browser bars) */
+const APPMODE = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone;
+let INSTALL = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); INSTALL = e; if(VIEW === 'settings' && !SP.page) viewSettings() });
+window.addEventListener('appinstalled', () => { INSTALL = null; toast('Installed - open Nightvault Pocket from your home screen') });
+function fsSync(){ const b = $('#fsbtn'); if(!b) return; const can = document.fullscreenEnabled && !APPMODE(); b.hidden = !can;
+  b.innerHTML = `<i class="ti ti-${document.fullscreenElement ? 'minimize' : 'maximize'}"></i>`; b.setAttribute('aria-label', document.fullscreenElement ? 'Leave full screen' : 'Full screen') }
+async function toggleFull(){ try{ if(document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({navigationUI:'hide'}) }catch(e){ toast('Full screen is not allowed here', true) } }
+async function installApp(){ if(INSTALL){ INSTALL.prompt(); const r = await INSTALL.userChoice.catch(() => ({})); if(r.outcome === 'accepted') INSTALL = null; viewSettings(); return } SP.page = 'app'; viewSettings() }
+document.addEventListener('fullscreenchange', fsSync);
+if('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 function setSt(t){ $('#scst').textContent = t || '' }
 function toast(msg, err){
   $$('#toast .t1').forEach(e => { if(e.textContent === msg) e.remove() });
@@ -1722,6 +1736,7 @@ async function importBackup(e){
 const SP = {page:null};
 const SPAGES = [
   ['sync', 'device-desktop-up', 'Nightvault sync', t => `${t.toLocaleString()} cards on this phone${store.lastExport ? ' · last sent ' + new Date(store.lastExport).toLocaleDateString() : ''}`],
+  ['app', 'device-mobile', 'Use as an app', () => APPMODE() ? 'Installed - running without browser bars' : 'Full screen, without the browser bars'],
   ['scan', 'scan', 'Scanning', () => [O.auto && 'auto-scan', O.full && 'whole card', O.dailyPrices && 'daily prices'].filter(Boolean).join(' · ') || 'Options for reading cards'],
   ['games', 'cards', 'Card games', () => store.games.length ? store.games.map(g => g.label).join(', ') : 'Add a game to the list'],
   ['templates', 'layout-board-split', 'Scan templates', () => store.templates.length ? `${store.templates.length} template${store.templates.length === 1 ? '' : 's'}` : 'For special and new card layouts'],
@@ -1736,7 +1751,7 @@ function settingsPages(total){
   $$('#main [data-p]').forEach(el => el.hidden = el.dataset.p !== SP.page);
   if($('#spback')) $('#spback').onclick = () => { SP.page = null; viewSettings(); $('#main').scrollTop = 0 };
   if(SP.page) return;
-  $('#smenu').innerHTML = `<div class="slist">${SPAGES.slice(0, 2).concat([null], SPAGES.slice(2, 6), [null], SPAGES.slice(6)).map(x => x ? `<button class="mitem ${x[0] === 'danger' ? 'danger' : ''}" data-sp="${x[0]}"><i class="ti ti-${x[1]}"></i><span><b>${x[2]}</b><small>${esc(x[3](total))}</small></span><i class="ti ti-chevron-right chev"></i></button>` : '</div><div class="slist">').join('')}</div>
+  $('#smenu').innerHTML = `<div class="slist">${SPAGES.slice(0, 3).concat([null], SPAGES.slice(3, 7), [null], SPAGES.slice(7)).map(x => x ? `<button class="mitem ${x[0] === 'danger' ? 'danger' : ''}" data-sp="${x[0]}"><i class="ti ti-${x[1]}"></i><span><b>${x[2]}</b><small>${esc(x[3](total))}</small></span><i class="ti ti-chevron-right chev"></i></button>` : '</div><div class="slist">').join('')}</div>
     <p class="hint" style="text-align:center">Nightvault Pocket · your cards stay on this phone until you export them</p>`;
   $$('#smenu [data-sp]').forEach(b => b.onclick = () => { SP.page = b.dataset.sp; viewSettings(); $('#main').scrollTop = 0 });
 }
@@ -1773,6 +1788,14 @@ function viewSettings(){
     <div class="panel" data-p="look"><h3>Appearance</h3><div class="thgrid">${THEMES.map(([id, nm]) => `<button class="thtile ${O.theme === id ? 'on' : ''}" data-t="${id}"><div class="pv" data-theme="${id}"><i style="background:var(--side);height:100%"></i><i style="background:var(--card);height:70%;border:1px solid var(--line2)"></i><i style="background:var(--accent);height:40%"></i></div><div class="nm">${nm}</div></button>`).join('')}</div></div>
     <div class="panel" data-p="data"><h3>Card data</h3>${Object.values(GAMES).filter(g => g.src).map(g => `<div class="row" style="padding:7px 0"><span class="dot" style="background:${g.color}"></span><div class="grow">${esc(g.full)}</div><span class="muted" style="font-size:12px">${esc(g.src)}</span></div>`).join('')}
       <p class="hint">Any other game can be added by hand (My cards → By hand). Card names are read on the phone. Lookups and prices need internet. Your cards stay on this phone until you export them.</p></div>
+    <div class="panel" data-p="app"><h3>Use as an app</h3>
+      ${APPMODE() ? '<p style="margin:0;font-size:13.5px"><i class="ti ti-circle-check" style="color:var(--green)"></i> Installed. Pocket is running as an app, without browser bars.</p>' : `
+      <p style="margin:0 0 10px;font-size:13.5px">Install Pocket on your home screen. It then opens like a normal app: full screen, no address bar, and it remembers your cards as before.</p>
+      ${INSTALL ? '<button class="btn primary" id="sinst"><i class="ti ti-download"></i>Install Nightvault Pocket</button>' : `
+      <div class="steps"><b>Firefox</b><ol><li>Tap the <i class="ti ti-dots-vertical"></i> menu (top right)</li><li>Tap <b>Add app to Home screen</b> (or <b>Install</b>)</li><li>Open Pocket from the new icon on your home screen</li></ol>
+      <b>Chrome</b><ol><li>Tap the <i class="ti ti-dots-vertical"></i> menu</li><li>Tap <b>Add to Home screen</b>, then <b>Install</b></li></ol>
+      <b>iPhone (Safari)</b><ol><li>Tap <i class="ti ti-share"></i> Share, then <b>Add to Home Screen</b></li></ol></div>`}
+      ${document.fullscreenEnabled ? `<div class="optrow" style="margin-top:10px"><span class="grow">Full screen now<small>Hides the browser bars until you leave it. Also the <i class="ti ti-maximize"></i> button at the top.</small></span><button class="btn sm" id="sfull"><i class="ti ti-maximize"></i>${document.fullscreenElement ? 'Leave' : 'Full screen'}</button></div>` : ''}`}</div>
     <div class="panel" data-p="dev"><h3>Scan details</h3>
       <p class="hint" style="margin-top:0">What the scanner saw and tried during the last scans. Copy or share it when something does not work.</p>
       <div class="btns" style="margin:8px 0"><button class="btn sm" id="dcopy"><i class="ti ti-copy"></i>Copy</button><button class="btn sm" id="dshare"><i class="ti ti-share"></i>Share</button></div>
@@ -1780,6 +1803,8 @@ function viewSettings(){
       <pre id="dtext" style="white-space:pre-wrap;word-break:break-word;font:11.5px/1.45 ui-monospace,Menlo,Consolas,monospace;background:var(--logbg);color:var(--logfg);border-radius:8px;padding:10px;max-height:60vh;overflow:auto;margin:0;user-select:text"></pre></div>
     <div class="panel" data-p="danger"><h3>Danger zone</h3><button class="btn danger" id="sclear" ${store.cards.length ? '' : 'disabled'}><i class="ti ti-trash"></i>Remove all cards from this phone</button>
       <p class="hint">Cards already imported into Nightvault stay there.</p></div>`;
+  if($('#sinst')) $('#sinst').onclick = installApp;
+  if($('#sfull')) $('#sfull').onclick = async () => { await toggleFull(); viewSettings() };
   $('#dtext').textContent = dreport();
   $('#dcopy').onclick = async () => { const t = dreport(); $('#dtext').textContent = t;
     try{ await navigator.clipboard.writeText(t); toast('Scan details copied - paste them in the chat') }
@@ -1812,7 +1837,7 @@ function viewSettings(){
 }
 
 /* ---------------------------------------------------------------- start */
-applyTheme(); tabCount(); show('scan');
+applyTheme(); tabCount(); show('scan'); fsSync(); $('#fsbtn').onclick = toggleFull;
 if(O.dailyPrices && store.cards.length && Date.now() - (store.lastPriceCheck || 0) > 20 * 3600 * 1000) setTimeout(() => priceCheck(false), 4000);
 </script>
 </body>
