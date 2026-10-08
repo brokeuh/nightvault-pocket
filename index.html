@@ -53,7 +53,7 @@ h1{margin:0;font-size:20px;font-weight:600}
 .btn.sm{padding:5px 10px;font-size:12.5px}
 .btn[disabled]{opacity:.45}
 .btn i{font-size:17px}
-input[type=text],input[type=search],select{background:var(--ctl);border:1px solid var(--line2);border-radius:8px;padding:9px 11px;outline:none;width:100%;min-width:0}
+input[type=text],input[type=search],input[type=password],select{background:var(--ctl);border:1px solid var(--line2);border-radius:8px;padding:9px 11px;outline:none;width:100%;min-width:0}
 input:focus,select:focus{border-color:var(--accentline)}
 select{width:auto}
 .bar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
@@ -205,6 +205,7 @@ store.cards = Array.isArray(store.cards) ? store.cards : [];
 store.backs = Array.isArray(store.backs) ? store.backs : [];
 store.templates = Array.isArray(store.templates) ? store.templates : [];
 store.sources = Array.isArray(store.sources) ? store.sources : [];
+store.games = Array.isArray(store.games) ? store.games : [];
 store.opt = Object.assign({game:'auto', auto:true, autoAdd:false, readNum:true, full:true, sets:'', theme:'midnight', prefer:[]}, store.opt || {});
 const O = store.opt;
 
@@ -360,6 +361,53 @@ async function findSWCCG(q){
       name:nm, setName:(c.side ? c.side + ' side' : ''), rarity:c.rarity || '', released:'', image:img, price:null, priceFoil:null, currency:'USD', psrc:''} });
 }
 const FIND = {mtg:findMTG, pokemon:findPokemon, ygo:findYGO, lorcana:findLorcana, swu:findSWU, riftbound:findRiftbound, onepiece:findOnePiece, swccg:findSWCCG};
+
+/* ---------------------------------------------------------------- card games you add yourself */
+const BUILTIN = new Set(Object.keys(GAMES));
+const slugOf = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '');
+const escRe = t => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function registerGames(){
+  for(const k of Object.keys(GAMES)) if(!BUILTIN.has(k)){ delete GAMES[k]; delete FIND[k]; delete CLUES[k] }
+  const other = GAMES.other; delete GAMES.other;                               // keep "Other game" last in the list
+  for(const g of store.games){
+    GAMES[g.id] = {label:g.label, full:g.label, color:g.color || '#8a8f9c', name:g.name || [0.05, 0.025, 0.95, 0.12], num:g.num || [0.02, 0.88, 0.98, 0.99],
+      src:g.lookup && g.lookup.url ? 'Your own card lookup' : '', heavy:true, custom:true};
+    if(g.lookup && g.lookup.url) FIND[g.id] = q => findCustom(g, q);
+    const kw = String(g.keywords || '').split(',').map(x => x.trim()).filter(Boolean);
+    if(kw.length) CLUES[g.id] = kw.map(x => new RegExp(escRe(x), 'i'));
+  }
+  GAMES.other = other;
+}
+const IMG_RE = /^https?:\/\/[^\s"]+\.(jpe?g|png|webp|gif|avif)(\?[^\s"]*)?$/i;
+function pickField(it, path, keys){
+  if(path) return getPath(it, path);
+  for(const k of keys) if(it[k] != null && typeof it[k] !== 'object') return it[k];
+  for(const v of Object.values(it)) if(v && typeof v === 'object' && !Array.isArray(v)) for(const k of keys) if(v[k] != null && typeof v[k] !== 'object') return v[k];
+  return null;
+}
+function findImage(it, path){
+  if(path) return String(getPath(it, path) || '');
+  let hit = ''; const walk = (o, d) => { if(hit || o == null || d > 3) return; if(typeof o === 'string'){ if(IMG_RE.test(o)) hit = o; return } if(typeof o === 'object') for(const v of Object.values(o)) walk(v, d + 1) };
+  walk(it, 0); return hit;
+}
+async function fetchSource(url, keyHeader, key){
+  const h = {Accept:'application/json'}; if(keyHeader && key) h[keyHeader] = key;
+  let r; try{ r = await fetch(url, {headers:h}) }catch(e){ throw new Error('This site does not let other websites read it (or it could not be reached).') }
+  if(!r.ok) throw new Error(`The site answered with error ${r.status}.`);
+  try{ return await r.json() }catch(e){ throw new Error('The site did not answer with card data (JSON). Check the address.') }
+}
+async function findCustom(g, q){
+  const L = g.lookup, j = await fetchSource(L.url.replace(/\{name\}/g, enc(q)).replace(/\{set\}|\{number\}/g, ''), L.keyHeader, L.key);
+  const list = findList(L.listPath ? getPath(j, L.listPath) : j);
+  return list.slice(0, 60).map(it => {
+    const nm = nameIn(it, L.namePath), set = String(pickField(it, L.setPath, ['set_code', 'setCode', 'set', 'set_id', 'setId', 'expansion', 'code']) ?? ''),
+      n = String(pickField(it, L.numberPath, ['number', 'collector_number', 'collectorNumber', 'card_number', 'cardNumber', 'no', 'id']) ?? ''), p = priceIn(it, L.pricePath);
+    return {game:g.id, set:set.toLowerCase() || 'x', number:normNum(n) || slugOf(nm), showSet:set.toUpperCase() || '-', showNum:n || '-', name:nm,
+      setName:String(pickField(it, '', ['set_name', 'setName', 'expansion_name']) ?? ''), rarity:String(pickField(it, '', ['rarity']) ?? ''), released:'',
+      image:findImage(it, L.imagePath), price:p ? p.v : null, priceFoil:null, currency:L.currency || 'EUR', psrc:p ? g.label + ' lookup' : ''};
+  }).filter(m => m.name);
+}
+registerGames();
 
 /* ================================================================ scanner state */
 const SC = {stream:null, timer:null, prev:null, stable:0, armed:true, busy:false, result:null, sel:0, foil:false, session:[], last:null,
@@ -562,7 +610,8 @@ function matchBack(vec){ let best = null; for(const b of store.backs){ let s = 0
 function setGame(g){ O.game = g; persist(); $$('#games .chip').forEach(c => c.classList.toggle('on', c.dataset.g === g)); drawGuide('idle') }
 function detectGame(text){
   const sc = Object.entries(CLUES).map(([g, rs]) => [g, rs.filter(r => r.test(text)).length]).sort((a, b) => b[1] - a[1]);
-  return sc[0][1] >= 2 && sc[0][1] > sc[1][1] ? sc[0][0] : null;
+  const need = Math.min(2, (CLUES[sc[0][0]] || []).length);
+  return sc[0][1] >= Math.max(1, need) && sc[0][1] > sc[1][1] ? sc[0][0] : null;
 }
 function nameCandidates(text){
   const out = [];
@@ -605,6 +654,7 @@ async function scanNow(auto){
     const sure = () => best && best.best >= 0.88;
     // In All games the whole card is read first: it tells which game this is
     if(isAuto){ await readFull(); found = clues(full) || '' }
+    if(found && !FIND[found]){ dlog('game', GAMES[found].label + ' has no card lookup - opening add by hand'); const t0 = templateList(found)[0]; const q0 = cleanName((await w.recognize(crop(card, t0.zones.name))).data.text) || nameCandidates(full)[0] || ''; openManual({name:q0, game:found}); return }
     const gameNow = found || (isAuto ? '' : O.game);
     const tpls = templateList(gameNow === 'other' ? '' : gameNow);
     dlog('templates to try', tpls.map(t => t.label + (t.game && !gameNow ? ' (' + GAMES[t.game].label + ')' : '')).join(', '));
@@ -614,12 +664,12 @@ async function scanNow(auto){
       if(t.zones.num && (O.readNum || !t.std)){ try{ const nt = (await w.recognize(crop(card, t.zones.num))).data.text; numTokens(nt).forEach(x => tokens.add(x)); dlog(`template “${t.label}” set & number`, JSON.stringify(nt.trim())) }catch(e){} }
       let extra = [];
       if(t.zones.text){ try{ const xt = (await w.recognize(crop(card, t.zones.text, false))).data.text; extra = nameCandidates(xt); numTokens(xt).forEach(x => tokens.add(x)); dlog(`template “${t.label}” extra text`, JSON.stringify(xt.trim().slice(0, 300))) }catch(e){} }
-      if(O.game === 'other'){ if(q.length >= 3){ openManual({name:q}); return } continue }
-      const games = t.game ? [t.game] : (gameNow ? [gameNow] : lookGames());
+      if(O.game === 'other' || (O.game !== 'auto' && !FIND[O.game])){ if(q.length >= 3){ openManual({name:q, game:O.game}); return } continue }
+      const games = (t.game ? [t.game] : (gameNow ? [gameNow] : lookGames())).filter(g => FIND[g]); if(!games.length) continue;
       for(const q2 of [q, ...extra].slice(0, 3)){ await lookFor(q2, games, t); if(sure()) break }
       if(sure()) break;
     }
-    if(O.game === 'other'){ await readFull(); openManual({name:nameCandidates(full)[0] || ''}); return }
+    if(O.game === 'other' || (O.game !== 'auto' && !FIND[O.game])){ await readFull(); openManual({name:nameCandidates(full)[0] || '', game:O.game}); return }
     // Not sure yet: try the other lines of the whole card
     if(!sure()){
       await readFull();
@@ -710,7 +760,7 @@ function renderResult(){
   if($('#cundo')) $('#cundo').onclick = undoLast;
   $$('#cres .cand-t').forEach(t => t.onclick = () => { SC.sel = +t.dataset.i; renderResult() });
   $('#cqf').onsubmit = async e => { e.preventDefault(); const q = $('#cq').value.trim(); if(q.length < 2) return; $('#cq').blur();
-    if(O.game === 'other'){ openManual({name:q}); return }
+    if(O.game === 'other' || (O.game !== 'auto' && !FIND[O.game])){ openManual({name:q, game:O.game}); return }
     try{ await lookup(q, O.game === 'auto' ? lookGames() : [O.game], new Set(), true) }catch(err){ toast(err.message, true) } };
   if(keepOpen){ $('#ddet').open = true; $('#dtext').textContent = dreport() }
   $('#ddet').ontoggle = () => { if($('#ddet').open) $('#dtext').textContent = dreport() };
@@ -908,12 +958,13 @@ async function sourcePrice(src, c){
 
 /* ---------------------------------------------------------------- price check: look every saved card up again, in the background */
 const PRICED = new Set(['mtg', 'pokemon', 'ygo', 'lorcana', 'swu', 'riftbound', 'onepiece']);    // games whose sources give prices
+const priced = g => PRICED.has(g) || !!(GAMES[g] && GAMES[g].custom && FIND[g]);
 const PC = {running:false, stop:false, done:0, total:0, filled:0, updated:0, missed:0};
 const priceOf = c => c.foil ? c.priceFoil : c.price;
 const tcgSearch = c => `https://www.tcgplayer.com/search/all/product?q=${enc(c.name.split(' - ')[0])}`;
 async function priceCheck(onlyMissing){
   if(PC.running) return;
-  const todo = store.cards.filter(c => (PRICED.has(c.game) || sourcesFor(c).length) && (!onlyMissing || priceOf(c) == null));
+  const todo = store.cards.filter(c => (priced(c.game) || sourcesFor(c).length) && (!onlyMissing || priceOf(c) == null));
   Object.assign(PC, {running:true, stop:false, done:0, total:todo.length, filled:0, updated:0, missed:0});
   if(!todo.length){ PC.running = false; toast(onlyMissing ? 'Every card already has a price' : 'No cards to check'); drawPC(); return }
   drawPC();
@@ -922,7 +973,7 @@ async function priceCheck(onlyMissing){
     if(PC.stop) break;
     const k = c.game + '|' + c.name.toLowerCase();
     try{
-      if(!PRICED.has(c.game)) throw 'own';
+      if(!priced(c.game)) throw 'own';
       if(!cache.has(k)){
         const tokens = new Set([c.showSet.toUpperCase(), String(c.showNum).toUpperCase(), normNum(c.showNum).toUpperCase()]);
         cache.set(k, await FIND[c.game](c.name.split(' (')[0], tokens));
@@ -964,6 +1015,55 @@ function drawPC(){
   if(PC.running) setSt(`Checking prices ${PC.done}/${PC.total}`); else if($('#scst').textContent.startsWith('Checking prices')) setSt('');
 }
 
+/* ---------------------------------------------------------------- add / edit a card game */
+function openGame(g){
+  const g0 = g || {id:'', label:'', color:'#'+((Math.random() * 0xffffff) | 0).toString(16).padStart(6, '8'), keywords:'', lookup:{url:'', keyHeader:'', key:'', currency:'EUR', listPath:'', namePath:'', imagePath:'', setPath:'', numberPath:'', pricePath:''}};
+  const L = Object.assign({url:'', keyHeader:'', key:'', currency:'EUR'}, g0.lookup || {});
+  const n = g ? store.cards.filter(c => c.game === g.id).length : 0;
+  modal(`<h3>${g ? 'Edit' : 'Add'} a card game</h3>
+    <div class="bar"><input id="gl" type="text" style="flex:1" placeholder="Name, e.g. Digimon Card Game" value="${esc(g0.label)}"><input id="gc" type="color" value="${esc(g0.color)}" style="width:48px;height:40px;padding:2px;border-radius:8px;border:1px solid var(--line2);background:var(--ctl)" aria-label="Colour"></div>
+    <div class="bar"><input id="gk" type="text" placeholder="Clue words on the card, e.g. Digimon, Bandai (optional)" value="${esc(g0.keywords)}"></div>
+    <div class="hint" style="margin:-4px 0 10px">With clue words, “All games” recognises this game by itself.</div>
+    <h4 style="margin:6px 0 6px">Card lookup (optional)</h4>
+    <div class="bar"><input id="gu" type="text" placeholder="https://site.example/api/cards?name={name}" value="${esc(L.url)}" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
+    <div class="hint" style="margin:-4px 0 10px">A site that answers a card name with card data (JSON) and lets other websites read it. Without one, scanning reads the name and you add the card by hand.</div>
+    <div class="bar"><select id="gcur"><option ${L.currency === 'EUR' ? 'selected' : ''}>EUR</option><option ${L.currency === 'USD' ? 'selected' : ''}>USD</option></select>
+      <input id="gkh" type="text" style="flex:1 1 140px" placeholder="Key header (optional)" value="${esc(L.keyHeader)}" autocapitalize="off"><input id="gkk" type="password" style="flex:1 1 140px" placeholder="Key (optional)" value="${esc(L.key)}" autocomplete="off"></div>
+    <details><summary class="hint" style="cursor:pointer;margin:0 0 8px">Advanced: field names (only if the test picks the wrong ones)</summary>
+      <div class="bar"><input id="glp" type="text" placeholder="List" value="${esc(L.listPath || '')}" autocapitalize="off"><input id="gnp" type="text" placeholder="Name" value="${esc(L.namePath || '')}" autocapitalize="off"><input id="gip" type="text" placeholder="Picture" value="${esc(L.imagePath || '')}" autocapitalize="off"></div>
+      <div class="bar"><input id="gsp" type="text" placeholder="Set" value="${esc(L.setPath || '')}" autocapitalize="off"><input id="gnu" type="text" placeholder="Number" value="${esc(L.numberPath || '')}" autocapitalize="off"><input id="gpp" type="text" placeholder="Price" value="${esc(L.pricePath || '')}" autocapitalize="off"></div></details>
+    <div class="bar"><input id="gt" type="text" style="flex:1" placeholder="Card name to test the lookup with"><button class="btn" id="gtest"><i class="ti ti-eye-check"></i>Test</button></div>
+    <pre id="gout" class="hint" style="white-space:pre-wrap;word-break:break-word;margin:0"></pre>
+    <div class="btns" style="justify-content:flex-end;margin-top:12px">${g ? '<button class="btn danger" id="gdel"><i class="ti ti-trash"></i>Remove</button><span class="sp"></span>' : ''}<button class="btn" id="gx">Cancel</button><button class="btn primary" id="gok">Save</button></div>`);
+  const read = () => { const label = $('#gl').value.trim();
+    return {id:g ? g.id : slugOf(label), label, color:$('#gc').value, keywords:$('#gk').value.trim(), name:g0.name, num:g0.num,
+      lookup:{url:$('#gu').value.trim(), keyHeader:$('#gkh').value.trim(), key:$('#gkk').value, currency:$('#gcur').value,
+        listPath:$('#glp').value.trim(), namePath:$('#gnp').value.trim(), imagePath:$('#gip').value.trim(), setPath:$('#gsp').value.trim(), numberPath:$('#gnu').value.trim(), pricePath:$('#gpp').value.trim()}} };
+  $('#gtest').onclick = async () => {
+    const x = read(), q = $('#gt').value.trim(); if(!/^https:\/\//.test(x.lookup.url)){ $('#gout').textContent = 'Enter an address that starts with https://'; return }
+    if(!q){ $('#gout').textContent = 'Enter a card name to test with'; return }
+    $('#gout').textContent = 'Asking the site ...';
+    try{ const list = await findCustom({...x, id:x.id || 'test'}, q);
+      $('#gout').textContent = list.length ? `${list.length} cards found. First ones:\n` + list.slice(0, 3).map(m => `· ${m.name} · set ${m.showSet} · #${m.showNum} · ${m.price != null ? fmt(m.price, m.currency) : 'no price'} · ${m.image ? 'picture' : 'no picture'}`).join('\n') : 'The site answered, but no cards with a name were found in the answer.' }
+    catch(e){ $('#gout').textContent = e.message }
+  };
+  $('#gx').onclick = closeModal;
+  if($('#gdel')) $('#gdel').onclick = () => {
+    store.cards.forEach(c => { if(c.game === g.id){ c.game = 'other'; c.gameName = g.label; c.key = ckey(c, c.foil) } });
+    store.games = store.games.filter(x => x.id !== g.id); store.templates = store.templates.filter(t => t.game !== g.id); store.backs = store.backs.filter(b => b.game !== g.id);
+    if(O.game === g.id) O.game = 'auto'; persist(); registerGames(); closeModal(); toast(`${g.label} removed${n ? ` - its ${n} cards are kept as “Other game”` : ''}`); viewSettings() };
+  $('#gok').onclick = () => {
+    const x = read(); if(!x.label){ toast('Enter the name of the game', true); return }
+    if(!x.id || (!g && (BUILTIN.has(x.id) || store.games.some(y => y.id === x.id)))){ toast('There is already a game with that name', true); return }
+    if(x.lookup.url && !/^https:\/\//.test(x.lookup.url)){ toast('The lookup address must start with https://', true); return }
+    if(!x.lookup.url) x.lookup = null;
+    store.games = store.games.filter(y => y.id !== x.id).concat([x]);
+    if(!g) store.cards.forEach(c => { if(c.game === 'other' && slugOf(c.gameName) === x.id){ c.game = x.id; c.gameName = ''; c.key = ckey(c, c.foil) } });   // hand-added cards of this game move over
+    persist(); registerGames(); closeModal();
+    toast(`${x.label} added. Make a scan template so the scanner knows where its name sits.`); viewSettings();
+  };
+}
+
 /* ---------------------------------------------------------------- price source editor */
 function openSource(src){
   const keys = new Set(Object.keys(GAMES).filter(k => k !== 'other')); store.cards.forEach(c => keys.add(gameKey(c))); store.sources.forEach(x => keys.add(x.game));
@@ -976,7 +1076,7 @@ function openSource(src){
     <div class="bar"><input id="pu" type="text" placeholder="https://site.example/api/cards?name={name}" value="${esc(s0.url)}" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
     <div class="hint" style="margin:-4px 0 10px">The app fills in <b>{name}</b>, <b>{set}</b> and <b>{number}</b> for each card. The site must answer with card data (JSON) and allow other websites to read it.</div>
     <div class="bar"><select id="pc"><option ${s0.currency === 'EUR' ? 'selected' : ''}>EUR</option><option ${s0.currency === 'USD' ? 'selected' : ''}>USD</option></select>
-      <input id="pkh" type="text" style="flex:1" placeholder="Key header (optional)" value="${esc(s0.keyHeader)}" autocapitalize="off"><input id="pk" type="password" style="flex:1" placeholder="Key (optional)" value="${esc(s0.key)}" autocomplete="off"></div>
+      <input id="pkh" type="text" style="flex:1 1 140px" placeholder="Key header (optional)" value="${esc(s0.keyHeader)}" autocapitalize="off"><input id="pk" type="password" style="flex:1 1 140px" placeholder="Key (optional)" value="${esc(s0.key)}" autocomplete="off"></div>
     <details ${s0.listPath || s0.namePath || s0.pricePath ? 'open' : ''}><summary class="hint" style="cursor:pointer;margin:0 0 8px">Advanced: field names (only if the test picks the wrong ones)</summary>
       <div class="bar"><input id="plp" type="text" placeholder="List, e.g. data" value="${esc(s0.listPath)}" autocapitalize="off"><input id="pnp" type="text" placeholder="Name, e.g. name" value="${esc(s0.namePath)}" autocapitalize="off"><input id="ppp" type="text" placeholder="Price, e.g. prices.market" value="${esc(s0.pricePath)}" autocapitalize="off"></div></details>
     <div class="bar"><input id="pt" type="text" style="flex:1" placeholder="Card name to test with" value="${esc(sample ? sample.name : '')}"><button class="btn" id="ptest"><i class="ti ti-eye-check"></i>Test</button></div>
@@ -1049,7 +1149,7 @@ function viewCards(){
 /* ---------------------------------------------------------------- export / import */
 const stamp = () => new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '');
 function payload(){
-  return {format:PHONE_FORMAT, version:1, app:'Nightvault Pocket', exported:new Date().toISOString(), templates:store.templates, backs:store.backs, sources:store.sources.map(x => ({...x, key:''})),
+  return {format:PHONE_FORMAT, version:1, app:'Nightvault Pocket', exported:new Date().toISOString(), games:store.games.map(g => ({...g, lookup:g.lookup ? {...g.lookup, key:''} : null})), templates:store.templates, backs:store.backs, sources:store.sources.map(x => ({...x, key:''})),
     cards:store.cards.map(c => ({uid:c.uid, game:c.game === 'other' ? (String(c.gameName || 'other').toLowerCase().replace(/[^a-z0-9]+/g, '') || 'other') : c.game, game_name:c.game === 'other' ? c.gameName : GAMES[c.game].full, set:c.set, number:c.number, name:c.name, set_name:c.setName, show_set:c.showSet, show_number:c.showNum,
       rarity:c.rarity, foil:c.foil, qty:c.qty, price:c.foil ? c.priceFoil : c.price, currency:c.currency, image:c.image, added:c.added}))};
 }
@@ -1082,6 +1182,7 @@ async function importBackup(e){
   const f = e.target.files[0]; e.target.value = ''; if(!f) return;
   try{
     const d = JSON.parse(await f.text()); if(d.format !== PHONE_FORMAT || !Array.isArray(d.cards)) throw 0;
+    for(const g of Array.isArray(d.games) ? d.games : []){ if(g && g.id && g.label && !BUILTIN.has(g.id) && !store.games.some(x => x.id === g.id)) store.games.push(g) } registerGames();
     let n = 0;
     for(const x of d.cards){ if(!x || !x.game || !x.set || !x.number) continue; if(!GAMES[x.game] || x.game === 'other'){ x.game_name = x.game_name || x.game; x.game = 'other' }
       const k = (x.game === 'other' ? ['other:' + String(x.game_name || '').toLowerCase()] : [x.game]).concat([x.set, x.number, x.foil ? 1 : 0]).join('|'), ex = store.cards.find(c => c.uid === x.uid || c.key === k);
@@ -1112,6 +1213,10 @@ function viewSettings(){
       <label class="row"><input type="checkbox" id="ofull" ${O.full ? 'checked' : ''}><div class="grow">Also read the whole card<div class="hint" style="margin:2px 0 0">Finds the name on full-art and special versions, and recognises the game by itself. Takes a second longer.</div></div></label>
       <label class="row"><input type="checkbox" id="oprice" ${O.dailyPrices ? 'checked' : ''}><div class="grow">Update prices once a day when I open the app<div class="hint" style="margin:2px 0 0">Runs in the background. Cards you still need to price get a link to look them up.</div></div></label>
       <div class="row"><div class="grow">Start with game</div><select id="ogame"><option value="auto">All games</option>${Object.entries(GAMES).map(([k, g]) => `<option value="${k}" ${O.game === k ? 'selected' : ''}>${esc(g.label)}</option>`).join('')}</select></div></div>
+    <div class="panel"><h3>Card games</h3><p class="hint" style="margin:0 0 6px">Add any card game to the list. It gets its own button on the scan screen and works with scan templates, card backs and price sources.</p>
+      ${store.games.length ? store.games.map(x => `<div class="row" style="padding:7px 0"><span class="dot" style="background:${esc(x.color)}"></span><div class="grow">${esc(x.label)} <span class="muted" style="font-size:12px">· ${x.lookup ? 'card lookup' : 'add by hand'}${store.templates.some(t => t.game === x.id) ? ' · template' : ''}</span></div>
+        <button class="btn sm" data-gtpl="${x.id}">Template</button><button class="btn sm" data-gedit="${x.id}">Edit</button></div>`).join('') : '<div class="muted" style="font-size:13px;padding:4px 0 8px">Built in: Magic, Pokémon, Yu-Gi-Oh!, Lorcana, Star Wars: Unlimited, One Piece, Star Wars CCG, Riftbound.</div>'}
+      <div class="btns" style="margin-top:8px"><button class="btn sm primary" id="gnew"><i class="ti ti-plus"></i>Add a card game</button></div></div>
     <div class="panel"><h3>Price sources</h3><p class="hint" style="margin:0 0 6px">Add a site the app can ask for prices, for example for a game you add by hand. Used by “Update prices” when the built-in sources have no price.</p>
       ${store.sources.length ? store.sources.map(x => `<div class="row" style="padding:7px 0"><i class="ti ti-tag" style="color:var(--accent)"></i><div class="grow">${esc(x.label)} <span class="muted" style="font-size:12px">· ${esc(gameKeyLabel(x.game))}</span></div><button class="btn sm" data-sedit="${x.id}">Edit</button></div>`).join('') : '<div class="muted" style="font-size:13px;padding:4px 0 8px">No sources of your own yet.</div>'}
       <div class="btns" style="margin-top:8px"><button class="btn sm primary" id="snew"><i class="ti ti-plus"></i>Add price source</button></div></div>
@@ -1120,7 +1225,7 @@ function viewSettings(){
         <div class="grow">${esc(t.name)} <span class="muted" style="font-size:12px">· ${esc(GAMES[t.game].label)}</span></div><button class="btn sm" data-tedit="${t.id}">Edit</button></div>`).join('') : '<div class="muted" style="font-size:13px;padding:4px 0 8px">No templates yet. Every game has its standard layout built in.</div>'}
       <div class="btns" style="margin-top:8px"><button class="btn sm primary" id="tnew"><i class="ti ti-plus"></i>New template</button></div></div>
     <div class="panel"><h3>Card backs</h3><p class="hint" style="margin:0 0 6px">Teach the app a card back once. When you scan that back later, it switches to that game by itself.</p>
-      ${Object.keys(FIND).map(g => { const n = store.backs.filter(b => b.game === g).length; return `<div class="row" style="padding:7px 0"><span class="dot" style="background:${GAMES[g].color}"></span><div class="grow">${esc(GAMES[g].label)} <span class="muted" style="font-size:12px">${n ? '· learned' : ''}</span></div>
+      ${Object.keys(GAMES).filter(g => g !== 'other').map(g => { const n = store.backs.filter(b => b.game === g).length; return `<div class="row" style="padding:7px 0"><span class="dot" style="background:${GAMES[g].color}"></span><div class="grow">${esc(GAMES[g].label)} <span class="muted" style="font-size:12px">${n ? '· learned' : ''}</span></div>
         ${n ? `<button class="btn sm" data-forget="${g}">Forget</button>` : ''}<button class="btn sm" data-teach="${g}"><i class="ti ti-school"></i>${n ? 'Teach again' : 'Teach'}</button></div>` }).join('')}</div>
     <div class="panel"><h3>Appearance</h3><div class="thgrid">${THEMES.map(([id, nm]) => `<button class="thtile ${O.theme === id ? 'on' : ''}" data-t="${id}"><div class="pv" data-theme="${id}"><i style="background:var(--side);height:100%"></i><i style="background:var(--card);height:70%;border:1px solid var(--line2)"></i><i style="background:var(--accent);height:40%"></i></div><div class="nm">${nm}</div></button>`).join('')}</div></div>
     <div class="panel"><h3>Card data</h3>${Object.values(GAMES).filter(g => g.src).map(g => `<div class="row" style="padding:7px 0"><span class="dot" style="background:${g.color}"></span><div class="grow">${esc(g.full)}</div><span class="muted" style="font-size:12px">${esc(g.src)}</span></div>`).join('')}
@@ -1135,6 +1240,9 @@ function viewSettings(){
   $('#oprice').onchange = e => { O.dailyPrices = e.target.checked; persist() };
   $('#tnew').onclick = () => openTemplate(null, true);
   $('#snew').onclick = () => openSource(null);
+  $('#gnew').onclick = () => openGame(null);
+  $$('[data-gedit]').forEach(b => b.onclick = () => openGame(store.games.find(x => x.id === b.dataset.gedit)));
+  $$('[data-gtpl]').forEach(b => b.onclick = () => openTemplate({game:b.dataset.gtpl}, true));
   $$('[data-sedit]').forEach(b => b.onclick = () => openSource(store.sources.find(x => x.id === b.dataset.sedit)));
   $$('[data-tedit]').forEach(b => b.onclick = () => openTemplate(store.templates.find(t => t.id === b.dataset.tedit), false));
   $$('[data-teach]').forEach(b => b.onclick = () => { SC.teach = b.dataset.teach; show('scan') });
