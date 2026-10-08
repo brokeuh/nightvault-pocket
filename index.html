@@ -1541,6 +1541,42 @@ const priced = g => PRICED.has(g) || !!(GAMES[g] && GAMES[g].custom && FIND[g]);
 const PC = {running:false, stop:false, done:0, total:0, filled:0, updated:0, missed:0};
 const priceOf = c => c.foil ? c.priceFoil : c.price;
 const tcgSearch = c => `https://www.tcgplayer.com/search/all/product?q=${enc(c.name.split(' - ')[0])}`;
+/* look up the price of one card in my collection: the game's own card database first, then my own price sources.
+   Returns 'filled' (it had no price), 'updated', 'same' or 'missed'. */
+async function priceOne(c, cache = new Map()){
+  const before = priceOf(c), k = c.game + '|' + c.name.toLowerCase();
+  if(c.game === 'pokemon'){                                    // Pokémon: ask TCGdex for this exact card (set id + card number)
+    try{ const d = await getJSON(`https://api.tcgdex.net/v2/en/cards/${enc(c.set)}-${enc(String(c.showNum).split('/')[0])}`), cm = (d.pricing || {}).cardmarket || {};
+      const eur = cm.avg ?? cm.trend ?? null, holo = cm['avg-holo'] ?? cm['trend-holo'] ?? null;
+      if(eur != null || holo != null){ c.price = eur; c.priceFoil = holo; c.currency = 'EUR'; c.psrc = 'Cardmarket'; c.priced = Date.now();
+        if(!c.image && d.image) c.image = d.image + '/low.webp';
+        if(priceOf(c) != null) return before == null ? 'filled' : before !== priceOf(c) ? 'updated' : 'same' } }
+    catch(e){}                                                  // not a TCGdex card id: fall back to the name search below
+  }
+  if(priced(c.game)){
+    try{
+      if(!cache.has(k)){
+        const tokens = new Set([String(c.showSet).toUpperCase(), String(c.showNum).toUpperCase(), normNum(c.showNum).toUpperCase()]);
+        cache.set(k, await FIND[c.game](c.name.split(' (')[0], tokens));
+        await sleep(c.game === 'mtg' ? 120 : 60);            // be polite to the free card databases
+      }
+      const list = cache.get(k) || [];
+      const m = list.find(x => x.set === c.set && String(x.number) === String(c.number)) || list.find(x => x.set === c.set && sim(x.name, c.name) >= 0.9);
+      if(m && (m.price != null || m.priceFoil != null)){
+        c.price = m.price ?? null; c.priceFoil = m.priceFoil ?? null; c.currency = m.currency; c.psrc = m.psrc || c.psrc; c.priced = Date.now();
+        if(!c.image && m.image){ c.image = m.image; c.alt = m.alt || [] }
+        if(priceOf(c) != null) return before == null ? 'filled' : before !== priceOf(c) ? 'updated' : 'same';
+      }
+    }catch(e){ PC.lastErr = (GAMES[c.game] || {}).label + ': ' + (e.message || e) }
+  }
+  for(const src of sourcesFor(c)){
+    try{ const r = await sourcePrice(src, c); await sleep(150);
+      if(c.foil) c.priceFoil = r.price; else c.price = r.price; c.currency = src.currency || 'EUR'; c.psrc = src.label; c.priced = Date.now();
+      return before == null ? 'filled' : before !== r.price ? 'updated' : 'same' }
+    catch(err){ PC.lastErr = src.label + ': ' + (err.message || err) }
+  }
+  return before == null ? 'missed' : 'same';
+}
 async function priceCheck(onlyMissing){
   if(PC.running) return;
   const todo = store.cards.filter(c => (priced(c.game) || sourcesFor(c).length) && (!onlyMissing || priceOf(c) == null));
@@ -1550,33 +1586,8 @@ async function priceCheck(onlyMissing){
   const cache = new Map();                                   // one lookup per game + name, shared by all its printings
   for(const c of todo){
     if(PC.stop) break;
-    const k = c.game + '|' + c.name.toLowerCase();
-    try{
-      if(!priced(c.game)) throw 'own';
-      if(!cache.has(k)){
-        const tokens = new Set([c.showSet.toUpperCase(), String(c.showNum).toUpperCase(), normNum(c.showNum).toUpperCase()]);
-        cache.set(k, await FIND[c.game](c.name.split(' (')[0], tokens));
-        await sleep(c.game === 'mtg' ? 120 : 60);            // be polite to the free card databases
-      }
-      const list = cache.get(k) || [];
-      const m = list.find(x => x.set === c.set && String(x.number) === String(c.number)) || list.find(x => x.set === c.set && sim(x.name, c.name) >= 0.9);
-      const before = priceOf(c);
-      if(m && (m.price != null || m.priceFoil != null)){
-        c.price = m.price ?? null; c.priceFoil = m.priceFoil ?? null; c.currency = m.currency; c.psrc = m.psrc || c.psrc; c.priced = Date.now();
-        if(!c.image && m.image){ c.image = m.image; c.alt = m.alt || [] }
-        if(before == null && priceOf(c) != null) PC.filled++; else if(before !== priceOf(c)) PC.updated++;
-        if(priceOf(c) == null) PC.missed++;
-      } else throw 'own';
-    }catch(e){
-      let got = false;
-      for(const src of sourcesFor(c)){
-        try{ const before = priceOf(c), r = await sourcePrice(src, c); await sleep(150);
-          if(c.foil) c.priceFoil = r.price; else c.price = r.price; c.currency = src.currency || 'EUR'; c.psrc = src.label; c.priced = Date.now();
-          if(before == null) PC.filled++; else if(before !== r.price) PC.updated++; got = true; break }
-        catch(err){ PC.lastErr = src.label + ': ' + (err.message || err) }
-      }
-      if(!got) PC.missed++;
-    }
+    const r = await priceOne(c, cache);
+    if(r === 'filled') PC.filled++; else if(r === 'updated') PC.updated++; else if(r === 'missed') PC.missed++;
     PC.done++;
     if(PC.done % 5 === 0 || PC.done === PC.total){ persist(); drawPC() }
   }
@@ -1874,7 +1885,14 @@ function binderCard(m, redraw){
       <div class="price">${fmt(m.price, m.currency)}${m.priceFoil != null ? ` <span class="muted">· foil ${fmt(m.priceFoil, m.currency)}</span>` : ''}</div></div></div>
     ${[false, true].map(f => `<div class="row"><div class="grow">${f ? 'Foil' : 'Normal'}</div><div class="qb"><button data-f="${f ? 1 : 0}" data-d="-1">−</button><b id="bq${f ? 1 : 0}">${q(f)}</b><button data-f="${f ? 1 : 0}" data-d="1">+</button></div></div>`).join('')}
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" id="bcx">Done</button></div>`);
-  $$('.mbox [data-d]').forEach(b => b.onclick = () => { const f = b.dataset.f === '1'; addCard(m, f, +b.dataset.d); $('#bq' + b.dataset.f).textContent = (store.cards.find(c => c.key === ckey(m, f)) || {}).qty || 0 });
+  $$('.mbox [data-d]').forEach(b => b.onclick = async () => { const f = b.dataset.f === '1'; addCard(m, f, +b.dataset.d);
+    const c = store.cards.find(x => x.key === ckey(m, f)); $('#bq' + b.dataset.f).textContent = (c || {}).qty || 0;
+    if(c && +b.dataset.d > 0 && priceOf(c) == null && (priced(c.game) || sourcesFor(c).length)){          // no price in the set list: look it up now
+      const el = $('.mbox .price'); if(el) el.innerHTML = '<span class="muted">Looking up the price ...</span>';
+      const r = await priceOne(c); persist();
+      if(c.price != null && m.price == null) m.price = c.price; if(c.priceFoil != null && m.priceFoil == null) m.priceFoil = c.priceFoil; m.currency = c.currency || m.currency;
+      if($('.mbox .price')) $('.mbox .price').innerHTML = r === 'missed' ? '<span class="muted">No price found for this card</span>'
+        : `${fmt(m.price, m.currency)}${m.priceFoil != null ? ` <span class="muted">· foil ${fmt(m.priceFoil, m.currency)}</span>` : ''}` } });
   $('#bcx').onclick = () => { closeModal(); redraw() };
 }
 
