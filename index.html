@@ -238,13 +238,24 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
    name/num = where the card name and the collector number sit on the card, as fractions [x0, y0, x1, y1]. */
 const GAMES = {
   mtg:      {label:'Magic',              full:'Magic: The Gathering',  color:'#b8863b', name:[0.06,0.038,0.76,0.105], num:[0.03,0.925,0.62,0.985], src:'Scryfall · Cardmarket €'},
-  pokemon:  {label:'Pokémon',            full:'Pokémon TCG',           color:'#e8b53b', name:[0.14,0.025,0.72,0.10],  num:[0.02,0.885,0.62,0.975], src:'Pokémon TCG API · Cardmarket €'},
+  pokemon:  {label:'Pokémon',            full:'Pokémon TCG',           color:'#e8b53b', name:[0.14,0.025,0.72,0.10],  num:[0.02,0.885,0.62,0.975], src:'Pokémon TCG API, TCGdex · Cardmarket €'},
   ygo:      {label:'Yu-Gi-Oh!',          full:'Yu-Gi-Oh!',             color:'#7c4dbd', name:[0.06,0.035,0.84,0.115], num:[0.52,0.715,0.95,0.775], src:'YGOPRODeck · Cardmarket €'},
   lorcana:  {label:'Lorcana',            full:'Disney Lorcana',        color:'#5a6bd6', name:[0.07,0.555,0.93,0.665], num:[0.02,0.93,0.75,0.99],   src:'Lorcast · TCGplayer $'},
-  swu:      {label:'Star Wars: Unlimited',full:'Star Wars: Unlimited', color:'#4aa3c8', name:[0.10,0.575,0.90,0.665], num:[0.02,0.925,0.98,0.99],  src:'SWU-DB · TCGplayer $'},
+  swu:      {label:'Star Wars: Unlimited',full:'Star Wars: Unlimited', color:'#4aa3c8', name:[0.10,0.575,0.90,0.665], num:[0.02,0.925,0.98,0.99],  src:'starwarsunlimited.com · TCGplayer $ (daily copy)'},
   onepiece: {label:'One Piece',          full:'One Piece Card Game',   color:'#c8453b', name:[0.10,0.80,0.90,0.875], num:[0.55,0.925,0.98,0.985], src:'OPTCG API · TCGplayer $', heavy:true},
   swccg:    {label:'Star Wars CCG',      full:'Star Wars CCG (Decipher, 1995-2001)', color:'#a08a52', name:[0.12,0.03,0.88,0.10], num:[0.02,0.92,0.98,0.99], src:'SWCCG Players Committee', heavy:true},
   riftbound:{label:'Riftbound',          full:'Riftbound',             color:'#d6595a', name:[0.10,0.565,0.90,0.655], num:[0.02,0.925,0.98,0.99],  src:'Riftcodex · riftbound.gg pictures'},
+  gundam:   {label:'Gundam',             full:'Gundam Card Game',      color:'#3f7fd9', name:[0.08,0.035,0.92,0.11], num:[0.55,0.925,0.98,0.985], src:'TCGplayer (daily copy) · $', heavy:true},
+  digimon:  {label:'Digimon',            full:'Digimon Card Game',     color:'#f08a24', name:[0.15,0.82,0.85,0.885], num:[0.60,0.93,0.98,0.985], src:'TCGplayer (daily copy) · $', heavy:true},
+  fab:      {label:'Flesh and Blood',    full:'Flesh and Blood TCG',   color:'#a3262a', name:[0.12,0.035,0.88,0.10], num:[0.02,0.94,0.60,0.99],  src:'TCGplayer (daily copy) · $', heavy:true},
+  sorcery:  {label:'Sorcery',            full:'Sorcery: Contested Realm', color:'#8d7a4e', name:[0.06,0.035,0.80,0.11], num:[0.02,0.93,0.98,0.99], src:'TCGplayer (daily copy) · $', heavy:true},
+  ws:       {label:'Weiss Schwarz',      full:'Weiss Schwarz',         color:'#c9c9d6', name:[0.12,0.865,0.95,0.925], num:[0.02,0.93,0.50,0.985], src:'TCGplayer (daily copy) · $', heavy:true},
+  dbsfw:    {label:'DB Fusion World',    full:'Dragon Ball Super: Fusion World', color:'#f2a51a', name:[0.10,0.80,0.90,0.87], num:[0.60,0.93,0.98,0.985], src:'TCGplayer (daily copy) · $', heavy:true},
+  dbsm:     {label:'DB Super Masters',   full:'Dragon Ball Super Card Game (Masters)', color:'#e56b1f', name:[0.10,0.80,0.90,0.87], num:[0.60,0.93,0.98,0.985], src:'TCGplayer (daily copy) · $', heavy:true},
+  dbz:      {label:'Dragon Ball Z TCG',  full:'Dragon Ball Z TCG (Panini)', color:'#d9482b', name:[0.10,0.035,0.90,0.10], num:[0.02,0.93,0.40,0.99], src:'TCGplayer (daily copy) · $', heavy:true},
+  dbzccg:   {label:'DBZ CCG (Score)',    full:'Dragon Ball Z CCG (Score, 2000-2006)', color:'#c4502e', name:[0.10,0.035,0.90,0.10], num:[0.02,0.93,0.40,0.99], src:'CCG Trader · no prices', heavy:true},
+  dbgt:     {label:'Dragon Ball GT',     full:'Dragon Ball GT TCG (Score)', color:'#b8562a', name:[0.10,0.035,0.90,0.10], num:[0.02,0.93,0.40,0.99], src:'CCG Trader · no prices', heavy:true},
+  wow:      {label:'WoW TCG',            full:'World of Warcraft TCG (2006-2013)', color:'#5c7bb0', name:[0.10,0.035,0.90,0.10], num:[0.60,0.93,0.98,0.99], src:'CCG Trader · no prices', heavy:true},
   other:    {label:'Other game',         full:'Any other game (added by hand)', color:'#8a8f9c', name:[0.05,0.025,0.95,0.12], num:[0.02,0.88,0.98,0.99], src:''},
 };
 /* clues on the front of a card that give away the game (read from the whole card) */
@@ -257,6 +268,17 @@ const CLUES = {
   riftbound:[/riot games/i, /\bchampion\b/i, /\bmight\b/i, /\brunes?\b/i, /\briftbound\b/i],
   onepiece: [/\b(OP|ST|EB|PRB) ?\d{2} ?- ?\d{3}\b/, /\bcounter\b/i, /\bdon!*\b/i, /bandai/i, /\bpirates?\b/i, /\bstraw hat\b/i],
   swccg:    [/decipher/i, /\bdeploy\b/i, /\bforfeit\b/i, /\bdestiny\b/i, /\b(dark|light) side\b/i],
+  gundam:   [/gundam/i, /\b(GD|EB)\d{2} ?- ?\d{3}\b/, /\blink\b/i, /\bmobile suit\b/i, /\bsunrise\b/i],
+  digimon:  [/digimon/i, /digivolve/i, /\b(BT|EX|ST)\d{1,2} ?- ?\d{3}\b/, /inherited effect/i, /\bDP\b/],
+  fab:      [/legend story/i, /\bgo again\b/i, /\bintellect\b/i, /\bpitch\b/i, /flesh (and|&) blood/i],
+  sorcery:  [/curiosa/i, /contested realm/i, /\bthreshold\b/i, /\b(avatar|minion|site)\b/i],
+  ws:       [/bushiroad/i, /weiss|schwarz/i, /\b[A-Z0-9]{2,4}\/[A-Z0-9]{2,5}-[A-Z]?\d{2,3}\b/, /\bclimax\b/i, /\bsoul\b/i],
+  dbsfw:    [/fusion world/i, /\bFB\d{2} ?- ?\d{3}\b/, /combo power/i, /dragon ball/i],
+  dbsm:     [/dragon ball super/i, /\b(BT|SD|EX)\d{1,2} ?- ?\d{3}\b/, /\benergy\b/i, /\bcombo\b/i],
+  dbz:      [/panini/i, /dragon ball z/i, /power stage/i, /\b(physical|energy) combat\b/i],
+  dbzccg:   [/score/i, /dragon ball z/i, /power stage/i, /\b(physical|energy) combat\b/i, /funimation/i],
+  dbgt:     [/dragon ball gt/i, /score/i, /power stage/i, /funimation/i],
+  wow:      [/warcraft/i, /blizzard/i, /upper deck|cryptozoic/i, /\b(horde|alliance)\b/i, /\bhero\b/i],
 };
 const lookGames = () => Object.keys(FIND).filter(g => !GAMES[g].heavy);   // the big card lists only load when that game is picked or detected
 const AUTO = {label:'All games', name:[0.05,0.025,0.84,0.12], num:[0.02,0.88,0.98,0.99]};
@@ -298,7 +320,7 @@ function dreport(){
     `Camera: ${v && v.videoWidth ? v.videoWidth + '×' + v.videoHeight : 'off'} · game chip: ${O.game} · auto-scan ${O.auto ? 'on' : 'off'} · whole card ${O.full ? 'on' : 'off'} · number ${O.readNum ? 'on' : 'off'} · backs learned: ${store.backs.map(b => b.game).join(', ') || 'none'}`,
     `Auto-scan now: ${a.nocard ? 'no card shape seen (' + a.nocard + ' checks) · ' : ''}${a.ticks || 0} checks · movement ${a.moved ?? '-'} (still below 0.25) · contrast ${a.contrast ?? '-'} (card above 12) · ready ${SC.armed ? 'yes' : 'no'} · still checks in a row ${a.run || 0}`];
   const scans = DLOG.scans.map((c, i) => [`--- scan ${i + 1} at ${c.when} (${c.how}, chip ${c.mode})`, ...c.steps.map(([t, k, x]) => `${String(t).padStart(5)} ms  ${k}: ${x}`)].join('\n'));
-  return head.concat(DLOG.notes || [], scans.length ? scans : ['(no scans yet)']).join('\n');
+  return head.concat(SITECHECK ? [SITECHECK] : [], DLOG.notes || [], scans.length ? scans : ['(no scans yet)']).join('\n');
 }
 /* full screen and installing as an app (no browser bars) */
 const APPMODE = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone;
@@ -350,9 +372,11 @@ const lorMap = c => { const im = (c.image_uris || {}).digital || c.image_uris ||
     return {game:'lorcana', set:pad(String(c.set.code).toLowerCase(), 2), number:normNum(c.collector_number), showSet:String(c.set.code), showNum:c.collector_number,
       name:c.name + (c.version ? ' - ' + c.version : ''), setName:c.set.name, rarity:c.rarity || '', released:c.released_at || '',
       image:im.small || im.normal || '', price:num(p.usd), priceFoil:num(p.usd_foil), currency:'USD', psrc:'TCGplayer'} };
-const swuMap = c => ({game:'swu', set:String(c.Set).toLowerCase(), number:normNum(c.Number), showSet:String(c.Set).toUpperCase(), showNum:c.Number,
+const swuTag = v => v && !/^(normal|standard)$/i.test(v) ? v.split(' ').map(w => w[0]).join('').toUpperCase() : '';   // special versions reuse numbers: SOR 001 HYP
+const swuMap = c => swuTagged({game:'swu', set:String(c.Set).toLowerCase(), number:normNum(c.Number), showSet:String(c.Set).toUpperCase(), showNum:c.Number,
     name:c.Name + (c.Subtitle ? ' - ' + c.Subtitle : ''), setName:String(c.Set).toUpperCase() + (c.VariantType && c.VariantType !== 'Normal' ? ' · ' + c.VariantType : ''),
-    rarity:c.Rarity || '', released:'', image:c.FrontArt || '', price:num(c.MarketPrice), priceFoil:num(c.FoilPrice), currency:'USD', psrc:'TCGplayer'});
+    rarity:c.Rarity || '', released:'', image:c.FrontArt || '', price:num(c.MarketPrice), priceFoil:num(c.FoilPrice), currency:'USD', psrc:'TCGplayer'}, swuTag(c.VariantType));
+function swuTagged(m, tag){ if(tag){ m.number += '-' + tag.toLowerCase(); m.showNum = String(m.showNum) + ' ' + tag } return m }
 const rbMap = (c, pr) => { const sid = String((c.set || {}).set_id || '').toUpperCase(), cn = String(c.collector_number ?? '');
     const n = c.riftbound_id || `${sid}-${cn.padStart(3, '0')}`;
     // Riot's own picture server refuses other sites, so pictures come from riftbound.gg (DotGG); promos fall back to the main-set art
@@ -396,9 +420,34 @@ async function findLorcana(q){
   const r = await getJSON('https://api.lorcast.com/v0/cards/search?q=' + enc(q));
   return (r.results || []).slice(0, 40).map(lorMap);
 }
+/* Star Wars: Unlimited, official card list (starwarsunlimited.com) - lets other websites read it, has every set and picture.
+   It has no prices: those come from swu-cards.json (daily GitHub job) when it is there. */
+const SWUO = 'https://admin.starwarsunlimited.com/api/';
+const _at = x => (x && x.data && (x.data.attributes || x.data)) || {};
+const swuoVariant = a => ((((a.variantTypes || {}).data || [])[0] || {}).attributes || {}).name || 'Standard';
+function swuoMap(c){ const a = c.attributes || c, ex = _at(a.expansion), art = _at(a.artFront), v = swuoVariant(a);
+  const m = swuMap({Set:ex.code || '', Number:String(a.cardNumber ?? '').padStart(3, '0'), Name:a.title || '', Subtitle:a.subtitle || '', VariantType:v === 'Standard' ? 'Normal' : v,
+    Rarity:_at(a.rarity).name || '', FrontArt:((art.formats || {}).card || {}).url || art.url || ''});
+  return m }
+const swuoKeep = c => !/foil|prerelease|judge/i.test(swuoVariant(c.attributes || c));
+let _swuPx;
+async function swuPrices(){ if(_swuPx) return _swuPx; _swuPx = new Map(); const m = await swuMirror();
+  if(m && m.cards) for(const rows of Object.values(m.cards)) for(const r of rows) _swuPx.set(`${String(r.Set).toLowerCase()}|${String(r.Number).padStart(3, '0')}|${r.VariantType || 'Normal'}`, r);
+  return _swuPx }
+async function swuAddPrices(list){ const px = await swuPrices(); if(!px.size) return list;
+  for(const m of list){ const r = px.get(`${m.set}|${String(m.showNum).split(' ')[0].padStart(3, '0')}|${(m.setName.split(' · ')[1]) || 'Normal'}`); if(r){ m.price = num(r.MarketPrice); m.priceFoil = num(r.FoilPrice) } }
+  return list }
+async function swuoSearch(q){
+  const get = t => getJSON(`${SWUO}card-list?locale=en&pagination[pageSize]=30&filters[variantTypes][name][$notContainsi]=foil&filters[title][$containsi]=${enc(t)}`);
+  let j = await get(q); if(!(j.data || []).length){ const w = q.split(/\s+-\s+|,/)[0].trim(); if(w !== q && w.length >= 3) j = await get(w) }
+  return swuAddPrices((j.data || []).filter(swuoKeep).map(swuoMap));
+}
 async function findSWU(q){
-  const r = await getJSON('https://api.swu-db.com/cards/search?q=' + enc(q));
-  return (r.data || []).slice(0, 40).map(swuMap);
+  try{ return (await swuoSearch(q)).slice(0, 40) }catch(e){ dlog('swu', 'official list: ' + e.message) }
+
+  try{ const r = await getJSON('https://api.swu-db.com/cards/search?q=' + enc(q)); return (r.data || []).slice(0, 40).map(swuMap) }
+  catch(e){ const m = await swuMirror(); if(!m || !m.cards) throw e; const lw = x => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(), b = lw(q);
+    return Object.values(m.cards).flat().filter(c => lw(c.Name + ' ' + (c.Subtitle || '')).includes(b) || b.includes(lw(c.Name))).slice(0, 40).map(swuMap) }
 }
 /* Riftbound prices: riftbound.gg (DotGG) blocks other websites, so a daily GitHub job copies its prices into
    riftbound-prices.json next to this app (see .github/workflows/riftbound-prices.yml) */
@@ -427,6 +476,10 @@ async function findTCGdex(q){                                       // second Po
 let OPDB = null;                                                     // One Piece: the whole list (about 4,000 cards) is read once per visit
 function opdb(){ if(!OPDB) OPDB = Promise.all(['allSetCards', 'allSTCards'].map(p => getJSON(`https://optcgapi.com/api/${p}/`).catch(() => []))).then(a => a.flat()); return OPDB }
 const opBase = n => String(n || '').replace(/\s*\((\d{3}|parallel|alternate art|sp|manga|[A-Z]{2,3}\d{2}-\d{3})\)/gi, '').trim();
+function opMap(c){ const [st, n] = String(c.card_set_id || '').split('-'), nm = opBase(c.card_name), v = String(c.card_image_id || '').split('_')[1];
+  return {game:'onepiece', set:String(st).toLowerCase(), number:normNum(n) + (v ? '-' + v : ''), showSet:st, showNum:n + (v ? ' ' + v.toUpperCase() : ''),
+    name:nm + (/parallel/i.test(c.card_name) ? ' (Parallel)' : ''), setName:c.set_name || '', rarity:c.rarity || '', released:'', image:c.card_image || '',
+    price:num(c.market_price), priceFoil:null, currency:'USD', psrc:'TCGplayer'} }
 async function findOnePiece(q, tokens){
   const all = await opdb(); if(!all.length){ OPDB = null; throw new Error('One Piece list unavailable') }
   const hits = [];
@@ -434,35 +487,114 @@ async function findOnePiece(q, tokens){
     const idHit = !!tokens && tokens.has(String(st).toUpperCase()) && tokens.has(String(n));
     if(sm >= 0.6 || idHit) hits.push([idHit ? 2 : sm, c, st, n, nm]) }
   hits.sort((a, b) => b[0] - a[0]);
-  return hits.slice(0, 30).map(([sc, c, st, n, nm]) => { const v = String(c.card_image_id || '').split('_')[1];
-    return {game:'onepiece', set:String(st).toLowerCase(), number:normNum(n) + (v ? '-' + v : ''), showSet:st, showNum:n + (v ? ' ' + v.toUpperCase() : ''),
-      name:nm + (/parallel/i.test(c.card_name) ? ' (Parallel)' : ''), setName:c.set_name || '', rarity:c.rarity || '', released:'', image:c.card_image || '',
-      price:num(c.market_price), priceFoil:null, currency:'USD', psrc:'TCGplayer', idHit:sc === 2} });
+  return hits.slice(0, 30).map(([sc, c]) => Object.assign(opMap(c), {idHit:sc === 2}));
 }
 let SWDB = null;                                                     // Star Wars CCG: the Players Committee card list, read once per visit
 function swdb(){ if(!SWDB) SWDB = Promise.all(['Light', 'Dark'].map(x => getJSON(`https://cdn.jsdelivr.net/gh/swccgpc/swccg-card-json@main/${x}.json`).then(j => j.cards || []))).then(a => a.flat()).catch(e => { SWDB = null; throw e }); return SWDB }
+function swccgMap(c){ const img = (c.front || {}).imageUrl || '', nm = String((c.front || {}).title || '').replace(/[•<>]/g, '').trim();
+  const label = ((img.split('/cards/')[1] || '').split('/')[0] || '').replace(/-(Light|Dark)$/, '').replace(/([a-z])([A-Z])/g, '$1 $2');
+  return {game:'swccg', set:String(c.set || '').toLowerCase(), number:String(c.gempId || c.id), showSet:label || 'Set ' + c.set, showNum:String(c.gempId || c.id),
+    name:nm, setName:(c.side ? c.side + ' side' : ''), rarity:c.rarity || '', released:'', image:img, price:null, priceFoil:null, currency:'USD', psrc:''} }
 async function findSWCCG(q){
   const all = await swdb(), hits = [];
   for(const c of all){ const nm = String((c.front || {}).title || '').replace(/[•<>]/g, '').trim(), sm = sim(q, nm); if(sm >= 0.6) hits.push([sm, c, nm]) }
   hits.sort((a, b) => b[0] - a[0]);
-  return hits.slice(0, 30).map(([sm, c, nm]) => { const img = (c.front || {}).imageUrl || '';
-    const label = ((img.split('/cards/')[1] || '').split('/')[0] || '').replace(/-(Light|Dark)$/, '').replace(/([a-z])([A-Z])/g, '$1 $2');
-    return {game:'swccg', set:String(c.set || '').toLowerCase(), number:String(c.gempId || c.id), showSet:label || 'Set ' + c.set, showNum:String(c.gempId || c.id),
-      name:nm, setName:(c.side ? c.side + ' side' : ''), rarity:c.rarity || '', released:'', image:img, price:null, priceFoil:null, currency:'USD', psrc:''} });
+  return hits.slice(0, 30).map(([sm, c]) => swccgMap(c));
 }
-const FIND = {mtg:findMTG, pokemon:findPokemon, ygo:findYGO, lorcana:findLorcana, swu:findSWU, riftbound:findRiftbound, onepiece:findOnePiece, swccg:findSWCCG};
+/* games read from a card file next to this app (data/<game>.json), made every day by .github/workflows/card-data.yml
+   from TCGplayer's public price list (tcgcsv.com) or, for WoW TCG, the cardcarp/wow dataset. Row: [set, number, name, rarity, productId, price, foil price, picture] */
+const DGAMES = ['gundam', 'digimon', 'fab', 'sorcery', 'ws', 'dbsfw', 'dbsm', 'dbz'];
+const _dg = {};
+function dgData(g){
+  if(!_dg[g]) _dg[g] = (async () => {
+    for(const u of [`data/${g}.json`, `https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/${g}.json`]) try{ const d = await getJSON(u); if(d && d.cards) return d }catch(e){}
+    delete _dg[g]; throw new Error(`No card list for ${GAMES[g].label} yet - run “Update card data” once on GitHub (Actions tab)`) })();
+  return _dg[g] }
+const lwr = x => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+function dgMap(g, d, r){ const st = d.sets[r[0]] || {}, pid = r[4];
+  return {game:g, set:st.code, number:r[1] ? normNum(r[1]) : slugOf(r[2]), showSet:String(st.code || '').toUpperCase(), showNum:r[1] || '', name:r[2], setName:st.name || '', rarity:r[3] || '',
+    released:st.released || '', image:r[7] ? (d.imgBase ? d.imgBase.replace('{}', r[7]) : r[7]) : (pid ? `https://tcgplayer-cdn.tcgplayer.com/product/${pid}_200w.jpg` : ''), price:r[5] ?? null, priceFoil:r[6] ?? null,
+    currency:'USD', psrc:pid ? 'TCGplayer' : '', link:pid ? `https://www.tcgplayer.com/product/${pid}` : `https://www.ebay.com/sch/i.html?_nkw=${enc((GAMES[g].full.split(' (')[0]) + ' ' + r[2])}`, linkLabel:pid ? 'Look up on TCGplayer' : 'Look up on eBay'} }
+async function dgFind(g, q, tokens){
+  const d = await dgData(g), b = lwr(q), hits = []; if(!b) return [];
+  for(const r of d.cards){ const n = lwr(r[2]); let sc = n === b ? 1 : (n.includes(b) || (b.length > 5 && b.includes(n))) ? 0.9 : 0;
+    if(!sc && n[0] === b[0] && Math.abs(n.length - b.length) < 8){ const x = sim(q, r[2]); if(x >= 0.6) sc = x }
+    const id = r[1] && tokens && tokens.has(String(r[1]).toUpperCase().split(' ')[0]);
+    if(id) sc = Math.max(sc, 0.5) + 1; if(sc) hits.push([sc, r]) }
+  hits.sort((a, c) => c[0] - a[0]);
+  return hits.slice(0, 40).map(([sc, r]) => Object.assign(dgMap(g, d, r), sc > 1 ? {idHit:true} : {}));
+}
+function DGSRC(){ const o = {};
+  for(const g of DGAMES) o[g] = {list:async () => (await dgData(g)).sets.map(x => Object.assign({}, x)),
+    cards:async st => { const d = await dgData(g), i = d.sets.findIndex(x => x.code === st.code);
+      return d.cards.filter(r => r[0] === i).map(r => dgMap(g, d, r)).sort((a, b) => String(a.showNum).localeCompare(String(b.showNum), undefined, {numeric:true}) || a.name.localeCompare(b.name)) }};
+  return o }
+/* CCG Trader (ccgtrader.net): 295 card games, old and new - sets, numbers, rarity and pictures, no prices.
+   Its data service lets other websites read it, so the phone asks it directly. Set keys are CCG Trader's set ids (they never change). */
+const CCGT = 'https://api.ccgtrader.co.uk/_/items/', CCGT_BUILTIN = {wow:22, dbzccg:128, dbgt:127};
+const ccgtImg = h => h ? `https://api.ccgtrader.co.uk/_/assets/${h}?key=card-medium` : '';
+const _ccgt = {sets:{}};
+/* the weekly copy on GitHub (data/ccgt/, made by .github/workflows/ccgt-backup.yml) - used when CCG Trader does not answer */
+const _ccgtB = {};
+function ccgtCopy(name){ if(!_ccgtB[name]) _ccgtB[name] = (async () => {
+    for(const u of [`data/ccgt/${name}.json`, `https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/ccgt/${name}.json`]) try{ const d = await getJSON(u); if(d) return d }catch(e){}
+    delete _ccgtB[name]; throw new Error('CCG Trader is not reachable right now, and there is no copy of this game on GitHub yet') })();
+  return _ccgtB[name] }
+const ccgtRow = r => ({set:{id:r[0]}, number:r[1], name:r[2], rarity:{id:r[3]}, image:{private_hash:r[4]}});
+function ccgtSetList(rows){ const used = new Set();
+  return rows.map(x => { const w = String(x.name || '').match(/[A-Za-z0-9']+/g) || [], ab0 = w.filter(t => !/^(of|the|and|a)$/i.test(t)).map(t => t[0]).join('').toUpperCase() || 'SET';
+    let ab = ab0, n = 2; while(used.has(ab)) ab = ab0 + n++; used.add(ab);
+    return {code:String(x.id), id:x.id, abbr:ab, name:String(x.name || '').trim(), released:String(x.release_date || x.released || '').slice(0, 10), total:0} }) }
+function ccgtRar(){ if(!_ccgt.rar) _ccgt.rar = getJSON(CCGT + 'rarities?limit=-1').then(j => Object.fromEntries((j.data || []).map(r => [r.id, r.name || ''])))
+    .catch(() => ccgtCopy('index').then(d => d.rarities || {})).catch(e => { _ccgt.rar = null; throw e }); return _ccgt.rar }
+function ccgtGames(){ if(!_ccgt.games) _ccgt.games = getJSON(CCGT + 'game?fields[]=id&fields[]=name&limit=-1&sort=name').then(j => (j.data || []).map(g => ({id:g.id, name:String(g.name || '').trim()})))
+    .catch(() => ccgtCopy('index').then(d => (d.games || []).map(([id, name]) => ({id, name})))).catch(e => { _ccgt.games = null; throw e }); return _ccgt.games }
+function ccgtSets(gid){
+  if(!_ccgt.sets[gid]) _ccgt.sets[gid] = getJSON(CCGT + `set?fields[]=id&fields[]=name&fields[]=release_date&filter[series.game][eq]=${gid}&limit=-1`).then(j => ccgtSetList(j.data || []))
+    .catch(() => ccgtCopy(gid).then(d => ccgtSetList(d.sets || []))).catch(e => { delete _ccgt.sets[gid]; throw e });
+  return _ccgt.sets[gid] }
+function ccgtMap(key, st, c, rar){ const n = c.number == null || c.number === 0 || c.number === '' ? '' : String(c.number), nm = String(c.name || '').trim();
+  return {game:key, set:st ? st.code : String((c.set || {}).id || c.set || ''), number:n || slugOf(nm), showSet:st ? st.abbr : '', showNum:n, name:nm, setName:st ? st.name : '',
+    rarity:rar[(c.rarity && c.rarity.id) || c.rarity] || '', released:st ? st.released : '', image:ccgtImg((c.image || {}).private_hash), price:null, priceFoil:null, currency:'USD', psrc:'',
+    link:`https://www.ebay.com/sch/i.html?_nkw=${enc(GAMES[key].full.split(' (')[0] + ' ' + nm)}`, linkLabel:'Look up on eBay'} }
+const CCGT_F = 'fields[]=name&fields[]=number&fields[]=rarity&fields[]=set&fields[]=image.private_hash';
+async function ccgtFind(key, gid, q){
+  const [rar, sets] = await Promise.all([ccgtRar(), ccgtSets(gid)]), byId = new Map(sets.map(x => [x.id, x]));
+  const get = t => getJSON(CCGT + `card?${CCGT_F}&filter[set.series.game][eq]=${gid}&filter[name][contains]=${enc(t)}&limit=60`).then(j => j.data || []);
+  let rows;
+  try{ rows = await get(q.trim()) }
+  catch(e){                                                     // CCG Trader down: search the weekly copy on the phone
+    const d = await ccgtCopy(gid), b = lwr(q), hits = [];
+    for(const r of d.cards){ const n = lwr(r[2]); let sc = n === b ? 1 : (n.includes(b) || (b.length > 5 && b.includes(n))) ? 0.9 : 0;
+      if(!sc && n[0] === b[0] && Math.abs(n.length - b.length) < 8){ const x = sim(q, r[2]); if(x >= 0.6) sc = x } if(sc) hits.push([sc, r]) }
+    return hits.sort((a, c) => c[0] - a[0]).slice(0, 40).map(([, r]) => ccgtMap(key, byId.get(r[0]), ccgtRow(r), rar));
+  }
+  if(!rows.length){                                            // a misread name: try whole words, then the first letters of each word
+    const ws = q.split(/[\s,\-]+/).filter(x => x.length >= 4).sort((a, b) => b.length - a.length);
+    for(const t of [...new Set(ws.concat(ws.map(x => x.slice(0, 4))))].slice(0, 5)){ rows = (await get(t)).filter(c => sim(q, c.name || '') >= 0.55); if(rows.length) break }
+    rows.sort((a, b) => sim(q, b.name || '') - sim(q, a.name || '')) }
+  return rows.map(c => ccgtMap(key, byId.get((c.set || {}).id || c.set), c, rar));
+}
+function ccgtSrc(key, gid){ return {list:() => ccgtSets(gid).then(l => l.map(x => Object.assign({}, x))),
+  cards:async st => { const rar = await ccgtRar(), sid = st.id || +st.code;
+    try{ const j = await getJSON(CCGT + `card?${CCGT_F}&filter[set][eq]=${sid}&sort=number,name&limit=-1`); return (j.data || []).map(c => ccgtMap(key, st, c, rar)) }
+    catch(e){ const d = await ccgtCopy(gid); return d.cards.filter(r => r[0] === sid).map(r => ccgtMap(key, st, ccgtRow(r), rar)) } }} }
+const EXTRA_SRC = {};                                          // binders of the games you add from CCG Trader
+const SRC = g => (typeof SETSRC === 'object' && SETSRC[g]) || EXTRA_SRC[g];
+const FIND = {...Object.fromEntries(Object.entries(CCGT_BUILTIN).map(([k, gid]) => [k, q => ccgtFind(k, gid, q)])), ...Object.fromEntries(DGAMES.map(g => [g, (q, t) => dgFind(g, q, t)])), mtg:findMTG, pokemon:findPokemon, ygo:findYGO, lorcana:findLorcana, swu:findSWU, riftbound:findRiftbound, onepiece:findOnePiece, swccg:findSWCCG};
 
 /* ---------------------------------------------------------------- card games you add yourself */
 const BUILTIN = new Set(Object.keys(GAMES));
 const slugOf = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '');
 const escRe = t => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function registerGames(){
-  for(const k of Object.keys(GAMES)) if(!BUILTIN.has(k)){ delete GAMES[k]; delete FIND[k]; delete CLUES[k] }
+  for(const k of Object.keys(GAMES)) if(!BUILTIN.has(k)){ delete GAMES[k]; delete FIND[k]; delete CLUES[k]; delete EXTRA_SRC[k] }
   const other = GAMES.other; delete GAMES.other;                               // keep "Other game" last in the list
   for(const g of store.games){
     GAMES[g.id] = {label:g.label, full:g.label, color:g.color || '#8a8f9c', name:g.name || [0.05, 0.025, 0.95, 0.12], num:g.num || [0.02, 0.88, 0.98, 0.99],
       src:g.lookup && g.lookup.url ? 'Your own card lookup' : '', heavy:true, custom:true};
     if(g.lookup && g.lookup.url) FIND[g.id] = q => findCustom(g, q);
+    if(g.ccgt){ GAMES[g.id].src = 'CCG Trader · no prices'; FIND[g.id] = q => ccgtFind(g.id, g.ccgt, q); EXTRA_SRC[g.id] = ccgtSrc(g.id, g.ccgt) }
     const kw = String(g.keywords || '').split(',').map(x => x.trim()).filter(Boolean);
     if(kw.length) CLUES[g.id] = kw.map(x => new RegExp(escRe(x), 'i'));
   }
@@ -1520,6 +1652,16 @@ function viewReview(){
 
 /* ---------------------------------------------------------------- binder: every set of a game, all its cards, the ones you own filled in */
 const BD = {game:null, set:null, filter:'all', q:'', sets:{}, cards:{}};
+/* Star Wars: Unlimited: swu-db first; if the phone may not read it, a copy kept next to this app (swu-cards.json, made by
+   .github/workflows/swu-cards.yml), and as last resort the known sets with a card search */
+let _swuM;
+async function swuMirror(){ if(_swuM !== undefined) return _swuM; _swuM = null;
+  for(const u of ['swu-cards.json', 'https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/swu-cards.json']) try{ _swuM = await getJSON(u); break }catch(e){}
+  return _swuM }
+const SWU_SETS = [['sor', 'Spark of Rebellion', '2024-03-08'], ['shd', 'Shadows of the Galaxy', '2024-07-12'], ['twi', 'Twilight of the Republic', '2024-11-08'],
+  ['jtl', 'Jump to Lightspeed', '2025-03-14'], ['lof', 'Legends of the Force', '2025-07-11'], ['sec', 'Secrets of Power', '']];
+const swuSet = x => ({code:String(x.setId || x.code || '').toLowerCase(), name:x.fullName || x.name, released:swuDate(x.releaseDate || x.released || ''), total:x.numberCards || x.total || 0});
+const swuDate = d => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(d); return m ? `${m[3].length === 2 ? '20' + m[3] : m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}` : d };
 const SETSRC = {
   mtg:{list:async () => (await getJSON('https://api.scryfall.com/sets')).data.filter(x => !x.digital && x.card_count > 0).map(x => ({code:x.code, name:x.name, released:x.released_at || '', total:x.card_count})),
        cards:async st => { let u = 'https://api.scryfall.com/cards/search?order=set&unique=prints&q=' + enc('set:' + st.code), out = [];
@@ -1539,16 +1681,34 @@ const SETSRC = {
          return out.sort((a, b) => String(a.showNum).localeCompare(String(b.showNum), undefined, {numeric:true})) }},
   lorcana:{list:async () => (await getJSON('https://api.lorcast.com/v0/sets')).results.map(x => ({code:pad(String(x.code).toLowerCase(), 2), id:x.id, name:x.name, released:x.released_at || '', total:0})),
        cards:async st => (await getJSON('https://api.lorcast.com/v0/sets/' + st.id + '/cards')).map(lorMap)},
-  swu:{list:async () => { const j = await getJSON('https://api.swu-db.com/sets'); return (Array.isArray(j) ? j : j.data || []).map(x => ({code:String(x.setId || x.code || '').toLowerCase(), name:x.fullName || x.name, released:x.releaseDate || '', total:x.numberCards || 0})).filter(x => x.code) },
-       cards:async st => { const j = await getJSON('https://api.swu-db.com/cards/' + st.code); return (j.data || j || []).map(swuMap) }},
+  swu:{list:async () => {
+         try{ const j = await getJSON(SWUO + 'card-expansions?locale=en&pagination[pageSize]=100'); const l = (j.data || []).map(x => { const a = x.attributes || x;
+             return {code:String(a.code || '').toLowerCase(), name:a.name, released:String(a.releaseDate || a.publishedAt || '').slice(0, 10), total:0} }).filter(x => x.code); if(l.length) return l }
+         catch(e){ dlogNote('binder: official SWU sets ' + e.message) }
+         try{ const j = await getJSON('https://api.swu-db.com/sets'); const l = (Array.isArray(j) ? j : j.data || []).map(swuSet).filter(x => x.code); if(l.length) return l }catch(e){ dlogNote('binder: swu-db sets ' + e.message) }
+         const m = await swuMirror(); if(m && m.sets && m.sets.length) return m.sets.map(swuSet);
+         return SWU_SETS.map(([code, name, released]) => ({code, name, released, total:0})) },
+       cards:async st => {
+         const mm = await swuMirror(); if(mm && mm.cards && mm.cards[st.code]) return mm.cards[st.code].map(swuMap);   // daily copy: small and fast
+         try{ const out = []; let page = 1;
+           while(page < 12){ const j = await getJSON(`${SWUO}card-list?locale=en&pagination[pageSize]=250&pagination[page]=${page}&sort=cardNumber&filters[variantTypes][name][$notContainsi]=foil&filters[expansion][code][$eqi]=${enc(st.code)}`);
+             out.push(...(j.data || []).filter(swuoKeep).map(swuoMap)); if(page >= ((j.meta || {}).pagination || {}).pageCount || !(j.data || []).length) break; page++ }
+           if(out.length) return swuAddPrices(out.sort((a, b) => (parseInt(a.showNum) || 0) - (parseInt(b.showNum) || 0))) }
+         catch(e){ dlogNote('binder: official SWU cards ' + e.message) }
+         try{ const j = await getJSON('https://api.swu-db.com/cards/' + st.code); const l = (j.data || j || []).map(swuMap); if(l.length) return l }catch(e){ dlogNote('binder: swu-db cards ' + e.message) }
+         const j = await getJSON('https://api.swu-db.com/cards/search?q=' + enc('set:' + st.code)); return (j.data || []).map(swuMap) }},
   riftbound:{list:async () => { const j = await getJSON('https://api.riftcodex.com/sets?size=100'); return (j.items || j || []).map(x => ({code:String(x.set_id).toLowerCase(), name:x.name || x.label || x.set_id, released:x.published_on || x.publish_date || '', total:x.card_count || 0})) },
        cards:async st => { const pr = await rbPrices(), out = []; let page = 1;
          while(page < 8){ const j = await getJSON(`https://api.riftcodex.com/cards?set_id=${enc(st.code)}&sort=collector_number&size=100&page=${page}`); out.push(...(j.items || []).map(c => rbMap(c, pr))); if(!j.pages || page >= j.pages) break; page++ } return out }},
   onepiece:{list:async () => { const all = await opdb(), m = new Map(); for(const c of all){ const st = String(c.card_set_id || '').split('-')[0]; if(!st) continue; const e = m.get(st) || {code:st.toLowerCase(), name:c.set_name || st, released:'', total:0}; e.total++; m.set(st, e) } return [...m.values()].sort((a, b) => b.code.localeCompare(a.code)) },
-       cards:null},
+       cards:async st => (await opdb()).filter(c => String(c.card_set_id || '').split('-')[0].toLowerCase() === st.code).map(opMap)
+         .sort((a, b) => String(a.showNum).localeCompare(String(b.showNum), undefined, {numeric:true}))},
   swccg:{list:async () => { const all = await swdb(), m = new Map(); for(const c of all){ const k = String(c.set || ''); const img = (c.front || {}).imageUrl || ''; const label = ((img.split('/cards/')[1] || '').split('/')[0] || '').replace(/-(Light|Dark)$/, '').replace(/([a-z])([A-Z])/g, '$1 $2');
          const e = m.get(k) || {code:k.toLowerCase(), name:label || 'Set ' + k, released:'', total:0}; e.total++; m.set(k, e) } return [...m.values()] },
-       cards:null},
+       cards:async st => (await swdb()).filter(c => String(c.set || '').toLowerCase() === st.code).map(swccgMap)
+         .sort((a, b) => a.name.localeCompare(b.name))},
+  ...DGSRC(),
+  ...Object.fromEntries(Object.entries(CCGT_BUILTIN).map(([k, gid]) => [k, ccgtSrc(k, gid)])),
 };
 // One Piece and Star Wars CCG come from one big list each: cut it by set
 SETSRC.onepiece.cards = async st => { const all = await opdb(); return all.filter(c => String(c.card_set_id || '').split('-')[0].toLowerCase() === st.code).map(c => { const [s0, n] = String(c.card_set_id).split('-'), v = String(c.card_image_id || '').split('_')[1];
@@ -1564,7 +1724,7 @@ function bdLoad(kind, key, fn){ if(!BD[kind][key]) BD[kind][key] = fn().catch(e 
 
 function viewBinder(){ setSt(''); if(!BD.game) return binderGames(); if(!BD.set) return binderSets(); return binderSet() }
 function binderGames(){
-  const games = Object.keys(GAMES).filter(g => g !== 'other' && (SETSRC[g] || ownedIn(g).length));
+  const games = Object.keys(GAMES).filter(g => g !== 'other' && (SRC(g) || ownedIn(g).length));
   const eur = valueOf(store.cards.filter(c => c.currency === 'EUR')), usd = valueOf(store.cards.filter(c => c.currency === 'USD'));
   $('#main').innerHTML = `<div class="head"><h1>Binder</h1><div class="sp"></div><span class="sub">${fmt(eur, 'EUR')}${usd ? ' + ' + fmt(usd, 'USD') : ''}</span></div>
     <p class="hint" style="margin:-6px 0 12px">Pick a game to see its sets. Cards you own are shown in colour, the rest greyed out.</p>
@@ -1581,7 +1741,7 @@ async function binderSets(){
     <div class="bar"><input class="grow" id="bdq" type="search" placeholder="Find a set" value="${esc(BD.q)}"></div><div id="bdl"><div class="muted" style="padding:16px 4px">Loading the sets ...</div></div>`;
   $('#bdb').onclick = () => { BD.game = null; viewBinder() };
   let sets = [];
-  if(SETSRC[g]){ try{ sets = await bdLoad('sets', g, SETSRC[g].list) }catch(e){ toast(`${GAMES[g].label} sets could not be loaded: ${e.message}`, true) } }
+  if(SRC(g)){ try{ sets = await bdLoad('sets', g, SRC(g).list) }catch(e){ toast(`${GAMES[g].label} sets could not be loaded: ${e.message}`, true) } }
   const known = new Set(sets.map(x => x.code)); for(const [k, e] of ownedSets) if(!known.has(k)) sets.push({code:k, name:e.name, released:'', total:0, local:true});
   const draw = () => { const q = BD.q.toLowerCase();
     const rows = sets.filter(x => !q || (x.name + ' ' + x.code).toLowerCase().includes(q))
@@ -1592,15 +1752,21 @@ async function binderSets(){
     $$('.bset').forEach(b => b.onclick = () => { BD.set = sets.find(x => x.code === b.dataset.s); BD.filter = 'all'; viewBinder(); $('#main').scrollTop = 0 }) };
   draw(); let t; $('#bdq').oninput = e => { clearTimeout(t); t = setTimeout(() => { BD.q = e.target.value; draw() }, 150) };
 }
+/* card number order: the number part counts as a number (2 before 10), letters and suffixes after it (TG01, 001 H, EX12-048 UR) */
+function numKey(c){ const t = String(c.showNum || c.number || '').trim(), m = /^(.*?)(\d+)(.*)$/.exec(t);
+  return m ? [m[1].replace(/[-\s]+$/, '').toUpperCase(), +m[2], m[3].trim().toUpperCase()] : ['~', Infinity, t.toUpperCase()] }
+function byCardNumber(a, b){ const x = numKey(a), y = numKey(b);
+  return (x[0] === y[0] ? 0 : x[0] === '' ? -1 : y[0] === '' ? 1 : x[0].localeCompare(y[0])) || (x[1] - y[1]) || x[2].localeCompare(y[2], undefined, {numeric:true}) || String(a.name).localeCompare(String(b.name)) }
 async function binderSet(){
   const g = BD.game, st = BD.set;
   $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Sets</button><h1 style="font-size:17px;min-width:0;flex:1">${esc(st.name)}</h1></div>
     <div id="bds"></div><div class="chips" id="bdf"></div><div id="bdc"><div class="muted" style="padding:16px 4px">Loading the cards ...</div></div>`;
   $('#bdb').onclick = () => { BD.set = null; viewBinder() };
   let cards = [];
-  if(SETSRC[g] && !st.local){ try{ cards = await bdLoad('cards', g + '|' + st.code, () => SETSRC[g].cards(st)) }catch(e){ toast(`Could not load the cards of ${st.name}: ${e.message}`, true) } }
+  if(SRC(g) && !st.local){ try{ cards = await bdLoad('cards', g + '|' + st.code, () => SRC(g).cards(st)) }catch(e){ toast(`Could not load the cards of ${st.name}: ${e.message}`, true) } }
   const seen = new Set(cards.map(c => c.set + '|' + c.number));
   for(const c of ownedIn(g).filter(c => c.set === st.code)) if(!seen.has(c.set + '|' + c.number)){ cards.push({...c}); seen.add(c.set + '|' + c.number) }   // owned cards the list does not have
+  cards.sort(byCardNumber);                                     // 1, 2, 3 ... 10, 111 - not in the order the card site sent them
   const draw = () => {
     const om = ownedMap(g), own = ownedIn(g).filter(c => c.set === st.code), have = cards.filter(c => om.get(c.set + '|' + c.number));
     const cur = (cards.find(c => c.price != null) || own[0] || {}).currency || 'EUR';
@@ -1747,6 +1913,47 @@ const SPAGES = [
   ['dev', 'code', 'Developer', () => 'Scan details for troubleshooting'],
   ['danger', 'trash', 'Remove all cards', () => 'Clear this phone'],
 ];
+/* which card sites this phone can read (some sites block apps on other websites) */
+var SITECHECK = '';
+async function checkSites(){
+  const L = [['Magic · Scryfall', 'https://api.scryfall.com/sets'], ['Pokémon · pokemontcg.io', 'https://api.pokemontcg.io/v2/sets?pageSize=1'], ['Pokémon · TCGdex', 'https://api.tcgdex.net/v2/en/sets'],
+    ['Yu-Gi-Oh! · YGOPRODeck', 'https://db.ygoprodeck.com/api/v7/cardsets.php'], ['Lorcana · Lorcast', 'https://api.lorcast.com/v0/sets'],
+    ['CCG Trader catalog', CCGT + 'game?limit=1&fields[]=id'], ['CCG Trader · copy on GitHub', 'data/ccgt/index.json'], ['SWU · official card list', SWUO + 'card-expansions?locale=en'], ['SWU · swu-db sets', 'https://api.swu-db.com/sets'], ['SWU · swu-db search', 'https://api.swu-db.com/cards/search?q=luke'], ['SWU · swu-db set cards', 'https://api.swu-db.com/cards/sor'],
+    ['SWU · copy next to app', 'swu-cards.json'], ['Riftbound · Riftcodex', 'https://api.riftcodex.com/sets?size=5'], ['Riftbound · prices file', 'riftbound-prices.json'],
+    ['One Piece · optcgapi', 'https://optcgapi.com/api/allSetCards/'], ['Star Wars CCG · GitHub', 'https://cdn.jsdelivr.net/gh/swccgpc/swccg-card-json@main/Light.json'], ...DGAMES.map(g => [GAMES[g].label + ' · card file', `data/${g}.json`])];
+  const b = $('#dsites'); if(b){ b.disabled = true; b.innerHTML = '<i class="ti ti-loader-2"></i>Checking ...' }
+  const out = await Promise.all(L.map(async ([nm, u]) => { const t = performance.now();
+    try{ const r = await fetch(u, {headers:{Accept:'application/json'}}); const ms = Math.round(performance.now() - t); return `${r.ok ? 'OK     ' : 'HTTP ' + r.status} ${nm} (${ms} ms)` }
+    catch(e){ return `BLOCKED ${nm} (${e.message})` } }));
+  SITECHECK = '--- card sites checked ' + new Date().toLocaleTimeString() + '\n' + out.join('\n');
+  if($('#dtext')) $('#dtext').textContent = dreport();
+  if(b){ b.disabled = false; b.innerHTML = '<i class="ti ti-world-check"></i>Check card sites' }
+}
+/* the CCG Trader catalog: pick any of its games and it works like a built-in one (search, scan, binder) */
+const CAT_COLORS = ['#7aa2f7', '#e0af68', '#9ece6a', '#f7768e', '#bb9af7', '#73daca', '#ff9e64', '#2ac3de', '#c0caf5'];
+async function openCatalog(){
+  modal(`<h3>Add a game from the catalog</h3><input id="catq" type="search" placeholder="Search 295 games, e.g. Lord of the Rings" autocomplete="off" style="width:100%">
+    <div id="catl" class="menu" style="margin-top:10px"><div class="muted" style="padding:12px 4px">Loading the games ...</div></div>`);
+  let games = [];
+  try{ games = await ccgtGames() }catch(e){ $('#catl').innerHTML = `<div class="muted" style="padding:12px 4px">The catalog could not be loaded: ${esc(e.message)}</div>`; return }
+  const have = new Set(store.games.filter(g => g.ccgt).map(g => g.ccgt).concat(Object.values(CCGT_BUILTIN)));
+  const draw = () => { const q = lwr($('#catq') ? $('#catq').value : ''); const list = games.filter(g => !q || lwr(g.name).includes(q));
+    $('#catl').innerHTML = list.slice(0, 120).map(g => `<button class="mitem" data-cg="${g.id}" ${have.has(g.id) ? 'disabled' : ''}><i class="ti ti-${have.has(g.id) ? 'check' : 'plus'}"></i><span><b>${esc(g.name)}</b>${have.has(g.id) ? '<small>Already in your list</small>' : ''}</span></button>`).join('')
+      + (list.length > 120 ? `<div class="hint" style="padding:6px 4px">${list.length - 120} more - type to narrow it down</div>` : '') || '<div class="muted" style="padding:12px 4px">No game with that name.</div>';
+    $$('#catl [data-cg]').forEach(b => b.onclick = () => { const g = games.find(x => x.id === +b.dataset.cg); if(!g) return;
+      const id = 'ccgt' + g.id; store.games = store.games.filter(x => x.id !== id).concat([{id, label:g.name, color:CAT_COLORS[store.games.length % CAT_COLORS.length], ccgt:g.id, added:Date.now()}]);
+      persist(); registerGames(); closeModal(); toast(`${g.name} added - find it in the Binder and on the scan screen`); if(VIEW === 'settings') viewSettings() }) };
+  draw(); $('#catq').oninput = draw; setTimeout(() => $('#catq') && $('#catq').focus(), 60);
+}
+function editCatalogGame(g){
+  const n = store.cards.filter(c => c.game === g.id).length;
+  menuSheet(g.label, [
+    {icon:'layout-board-split', label:'Make a scan template', sub:'Tell the scanner where the name sits on these cards', run:() => openTemplate({game:g.id}, false)},
+    {icon:'trash', label:'Remove from my games', sub:n ? `Your ${n} cards stay, as “Other game”` : 'You can add it again from the catalog', danger:true, run:() => {
+      store.cards.forEach(c => { if(c.game === g.id){ c.game = 'other'; c.gameName = g.label; c.key = ckey(c, c.foil) } });
+      store.games = store.games.filter(x => x.id !== g.id); store.templates = store.templates.filter(t => t.game !== g.id); store.backs = store.backs.filter(b => b.game !== g.id);
+      if(O.game === g.id) O.game = 'auto'; persist(); registerGames(); toast(`${g.label} removed${n ? ` - its ${n} cards are kept as “Other game”` : ''}`); viewSettings() }}]);
+}
 function settingsPages(total){
   $$('#main [data-p]').forEach(el => el.hidden = el.dataset.p !== SP.page);
   if($('#spback')) $('#spback').onclick = () => { SP.page = null; viewSettings(); $('#main').scrollTop = 0 };
@@ -1772,9 +1979,10 @@ function viewSettings(){
       <label class="row"><input type="checkbox" id="oprice" ${O.dailyPrices ? 'checked' : ''}><div class="grow">Update prices once a day when I open the app<div class="hint" style="margin:2px 0 0">Runs in the background. Cards you still need to price get a link to look them up.</div></div></label>
       <div class="row"><div class="grow">Start with game</div><select id="ogame"><option value="auto">All games</option>${Object.entries(GAMES).map(([k, g]) => `<option value="${k}" ${O.game === k ? 'selected' : ''}>${esc(g.label)}</option>`).join('')}</select></div></div>
     <div class="panel" data-p="games"><h3>Card games</h3><p class="hint" style="margin:0 0 6px">Add any card game to the list. It gets its own button on the scan screen and works with scan templates, card backs and price sources.</p>
-      ${store.games.length ? store.games.map(x => `<div class="row" style="padding:7px 0"><span class="dot" style="background:${esc(x.color)}"></span><div class="grow">${esc(x.label)} <span class="muted" style="font-size:12px">· ${x.lookup ? 'card lookup' : 'add by hand'}${store.templates.some(t => t.game === x.id) ? ' · template' : ''}</span></div>
-        <button class="btn sm" data-gtpl="${x.id}">Template</button><button class="btn sm" data-gedit="${x.id}">Edit</button></div>`).join('') : '<div class="muted" style="font-size:13px;padding:4px 0 8px">Built in: Magic, Pokémon, Yu-Gi-Oh!, Lorcana, Star Wars: Unlimited, One Piece, Star Wars CCG, Riftbound.</div>'}
-      <div class="btns" style="margin-top:8px"><button class="btn sm primary" id="gnew"><i class="ti ti-plus"></i>Add a card game</button></div></div>
+      ${store.games.length ? store.games.map(x => `<div class="row" style="padding:7px 0"><span class="dot" style="background:${esc(x.color)}"></span><div class="grow">${esc(x.label)} <span class="muted" style="font-size:12px">· ${x.ccgt ? 'CCG Trader' : x.lookup ? 'card lookup' : 'add by hand'}${store.templates.some(t => t.game === x.id) ? ' · template' : ''}</span></div>
+        <button class="btn sm" data-gtpl="${x.id}">Template</button><button class="btn sm" data-gedit="${x.id}">Edit</button></div>`).join('') : `<div class="muted" style="font-size:13px;padding:4px 0 8px">Built in: ${Object.keys(GAMES).filter(k => BUILTIN.has(k) && k !== 'other').map(k => esc(GAMES[k].label)).join(', ')}.</div>`}
+      <div class="btns" style="margin-top:8px"><button class="btn sm primary" id="gcat"><i class="ti ti-books"></i>Add from the catalog (295 games)</button><button class="btn sm" id="gnew"><i class="ti ti-plus"></i>Add your own</button></div>
+      <p class="hint" style="margin:8px 0 0">The catalog is CCG Trader's card database: old and new games with every set, card number and picture. No prices yet.</p></div>
     <div class="panel" data-p="prices"><h3>Price sources</h3><p class="hint" style="margin:0 0 6px">Add a site the app can ask for prices, for example for a game you add by hand. Used by “Update prices” when the built-in sources have no price.</p>
       ${store.sources.length ? store.sources.map(x => `<div class="row" style="padding:7px 0"><i class="ti ti-tag" style="color:var(--accent)"></i><div class="grow">${esc(x.label)} <span class="muted" style="font-size:12px">· ${esc(gameKeyLabel(x.game))}</span></div><button class="btn sm" data-sedit="${x.id}">Edit</button></div>`).join('') : '<div class="muted" style="font-size:13px;padding:4px 0 8px">No sources of your own yet.</div>'}
       <div class="btns" style="margin-top:8px"><button class="btn sm primary" id="snew"><i class="ti ti-plus"></i>Add price source</button></div></div>
@@ -1798,7 +2006,7 @@ function viewSettings(){
       ${document.fullscreenEnabled ? `<div class="optrow" style="margin-top:10px"><span class="grow">Full screen now<small>Hides the browser bars until you leave it. Also the <i class="ti ti-maximize"></i> button at the top.</small></span><button class="btn sm" id="sfull"><i class="ti ti-maximize"></i>${document.fullscreenElement ? 'Leave' : 'Full screen'}</button></div>` : ''}`}</div>
     <div class="panel" data-p="dev"><h3>Scan details</h3>
       <p class="hint" style="margin-top:0">What the scanner saw and tried during the last scans. Copy or share it when something does not work.</p>
-      <div class="btns" style="margin:8px 0"><button class="btn sm" id="dcopy"><i class="ti ti-copy"></i>Copy</button><button class="btn sm" id="dshare"><i class="ti ti-share"></i>Share</button></div>
+      <div class="btns" style="margin:8px 0"><button class="btn sm" id="dcopy"><i class="ti ti-copy"></i>Copy</button><button class="btn sm" id="dshare"><i class="ti ti-share"></i>Share</button><button class="btn sm" id="dsites"><i class="ti ti-world-check"></i>Check card sites</button></div>
       <details id="ddet" open hidden></details>
       <pre id="dtext" style="white-space:pre-wrap;word-break:break-word;font:11.5px/1.45 ui-monospace,Menlo,Consolas,monospace;background:var(--logbg);color:var(--logfg);border-radius:8px;padding:10px;max-height:60vh;overflow:auto;margin:0;user-select:text"></pre></div>
     <div class="panel" data-p="danger"><h3>Danger zone</h3><button class="btn danger" id="sclear" ${store.cards.length ? '' : 'disabled'}><i class="ti ti-trash"></i>Remove all cards from this phone</button>
@@ -1806,6 +2014,7 @@ function viewSettings(){
   if($('#sinst')) $('#sinst').onclick = installApp;
   if($('#sfull')) $('#sfull').onclick = async () => { await toggleFull(); viewSettings() };
   $('#dtext').textContent = dreport();
+  $('#dsites').onclick = checkSites;
   $('#dcopy').onclick = async () => { const t = dreport(); $('#dtext').textContent = t;
     try{ await navigator.clipboard.writeText(t); toast('Scan details copied - paste them in the chat') }
     catch(e){ const r = document.createRange(); r.selectNodeContents($('#dtext')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast('Selected - tap Copy in the menu') } };
@@ -1819,7 +2028,8 @@ function viewSettings(){
   $('#tnew').onclick = () => openTemplate(null, true);
   $('#snew').onclick = () => openSource(null);
   $('#gnew').onclick = () => openGame(null);
-  $$('[data-gedit]').forEach(b => b.onclick = () => openGame(store.games.find(x => x.id === b.dataset.gedit)));
+  $('#gcat').onclick = openCatalog;
+  $$('[data-gedit]').forEach(b => b.onclick = () => { const g = store.games.find(x => x.id === b.dataset.gedit); g && g.ccgt ? editCatalogGame(g) : openGame(g) });
   $$('[data-gtpl]').forEach(b => b.onclick = () => openTemplate({game:b.dataset.gtpl}, true));
   $$('[data-sedit]').forEach(b => b.onclick = () => openSource(store.sources.find(x => x.id === b.dataset.sedit)));
   $$('[data-tedit]').forEach(b => b.onclick = () => openTemplate(store.templates.find(t => t.id === b.dataset.tedit), false));
