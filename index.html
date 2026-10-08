@@ -181,6 +181,9 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 /* binder view */
 .bgames{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .bgame{background:var(--card);border:1px solid var(--pan);border-radius:12px;padding:12px;text-align:left;color:var(--text);display:grid;gap:4px}
+.bgame{position:relative}.bgame .bstar,.gprow .bstar{border:0;background:none;color:var(--dim);font-size:18px;padding:4px;line-height:1}
+.bgame .bstar{position:absolute;top:6px;right:6px}.bstar.on{color:var(--amber)}
+.gprow{display:flex;align-items:center}.gprow .mitem{flex:1}.gphead{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);padding:10px 10px 2px}
 .bgame b{font-size:14.5px}.bgame .muted{font-size:12px}
 .bar2{height:5px;border-radius:3px;background:var(--track);overflow:hidden}.bar2 i{display:block;height:100%;background:var(--gc,var(--accent))}
 .bset{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--sub);background:none;border-left:0;border-right:0;border-top:0;text-align:left;color:var(--text);width:100%}
@@ -680,9 +683,7 @@ function viewScan(){
   $('#cpics').onclick = () => menuSheet('Scan from photos', [
     {icon:'photo', label:'Photos of cards', sub:'Pick one or more photos, one card per photo', run:() => $('#cfile').click()},
     {icon:'layout-grid', label:'Photo of a binder page', sub:'Fit a grid over the page, every card gets scanned', run:() => $('#cpage').click()}]);
-  $('#cgame').onclick = () => menuSheet('Card game', [
-    {icon:'cards', label:AUTO.label, sub:'Works out the game from the card', on:O.game === 'auto', run:() => setGame('auto')}]
-    .concat(Object.entries(GAMES).map(([k, x]) => ({dot:x.color, label:x.label, on:O.game === k, run:() => setGame(k)}))));
+  $('#cgame').onclick = openGamePicker;
   $('#copt').onclick = openScanOptions;
   $('#cfind').onclick = openFind;
   $('#cfile').onchange = onPhoto;
@@ -1724,14 +1725,26 @@ function bdLoad(kind, key, fn){ if(!BD[kind][key]) BD[kind][key] = fn().catch(e 
 
 function viewBinder(){ setSt(''); if(!BD.game) return binderGames(); if(!BD.set) return binderSets(); return binderSet() }
 function binderGames(){
-  const games = Object.keys(GAMES).filter(g => g !== 'other' && (SRC(g) || ownedIn(g).length));
+  const games = myGameKeys().filter(g => g !== 'other' && (SRC(g) || ownedIn(g).length));
   const eur = valueOf(store.cards.filter(c => c.currency === 'EUR')), usd = valueOf(store.cards.filter(c => c.currency === 'USD'));
   $('#main').innerHTML = `<div class="head"><h1>Binder</h1><div class="sp"></div><span class="sub">${fmt(eur, 'EUR')}${usd ? ' + ' + fmt(usd, 'USD') : ''}</span></div>
-    <p class="hint" style="margin:-6px 0 12px">Pick a game to see its sets. Cards you own are shown in colour, the rest greyed out.</p>
-    <div class="bgames">${games.map(g => { const cs = ownedIn(g), n = cs.reduce((a, c) => a + c.qty, 0);
-      return `<button class="bgame" data-g="${g}" style="--gc:${GAMES[g].color}"><span><span class="dot" style="background:${GAMES[g].color};margin-right:6px"></span><b>${esc(GAMES[g].label)}</b></span>
-        <span class="muted">${n ? `${n.toLocaleString()} cards · ${fmt(valueOf(cs), cs[0] ? cs[0].currency : 'EUR')}` : 'No cards yet'}</span></button>` }).join('')}</div>`;
-  $$('.bgame').forEach(b => b.onclick = () => { BD.game = b.dataset.g; BD.set = null; BD.q = ''; viewBinder(); $('#main').scrollTop = 0 });
+    <div class="bar"><input class="grow" id="bdgq" type="search" placeholder="Search games, also the 295 in the catalog" value="${esc(BD.gq || '')}" autocomplete="off"></div>
+    <div class="bgames" id="bdgl">${games.map(g => { const cs = ownedIn(g), n = cs.reduce((a, c) => a + c.qty, 0);
+      return `<button class="bgame" data-g="${g}" data-name="${esc(lwr(GAMES[g].label + ' ' + GAMES[g].full))}" style="--gc:${GAMES[g].color}"><span class="bstar ${isFav(g) ? 'on' : ''}" data-fav="${g}" role="button" aria-label="Favourite"><i class="ti ti-star${isFav(g) ? '-filled' : ''}"></i></span><span style="padding-right:22px"><span class="dot" style="background:${GAMES[g].color};margin-right:6px"></span><b>${esc(GAMES[g].label)}</b></span>
+        <span class="muted">${n ? `${n.toLocaleString()} cards · ${fmt(valueOf(cs), cs[0] ? cs[0].currency : 'EUR')}` : 'No cards yet'}</span></button>` }).join('')}
+      <button class="bgame" id="bdall" style="--gc:var(--accent)"><span><i class="ti ti-books" style="color:var(--accent);margin-right:6px"></i><b>All card games</b></span><span class="muted">295 more games from the catalog</span></button></div>
+    <div id="bdcat"></div>`;
+  $$('.bgame[data-g]').forEach(b => b.onclick = e => { if(e.target.closest('[data-fav]')){ toggleFav(b.dataset.g); return binderGames() } BD.game = b.dataset.g; BD.set = null; BD.q = ''; BD.gq = ''; viewBinder(); $('#main').scrollTop = 0 });
+  let cat = null, t;
+  const filter = () => { const q = lwr($('#bdgq').value); BD.gq = $('#bdgq').value;
+    $$('#bdgl .bgame[data-g]').forEach(b => b.hidden = !!q && !b.dataset.name.includes(q)); $('#bdall').hidden = !!q;
+    if(q.length < 2){ $('#bdcat').innerHTML = ''; return }
+    if(!cat){ $('#bdcat').innerHTML = '<div class="hint" style="padding:10px 4px">Searching the catalog ...</div>'; ccgtGames().then(l => { cat = l; filter() }).catch(() => { cat = []; filter() }); return }
+    const mine = new Set(store.games.filter(g => g.ccgt).map(g => g.ccgt).concat(Object.values(CCGT_BUILTIN))), more = cat.filter(g => !mine.has(g.id) && lwr(g.name).includes(q)).slice(0, 40);
+    $('#bdcat').innerHTML = more.length ? `<h4 style="margin:16px 0 8px">More games from the catalog</h4><div class="bgames">${more.map(g => `<button class="bgame" data-cat="${g.id}"><span><i class="ti ti-plus" style="color:var(--accent);margin-right:6px"></i><b>${esc(g.name)}</b></span><span class="muted">Open its sets</span></button>`).join('')}</div>` : '';
+    $$('#bdcat [data-cat]').forEach(b => b.onclick = () => { const g = cat.find(x => x.id === +b.dataset.cat); BD.game = catalogKey(g); BD.set = null; BD.q = ''; BD.gq = ''; viewBinder(); $('#main').scrollTop = 0 }) };
+  $('#bdgq').oninput = () => { clearTimeout(t); t = setTimeout(filter, 120) }; if(BD.gq) filter();
+  $('#bdall').onclick = () => openCatalog(id => { BD.game = id; BD.set = null; BD.q = ''; viewBinder(); $('#main').scrollTop = 0 });
 }
 async function binderSets(){
   const g = BD.game, own = ownedIn(g), om = ownedMap(g), cur = own[0] ? own[0].currency : 'EUR';
@@ -1931,18 +1944,50 @@ async function checkSites(){
 }
 /* the CCG Trader catalog: pick any of its games and it works like a built-in one (search, scan, binder) */
 const CAT_COLORS = ['#7aa2f7', '#e0af68', '#9ece6a', '#f7768e', '#bb9af7', '#73daca', '#ff9e64', '#2ac3de', '#c0caf5'];
-async function openCatalog(){
-  modal(`<h3>Add a game from the catalog</h3><input id="catq" type="search" placeholder="Search 295 games, e.g. Lord of the Rings" autocomplete="off" style="width:100%">
+/* favourite games: stay on top of the game lists */
+const isFav = k => (O.favs || []).includes(k);
+function toggleFav(k){ O.favs = isFav(k) ? O.favs.filter(x => x !== k) : (O.favs || []).concat([k]); persist() }
+function myGameKeys(){ const ks = Object.keys(GAMES).filter(k => k !== 'other'); return ks.filter(isFav).concat(ks.filter(k => !isFav(k)), ['other']) }
+/* the game picker of the scan screen: search, favourites first, catalog games while you type */
+function openGamePicker(){
+  modal(`<h3>Card game</h3><input id="gpq" type="search" placeholder="Search games, e.g. Digimon or Lord of the Rings" autocomplete="off" style="width:100%"><div id="gpl" class="menu" style="margin-top:6px"></div>`);
+  let cat = null;
+  const row = (k, x, sub) => `<div class="gprow"><button class="mitem ${O.game === k ? 'sel' : ''}" data-k="${k}"><i class="mdot"><span style="background:${x.color}"></span></i><span><b>${esc(x.label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${O.game === k ? '<i class="ti ti-check chev" style="color:var(--accent)"></i>' : ''}</button>${k !== 'other' ? `<button class="bstar ${isFav(k) ? 'on' : ''}" data-fav="${k}" aria-label="Favourite"><i class="ti ti-star${isFav(k) ? '-filled' : ''}"></i></button>` : ''}</div>`;
+  const draw = () => { const q = lwr($('#gpq').value), keys = myGameKeys().filter(k => !q || lwr(GAMES[k].label + ' ' + GAMES[k].full).includes(q)), favs = keys.filter(isFav);
+    let h = (!q ? `<div class="gprow"><button class="mitem ${O.game === 'auto' ? 'sel' : ''}" data-k="auto"><i class="ti ti-cards"></i><span><b>${AUTO.label}</b><small>Works out the game from the card</small></span>${O.game === 'auto' ? '<i class="ti ti-check chev" style="color:var(--accent)"></i>' : ''}</button></div>` : '')
+      + (favs.length ? '<div class="gphead">Favourites</div>' + favs.map(k => row(k, GAMES[k])).join('') : '')
+      + (keys.length > favs.length ? (favs.length ? '<div class="gphead">My games</div>' : '') + keys.filter(k => !isFav(k)).map(k => row(k, GAMES[k])).join('') : '');
+    if(q.length >= 2){ const mineIds = new Set(store.games.filter(g => g.ccgt).map(g => g.ccgt).concat(Object.values(CCGT_BUILTIN)));
+      const more = (cat || []).filter(g => !mineIds.has(g.id) && lwr(g.name).includes(q)).slice(0, 30);
+      h += cat ? (more.length ? '<div class="gphead">More games (catalog)</div>' + more.map(g => `<div class="gprow"><button class="mitem" data-cat="${g.id}"><i class="ti ti-plus"></i><span><b>${esc(g.name)}</b><small>From the catalog</small></span></button></div>`).join('') : '')
+               : '<div class="hint" style="padding:8px 10px">Searching the catalog ...</div>' }
+    else h += '<div class="hint" style="padding:10px">Type to search all 295 games in the catalog too. Tap ☆ to keep a game on top.</div>';
+    $('#gpl').innerHTML = h || '<div class="muted" style="padding:12px">No game with that name.</div>';
+    $$('#gpl [data-k]').forEach(b => b.onclick = () => { closeModal(); setGame(b.dataset.k) });
+    $$('#gpl [data-fav]').forEach(b => b.onclick = () => { toggleFav(b.dataset.fav); draw() });
+    $$('#gpl [data-cat]').forEach(b => b.onclick = () => { const g = cat.find(x => x.id === +b.dataset.cat); closeModal(); setGame(catalogKey(g)); toast(`${g.name} added to your games`) });
+  };
+  $('#gpq').oninput = () => { if(!cat && $('#gpq').value.trim().length >= 2) ccgtGames().then(l => { cat = l; draw() }).catch(() => { cat = []; draw() }); draw() };
+  draw();
+}
+function catalogKey(g){                                        // add a catalog game to my games (once) and give its key
+  const builtin = Object.entries(CCGT_BUILTIN).find(([, gid]) => gid === g.id); if(builtin) return builtin[0];
+  const id = 'ccgt' + g.id;
+  if(!store.games.some(x => x.id === id)){ store.games.push({id, label:g.name, color:CAT_COLORS[store.games.length % CAT_COLORS.length], ccgt:g.id, added:Date.now()}); persist(); registerGames() }
+  return id }
+async function openCatalog(onPick){
+  modal(`<h3>${onPick ? 'All card games' : 'Add a game from the catalog'}</h3><input id="catq" type="search" placeholder="Search 295 games, e.g. Lord of the Rings" autocomplete="off" style="width:100%">
     <div id="catl" class="menu" style="margin-top:10px"><div class="muted" style="padding:12px 4px">Loading the games ...</div></div>`);
   let games = [];
   try{ games = await ccgtGames() }catch(e){ $('#catl').innerHTML = `<div class="muted" style="padding:12px 4px">The catalog could not be loaded: ${esc(e.message)}</div>`; return }
   const have = new Set(store.games.filter(g => g.ccgt).map(g => g.ccgt).concat(Object.values(CCGT_BUILTIN)));
   const draw = () => { const q = lwr($('#catq') ? $('#catq').value : ''); const list = games.filter(g => !q || lwr(g.name).includes(q));
-    $('#catl').innerHTML = list.slice(0, 120).map(g => `<button class="mitem" data-cg="${g.id}" ${have.has(g.id) ? 'disabled' : ''}><i class="ti ti-${have.has(g.id) ? 'check' : 'plus'}"></i><span><b>${esc(g.name)}</b>${have.has(g.id) ? '<small>Already in your list</small>' : ''}</span></button>`).join('')
+    $('#catl').innerHTML = list.slice(0, 120).map(g => `<button class="mitem" data-cg="${g.id}" ${have.has(g.id) && !onPick ? 'disabled' : ''}><i class="ti ti-${have.has(g.id) ? 'check' : 'plus'}"></i><span><b>${esc(g.name)}</b>${have.has(g.id) ? '<small>In your games</small>' : ''}</span></button>`).join('')
       + (list.length > 120 ? `<div class="hint" style="padding:6px 4px">${list.length - 120} more - type to narrow it down</div>` : '') || '<div class="muted" style="padding:12px 4px">No game with that name.</div>';
     $$('#catl [data-cg]').forEach(b => b.onclick = () => { const g = games.find(x => x.id === +b.dataset.cg); if(!g) return;
-      const id = 'ccgt' + g.id; store.games = store.games.filter(x => x.id !== id).concat([{id, label:g.name, color:CAT_COLORS[store.games.length % CAT_COLORS.length], ccgt:g.id, added:Date.now()}]);
-      persist(); registerGames(); closeModal(); toast(`${g.name} added - find it in the Binder and on the scan screen`); if(VIEW === 'settings') viewSettings() }) };
+      const known = have.has(g.id), id = catalogKey(g); closeModal();
+      if(onPick) return onPick(id);
+      toast(known ? `${g.name} is already in your games` : `${g.name} added - find it in the Binder and on the scan screen`); if(VIEW === 'settings') viewSettings() }) };
   draw(); $('#catq').oninput = draw; setTimeout(() => $('#catq') && $('#catq').focus(), 60);
 }
 function editCatalogGame(g){
@@ -2028,7 +2073,7 @@ function viewSettings(){
   $('#tnew').onclick = () => openTemplate(null, true);
   $('#snew').onclick = () => openSource(null);
   $('#gnew').onclick = () => openGame(null);
-  $('#gcat').onclick = openCatalog;
+  $('#gcat').onclick = () => openCatalog();
   $$('[data-gedit]').forEach(b => b.onclick = () => { const g = store.games.find(x => x.id === b.dataset.gedit); g && g.ccgt ? editCatalogGame(g) : openGame(g) });
   $$('[data-gtpl]').forEach(b => b.onclick = () => openTemplate({game:b.dataset.gtpl}, true));
   $$('[data-sedit]').forEach(b => b.onclick = () => openSource(store.sources.find(x => x.id === b.dataset.sedit)));
