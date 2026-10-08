@@ -77,6 +77,7 @@ select{width:auto}
 .camtools button.on{background:var(--amber);color:#000}
 .shoot{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin:12px 0 4px}
 .shoot .btn{justify-self:start}
+.shoot > div .btn{width:100%}
 .shoot .btn:last-child{justify-self:end}
 .shutter{width:68px;height:68px;border-radius:50%;border:3px solid var(--accent);background:none;padding:5px}
 .shutter b{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:var(--accent);color:var(--onacc);font-size:24px}
@@ -138,6 +139,14 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 .mback{position:fixed;inset:0;background:#000a;display:flex;align-items:flex-end;justify-content:center;z-index:40}
 .mbox{background:var(--modal);border:1px solid var(--line2);border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));width:100%;max-width:560px;max-height:88vh;overflow-y:auto}
 .mbox h3{margin:0 0 10px;font-size:17px}
+/* binder page grid */
+.bpage{position:relative;width:100%;margin:6px 0;border-radius:8px;overflow:visible;touch-action:none;user-select:none;background:#000}
+.bpage img{display:block;width:100%;height:100%;border-radius:8px;pointer-events:none}
+.bgrid{position:absolute;border:2px solid var(--accent);display:grid;touch-action:none;cursor:move;box-shadow:0 0 0 9999px rgba(0,0,0,.35)}
+.bgrid i.cell{border:1px dashed rgba(255,255,255,.75);pointer-events:none}
+.bgrid i.cell.empty{background:rgba(0,0,0,.55)}
+.bgrid .h{position:absolute;width:24px;height:24px;border-radius:50%;background:var(--accent);border:2px solid #fff}
+.bgrid .h.br{right:-12px;bottom:-12px;cursor:nwse-resize}.bgrid .h.tl{left:-12px;top:-12px;cursor:nwse-resize}
 /* scan template editor */
 .tpled{position:relative;margin:14px auto 8px;width:min(290px,68vw);aspect-ratio:63/88;border-radius:10px;overflow:visible;background:var(--sub);border:1px solid var(--line2);touch-action:none;user-select:none}
 .tpled img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;border-radius:10px}
@@ -416,13 +425,13 @@ const SC = {stream:null, timer:null, prev:null, stable:0, armed:true, busy:false
 /* ================================================================ views */
 let VIEW = 'scan';
 function show(v){
-  VIEW = v; $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  VIEW = v; $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === (v === 'review' ? 'cards' : v)));
   if(v !== 'scan') stopCamera();
-  ({scan:viewScan, cards:viewCards, settings:viewSettings})[v]();
+  ({scan:viewScan, cards:viewCards, settings:viewSettings, review:viewReview})[v]();
   $('#main').scrollTop = 0;
 }
 $$('#tabs button').forEach(b => b.onclick = () => show(b.dataset.v));
-function tabCount(){ const n = store.cards.reduce((a, c) => a + c.qty, 0); $('#tabn').textContent = n ? ' · ' + n.toLocaleString() : '' }
+function tabCount(){ const n = store.cards.reduce((a, c) => a + c.qty, 0), r = (store.review || []).length; $('#tabn').textContent = (n ? ' · ' + n.toLocaleString() : '') + (r ? ' · ' + r + ' to check' : '') }
 
 /* ---------------------------------------------------------------- scan */
 function viewScan(){
@@ -439,13 +448,15 @@ function viewScan(){
       <div class="camtools" id="ctools" hidden><button id="ctorch" hidden aria-label="Flashlight"><i class="ti ti-bolt"></i></button><button id="cstop" aria-label="Stop camera"><i class="ti ti-x"></i></button></div>
     </div>
     <div class="shoot">
-      <label class="btn"><i class="ti ti-photo"></i>Photo<input type="file" id="cfile" accept="image/*" hidden></label>
+      <div style="display:flex;flex-direction:column;gap:6px;justify-self:start"><label class="btn"><i class="ti ti-photo"></i>Photo<input type="file" id="cfile" accept="image/*" multiple hidden></label>
+        <label class="btn"><i class="ti ti-layout-grid"></i>Binder page<input type="file" id="cpage" accept="image/*" hidden></label></div>
       <button class="shutter" id="cscan" aria-label="Scan now"><b><i class="ti ti-scan"></i></b></button>
       <select id="ccam" aria-label="Camera" hidden></select>
     </div>
     <div class="ctl">
       <label><input type="checkbox" id="cauto" ${O.auto ? 'checked' : ''}> Scan automatically when the card is held still</label>
       <label><input type="checkbox" id="caadd" ${O.autoAdd ? 'checked' : ''}> Add automatically when sure</label>
+      <label><input type="checkbox" id="cquick" ${O.quick ? 'checked' : ''}> <b>Quick scan</b>: scan many cards fast, check later</label>
     </div>
     <div class="ctl"><input id="csets" type="text" placeholder="Only these sets, e.g. neo mh3 (optional)" value="${esc(O.sets)}" autocapitalize="off" autocomplete="off"></div>
     <div id="cres" style="margin-top:14px"></div>`;
@@ -455,8 +466,11 @@ function viewScan(){
   $('#ctorch').onclick = toggleTorch;
   $('#cscan').onclick = () => { if(!SC.stream && !SC.still) return startCamera(); if(SC.still && !SC.stream) return startCamera(); SC.armed = false; scanNow() };
   $('#cfile').onchange = onPhoto;
+  $('#cpage').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if(!f) return; const img = new Image(); img.src = URL.createObjectURL(f);
+    try{ await img.decode(); openBinder(img) }catch(err){ toast('Could not open that picture', true) } };
   $('#cauto').onchange = e => { O.auto = e.target.checked; persist() };
   $('#caadd').onchange = e => { O.autoAdd = e.target.checked; persist() };
+  $('#cquick').onchange = e => { O.quick = e.target.checked; persist(); renderResult(); if(O.quick && !SC.stream) toast('Quick scan on: start the camera, or pick several photos at once') };
   $('#csets').onchange = e => { O.sets = e.target.value.trim(); persist() };
   renderResult(); viewScanBanner();
   setSt(SC.session.length ? '' : 'Hold a card in the frame');
@@ -556,7 +570,13 @@ function scanTick(){
   if(O.auto && SC.armed && !SC.busy && still){ SC.armed = false; SC.ref = gray; SC.tries = (SC.tries || 0) + 1; scanNow(true) }
 }
 async function onPhoto(e){
-  const f = e.target.files[0]; e.target.value = ''; if(!f) return;
+  const files = [...e.target.files]; e.target.value = ''; if(!files.length) return;
+  if(files.length > 1 || O.quick){                              // several photos: quick scan them all
+    if(!O.quick){ O.quick = true; persist(); if($('#cquick')) $('#cquick').checked = true; toast(`${files.length} photos - quick scanning them all`) }
+    for(const f of files){ const img = new Image(); img.src = URL.createObjectURL(f); try{ await img.decode(); await quickAdd(cardFromImage(img)) }catch(err){} URL.revokeObjectURL(img.src) }
+    return;
+  }
+  const f = files[0];
   stopCamera(true);
   const img = new Image(); img.src = URL.createObjectURL(f); try{ await img.decode() }catch(err){ toast('Could not open that picture', true); return }
   const c = document.createElement('canvas'), k = Math.min(1, 2200 / Math.max(img.naturalWidth, img.naturalHeight));
@@ -619,7 +639,69 @@ function nameCandidates(text){
     if(c.length >= 3 && c.length <= 40 && words <= 6 && !out.includes(c)) out.push(c) }
   return out.slice(0, 8);
 }
+/* recognise one card picture (756×1056). Used by the normal scan and by quick scan in the background.
+   Returns {kind:'result', r} | {kind:'manual', name, game} | {kind:'none'} */
+async function identify(card, G, say){
+  const w = await ocr(), isAuto = G === 'auto', noLookup = g => g === 'other' || (g !== 'auto' && !FIND[g]);
+  let full = '', found = '', tokens = new Set(), best = null, anyName = false;
+  const tried = new Set();
+  const readFull = async () => {
+    if(full || !(O.full || isAuto)) return; say('Reading the whole card ...');
+    try{ full = (await w.recognize(crop(card, [0, 0, 1, 1], false))).data.text; numTokens(full).forEach(x => tokens.add(x)); dlog('whole card read', JSON.stringify(full.trim().slice(0, 1200))) }
+    catch(e){ dlog('whole card read failed', e.message) }
+  };
+  const clues = txt => { const g = detectGame(txt);
+    dlog('game clues', Object.entries(CLUES).map(([k, rs]) => k + ' ' + rs.filter(r => r.test(txt)).length).join(', ') + ' → ' + (g || 'not sure')); return g };
+  const lookFor = async (q, games, tpl) => {
+    const key = q + '|' + games.join(','); if(tried.has(key) || (q.length < 3 && !games.includes('onepiece'))) return; tried.add(key);
+    say(`Looking up “${q}”${games.length === 1 ? ' (' + GAMES[games[0]].label + ')' : ''} ...`);
+    const r = await search(q, games, tokens); r.tpl = tpl;
+    dlog(`lookup “${q}”`, `${r.list.length} results in ${games.join(', ')} · best name match ${r.best.toFixed(2)}` + (r.list[0] ? ` (${r.list.slice().sort((x, y) => y.sim - x.sim)[0].name})` : '') + (r.failed.length ? ' · could not reach: ' + r.failed.join(', ') : '') + (r.errors ? ' · ' + r.errors : ''));
+    if(r.list.length && (!best || r.best > best.best)) best = r;
+  };
+  const sure = () => best && best.best >= 0.88;
+  // In All games the whole card is read first: it tells which game this is
+  if(isAuto){ await readFull(); found = clues(full) || '' }
+  if(found && !FIND[found]){ dlog('game', GAMES[found].label + ' has no card lookup'); const t0 = templateList(found)[0];
+    return {kind:'manual', game:found, name:cleanName((await w.recognize(crop(card, t0.zones.name))).data.text) || nameCandidates(full)[0] || ''} }
+  const gameNow = found || (isAuto ? '' : G);
+  const tpls = templateList(gameNow === 'other' ? '' : gameNow);
+  dlog('templates to try', tpls.map(t => t.label + (t.game && !gameNow ? ' (' + GAMES[t.game].label + ')' : '')).join(', '));
+  for(const t of tpls.slice(0, 8)){
+    const txt = (await w.recognize(crop(card, t.zones.name))).data.text, q = cleanName(txt); if(q.length >= 3) anyName = true;
+    dlog(`template “${t.label}” name`, JSON.stringify(txt.trim()) + ' → ' + JSON.stringify(q));
+    if(t.zones.num && (O.readNum || !t.std)){ try{ const nt = (await w.recognize(crop(card, t.zones.num))).data.text; numTokens(nt).forEach(x => tokens.add(x)); dlog(`template “${t.label}” set & number`, JSON.stringify(nt.trim())) }catch(e){} }
+    let extra = [];
+    if(t.zones.text){ try{ const xt = (await w.recognize(crop(card, t.zones.text, false))).data.text; extra = nameCandidates(xt); numTokens(xt).forEach(x => tokens.add(x)); dlog(`template “${t.label}” extra text`, JSON.stringify(xt.trim().slice(0, 300))) }catch(e){} }
+    if(noLookup(G)){ if(q.length >= 3) return {kind:'manual', name:q, game:G}; continue }
+    const games = (t.game ? [t.game] : (gameNow ? [gameNow] : lookGames())).filter(g => FIND[g]); if(!games.length) continue;
+    for(const q2 of [q, ...extra].slice(0, 3)){ await lookFor(q2, games, t); if(sure()) break }
+    if(sure()) break;
+  }
+  if(noLookup(G)){ await readFull(); return {kind:'manual', name:nameCandidates(full)[0] || '', game:G} }
+  // Not sure yet: try the other lines of the whole card
+  if(!sure()){
+    await readFull();
+    if(isAuto && !found && full){ found = clues(full) || '' }
+    const games2 = found ? [found] : (isAuto ? lookGames() : [G]);
+    const cands = nameCandidates(full); if(cands.length) anyName = true;
+    for(const q of cands.slice(0, 4)){ await lookFor(q, games2, null); if(sure()) break }
+    if(!best && games2.includes('onepiece') && tokens.size) await lookFor('', ['onepiece'], null);   // One Piece: the card number alone is enough
+  }
+  dlog('numbers and codes seen', [...tokens].filter(x => /\d/.test(x)).slice(0, 30).join(' ') || 'none');
+  if(!best){ if(!anyName) return {kind:'none'}; best = {q:'', list:[], best:0, failed:[], tokens} }
+  if(best.tpl && sure()){ O.lastTpl = Object.assign(O.lastTpl || {}, {[gameNow || 'auto']:best.tpl.id}); persist(); dlog('template used', best.tpl.label) }
+  best.detected = isAuto ? (found || (best.tpl && best.tpl.game) || '') : '';
+  return {kind:'result', r:best};
+}
+function checkBack(card){
+  const bv = store.backs.length ? backVec(card) : null, back = bv ? matchBack(bv) : null;
+  if(bv) dlog('card back check', store.backs.map(b => { let s = 0; for(let i = 0; i < bv.length; i++) s += bv[i] * b.vec[i]; return b.game + ' ' + s.toFixed(2) }).join(', ') + ' (match at 0.90)');
+  if(back){ setGame(back.game); setSt(`${GAMES[back.game].label} back - scanning ${GAMES[back.game].label} now`); toast(`${GAMES[back.game].label} card back - now scanning ${GAMES[back.game].label} cards`) }
+  return back;
+}
 async function scanNow(auto){
+  if(O.quick && !SC.teach) return quickCapture();
   if(SC.busy || !guideRect()) return;
   SC.busy = true; $('#cscan').classList.add('busy'); drawGuide('busy'); setSt('Reading the card ...');
   dstart(auto ? 'automatic' : SC.still ? 'photo' : 'shutter');
@@ -630,64 +712,13 @@ async function scanNow(auto){
       store.backs.push({game:g, vec:backVec(card), added:Date.now()}); SC.teach = null; persist();
       toast(`Learned the ${GAMES[g].label} card back`); setSt(''); viewScanBanner(); return;
     }
-    const bv = store.backs.length ? backVec(card) : null, back = bv ? matchBack(bv) : null;
-    if(bv){ let bs = store.backs.map(b => { let s = 0; for(let i = 0; i < bv.length; i++) s += bv[i] * b.vec[i]; return b.game + ' ' + s.toFixed(2) }); dlog('card back check', bs.join(', ') + ' (match at 0.90)') }
-    if(back){ setGame(back.game); SC.result = null; renderResult(); setSt(`${GAMES[back.game].label} back - scanning ${GAMES[back.game].label} now`);
-      toast(`${GAMES[back.game].label} card back - now scanning ${GAMES[back.game].label} cards`); return }
-    const w = await ocr(), isAuto = O.game === 'auto'; SC.lastCard = card;
-    let full = '', found = '', tokens = new Set(), best = null, anyName = false;
-    const tried = new Set();
-    const readFull = async () => {
-      if(full || !(O.full || isAuto)) return; setSt('Reading the whole card ...');
-      try{ full = (await w.recognize(crop(card, [0, 0, 1, 1], false))).data.text; numTokens(full).forEach(x => tokens.add(x)); dlog('whole card read', JSON.stringify(full.trim().slice(0, 1200))) }
-      catch(e){ dlog('whole card read failed', e.message) }
-    };
-    const clues = txt => { const g = detectGame(txt);
-      dlog('game clues', Object.entries(CLUES).map(([k, rs]) => k + ' ' + rs.filter(r => r.test(txt)).length).join(', ') + ' → ' + (g || 'not sure')); return g };
-    const lookFor = async (q, games, tpl) => {
-      const key = q + '|' + games.join(','); if(tried.has(key) || (q.length < 3 && !games.includes('onepiece'))) return; tried.add(key);
-      setSt(`Looking up “${q}”${games.length === 1 ? ' (' + GAMES[games[0]].label + ')' : ''} ...`);
-      const r = await search(q, games, tokens); r.tpl = tpl;
-      dlog(`lookup “${q}”`, `${r.list.length} results in ${games.join(', ')} · best name match ${r.best.toFixed(2)}` + (r.list[0] ? ` (${r.list.slice().sort((x, y) => y.sim - x.sim)[0].name})` : '') + (r.failed.length ? ' · could not reach: ' + r.failed.join(', ') : '') + (r.errors ? ' · ' + r.errors : ''));
-      if(r.list.length && (!best || r.best > best.best)) best = r;
-    };
-    const sure = () => best && best.best >= 0.88;
-    // In All games the whole card is read first: it tells which game this is
-    if(isAuto){ await readFull(); found = clues(full) || '' }
-    if(found && !FIND[found]){ dlog('game', GAMES[found].label + ' has no card lookup - opening add by hand'); const t0 = templateList(found)[0]; const q0 = cleanName((await w.recognize(crop(card, t0.zones.name))).data.text) || nameCandidates(full)[0] || ''; openManual({name:q0, game:found}); return }
-    const gameNow = found || (isAuto ? '' : O.game);
-    const tpls = templateList(gameNow === 'other' ? '' : gameNow);
-    dlog('templates to try', tpls.map(t => t.label + (t.game && !gameNow ? ' (' + GAMES[t.game].label + ')' : '')).join(', '));
-    for(const t of tpls.slice(0, 8)){
-      const txt = (await w.recognize(crop(card, t.zones.name))).data.text, q = cleanName(txt); if(q.length >= 3) anyName = true;
-      dlog(`template “${t.label}” name`, JSON.stringify(txt.trim()) + ' → ' + JSON.stringify(q));
-      if(t.zones.num && (O.readNum || !t.std)){ try{ const nt = (await w.recognize(crop(card, t.zones.num))).data.text; numTokens(nt).forEach(x => tokens.add(x)); dlog(`template “${t.label}” set & number`, JSON.stringify(nt.trim())) }catch(e){} }
-      let extra = [];
-      if(t.zones.text){ try{ const xt = (await w.recognize(crop(card, t.zones.text, false))).data.text; extra = nameCandidates(xt); numTokens(xt).forEach(x => tokens.add(x)); dlog(`template “${t.label}” extra text`, JSON.stringify(xt.trim().slice(0, 300))) }catch(e){} }
-      if(O.game === 'other' || (O.game !== 'auto' && !FIND[O.game])){ if(q.length >= 3){ openManual({name:q, game:O.game}); return } continue }
-      const games = (t.game ? [t.game] : (gameNow ? [gameNow] : lookGames())).filter(g => FIND[g]); if(!games.length) continue;
-      for(const q2 of [q, ...extra].slice(0, 3)){ await lookFor(q2, games, t); if(sure()) break }
-      if(sure()) break;
-    }
-    if(O.game === 'other' || (O.game !== 'auto' && !FIND[O.game])){ await readFull(); openManual({name:nameCandidates(full)[0] || '', game:O.game}); return }
-    // Not sure yet: try the other lines of the whole card
-    if(!sure()){
-      await readFull();
-      if(isAuto && !found && full){ found = clues(full) || '' }
-      const games2 = found ? [found] : (isAuto ? lookGames() : [O.game]);
-      const cands = nameCandidates(full); if(cands.length) anyName = true;
-      for(const q of cands.slice(0, 4)){ await lookFor(q, games2, null); if(sure()) break }
-      if(!best && games2.includes('onepiece') && tokens.size) await lookFor('', ['onepiece'], null);   // One Piece: the card number alone is enough
-    }
-    dlog('numbers and codes seen', [...tokens].filter(x => /\d/.test(x)).slice(0, 30).join(' ') || 'none');
-    if(!best){
-      if(!anyName){ setSt('Could not read the name - try again or search by name'); toast('Could not read the name. More light, less glare, or make a scan template for this layout.', true); SC.result = null; renderResult(); return }
-      best = {q:'', list:[], best:0, failed:[], tokens};
-    }
-    if(best.tpl && sure()){ O.lastTpl = Object.assign(O.lastTpl || {}, {[gameNow || 'auto']:best.tpl.id}); persist(); dlog('template used', best.tpl.label) }
-    best.detected = isAuto ? (found || (best.tpl && best.tpl.game) || '') : '';
-    if($('#cq')) $('#cq').value = best.q;
-    showResult(best, false);
+    if(checkBack(card)){ SC.result = null; renderResult(); return }
+    SC.lastCard = card;
+    const res = await identify(card, O.game, setSt);
+    if(res.kind === 'manual'){ openManual({name:res.name, game:res.game}); return }
+    if(res.kind === 'none'){ setSt('Could not read the name - try again or search by name'); toast('Could not read the name. More light, less glare, or make a scan template for this layout.', true); SC.result = null; renderResult(); return }
+    if($('#cq')) $('#cq').value = res.r.q;
+    showResult(res.r, false);
   }catch(e){ setSt(e.message); toast(e.message, true); dlog('error', e.message) }
   finally{
     dlog('result', SC.result ? `${SC.result.matches[0].name} · ${SC.result.matches[0].showSet} #${SC.result.matches[0].showNum} · ${SC.result.confidence}${SC.result.ambiguous ? ', check the set' : ''}${SC.result.pinned ? ', number read' : ''}` : 'nothing found');
@@ -697,6 +728,139 @@ async function scanNow(auto){
     if(auto && SC.stream && missed && !SC.teach && (SC.tries || 0) < 3) SC.retryAt = Date.now() + 1200;
   }
 }
+
+/* ---------------------------------------------------------------- binder page: one photo, split into its pockets */
+const BP = {box:[0.03, 0.03, 0.97, 0.97], rows:3, cols:3};
+function cellCanvas(img, x, y, w, h){ const c = document.createElement('canvas'); c.width = 756; c.height = 1056; c.getContext('2d').drawImage(img, x, y, w, h, 0, 0, 756, 1056); return c }
+function cellEmpty(c){                                  // an empty pocket is nearly one flat colour
+  const t = document.createElement('canvas'); t.width = 24; t.height = 34; const x = t.getContext('2d', {willReadFrequently:true}); x.drawImage(c, 0, 0, 24, 34);
+  const d = x.getImageData(0, 0, 24, 34).data; let m = 0, v = 0; const g = []; for(let i = 0; i < d.length; i += 4){ const y = .299 * d[i] + .587 * d[i+1] + .114 * d[i+2]; g.push(y); m += y } m /= g.length;
+  for(const y of g) v += (y - m) ** 2; return Math.sqrt(v / g.length) < 12;
+}
+function pageCells(img){
+  const W = img.naturalWidth, H = img.naturalHeight, [x0, y0, x1, y1] = BP.box, cw = (x1 - x0) * W / BP.cols, ch = (y1 - y0) * H / BP.rows, out = [];
+  for(let r = 0; r < BP.rows; r++) for(let c = 0; c < BP.cols; c++){
+    const ix = cw * 0.035, iy = ch * 0.025;                        // stay a little inside the pocket
+    out.push(cellCanvas(img, x0 * W + c * cw + ix, y0 * H + r * ch + iy, cw - 2 * ix, ch - 2 * iy));
+  }
+  return out;
+}
+function openBinder(img){
+  const W = img.naturalWidth, H = img.naturalHeight;
+  modal(`<h3>Binder page</h3>
+    <div class="hint" style="margin:0 0 6px">Drag the grid over the cards and resize it by its round corners. Greyed pockets look empty and are skipped.</div>
+    <div class="bar"><select id="bpr">${[1, 2, 3, 4].map(n => `<option ${n === BP.rows ? 'selected' : ''}>${n}</option>`).join('')}</select><span class="muted">rows ×</span>
+      <select id="bpc">${[1, 2, 3, 4].map(n => `<option ${n === BP.cols ? 'selected' : ''}>${n}</option>`).join('')}</select><span class="muted">cards per row</span></div>
+    <div class="bpage" id="bpage" style="aspect-ratio:${W}/${H};max-height:60vh;max-width:calc(60vh * ${W / H});margin-inline:auto"><img src="${img.src}" alt="">
+      <div class="bgrid" id="bgrid"><i class="h tl"></i><i class="h br"></i></div></div>
+    <div class="btns" style="justify-content:flex-end;margin-top:10px"><button class="btn" id="bpx">Cancel</button><button class="btn primary" id="bpok"><i class="ti ti-bolt"></i>Scan the cards</button></div>`);
+  const pg = $('#bpage'), grid = $('#bgrid');
+  const draw = () => { const [x0, y0, x1, y1] = BP.box;
+    Object.assign(grid.style, {left:x0 * 100 + '%', top:y0 * 100 + '%', width:(x1 - x0) * 100 + '%', height:(y1 - y0) * 100 + '%', gridTemplateColumns:`repeat(${BP.cols},1fr)`, gridTemplateRows:`repeat(${BP.rows},1fr)`});
+    grid.querySelectorAll('i.cell').forEach(c => c.remove());
+    const empties = pageCells(img).map(cellEmpty), n = empties.filter(e => !e).length;
+    empties.forEach(e => { const c = document.createElement('i'); c.className = 'cell' + (e ? ' empty' : ''); grid.appendChild(c) });
+    $('#bpok').innerHTML = `<i class="ti ti-bolt"></i>Scan ${n} card${n === 1 ? '' : 's'}`; $('#bpok').disabled = !n };
+  draw();
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  grid.addEventListener('pointerdown', e => {
+    e.preventDefault(); const R = pg.getBoundingClientRect(), b0 = BP.box.slice(), sx = e.clientX, sy = e.clientY, h = e.target.classList.contains('br') ? 'br' : e.target.classList.contains('tl') ? 'tl' : '';
+    grid.setPointerCapture(e.pointerId);
+    const move = ev => { const dx = (ev.clientX - sx) / R.width, dy = (ev.clientY - sy) / R.height; let [x0, y0, x1, y1] = b0;
+      if(h === 'br'){ x1 = clamp(x1 + dx, x0 + 0.1, 1); y1 = clamp(y1 + dy, y0 + 0.1, 1) }
+      else if(h === 'tl'){ x0 = clamp(x0 + dx, 0, x1 - 0.1); y0 = clamp(y0 + dy, 0, y1 - 0.1) }
+      else { const w = x1 - x0, hh = y1 - y0; x0 = clamp(x0 + dx, 0, 1 - w); y0 = clamp(y0 + dy, 0, 1 - hh); x1 = x0 + w; y1 = y0 + hh }
+      BP.box = [x0, y0, x1, y1]; const [a, b, c, d] = BP.box; Object.assign(grid.style, {left:a * 100 + '%', top:b * 100 + '%', width:(c - a) * 100 + '%', height:(d - b) * 100 + '%'}) };
+    const up = () => { grid.removeEventListener('pointermove', move); grid.removeEventListener('pointerup', up); grid.removeEventListener('pointercancel', up); draw() };
+    grid.addEventListener('pointermove', move); grid.addEventListener('pointerup', up); grid.addEventListener('pointercancel', up);
+  });
+  $('#bpr').onchange = e => { BP.rows = +e.target.value; draw() };
+  $('#bpc').onchange = e => { BP.cols = +e.target.value; draw() };
+  $('#bpx').onclick = closeModal;
+  $('#bpok').onclick = async () => {
+    const cells = pageCells(img).filter(c => !cellEmpty(c)); closeModal();
+    if(!O.quick){ O.quick = true; persist(); if($('#cquick')) $('#cquick').checked = true }
+    stopCamera(true); for(const c of cells) await quickAdd(c);
+    toast(`${cells.length} cards from the page are being identified`);
+  };
+}
+
+/* ---------------------------------------------------------------- quick scan: capture now, identify in the background, check later */
+const Q = {jobs:[], running:false, recent:[]};
+const smallThumb = card => { const c = document.createElement('canvas'); c.width = 160; c.height = 224; c.getContext('2d').drawImage(card, 0, 0, 160, 224); return c.toDataURL('image/jpeg', 0.6) };
+const qCount = st => Q.jobs.filter(j => j.status === st).length;
+async function quickAdd(card){
+  if(checkBack(card)) return;
+  const blob = await new Promise(r => card.toBlob(r, 'image/jpeg', 0.88));
+  const job = {id:uid(), blob, thumb:smallThumb(card), status:'waiting', foil:SC.foil, game:O.game, when:Date.now()};
+  Q.jobs.push(job); Q.recent.unshift(job); Q.recent.length = Math.min(Q.recent.length, 12);
+  SC.lastCard = card; renderResult(); runQueue();
+}
+async function quickCapture(){
+  if(!guideRect()) return;
+  const card = grab(); SC.armed = false;
+  const cw = $('#cw'); if(cw){ cw.style.outline = '3px solid var(--green)'; setTimeout(() => cw.style.outline = '', 180) }
+  if(navigator.vibrate) navigator.vibrate(25);
+  await quickAdd(card);
+}
+async function runQueue(){
+  if(Q.running) return; Q.running = true;
+  try{
+    let job;
+    while((job = Q.jobs.find(j => j.status === 'waiting'))){
+      job.status = 'working'; renderResult();
+      try{
+        const bmp = await createImageBitmap(job.blob), card = document.createElement('canvas'); card.width = 756; card.height = 1056;
+        card.getContext('2d').drawImage(bmp, 0, 0, 756, 1056);
+        dstart('quick scan'); dlog('picture', 'from the quick scan queue');
+        const res = await identify(card, job.game, t => setSt(`Quick scan · ${qCount('waiting') + 1} left · ${t}`));
+        quickResult(job, res);
+      }catch(e){ dlog('error', e.message); quickResult(job, {kind:'none', err:e.message}) }
+      finally{ DLOG.cur = null; job.blob = null; renderResult() }
+    }
+  } finally { Q.running = false; setSt(qCount('check') + qCount('failed') ? `Quick scan done · ${qCount('check') + qCount('failed')} to check` : 'Quick scan done') }
+}
+const candOf = m => { const o = {}; for(const k of ['game', 'gameName', 'set', 'number', 'showSet', 'showNum', 'name', 'setName', 'rarity', 'image', 'alt', 'link', 'price', 'priceFoil', 'currency', 'psrc']) if(m[k] != null) o[k] = m[k]; return o };
+function quickResult(job, res){
+  const rr = res.kind === 'result' ? rank(res.r, false) : null;
+  if(rr && rr.confidence === 'high' && !rr.ambiguous){
+    addCard(rr.matches[0], job.foil, 1); job.status = 'sure'; job.name = rr.matches[0].name; dlog('result', 'sure: ' + job.name + ' - added'); return;
+  }
+  const item = {id:job.id, thumb:job.thumb, when:job.when, game:job.game, foil:job.foil, q:res.kind === 'result' ? res.r.q : (res.name || ''), cands:[], key:null};
+  if(rr){
+    item.cands = rr.matches.slice(0, 10).map(candOf);
+    addCard(rr.matches[0], job.foil, 1); item.key = ckey(rr.matches[0], job.foil);
+    const c = store.cards.find(x => x.key === item.key); if(c) c.check = true;
+    job.status = 'check'; job.name = rr.matches[0].name; dlog('result', `not sure (${rr.confidence}${rr.ambiguous ? ', several printings' : ''}): ${job.name} - added, marked to check`);
+  } else {
+    if(res.kind === 'manual') item.game = res.game;
+    job.status = 'failed'; job.name = item.q || 'not recognised'; dlog('result', 'not recognised - put in the list to check');
+  }
+  store.review = (store.review || []).concat([item]); persist(); tabCount();
+}
+function renderQuick(el){
+  const w = qCount('waiting') + qCount('working'), added = Q.jobs.filter(j => j.status === 'sure' || j.status === 'check').length, toCheck = (store.review || []).length;
+  const badge = {waiting:'<i class="ti ti-clock"></i>', working:'<i class="ti ti-loader-2"></i>', sure:'<i class="ti ti-check"></i>', check:'<i class="ti ti-alert-triangle"></i>', failed:'<i class="ti ti-question-mark"></i>'};
+  const col = {waiting:'var(--dim)', working:'var(--accent)', sure:'var(--green)', check:'var(--amber)', failed:'var(--red)'};
+  el.innerHTML = `<div class="panel">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:15px"><i class="ti ti-bolt" style="color:var(--accent)"></i> Quick scan</b>
+      <span class="sub">${w ? w + ' waiting · ' : ''}${added} added · ${toCheck} to check</span></div>
+    <div class="hint" style="margin-top:4px">Hold each card in the frame for a moment, or tap the shutter, then go to the next card. Cards are identified in the background.</div>
+    ${Q.recent.length ? `<div class="cands">${Q.recent.map(j => `<div class="cand-t" style="cursor:default" title="${esc(j.name || '')}"><img src="${j.thumb}" alt=""><span style="color:${col[j.status]}">${badge[j.status]} ${esc((j.name || (j.status === 'waiting' ? 'waiting' : j.status === 'working' ? 'reading' : '')).slice(0, 12))}</span></div>`).join('')}</div>` : ''}
+    <div class="btns" style="margin-top:12px"><button class="btn ${SC.foil ? 'on' : ''}" id="qfoil"><i class="ti ti-sparkles"></i>Foil</button>
+      <button class="btn" id="qcheck" ${toCheck ? '' : 'disabled'}><i class="ti ti-list-check"></i>Check cards${toCheck ? ' (' + toCheck + ')' : ''}</button>
+      <button class="btn" id="qoff"><i class="ti ti-player-stop"></i>Stop quick scan</button></div>
+    <details id="ddet" style="margin-top:14px"><summary class="hint" style="cursor:pointer;margin:0">Scan details (for troubleshooting)</summary>
+      <div class="btns" style="margin:8px 0"><button class="btn sm" id="dcopy"><i class="ti ti-copy"></i>Copy</button></div>
+      <pre id="dtext" style="white-space:pre-wrap;word-break:break-word;font:11.5px/1.45 ui-monospace,Menlo,Consolas,monospace;background:var(--logbg);color:var(--logfg);border-radius:8px;padding:10px;max-height:340px;overflow:auto;margin:0;user-select:text"></pre></details></div>`;
+  $('#qfoil').onclick = () => { SC.foil = !SC.foil; renderResult() };
+  $('#qcheck').onclick = () => show('review');
+  $('#qoff').onclick = () => { O.quick = false; persist(); if($('#cquick')) $('#cquick').checked = false; renderResult() };
+  $('#ddet').ontoggle = () => { if($('#ddet').open) $('#dtext').textContent = dreport() };
+  $('#dcopy').onclick = async () => { const t = dreport(); $('#dtext').textContent = t; try{ await navigator.clipboard.writeText(t); toast('Scan details copied') }catch(e){ toast('Select the text and copy it', true) } };
+}
+window.addEventListener('beforeunload', e => { if(Q.jobs.some(j => j.status === 'waiting' || j.status === 'working')){ e.preventDefault(); e.returnValue = '' } });
+
 async function search(q, games, tokens){
   const res = await Promise.allSettled(games.map(g => FIND[g](q, tokens)));
   let list = res.flatMap(r => r.status === 'fulfilled' ? r.value : []);
@@ -707,13 +871,8 @@ async function search(q, games, tokens){
     m.hit = (tokens.has(String(m.number).toUpperCase()) || tokens.has(normNum(m.showNum).toUpperCase()) || tokens.has(String(m.showNum).split(' ')[0].toUpperCase()) ? 2 : 0) + (tokens.has(m.showSet.toUpperCase()) ? 1 : 0) });
   return {q, list, best:list.length ? Math.max(...list.map(m => m.sim)) : 0, failed, errors, tokens};
 }
-function showResult(r, manual){
-  const {q, list, failed, tokens, best} = r;
-  if(!list.length){
-    SC.result = null; renderResult();
-    const why = failed.length ? ` ${failed.map(g => GAMES[g].label).join(', ')} could not be reached.` : '';
-    setSt('Not found'); toast(`No card called “${q}” found.${why}`, true); return;
-  }
+function rank(r, manual){
+  const {q, list, best} = r; if(!list.length) return null;
   // rank: closest name, then collector number / set code read from the card, then the sets you used last, then newest
   const pref = m => { const k = O.prefer.indexOf(m.game + ':' + m.set); return k < 0 ? 99 : k };
   const top = list.filter(m => m.sim >= best - 0.02).sort((a, b) => b.hit - a.hit || pref(a) - pref(b) || (b.released || '').localeCompare(a.released || ''));
@@ -721,8 +880,17 @@ function showResult(r, manual){
   const matches = [...top, ...rest].slice(0, 24);
   const lead = matches[0], sameName = top.filter(m => m.name === lead.name && m.game === lead.game);
   const pinned = lead.hit >= 3 || (lead.hit >= 2 && sameName.filter(m => m.hit >= 2).length === 1);
-  SC.result = {q, matches, detected:r.detected || '', confidence: manual ? 'manual' : best >= 0.9 ? 'high' : best >= 0.7 ? 'medium' : 'low',
-               ambiguous: !pinned && new Set(sameName.map(m => m.set)).size > 1, pinned};
+  return {q, matches, detected:r.detected || '', confidence: manual ? 'manual' : best >= 0.9 ? 'high' : best >= 0.7 ? 'medium' : 'low',
+          ambiguous: !pinned && new Set(sameName.map(m => m.set)).size > 1, pinned};
+}
+function showResult(r, manual){
+  const rr = rank(r, manual);
+  if(!rr){
+    SC.result = null; renderResult();
+    const why = r.failed.length ? ` ${r.failed.map(g => GAMES[g].label).join(', ')} could not be reached.` : '';
+    setSt('Not found'); toast(`No card called “${r.q}” found.${why}`, true); return;
+  }
+  SC.result = rr;
   SC.sel = 0; renderResult(); if(SC.result.confidence !== 'low') SC.retryAt = 0;
   const res = SC.result; setSt(res.confidence === 'low' ? 'Not sure - check the card or search by name' : 'Found it');
   if(O.autoAdd && !manual && res.confidence === 'high' && !res.ambiguous) addCurrent();
@@ -734,7 +902,7 @@ async function lookup(q, games, tokens, manual){
   showResult(r, manual); DLOG.cur = null;
 }
 function renderResult(){
-  const el = $('#cres'); if(!el) return; const keepOpen = $('#ddet') && $('#ddet').open; const r = SC.result, m = r && r.matches[SC.sel];
+  const el = $('#cres'); if(!el) return; if(O.quick){ renderQuick(el); return } const keepOpen = $('#ddet') && $('#ddet').open; const r = SC.result, m = r && r.matches[SC.sel];
   const price = m ? (SC.foil ? m.priceFoil : m.price) : null, owned = m ? ownedQty(m) : 0;
   el.innerHTML = `<div class="panel">
     ${m ? `<div class="cres-top"><div class="cardbig">${pic(m)}</div><div style="min-width:0;flex:1">
@@ -890,7 +1058,7 @@ function openTemplate(t, useLast){
 
 /* ---------------------------------------------------------------- add a card by hand (any game) */
 function openManual(pre){
-  pre = pre || {}; const g0 = pre.game && GAMES[pre.game] && pre.game !== 'auto' ? pre.game : 'other';
+  pre = pre || {}; const g0 = pre.game && GAMES[pre.game] && pre.game !== 'auto' ? pre.game : (pre.game === undefined ? 'other' : 'other');
   modal(`<h3>Add a card by hand</h3>
     <div class="bar"><select id="hg" style="flex:1">${Object.entries(GAMES).map(([k, g]) => `<option value="${k}" ${k === g0 ? 'selected' : ''}>${esc(g.label)}</option>`).join('')}</select></div>
     <div class="bar" id="hgnw"><input id="hgn" type="text" placeholder="Name of the game, e.g. Digimon, Flesh and Blood, Weiss Schwarz" value="${esc(O.lastOther || '')}"></div>
@@ -907,7 +1075,7 @@ function openManual(pre){
     if(g === 'other'){ O.lastOther = gn; persist() }
     const m = {game:g, gameName:g === 'other' ? gn : '', set:(set || 'x').toLowerCase(), number:normNum(n || name.toLowerCase().replace(/[^a-z0-9]+/g, '-')), showSet:(set || '-').toUpperCase(), showNum:n || '-',
       name, setName:'', rarity:'', image:'', price, priceFoil:foil ? price : null, currency:'EUR', psrc:''};
-    addCard(m, foil, 1); closeModal(); toast(`Added ${name}`); if(VIEW === 'cards') viewCards(); else renderResult();
+    addCard(m, foil, 1); closeModal(); toast(`Added ${name}`); if(pre.done){ pre.done(); return } if(VIEW === 'cards') viewCards(); else renderResult();
   };
 }
 
@@ -1103,6 +1271,45 @@ function openSource(src){
     toast(`Saved. “Update prices” in My cards now also asks ${x.label}.`); if(VIEW === 'settings') viewSettings() };
 }
 
+/* ---------------------------------------------------------------- check the cards quick scan was not sure about */
+const RV = {i:0, sel:0};
+function viewReview(){
+  const list = store.review || [];
+  if(!list.length){ $('#main').innerHTML = `<div class="head"><button class="btn sm" id="rvback"><i class="ti ti-arrow-left"></i>My cards</button></div><div class="empty">Nothing to check. Every quick-scanned card is in your collection.</div>`;
+    $('#rvback').onclick = () => show('cards'); setSt(''); return }
+  RV.i = Math.min(RV.i, list.length - 1); const it = list[RV.i], m = it.cands[RV.sel];
+  $('#main').innerHTML = `<div class="head"><button class="btn sm" id="rvback"><i class="ti ti-arrow-left"></i>My cards</button><div class="sp"></div><span class="sub">${RV.i + 1} of ${list.length} to check</span></div>
+    <div class="panel">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><div class="hint" style="margin:0 0 4px">Your photo</div><div class="cardbig" style="width:100%"><img src="${it.thumb}" alt=""></div></div>
+        <div><div class="hint" style="margin:0 0 4px">${m ? (it.key && RV.sel === 0 ? 'Best guess' : 'Your choice') : 'Not recognised'}</div><div class="cardbig" style="width:100%">${m ? pic(m) : ''}</div></div>
+      </div>
+      ${m ? `<div class="cname" style="margin-top:10px">${esc(m.name)}</div><div class="sub">${esc(m.showSet)} #${esc(m.showNum)}${m.setName ? ' · ' + esc(m.setName) : ''} · ${esc((GAMES[m.game] || {}).label || '')}${it.foil ? ' · foil' : ''} · ${fmt(it.foil ? m.priceFoil : m.price, m.currency)}</div>`
+          : `<div class="sub" style="margin-top:10px">${it.q ? `Read “${esc(it.q)}” but found no card.` : 'No name could be read from this photo.'} Search by name below, or add it by hand.</div>`}
+      ${it.cands.length > 1 ? `<div class="hint" style="margin-top:10px">Other matches · tap the right one</div><div class="cands">${it.cands.map((x, i) => `<button class="cand-t ${i === RV.sel ? 'on' : ''}" data-i="${i}">${pic(x, 'loading="lazy"')}<span>${esc(x.showSet)} ${esc(x.showNum)}</span></button>`).join('')}</div>` : ''}
+      <div class="btns" style="margin-top:14px">${m ? `<button class="btn primary" id="rvok" style="flex:1"><i class="ti ti-check"></i>${it.key ? (RV.sel === 0 ? 'Correct' : 'Use this one') : 'Add this card'}</button>` : `<button class="btn primary" id="rvman" style="flex:1"><i class="ti ti-plus"></i>Add by hand</button>`}
+        <button class="btn" id="rvskip">Skip</button><button class="btn danger" id="rvdel"><i class="ti ti-trash"></i>${it.key ? 'Remove' : 'Discard'}</button></div>
+      <form class="bar" id="rvf" style="margin:14px 0 0"><input class="grow" id="rvq" type="search" placeholder="Search by name" value="${esc(it.q)}" autocomplete="off"><button class="btn" type="submit">Search</button></form>
+    </div>`;
+  const done = () => { store.review = list.filter(x => x !== it); persist(); RV.sel = 0; tabCount(); viewReview() };
+  $('#rvback').onclick = () => show('cards');
+  $$('#main .cand-t').forEach(b => b.onclick = () => { RV.sel = +b.dataset.i; viewReview() });
+  if($('#rvok')) $('#rvok').onclick = () => {
+    const old = it.key && store.cards.find(c => c.key === it.key), k = ckey(m, it.foil);
+    if(old && old.key !== k){ addCard(old, it.foil, -1); addCard(m, it.foil, 1) } else if(!old) addCard(m, it.foil, 1);
+    const c = store.cards.find(x => x.key === k); if(c) c.check = false; toast(`${m.name} confirmed`); done();
+  };
+  if($('#rvman')) $('#rvman').onclick = () => openManual({name:it.q, game:it.game !== 'auto' ? it.game : '', done});
+  $('#rvskip').onclick = () => { RV.i = (RV.i + 1) % list.length; RV.sel = 0; viewReview() };
+  $('#rvdel').onclick = () => { const old = it.key && store.cards.find(c => c.key === it.key); if(old) addCard(old, it.foil, -1); toast(it.key ? 'Removed from your collection' : 'Discarded'); done() };
+  $('#rvf').onsubmit = async e => { e.preventDefault(); const q = $('#rvq').value.trim(); if(q.length < 2) return;
+    const g = it.cands[0] ? [it.cands[0].game] : (it.game && it.game !== 'auto' && FIND[it.game] ? [it.game] : lookGames());
+    setSt(`Looking up “${q}” ...`); const rr = rank(await search(q, g, new Set()), true); setSt('');
+    if(!rr){ toast(`No card called “${q}” found`, true); return }
+    it.cands = rr.matches.slice(0, 10).map(candOf); it.q = q; RV.sel = 0; persist(); viewReview() };
+  setSt('');
+}
+
 /* ---------------------------------------------------------------- my cards */
 const F = {q:'', game:'all', set:'all', sort:'new'};
 function viewCards(){
@@ -1115,6 +1322,8 @@ function viewCards(){
     <div class="sub" style="margin:-6px 0 8px">${total.toLocaleString()} cards · ${cs.length.toLocaleString()} different · value <b style="color:var(--text)">${fmt(eur, 'EUR')}</b>${usd ? ' + ' + fmt(usd, 'USD') : ''}${unpriced ? ` · ${unpriced} without a price` : ''}</div>
     ${cs.length ? `<div class="btns" style="margin:0 0 12px;align-items:center"><button class="btn sm" id="mpr" ${PC.running ? 'disabled' : ''}><i class="ti ti-refresh"></i>Update prices</button>${unpriced ? `<button class="btn sm" id="mpm" ${PC.running ? 'disabled' : ''}>Only missing prices</button>` : ''}
       <span class="hint" style="margin:0">${store.lastPriceCheck ? 'Last checked ' + new Date(store.lastPriceCheck).toLocaleDateString() : ''}</span></div>` : ''}
+    ${(store.review || []).length ? `<div class="panel" style="display:flex;gap:10px;align-items:center;padding:10px 12px;border-color:color-mix(in srgb,var(--amber) 45%,var(--pan))"><i class="ti ti-alert-triangle" style="color:var(--amber);font-size:20px"></i>
+      <div style="flex:1;min-width:0;font-size:13.5px"><b>${store.review.length} card${store.review.length === 1 ? '' : 's'} to check</b><div class="muted" style="font-size:12px">Quick scan was not sure about these.</div></div><button class="btn sm primary" id="mrv">Check now</button></div>` : ''}
     <div id="mpc"></div>
     <div class="bar"><input class="grow" id="mq" type="search" placeholder="Search by name" value="${esc(F.q)}">
       <select id="mgame"><option value="all">All games</option>${games.map(g => `<option value="${g}" ${F.game === g ? 'selected' : ''}>${esc(GAMES[g].label)}</option>`).join('')}</select>
@@ -1128,7 +1337,7 @@ function viewCards(){
     rows.sort(F.sort === 'name' ? (a, b) => a.name.localeCompare(b.name) : F.sort === 'value' ? (a, b) => pv(b) - pv(a)
             : F.sort === 'set' ? (a, b) => a.showSet.localeCompare(b.showSet) || normNum(a.number).localeCompare(normNum(b.number), undefined, {numeric:true}) : (a, b) => b.added - a.added);
     $('#mlist').innerHTML = rows.length ? rows.map(c => `<div class="srow">${c.image ? pic(c, 'loading="lazy"') : '<div class="ph"></div>'}
-      <div class="grow"><div class="nm">${esc(c.name)}</div><div class="meta"><span class="dot" style="background:${GAMES[c.game].color};margin-right:5px"></span>${c.gameName ? esc(c.gameName) + ' · ' : ''}${esc(c.showSet)} #${esc(c.showNum)}${c.foil ? ' · foil' : ''} · ${priceOf(c) != null ? `<span class="price">${fmt(priceOf(c), c.currency)}</span>` : c.game === 'other' ? '<span>no price</span>' : `<a href="${esc(c.link || tcgSearch(c))}" target="_blank" rel="noopener" style="color:var(--accent)">no price · look up <i class="ti ti-external-link"></i></a>`}</div></div>
+      <div class="grow"><div class="nm">${esc(c.name)}${c.check ? ' <span class="conf medium" style="margin:0 0 0 4px">check</span>' : ''}</div><div class="meta"><span class="dot" style="background:${GAMES[c.game].color};margin-right:5px"></span>${c.gameName ? esc(c.gameName) + ' · ' : ''}${esc(c.showSet)} #${esc(c.showNum)}${c.foil ? ' · foil' : ''} · ${priceOf(c) != null ? `<span class="price">${fmt(priceOf(c), c.currency)}</span>` : c.game === 'other' ? '<span>no price</span>' : `<a href="${esc(c.link || tcgSearch(c))}" target="_blank" rel="noopener" style="color:var(--accent)">no price · look up <i class="ti ti-external-link"></i></a>`}</div></div>
       <div class="qb"><button data-u="${c.uid}" data-d="-1" aria-label="One less">−</button><b>${c.qty}</b><button data-u="${c.uid}" data-d="1" aria-label="One more">+</button></div></div>`).join('')
       : `<div class="empty">${cs.length ? 'Nothing matches that filter.' : 'No cards yet.<br>Scan a card and tap Add.'}<br><button class="btn primary" id="mgo" style="margin-top:12px"><i class="ti ti-camera"></i>Scan cards</button></div>`;
     $$('#mlist [data-u]').forEach(b => b.onclick = () => { const c = store.cards.find(x => x.uid === b.dataset.u); if(!c) return;
@@ -1140,6 +1349,7 @@ function viewCards(){
   $('#mset').onchange = e => { F.set = e.target.value; draw() };
   $('#msort').onchange = e => { F.sort = e.target.value; draw() };
   $('#mexp').onclick = exportNightvault; $('#mman').onclick = () => openManual({});
+  if($('#mrv')) $('#mrv').onclick = () => { RV.i = 0; RV.sel = 0; show('review') };
   if($('#mpr')) $('#mpr').onclick = () => priceCheck(false);
   if($('#mpm')) $('#mpm').onclick = () => priceCheck(true);
   drawPC();
