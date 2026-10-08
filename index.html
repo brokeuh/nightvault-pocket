@@ -138,6 +138,16 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 .mback{position:fixed;inset:0;background:#000a;display:flex;align-items:flex-end;justify-content:center;z-index:40}
 .mbox{background:var(--modal);border:1px solid var(--line2);border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));width:100%;max-width:560px;max-height:88vh;overflow-y:auto}
 .mbox h3{margin:0 0 10px;font-size:17px}
+/* scan template editor */
+.tpled{position:relative;margin:14px auto 8px;width:min(290px,68vw);aspect-ratio:63/88;border-radius:10px;overflow:visible;background:var(--sub);border:1px solid var(--line2);touch-action:none;user-select:none}
+.tpled img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;border-radius:10px}
+.tpled .blank{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--dim);font-size:12.5px}
+.zone{position:absolute;border:2px solid currentColor;border-radius:4px;background:color-mix(in srgb,currentColor 18%,transparent);touch-action:none;cursor:move}
+.zone span{position:absolute;left:-2px;top:-20px;background:currentColor;border-radius:4px 4px 0 0;padding:1px 6px;font-size:10.5px;white-space:nowrap}
+.zone span b{color:#0b1220;font-weight:600}
+.zone .h{position:absolute;right:-11px;bottom:-11px;width:22px;height:22px;border-radius:50%;background:currentColor;border:2px solid #fff;cursor:nwse-resize}
+.zone.z-name{color:#6ea8ff}.zone.z-num{color:#e0a85a}.zone.z-text{color:#5fcf9a}
+.zone.off{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -193,6 +203,8 @@ const store = (() => { try{ return JSON.parse(localStorage.getItem(KEY) || '{}')
 function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(store)) }catch(e){ toast('This browser does not let the page save. Export your cards before closing it.', true) } }
 store.cards = Array.isArray(store.cards) ? store.cards : [];
 store.backs = Array.isArray(store.backs) ? store.backs : [];
+store.templates = Array.isArray(store.templates) ? store.templates : [];
+store.sources = Array.isArray(store.sources) ? store.sources : [];
 store.opt = Object.assign({game:'auto', auto:true, autoAdd:false, readNum:true, full:true, sets:'', theme:'midnight', prefer:[]}, store.opt || {});
 const O = store.opt;
 
@@ -207,6 +219,19 @@ const fmt = (x, cur) => (x === null || x === undefined || isNaN(x)) ? 'no price'
 const num = v => { const n = parseFloat(String(v ?? '').replace(/[^0-9.]/g, '')); return isNaN(n) ? null : n };
 function imgFail(el){ const alt = (el.dataset.alt || '').split('|').filter(Boolean); if(alt.length){ el.dataset.alt = alt.slice(1).join('|'); el.src = alt[0] } else { el.onerror = null; el.removeAttribute('src'); el.style.visibility = 'hidden' } }
 const pic = (m, extra = '') => m.image ? `<img referrerpolicy="no-referrer" ${extra} src="${esc(m.image)}" data-alt="${esc((m.alt || []).join('|'))}" onerror="imgFail(this)" alt="">` : '';
+/* scan details: what each scan read, guessed and looked up, to copy into a chat or a bug report */
+const DLOG = {cur:null, scans:[]};
+function dlog(step, info){ const c = DLOG.cur; if(c) c.steps.push([Math.round(performance.now() - c.t0), step, String(info ?? '')]) }
+function dlogNote(t){ DLOG.notes = (DLOG.notes || []).concat([new Date().toLocaleTimeString() + ' ' + t]).slice(-10) }
+function dstart(how){ DLOG.cur = {when:new Date().toLocaleTimeString(), how, mode:O.game, t0:performance.now(), steps:[]}; DLOG.scans.unshift(DLOG.cur); DLOG.scans.length = Math.min(DLOG.scans.length, 6) }
+function dreport(){
+  const v = $('#cv'), a = SC.auto || {};
+  const head = [`Nightvault Pocket scan details · ${new Date().toLocaleString()}`, `Phone: ${navigator.userAgent}`,
+    `Camera: ${v && v.videoWidth ? v.videoWidth + '×' + v.videoHeight : 'off'} · game chip: ${O.game} · auto-scan ${O.auto ? 'on' : 'off'} · whole card ${O.full ? 'on' : 'off'} · number ${O.readNum ? 'on' : 'off'} · backs learned: ${store.backs.map(b => b.game).join(', ') || 'none'}`,
+    `Auto-scan now: ${a.ticks || 0} checks · movement ${a.moved ?? '-'} (still below 0.25) · contrast ${a.contrast ?? '-'} (card above 12) · ready ${SC.armed ? 'yes' : 'no'} · still checks in a row ${a.run || 0}`];
+  const scans = DLOG.scans.map((c, i) => [`--- scan ${i + 1} at ${c.when} (${c.how}, chip ${c.mode})`, ...c.steps.map(([t, k, x]) => `${String(t).padStart(5)} ms  ${k}: ${x}`)].join('\n'));
+  return head.concat(DLOG.notes || [], scans.length ? scans : ['(no scans yet)']).join('\n');
+}
 function setSt(t){ $('#scst').textContent = t || '' }
 function toast(msg, err){
   $$('#toast .t1').forEach(e => { if(e.textContent === msg) e.remove() });
@@ -275,16 +300,29 @@ async function findSWU(q){
     name:c.Name + (c.Subtitle ? ' - ' + c.Subtitle : ''), setName:String(c.Set).toUpperCase() + (c.VariantType && c.VariantType !== 'Normal' ? ' · ' + c.VariantType : ''),
     rarity:c.Rarity || '', released:'', image:c.FrontArt || '', price:num(c.MarketPrice), priceFoil:num(c.FoilPrice), currency:'USD', psrc:'TCGplayer'}));
 }
+/* Riftbound prices: riftbound.gg (DotGG) blocks other websites, so a daily GitHub job copies its prices into
+   riftbound-prices.json next to this app (see .github/workflows/riftbound-prices.yml) */
+let RBP = null;
+function rbPrices(){
+  if(!RBP) RBP = (async () => {
+    for(const u of ['riftbound-prices.json', 'https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/riftbound-prices.json']){
+      try{ const j = await getJSON(u + '?d=' + new Date().toISOString().slice(0, 10)); if(j && j.cards){ dlog('Riftbound prices', `${Object.keys(j.cards).length} cards, updated ${j.updated}`); return j } }catch(e){ dlog('Riftbound prices', `${u}: ${e.message}`) }
+    }
+    return {cards:{}};
+  })();
+  return RBP;
+}
 async function findRiftbound(q){
-  const r = await getJSON('https://api.riftcodex.com/cards/name?fuzzy=' + enc(q) + '&size=40');
+  const [r, pr] = await Promise.all([getJSON('https://api.riftcodex.com/cards/name?fuzzy=' + enc(q) + '&size=40'), rbPrices()]);
   return (r.items || []).map(c => { const sid = String((c.set || {}).set_id || '').toUpperCase(), cn = String(c.collector_number ?? '');
     const n = c.riftbound_id || `${sid}-${cn.padStart(3, '0')}`;
     // Riot's own picture server refuses other sites, so pictures come from riftbound.gg (DotGG); promos fall back to the main-set art
     const dg = k => `https://static.dotgg.gg/riftbound/cards/${k}.webp`;
     const alt = [dg(`OGN-${cn.padStart(3, '0')}`), dg(`SFD-${cn.padStart(3, '0')}`), (c.media || {}).image_url || ''].filter(Boolean);
+    const p = (pr.cards || {})[`${sid}-${cn.padStart(3, '0')}`] || (pr.cards || {})[`${sid}-${cn}`] || [], eur = p[0] ?? null, usd = p[2] ?? null;
     return {game:'riftbound', set:sid.toLowerCase(), number:normNum(n), showSet:sid, showNum:cn, name:c.name, setName:(c.set || {}).label || sid,
       rarity:(c.classification || {}).rarity || '', released:'', image:dg(`${sid}-${cn.padStart(3, '0')}`), alt,
-      price:null, priceFoil:null, currency:'USD', psrc:'',
+      price:eur ?? usd, priceFoil:eur != null ? (p[1] ?? null) : (p[3] ?? null), currency:eur != null ? 'EUR' : 'USD', psrc:eur != null ? 'Cardmarket' : usd != null ? 'TCGplayer' : '',
       link:c.tcgplayer_id ? `https://www.tcgplayer.com/product/${c.tcgplayer_id}` : `https://www.tcgplayer.com/search/riftbound-league-of-legends-trading-card-game/product?q=${enc(c.name)}`, linkLabel:'Price on TCGplayer'} });
 }
 async function findTCGdex(q){                                       // second Pokémon source (also older sets)
@@ -463,6 +501,7 @@ function scanTick(){
   const dist = (a, b) => { if(!a) return 9; let s = 0; for(let i = 0; i < n; i++) s += Math.abs(a[i] - b[i]); return s / n };
   SC.hist = (SC.hist || []).concat([gray]).slice(-5);
   const moved = SC.hist.length < 5 ? 9 : dist(SC.hist[0], gray), card = contrast > 12, still = card && moved < 0.25;
+  const A = SC.auto = SC.auto || {}; A.ticks = (A.ticks || 0) + 1; A.moved = +moved.toFixed(3); A.contrast = +contrast.toFixed(1); A.run = still ? (A.run || 0) + 1 : 0;
   if(!card || moved > 0.4 || (SC.ref && dist(SC.ref, gray) > 0.3)){ if(!SC.armed){ SC.armed = true; SC.tries = 0 } SC.ref = null }
   if(SC.retryAt && Date.now() > SC.retryAt){ SC.retryAt = 0; SC.armed = true }
   drawGuide(SC.busy ? 'busy' : (still && SC.armed ? 'ok' : 'idle'));
@@ -534,41 +573,75 @@ function nameCandidates(text){
 async function scanNow(auto){
   if(SC.busy || !guideRect()) return;
   SC.busy = true; $('#cscan').classList.add('busy'); drawGuide('busy'); setSt('Reading the card ...');
+  dstart(auto ? 'automatic' : SC.still ? 'photo' : 'shutter');
   try{
-    const card = grab();
+    const card = grab(), sz = srcSize(); dlog('picture', `${sz ? sz.w + '×' + sz.h : '?'} source, card cut out at 756×1056`);
     if(SC.teach){                                             // learning a card back
       const g = SC.teach; store.backs = store.backs.filter(b => b.game !== g || store.backs.filter(x => x.game === g).indexOf(b) < 2);
       store.backs.push({game:g, vec:backVec(card), added:Date.now()}); SC.teach = null; persist();
       toast(`Learned the ${GAMES[g].label} card back`); setSt(''); viewScanBanner(); return;
     }
-    const back = store.backs.length ? matchBack(backVec(card)) : null;
+    const bv = store.backs.length ? backVec(card) : null, back = bv ? matchBack(bv) : null;
+    if(bv){ let bs = store.backs.map(b => { let s = 0; for(let i = 0; i < bv.length; i++) s += bv[i] * b.vec[i]; return b.game + ' ' + s.toFixed(2) }); dlog('card back check', bs.join(', ') + ' (match at 0.90)') }
     if(back){ setGame(back.game); SC.result = null; renderResult(); setSt(`${GAMES[back.game].label} back - scanning ${GAMES[back.game].label} now`);
       toast(`${GAMES[back.game].label} card back - now scanning ${GAMES[back.game].label} cards`); return }
-    const w = await ocr(), L = O.game === 'auto' ? AUTO : GAMES[O.game];
-    const bands = O.game === 'auto' ? [AUTO.name, GAMES.lorcana.name, GAMES.onepiece.name] : [L.name];
-    let zone = '';
-    for(const b of bands){ zone = cleanName((await w.recognize(crop(card, b))).data.text); if(zone.length >= 3) break }
-    let full = '';
-    if(O.full || O.game === 'auto'){ setSt('Reading the whole card ...'); try{ full = (await w.recognize(crop(card, [0, 0, 1, 1], false))).data.text }catch(e){} }
-    let tokens = numTokens(full);
-    if(O.readNum && !full){ try{ tokens = numTokens((await w.recognize(crop(card, L.num))).data.text) }catch(e){} }
-    const cands = [zone, ...nameCandidates(full)].filter((x, i, a) => x && x.length >= 3 && a.indexOf(x) === i);
-    if(!cands.length && !tokens.size){ setSt('Could not read the name - try again or search by name'); toast('Could not read the name. More light, less glare, or search by name.', true); return }
-    if(O.game === 'other'){ openManual({name:cands[0] || ''}); return }
-    let games = O.game === 'auto' ? lookGames() : [O.game], found = '';
-    if(O.game === 'auto'){ const g = detectGame(full + '\n' + zone); if(g){ games = [g]; found = g } }
-    let best = null;
-    for(const q of (cands.length ? cands : ['']).slice(0, 4)){
-      setSt(`Looking up “${q}”${found ? ' (' + GAMES[found].label + ')' : ''} ...`);
-      const r = await search(q, games, tokens); if(r.list.length && (!best || r.best > best.best)) best = r;
-      if(best && best.best >= 0.88) break;
+    const w = await ocr(), isAuto = O.game === 'auto'; SC.lastCard = card;
+    let full = '', found = '', tokens = new Set(), best = null, anyName = false;
+    const tried = new Set();
+    const readFull = async () => {
+      if(full || !(O.full || isAuto)) return; setSt('Reading the whole card ...');
+      try{ full = (await w.recognize(crop(card, [0, 0, 1, 1], false))).data.text; numTokens(full).forEach(x => tokens.add(x)); dlog('whole card read', JSON.stringify(full.trim().slice(0, 1200))) }
+      catch(e){ dlog('whole card read failed', e.message) }
+    };
+    const clues = txt => { const g = detectGame(txt);
+      dlog('game clues', Object.entries(CLUES).map(([k, rs]) => k + ' ' + rs.filter(r => r.test(txt)).length).join(', ') + ' → ' + (g || 'not sure')); return g };
+    const lookFor = async (q, games, tpl) => {
+      const key = q + '|' + games.join(','); if(tried.has(key) || (q.length < 3 && !games.includes('onepiece'))) return; tried.add(key);
+      setSt(`Looking up “${q}”${games.length === 1 ? ' (' + GAMES[games[0]].label + ')' : ''} ...`);
+      const r = await search(q, games, tokens); r.tpl = tpl;
+      dlog(`lookup “${q}”`, `${r.list.length} results in ${games.join(', ')} · best name match ${r.best.toFixed(2)}` + (r.list[0] ? ` (${r.list.slice().sort((x, y) => y.sim - x.sim)[0].name})` : '') + (r.failed.length ? ' · could not reach: ' + r.failed.join(', ') : '') + (r.errors ? ' · ' + r.errors : ''));
+      if(r.list.length && (!best || r.best > best.best)) best = r;
+    };
+    const sure = () => best && best.best >= 0.88;
+    // In All games the whole card is read first: it tells which game this is
+    if(isAuto){ await readFull(); found = clues(full) || '' }
+    const gameNow = found || (isAuto ? '' : O.game);
+    const tpls = templateList(gameNow === 'other' ? '' : gameNow);
+    dlog('templates to try', tpls.map(t => t.label + (t.game && !gameNow ? ' (' + GAMES[t.game].label + ')' : '')).join(', '));
+    for(const t of tpls.slice(0, 8)){
+      const txt = (await w.recognize(crop(card, t.zones.name))).data.text, q = cleanName(txt); if(q.length >= 3) anyName = true;
+      dlog(`template “${t.label}” name`, JSON.stringify(txt.trim()) + ' → ' + JSON.stringify(q));
+      if(t.zones.num && (O.readNum || !t.std)){ try{ const nt = (await w.recognize(crop(card, t.zones.num))).data.text; numTokens(nt).forEach(x => tokens.add(x)); dlog(`template “${t.label}” set & number`, JSON.stringify(nt.trim())) }catch(e){} }
+      let extra = [];
+      if(t.zones.text){ try{ const xt = (await w.recognize(crop(card, t.zones.text, false))).data.text; extra = nameCandidates(xt); numTokens(xt).forEach(x => tokens.add(x)); dlog(`template “${t.label}” extra text`, JSON.stringify(xt.trim().slice(0, 300))) }catch(e){} }
+      if(O.game === 'other'){ if(q.length >= 3){ openManual({name:q}); return } continue }
+      const games = t.game ? [t.game] : (gameNow ? [gameNow] : lookGames());
+      for(const q2 of [q, ...extra].slice(0, 3)){ await lookFor(q2, games, t); if(sure()) break }
+      if(sure()) break;
     }
-    if(!best){ best = {q:cands[0] || '', list:[], best:0, failed:[], tokens} }
-    best.detected = found;
+    if(O.game === 'other'){ await readFull(); openManual({name:nameCandidates(full)[0] || ''}); return }
+    // Not sure yet: try the other lines of the whole card
+    if(!sure()){
+      await readFull();
+      if(isAuto && !found && full){ found = clues(full) || '' }
+      const games2 = found ? [found] : (isAuto ? lookGames() : [O.game]);
+      const cands = nameCandidates(full); if(cands.length) anyName = true;
+      for(const q of cands.slice(0, 4)){ await lookFor(q, games2, null); if(sure()) break }
+      if(!best && games2.includes('onepiece') && tokens.size) await lookFor('', ['onepiece'], null);   // One Piece: the card number alone is enough
+    }
+    dlog('numbers and codes seen', [...tokens].filter(x => /\d/.test(x)).slice(0, 30).join(' ') || 'none');
+    if(!best){
+      if(!anyName){ setSt('Could not read the name - try again or search by name'); toast('Could not read the name. More light, less glare, or make a scan template for this layout.', true); SC.result = null; renderResult(); return }
+      best = {q:'', list:[], best:0, failed:[], tokens};
+    }
+    if(best.tpl && sure()){ O.lastTpl = Object.assign(O.lastTpl || {}, {[gameNow || 'auto']:best.tpl.id}); persist(); dlog('template used', best.tpl.label) }
+    best.detected = isAuto ? (found || (best.tpl && best.tpl.game) || '') : '';
     if($('#cq')) $('#cq').value = best.q;
     showResult(best, false);
-  }catch(e){ setSt(e.message); toast(e.message, true) }
+  }catch(e){ setSt(e.message); toast(e.message, true); dlog('error', e.message) }
   finally{
+    dlog('result', SC.result ? `${SC.result.matches[0].name} · ${SC.result.matches[0].showSet} #${SC.result.matches[0].showNum} · ${SC.result.confidence}${SC.result.ambiguous ? ', check the set' : ''}${SC.result.pinned ? ', number read' : ''}` : 'nothing found');
+    DLOG.cur = null; if($('#ddet') && $('#ddet').open) $('#dtext').textContent = dreport();
     SC.busy = false; const b = $('#cscan'); if(b) b.classList.remove('busy'); drawGuide('idle');
     const missed = !SC.result || SC.result.confidence === 'low';
     if(auto && SC.stream && missed && !SC.teach && (SC.tries || 0) < 3) SC.retryAt = Date.now() + 1200;
@@ -578,10 +651,11 @@ async function search(q, games, tokens){
   const res = await Promise.allSettled(games.map(g => FIND[g](q, tokens)));
   let list = res.flatMap(r => r.status === 'fulfilled' ? r.value : []);
   const failed = games.filter((g, i) => res[i].status === 'rejected');
+  const errors = res.map((r, i) => r.status === 'rejected' ? games[i] + ': ' + (r.reason && r.reason.message || r.reason) : '').filter(Boolean).join('; ');
   const sets = wantSets(); if(sets.length) list = list.filter(m => sets.includes(m.set) || sets.includes(m.showSet.toLowerCase()));
   list.forEach(m => { m.sim = m.idHit ? 1 : sim(q, m.name);
     m.hit = (tokens.has(String(m.number).toUpperCase()) || tokens.has(normNum(m.showNum).toUpperCase()) || tokens.has(String(m.showNum).split(' ')[0].toUpperCase()) ? 2 : 0) + (tokens.has(m.showSet.toUpperCase()) ? 1 : 0) });
-  return {q, list, best:list.length ? Math.max(...list.map(m => m.sim)) : 0, failed, tokens};
+  return {q, list, best:list.length ? Math.max(...list.map(m => m.sim)) : 0, failed, errors, tokens};
 }
 function showResult(r, manual){
   const {q, list, failed, tokens, best} = r;
@@ -603,9 +677,14 @@ function showResult(r, manual){
   const res = SC.result; setSt(res.confidence === 'low' ? 'Not sure - check the card or search by name' : 'Found it');
   if(O.autoAdd && !manual && res.confidence === 'high' && !res.ambiguous) addCurrent();
 }
-async function lookup(q, games, tokens, manual){ setSt(`Looking up “${q}” ...`); showResult(await search(q, games, tokens), manual) }
+async function lookup(q, games, tokens, manual){
+  setSt(`Looking up “${q}” ...`); dstart('typed search');
+  const r = await search(q, games, tokens);
+  dlog(`lookup “${q}”`, `${r.list.length} results in ${games.join(', ')} · best name match ${r.best.toFixed(2)}` + (r.failed.length ? ' · could not reach: ' + r.failed.join(', ') : '') + (r.errors ? ' · ' + r.errors : ''));
+  showResult(r, manual); DLOG.cur = null;
+}
 function renderResult(){
-  const el = $('#cres'); if(!el) return; const r = SC.result, m = r && r.matches[SC.sel];
+  const el = $('#cres'); if(!el) return; const keepOpen = $('#ddet') && $('#ddet').open; const r = SC.result, m = r && r.matches[SC.sel];
   const price = m ? (SC.foil ? m.priceFoil : m.price) : null, owned = m ? ownedQty(m) : 0;
   el.innerHTML = `<div class="panel">
     ${m ? `<div class="cres-top"><div class="cardbig">${pic(m)}</div><div style="min-width:0;flex:1">
@@ -621,8 +700,11 @@ function renderResult(){
       <div class="cands">${r.matches.map((x, i) => `<button class="cand-t ${i === SC.sel ? 'on' : ''}" data-i="${i}" title="${esc(x.name)} · ${esc(x.showSet)} #${esc(x.showNum)}">${pic(x, 'loading="lazy"')}<span>${esc(x.showSet)} ${esc(x.showNum)}</span></button>`).join('')}</div>` : ''}`
     : `<div class="muted" style="padding:18px 6px;text-align:center">Hold a card in the frame.<br>The result shows up here.</div>`}
     <form class="bar" id="cqf" style="margin:14px 0 0"><input class="grow" id="cq" type="search" placeholder="Wrong or not found? Search by name" value="${esc(r ? r.q : '')}" autocomplete="off"><button class="btn" type="submit">Search</button></form>
-    <div class="hint" style="margin-top:6px">Card not in the list, or a game that is not here? <a href="#" id="cman" style="color:var(--accent)">Add it by hand</a></div>
-    <div id="csess"></div></div>`;
+    <div class="hint" style="margin-top:6px">Card not in the list, or a game that is not here? <a href="#" id="cman" style="color:var(--accent)">Add it by hand</a>${SC.lastCard ? ` · Name in an unusual spot? <a href="#" id="ctpl" style="color:var(--accent)">Make a scan template</a>` : ''}</div>
+    <div id="csess"></div>
+    <details id="ddet" style="margin-top:14px"><summary class="hint" style="cursor:pointer;margin:0">Scan details (for troubleshooting)</summary>
+      <div class="btns" style="margin:8px 0"><button class="btn sm" id="dcopy"><i class="ti ti-copy"></i>Copy</button><button class="btn sm" id="dshare"><i class="ti ti-share"></i>Share</button></div>
+      <pre id="dtext" style="white-space:pre-wrap;word-break:break-word;font:11.5px/1.45 ui-monospace,Menlo,Consolas,monospace;background:var(--logbg);color:var(--logfg);border-radius:8px;padding:10px;max-height:340px;overflow:auto;margin:0;user-select:text"></pre></details></div>`;
   if($('#cadd')) $('#cadd').onclick = addCurrent;
   if($('#cfoil')) $('#cfoil').onclick = () => { SC.foil = !SC.foil; renderResult() };
   if($('#cundo')) $('#cundo').onclick = undoLast;
@@ -630,6 +712,13 @@ function renderResult(){
   $('#cqf').onsubmit = async e => { e.preventDefault(); const q = $('#cq').value.trim(); if(q.length < 2) return; $('#cq').blur();
     if(O.game === 'other'){ openManual({name:q}); return }
     try{ await lookup(q, O.game === 'auto' ? lookGames() : [O.game], new Set(), true) }catch(err){ toast(err.message, true) } };
+  if(keepOpen){ $('#ddet').open = true; $('#dtext').textContent = dreport() }
+  $('#ddet').ontoggle = () => { if($('#ddet').open) $('#dtext').textContent = dreport() };
+  $('#dcopy').onclick = async () => { const t = dreport(); $('#dtext').textContent = t;
+    try{ await navigator.clipboard.writeText(t); toast('Scan details copied - paste them in the chat') }
+    catch(e){ const r = document.createRange(); r.selectNodeContents($('#dtext')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast('Selected - tap Copy in the menu') } };
+  $('#dshare').onclick = async () => { const t = dreport(); try{ if(navigator.share) await navigator.share({title:'Nightvault Pocket scan details', text:t}); else throw 0 }catch(e){ if(e && e.name === 'AbortError') return; $('#dcopy').click() } };
+  if($('#ctpl')) $('#ctpl').onclick = e => { e.preventDefault(); openTemplate({game:m ? m.game : O.game}, true) };
   if($('#cman')) $('#cman').onclick = e => { e.preventDefault(); openManual({name:$('#cq').value.trim(), game:O.game}) };
   renderSession();
 }
@@ -672,6 +761,83 @@ function renderSession(){
     if(e.added <= 0) SC.session = SC.session.filter(x => x !== e); renderResult() });
 }
 
+/* ---------------------------------------------------------------- scan templates: where the name, set & number and extra text sit */
+function templateList(g){
+  const mine = store.templates.filter(t => !g || t.game === g).map(t => ({...t, label:t.name}));
+  const std = g ? [{id:'std:' + g, label:'Standard', game:g, std:true, zones:{name:GAMES[g].name, num:GAMES[g].num}}]
+    : [{id:'std:auto', label:'Standard', game:null, std:true, zones:{name:AUTO.name, num:AUTO.num}},
+       {id:'std:mid', label:'Name in the middle', game:null, std:true, zones:{name:GAMES.lorcana.name}},
+       {id:'std:low', label:'Name at the bottom', game:null, std:true, zones:{name:GAMES.onepiece.name}}];
+  const all = std.concat(mine), last = (O.lastTpl || {})[g || 'auto'];
+  return last ? all.sort((a, b) => (b.id === last) - (a.id === last)) : all;
+}
+const ZONES = [['name', 'Name'], ['num', 'Set & number'], ['text', 'Extra text']];
+const EDIT = {};
+function cardFromImage(img){            // fit a card-shaped box in the middle of a photo
+  const c = document.createElement('canvas'); c.width = 756; c.height = 1056; const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+  let w = W * 0.96, h = w * 88 / 63; if(h > H * 0.96){ h = H * 0.96; w = h * 63 / 88 }
+  c.getContext('2d').drawImage(img, (W - w) / 2, (H - h) / 2, w, h, 0, 0, 756, 1056); return c;
+}
+function thumbOf(card){ const c = document.createElement('canvas'); c.width = 252; c.height = 352; c.getContext('2d').drawImage(card, 0, 0, 252, 352); return c.toDataURL('image/jpeg', 0.7) }
+async function cardFromThumb(src){ const i = new Image(); i.src = src; await i.decode(); const c = document.createElement('canvas'); c.width = 756; c.height = 1056; c.getContext('2d').drawImage(i, 0, 0, 756, 1056); return c }
+function openTemplate(t, useLast){
+  const g0 = (t && t.game) || (O.game !== 'auto' && O.game !== 'other' ? O.game : 'mtg');
+  Object.assign(EDIT, {id:t && t.id || null, game:g0, name:t && t.name || '', zones:JSON.parse(JSON.stringify((t && t.zones) || {name:GAMES[g0].name, num:GAMES[g0].num, text:null})),
+    card:null, thumb:t && t.thumb || ''});
+  if(useLast && SC.lastCard){ EDIT.card = SC.lastCard; EDIT.thumb = thumbOf(SC.lastCard) }
+  modal(`<h3>${EDIT.id ? 'Edit' : 'New'} scan template</h3>
+    <div class="bar"><select id="tg" style="flex:1">${Object.entries(GAMES).filter(([k]) => k !== 'other').map(([k, g]) => `<option value="${k}" ${k === EDIT.game ? 'selected' : ''}>${esc(g.label)}</option>`).join('')}</select>
+      <input id="tn" type="text" style="flex:2" placeholder="Name, e.g. Full art, Showcase, New layout" value="${esc(EDIT.name)}"></div>
+    <div class="hint" style="margin:0 0 4px">Drag a box to move it, drag its round corner to resize it.</div>
+    <div class="tpled" id="tpled">${EDIT.thumb ? `<img id="tbg" src="${EDIT.thumb}" alt="">` : '<div class="blank">No picture yet.<br>Use the last scanned card or pick a photo of the card below.</div>'}
+      ${ZONES.map(([z, l]) => `<div class="zone z-${z}" data-z="${z}"><span><b>${l}</b></span><i class="h"></i></div>`).join('')}</div>
+    <div class="bar" style="justify-content:center"><label class="ctl" style="margin:0"><input type="checkbox" id="tnum" ${EDIT.zones.num ? 'checked' : ''}> Set &amp; number</label><label class="ctl" style="margin:0"><input type="checkbox" id="ttext" ${EDIT.zones.text ? 'checked' : ''}> Extra text</label></div>
+    <div class="btns" style="justify-content:center"><button class="btn sm" id="tlast" ${SC.lastCard ? '' : 'disabled'}><i class="ti ti-history"></i>Last scanned card</button>
+      <label class="btn sm"><i class="ti ti-photo"></i>Photo<input type="file" id="tphoto" accept="image/*" hidden></label><button class="btn sm" id="ttest"><i class="ti ti-eye-check"></i>Test zones</button></div>
+    <pre id="tout" class="hint" style="white-space:pre-wrap;word-break:break-word;margin:8px 0 0"></pre>
+    <div class="btns" style="justify-content:flex-end;margin-top:10px">${EDIT.id ? '<button class="btn danger" id="tdel"><i class="ti ti-trash"></i>Delete</button><span class="sp"></span>' : ''}<button class="btn" id="tx">Cancel</button><button class="btn primary" id="tok">Save</button></div>`);
+  const ed = $('#tpled');
+  const place = () => ZONES.forEach(([z]) => { const box = ed.querySelector(`[data-z="${z}"]`), r = EDIT.zones[z];
+    box.classList.toggle('off', !r); if(r) Object.assign(box.style, {left:r[0] * 100 + '%', top:r[1] * 100 + '%', width:(r[2] - r[0]) * 100 + '%', height:(r[3] - r[1]) * 100 + '%'}) });
+  place();
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  ed.querySelectorAll('.zone').forEach(box => box.addEventListener('pointerdown', e => {
+    e.preventDefault(); const z = box.dataset.z, R = ed.getBoundingClientRect(), r0 = EDIT.zones[z].slice(), sx = e.clientX, sy = e.clientY, size = e.target.classList.contains('h');
+    box.setPointerCapture(e.pointerId);
+    const move = ev => { const dx = (ev.clientX - sx) / R.width, dy = (ev.clientY - sy) / R.height; let [x0, y0, x1, y1] = r0;
+      if(size){ x1 = clamp(x1 + dx, x0 + 0.05, 1); y1 = clamp(y1 + dy, y0 + 0.025, 1) }
+      else { const w = x1 - x0, h = y1 - y0; x0 = clamp(x0 + dx, 0, 1 - w); y0 = clamp(y0 + dy, 0, 1 - h); x1 = x0 + w; y1 = y0 + h }
+      EDIT.zones[z] = [x0, y0, x1, y1].map(v => +v.toFixed(4)); place() };
+    const up = () => { box.removeEventListener('pointermove', move); box.removeEventListener('pointerup', up); box.removeEventListener('pointercancel', up) };
+    box.addEventListener('pointermove', move); box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
+  }));
+  const setBg = card => { EDIT.card = card; EDIT.thumb = thumbOf(card); const old = ed.querySelector('img, .blank'); if(old) old.remove();
+    const i = document.createElement('img'); i.id = 'tbg'; i.alt = ''; i.src = EDIT.thumb; ed.prepend(i) };
+  $('#tlast').onclick = () => SC.lastCard && setBg(SC.lastCard);
+  $('#tphoto').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if(!f) return; const i = new Image(); i.src = URL.createObjectURL(f);
+    try{ await i.decode(); setBg(cardFromImage(i)) }catch(err){ toast('Could not open that picture', true) } };
+  $('#tg').onchange = e => { const was = EDIT.game; EDIT.game = e.target.value;
+    if(JSON.stringify(EDIT.zones.name) === JSON.stringify(GAMES[was].name)) Object.assign(EDIT.zones, {name:GAMES[EDIT.game].name, num:EDIT.zones.num && GAMES[EDIT.game].num}); place() };
+  $('#tnum').onchange = e => { EDIT.zones.num = e.target.checked ? (GAMES[EDIT.game].num || [0.02, 0.92, 0.6, 0.99]) : null; place() };
+  $('#ttext').onchange = e => { EDIT.zones.text = e.target.checked ? [0.08, 0.62, 0.92, 0.86] : null; place() };
+  $('#ttest').onclick = async () => {
+    const card = EDIT.card || (EDIT.thumb ? await cardFromThumb(EDIT.thumb) : null); if(!card){ toast('Add a picture of the card first', true); return }
+    $('#tout').textContent = 'Reading ...';
+    try{ const w = await ocr(), lines = [];
+      for(const [z, l] of ZONES){ if(!EDIT.zones[z]) continue; const t = (await w.recognize(crop(card, EDIT.zones[z], z !== 'text'))).data.text.trim();
+        lines.push(`${l}: ${t ? JSON.stringify(t) : '(nothing read)'}${z === 'name' ? '  →  ' + JSON.stringify(cleanName(t)) : ''}`) }
+      $('#tout').textContent = lines.join('\n'); setSt('');
+    }catch(e){ $('#tout').textContent = e.message }
+  };
+  $('#tx').onclick = closeModal;
+  if($('#tdel')) $('#tdel').onclick = () => { store.templates = store.templates.filter(x => x.id !== EDIT.id); persist(); closeModal(); toast('Template deleted'); if(VIEW === 'settings') viewSettings() };
+  $('#tok').onclick = () => {
+    const name = $('#tn').value.trim() || 'My template', t = {id:EDIT.id || 'tpl-' + uid(), game:EDIT.game, name, zones:EDIT.zones, thumb:EDIT.thumb, updated:Date.now()};
+    store.templates = store.templates.filter(x => x.id !== t.id).concat([t]); persist(); closeModal();
+    toast(`Saved “${name}” for ${GAMES[t.game].label}. The scanner tries it when the standard spot is not sure.`); if(VIEW === 'settings') viewSettings();
+  };
+}
+
 /* ---------------------------------------------------------------- add a card by hand (any game) */
 function openManual(pre){
   pre = pre || {}; const g0 = pre.game && GAMES[pre.game] && pre.game !== 'auto' ? pre.game : 'other';
@@ -695,6 +861,148 @@ function openManual(pre){
   };
 }
 
+/* ---------------------------------------------------------------- your own price sources (any web address that answers with card data) */
+const gameKey = c => c.game === 'other' ? 'other:' + String(c.gameName || '').toLowerCase() : c.game;
+const gameKeyLabel = k => k.startsWith('other:') ? (store.cards.find(c => gameKey(c) === k) || {}).gameName || k.slice(6) : (GAMES[k] || {}).label || k;
+const sourcesFor = c => store.sources.filter(x => x.game === gameKey(c));
+const getPath = (o, p) => String(p || '').split('.').filter(Boolean).reduce((a, k) => a == null ? a : a[/^\d+$/.test(k) && Array.isArray(a) ? +k : k], o);
+function findList(j, d = 0){
+  if(Array.isArray(j)) return j; if(!j || typeof j !== 'object' || d > 3) return [];
+  for(const v of Object.values(j)) if(Array.isArray(v) && v.length && typeof v[0] === 'object') return v;
+  for(const v of Object.values(j)) if(v && typeof v === 'object' && !Array.isArray(v)){ const l = findList(v, d + 1); if(l.length) return l }
+  return (j.name || j.title) ? [j] : [];
+}
+const NAME_KEYS = ['name', 'title', 'card_name', 'cardName', 'productName', 'product_name', 'cleanName', 'clean_name', 'Name'];
+function nameIn(it, path){ if(path) return String(getPath(it, path) ?? ''); for(const k of NAME_KEYS) if(typeof it[k] === 'string') return it[k];
+  for(const v of Object.values(it)) if(v && typeof v === 'object' && !Array.isArray(v)) for(const k of NAME_KEYS) if(typeof v[k] === 'string') return v[k]; return '' }
+function priceIn(it, path){
+  if(path){ const v = num(getPath(it, path)); return v == null ? null : {v, k:path} }
+  let best = null;
+  const walk = (o, d, key) => { if(o == null || d > 4) return;
+    if(typeof o !== 'object'){ const last = key.split('.').pop();
+      if(/price|market|avg|average|trend|mid|low|eur|usd/i.test(last) && !/(id|date|updated|url|count|delta|change|percent)/i.test(last)){ const v = num(o);
+        if(v != null && v > 0){ const sc = /foil|holo/i.test(key) ? 9 : /market|trend|avg|average/i.test(last) ? 0 : /mid/i.test(last) ? 1 : /^price$|price$/i.test(last) ? 2 : /low/i.test(last) ? 3 : 4; if(!best || sc < best.s) best = {v, k:key, s:sc} } }
+      return }
+    for(const [k, v] of Object.entries(o)) walk(v, d + 1, key ? key + '.' + k : k) };
+  walk(it, 0, ''); return best;
+}
+async function sourcePrice(src, c){
+  const url = src.url.replace(/\{name\}/g, enc(c.name.split(' (')[0])).replace(/\{set\}/g, enc(c.showSet || c.set)).replace(/\{number\}/g, enc(c.showNum || c.number));
+  const h = {Accept:'application/json'}; if(src.keyHeader && src.key) h[src.keyHeader] = src.key;
+  let r; try{ r = await fetch(url, {headers:h}) }catch(e){ throw new Error('This site does not let other websites read it (or it could not be reached).') }
+  if(!r.ok) throw new Error(`The site answered with error ${r.status}.`);
+  let j; try{ j = await r.json() }catch(e){ throw new Error('The site did not answer with card data (JSON). Check the address.') }
+  const list = findList(src.listPath ? getPath(j, src.listPath) : j);
+  if(!list.length) throw new Error('No list of cards found in the answer.');
+  const want = [String(c.showSet || '').toLowerCase(), String(c.showNum || '').toLowerCase()].filter(x => x && x !== '-');
+  let best = null;
+  const bare = x => String(x).replace(/\s*[\(\[][^\)\]]*[\)\]]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase(), want0 = bare(c.name.split(' (')[0]);
+  for(const it of list.slice(0, 500)){ const nm = nameIn(it, src.namePath); if(!nm) continue; const b = bare(nm); const sm = b === want0 || b.startsWith(want0 + ' ') ? 1 : sim(want0, b); if(sm < 0.75) continue;
+    const blob = JSON.stringify(it).toLowerCase(), extra = want.filter(x => blob.includes(x)).length;
+    const p = priceIn(it, src.pricePath); const score = sm + extra * 0.05 + (p ? 0.01 : 0);
+    if(!best || score > best.score) best = {score, name:nm, price:p} }
+  if(!best) throw new Error(`No card called “${c.name}” in the answer (${list.length} items).`);
+  if(!best.price) throw new Error(`Found “${best.name}” but no price field. Name the price field under “Advanced”.`);
+  return {price:best.price.v, field:best.price.k, name:best.name, items:list.length};
+}
+
+/* ---------------------------------------------------------------- price check: look every saved card up again, in the background */
+const PRICED = new Set(['mtg', 'pokemon', 'ygo', 'lorcana', 'swu', 'riftbound', 'onepiece']);    // games whose sources give prices
+const PC = {running:false, stop:false, done:0, total:0, filled:0, updated:0, missed:0};
+const priceOf = c => c.foil ? c.priceFoil : c.price;
+const tcgSearch = c => `https://www.tcgplayer.com/search/all/product?q=${enc(c.name.split(' - ')[0])}`;
+async function priceCheck(onlyMissing){
+  if(PC.running) return;
+  const todo = store.cards.filter(c => (PRICED.has(c.game) || sourcesFor(c).length) && (!onlyMissing || priceOf(c) == null));
+  Object.assign(PC, {running:true, stop:false, done:0, total:todo.length, filled:0, updated:0, missed:0});
+  if(!todo.length){ PC.running = false; toast(onlyMissing ? 'Every card already has a price' : 'No cards to check'); drawPC(); return }
+  drawPC();
+  const cache = new Map();                                   // one lookup per game + name, shared by all its printings
+  for(const c of todo){
+    if(PC.stop) break;
+    const k = c.game + '|' + c.name.toLowerCase();
+    try{
+      if(!PRICED.has(c.game)) throw 'own';
+      if(!cache.has(k)){
+        const tokens = new Set([c.showSet.toUpperCase(), String(c.showNum).toUpperCase(), normNum(c.showNum).toUpperCase()]);
+        cache.set(k, await FIND[c.game](c.name.split(' (')[0], tokens));
+        await sleep(c.game === 'mtg' ? 120 : 60);            // be polite to the free card databases
+      }
+      const list = cache.get(k) || [];
+      const m = list.find(x => x.set === c.set && String(x.number) === String(c.number)) || list.find(x => x.set === c.set && sim(x.name, c.name) >= 0.9);
+      const before = priceOf(c);
+      if(m && (m.price != null || m.priceFoil != null)){
+        c.price = m.price ?? null; c.priceFoil = m.priceFoil ?? null; c.currency = m.currency; c.psrc = m.psrc || c.psrc; c.priced = Date.now();
+        if(!c.image && m.image){ c.image = m.image; c.alt = m.alt || [] }
+        if(before == null && priceOf(c) != null) PC.filled++; else if(before !== priceOf(c)) PC.updated++;
+        if(priceOf(c) == null) PC.missed++;
+      } else throw 'own';
+    }catch(e){
+      let got = false;
+      for(const src of sourcesFor(c)){
+        try{ const before = priceOf(c), r = await sourcePrice(src, c); await sleep(150);
+          if(c.foil) c.priceFoil = r.price; else c.price = r.price; c.currency = src.currency || 'EUR'; c.psrc = src.label; c.priced = Date.now();
+          if(before == null) PC.filled++; else if(before !== r.price) PC.updated++; got = true; break }
+        catch(err){ PC.lastErr = src.label + ': ' + (err.message || err) }
+      }
+      if(!got) PC.missed++;
+    }
+    PC.done++;
+    if(PC.done % 5 === 0 || PC.done === PC.total){ persist(); drawPC() }
+  }
+  PC.running = false; store.lastPriceCheck = Date.now(); persist(); drawPC();
+  toast(PC.stop ? 'Price check stopped' : `Prices checked: ${PC.filled} filled in, ${PC.updated} changed${PC.missed ? `, ${PC.missed} still without a price` : ''}`); if(PC.missed && PC.lastErr) dlogNote('Last price source problem: ' + PC.lastErr);
+  if(VIEW === 'cards') viewCards();
+}
+function drawPC(){
+  const el = $('#mpc'); if(el){
+    el.innerHTML = PC.running ? `<div class="panel" style="display:flex;gap:10px;align-items:center;padding:10px 12px"><i class="ti ti-refresh" style="color:var(--accent);font-size:18px"></i>
+      <div style="flex:1;min-width:0;font-size:13px">Checking prices · ${PC.done} of ${PC.total}<div style="height:4px;border-radius:2px;background:var(--track);margin-top:6px;overflow:hidden"><div style="height:100%;width:${PC.total ? Math.round(100 * PC.done / PC.total) : 0}%;background:var(--accent)"></div></div></div>
+      <button class="btn sm" id="pcstop">Stop</button></div>` : '';
+    if($('#pcstop')) $('#pcstop').onclick = () => { PC.stop = true };
+  }
+  if(PC.running) setSt(`Checking prices ${PC.done}/${PC.total}`); else if($('#scst').textContent.startsWith('Checking prices')) setSt('');
+}
+
+/* ---------------------------------------------------------------- price source editor */
+function openSource(src){
+  const keys = new Set(Object.keys(GAMES).filter(k => k !== 'other')); store.cards.forEach(c => keys.add(gameKey(c))); store.sources.forEach(x => keys.add(x.game));
+  const s0 = src || {game:[...keys].find(k => k.startsWith('other:')) || 'swccg', label:'', url:'', keyHeader:'', key:'', currency:'EUR', listPath:'', namePath:'', pricePath:''};
+  const sample = store.cards.find(c => gameKey(c) === s0.game);
+  modal(`<h3>${src ? 'Edit' : 'Add'} a price source</h3>
+    <div class="bar"><select id="pg" style="flex:1">${[...keys].map(k => `<option value="${esc(k)}" ${k === s0.game ? 'selected' : ''}>${esc(gameKeyLabel(k))}</option>`).join('')}<option value="new">Another game ...</option></select></div>
+    <div class="bar" id="pgnw" hidden><input id="pgn" type="text" placeholder="Name of the game (as you typed it for your cards)"></div>
+    <div class="bar"><input id="pl" type="text" placeholder="Name for this source, e.g. My Digimon site" value="${esc(s0.label)}"></div>
+    <div class="bar"><input id="pu" type="text" placeholder="https://site.example/api/cards?name={name}" value="${esc(s0.url)}" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
+    <div class="hint" style="margin:-4px 0 10px">The app fills in <b>{name}</b>, <b>{set}</b> and <b>{number}</b> for each card. The site must answer with card data (JSON) and allow other websites to read it.</div>
+    <div class="bar"><select id="pc"><option ${s0.currency === 'EUR' ? 'selected' : ''}>EUR</option><option ${s0.currency === 'USD' ? 'selected' : ''}>USD</option></select>
+      <input id="pkh" type="text" style="flex:1" placeholder="Key header (optional)" value="${esc(s0.keyHeader)}" autocapitalize="off"><input id="pk" type="password" style="flex:1" placeholder="Key (optional)" value="${esc(s0.key)}" autocomplete="off"></div>
+    <details ${s0.listPath || s0.namePath || s0.pricePath ? 'open' : ''}><summary class="hint" style="cursor:pointer;margin:0 0 8px">Advanced: field names (only if the test picks the wrong ones)</summary>
+      <div class="bar"><input id="plp" type="text" placeholder="List, e.g. data" value="${esc(s0.listPath)}" autocapitalize="off"><input id="pnp" type="text" placeholder="Name, e.g. name" value="${esc(s0.namePath)}" autocapitalize="off"><input id="ppp" type="text" placeholder="Price, e.g. prices.market" value="${esc(s0.pricePath)}" autocapitalize="off"></div></details>
+    <div class="bar"><input id="pt" type="text" style="flex:1" placeholder="Card name to test with" value="${esc(sample ? sample.name : '')}"><button class="btn" id="ptest"><i class="ti ti-eye-check"></i>Test</button></div>
+    <pre id="pout" class="hint" style="white-space:pre-wrap;word-break:break-word;margin:0"></pre>
+    <div class="btns" style="justify-content:flex-end;margin-top:12px">${src ? '<button class="btn danger" id="pdel"><i class="ti ti-trash"></i>Delete</button><span class="sp"></span>' : ''}<button class="btn" id="px">Cancel</button><button class="btn primary" id="pok">Save</button></div>`);
+  $('#pg').onchange = e => { $('#pgnw').hidden = e.target.value !== 'new' };
+  const read = () => { const g = $('#pg').value === 'new' ? 'other:' + $('#pgn').value.trim().toLowerCase() : $('#pg').value;
+    return {id:src ? src.id : 'src-' + uid(), game:g, label:$('#pl').value.trim() || 'My price source', url:$('#pu').value.trim(), keyHeader:$('#pkh').value.trim(), key:$('#pk').value,
+      currency:$('#pc').value, listPath:$('#plp').value.trim(), namePath:$('#pnp').value.trim(), pricePath:$('#ppp').value.trim()} };
+  $('#ptest').onclick = async () => {
+    const x = read(), name = $('#pt').value.trim(); if(!/^https:\/\//.test(x.url)){ $('#pout').textContent = 'Enter an address that starts with https://'; return }
+    if(!name){ $('#pout').textContent = 'Enter a card name to test with'; return }
+    const c = store.cards.find(k => gameKey(k) === x.game && k.name.toLowerCase() === name.toLowerCase()) || {name, showSet:'', showNum:'', set:'', number:''};
+    $('#pout').textContent = 'Asking the site ...';
+    try{ const r = await sourcePrice(x, c); $('#pout').textContent = `Found “${r.name}” among ${r.items} items\nPrice: ${fmt(r.price, x.currency)} (field “${r.field}”)` }
+    catch(e){ $('#pout').textContent = e.message }
+  };
+  $('#px').onclick = closeModal;
+  if($('#pdel')) $('#pdel').onclick = () => { store.sources = store.sources.filter(x => x.id !== src.id); persist(); closeModal(); toast('Price source deleted'); if(VIEW === 'settings') viewSettings() };
+  $('#pok').onclick = () => { const x = read();
+    if(!/^https:\/\//.test(x.url)){ toast('Enter an address that starts with https://', true); return }
+    if(x.game === 'other:'){ toast('Enter the name of the game', true); return }
+    store.sources = store.sources.filter(y => y.id !== x.id).concat([x]); persist(); closeModal();
+    toast(`Saved. “Update prices” in My cards now also asks ${x.label}.`); if(VIEW === 'settings') viewSettings() };
+}
+
 /* ---------------------------------------------------------------- my cards */
 const F = {q:'', game:'all', set:'all', sort:'new'};
 function viewCards(){
@@ -704,7 +1012,10 @@ function viewCards(){
   const games = [...new Set(cs.map(c => c.game))], sets = [...new Set(cs.filter(c => F.game === 'all' || c.game === F.game).map(c => c.showSet))].sort();
   const eur = val('EUR'), usd = val('USD');
   $('#main').innerHTML = `<div class="head"><h1>My cards</h1><div class="sp"></div><button class="btn sm" id="mman"><i class="ti ti-plus"></i>By hand</button><button class="btn sm primary" id="mexp"><i class="ti ti-device-desktop-up"></i>Send to Nightvault</button></div>
-    <div class="sub" style="margin:-6px 0 12px">${total.toLocaleString()} cards · ${cs.length.toLocaleString()} different · value <b style="color:var(--text)">${fmt(eur, 'EUR')}</b>${usd ? ' + ' + fmt(usd, 'USD') : ''}${unpriced ? ` · ${unpriced} without a price` : ''}</div>
+    <div class="sub" style="margin:-6px 0 8px">${total.toLocaleString()} cards · ${cs.length.toLocaleString()} different · value <b style="color:var(--text)">${fmt(eur, 'EUR')}</b>${usd ? ' + ' + fmt(usd, 'USD') : ''}${unpriced ? ` · ${unpriced} without a price` : ''}</div>
+    ${cs.length ? `<div class="btns" style="margin:0 0 12px;align-items:center"><button class="btn sm" id="mpr" ${PC.running ? 'disabled' : ''}><i class="ti ti-refresh"></i>Update prices</button>${unpriced ? `<button class="btn sm" id="mpm" ${PC.running ? 'disabled' : ''}>Only missing prices</button>` : ''}
+      <span class="hint" style="margin:0">${store.lastPriceCheck ? 'Last checked ' + new Date(store.lastPriceCheck).toLocaleDateString() : ''}</span></div>` : ''}
+    <div id="mpc"></div>
     <div class="bar"><input class="grow" id="mq" type="search" placeholder="Search by name" value="${esc(F.q)}">
       <select id="mgame"><option value="all">All games</option>${games.map(g => `<option value="${g}" ${F.game === g ? 'selected' : ''}>${esc(GAMES[g].label)}</option>`).join('')}</select>
       <select id="mset"><option value="all">All sets</option>${sets.map(s => `<option ${F.set === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
@@ -717,7 +1028,7 @@ function viewCards(){
     rows.sort(F.sort === 'name' ? (a, b) => a.name.localeCompare(b.name) : F.sort === 'value' ? (a, b) => pv(b) - pv(a)
             : F.sort === 'set' ? (a, b) => a.showSet.localeCompare(b.showSet) || normNum(a.number).localeCompare(normNum(b.number), undefined, {numeric:true}) : (a, b) => b.added - a.added);
     $('#mlist').innerHTML = rows.length ? rows.map(c => `<div class="srow">${c.image ? pic(c, 'loading="lazy"') : '<div class="ph"></div>'}
-      <div class="grow"><div class="nm">${esc(c.name)}</div><div class="meta"><span class="dot" style="background:${GAMES[c.game].color};margin-right:5px"></span>${c.gameName ? esc(c.gameName) + ' · ' : ''}${esc(c.showSet)} #${esc(c.showNum)}${c.foil ? ' · foil' : ''} · <span class="price">${fmt(c.foil ? c.priceFoil : c.price, c.currency)}</span></div></div>
+      <div class="grow"><div class="nm">${esc(c.name)}</div><div class="meta"><span class="dot" style="background:${GAMES[c.game].color};margin-right:5px"></span>${c.gameName ? esc(c.gameName) + ' · ' : ''}${esc(c.showSet)} #${esc(c.showNum)}${c.foil ? ' · foil' : ''} · ${priceOf(c) != null ? `<span class="price">${fmt(priceOf(c), c.currency)}</span>` : c.game === 'other' ? '<span>no price</span>' : `<a href="${esc(c.link || tcgSearch(c))}" target="_blank" rel="noopener" style="color:var(--accent)">no price · look up <i class="ti ti-external-link"></i></a>`}</div></div>
       <div class="qb"><button data-u="${c.uid}" data-d="-1" aria-label="One less">−</button><b>${c.qty}</b><button data-u="${c.uid}" data-d="1" aria-label="One more">+</button></div></div>`).join('')
       : `<div class="empty">${cs.length ? 'Nothing matches that filter.' : 'No cards yet.<br>Scan a card and tap Add.'}<br><button class="btn primary" id="mgo" style="margin-top:12px"><i class="ti ti-camera"></i>Scan cards</button></div>`;
     $$('#mlist [data-u]').forEach(b => b.onclick = () => { const c = store.cards.find(x => x.uid === b.dataset.u); if(!c) return;
@@ -729,13 +1040,16 @@ function viewCards(){
   $('#mset').onchange = e => { F.set = e.target.value; draw() };
   $('#msort').onchange = e => { F.sort = e.target.value; draw() };
   $('#mexp').onclick = exportNightvault; $('#mman').onclick = () => openManual({});
+  if($('#mpr')) $('#mpr').onclick = () => priceCheck(false);
+  if($('#mpm')) $('#mpm').onclick = () => priceCheck(true);
+  drawPC();
   draw(); setSt('');
 }
 
 /* ---------------------------------------------------------------- export / import */
 const stamp = () => new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '');
 function payload(){
-  return {format:PHONE_FORMAT, version:1, app:'Nightvault Pocket', exported:new Date().toISOString(),
+  return {format:PHONE_FORMAT, version:1, app:'Nightvault Pocket', exported:new Date().toISOString(), templates:store.templates, backs:store.backs, sources:store.sources.map(x => ({...x, key:''})),
     cards:store.cards.map(c => ({uid:c.uid, game:c.game === 'other' ? (String(c.gameName || 'other').toLowerCase().replace(/[^a-z0-9]+/g, '') || 'other') : c.game, game_name:c.game === 'other' ? c.gameName : GAMES[c.game].full, set:c.set, number:c.number, name:c.name, set_name:c.setName, show_set:c.showSet, show_number:c.showNum,
       rarity:c.rarity, foil:c.foil, qty:c.qty, price:c.foil ? c.priceFoil : c.price, currency:c.currency, image:c.image, added:c.added}))};
 }
@@ -775,7 +1089,10 @@ async function importBackup(e){
       store.cards.push({uid:x.uid || uid(), key:k, game:x.game, gameName:x.game === 'other' ? x.game_name : '', set:x.set, number:x.number, showSet:x.show_set || x.set.toUpperCase(), showNum:String(x.show_number || x.number),
         name:x.name || '?', setName:x.set_name || '', rarity:x.rarity || '', image:x.image || '', price:x.foil ? null : x.price ?? null, priceFoil:x.foil ? x.price ?? null : null,
         currency:x.currency || 'EUR', psrc:'', foil:!!x.foil, qty:Math.max(1, +x.qty || 1), added:x.added || Date.now()}); n++ }
-    persist(); tabCount(); toast(`Restored ${n} new entr${n === 1 ? 'y' : 'ies'}`); viewSettings();
+    let nt = 0; for(const t of Array.isArray(d.templates) ? d.templates : []){ if(t && t.id && GAMES[t.game] && t.zones && t.zones.name && !store.templates.some(x => x.id === t.id)){ store.templates.push(t); nt++ } }
+    for(const x of Array.isArray(d.sources) ? d.sources : []){ if(x && x.id && /^https:\/\//.test(x.url || '') && !store.sources.some(y => y.id === x.id)) store.sources.push(x) }
+    for(const b of Array.isArray(d.backs) ? d.backs : []){ if(b && GAMES[b.game] && Array.isArray(b.vec) && store.backs.filter(x => x.game === b.game).length < 3) store.backs.push(b) }
+    persist(); tabCount(); toast(`Restored ${n} new entr${n === 1 ? 'y' : 'ies'}${nt ? ` and ${nt} scan template${nt === 1 ? '' : 's'}` : ''}`); viewSettings();
   }catch(err){ toast('That file is not a Nightvault Pocket export.', true) }
 }
 
@@ -793,7 +1110,15 @@ function viewSettings(){
       <label class="row"><input type="checkbox" id="oadd" ${O.autoAdd ? 'checked' : ''}><div class="grow">Add automatically when sure<div class="hint" style="margin:2px 0 0">Only when the name matched and the printing is clear.</div></div></label>
       <label class="row"><input type="checkbox" id="onum" ${O.readNum ? 'checked' : ''}><div class="grow">Also read the collector number<div class="hint" style="margin:2px 0 0">Picks the right printing more often. Takes a moment longer.</div></div></label>
       <label class="row"><input type="checkbox" id="ofull" ${O.full ? 'checked' : ''}><div class="grow">Also read the whole card<div class="hint" style="margin:2px 0 0">Finds the name on full-art and special versions, and recognises the game by itself. Takes a second longer.</div></div></label>
+      <label class="row"><input type="checkbox" id="oprice" ${O.dailyPrices ? 'checked' : ''}><div class="grow">Update prices once a day when I open the app<div class="hint" style="margin:2px 0 0">Runs in the background. Cards you still need to price get a link to look them up.</div></div></label>
       <div class="row"><div class="grow">Start with game</div><select id="ogame"><option value="auto">All games</option>${Object.entries(GAMES).map(([k, g]) => `<option value="${k}" ${O.game === k ? 'selected' : ''}>${esc(g.label)}</option>`).join('')}</select></div></div>
+    <div class="panel"><h3>Price sources</h3><p class="hint" style="margin:0 0 6px">Add a site the app can ask for prices, for example for a game you add by hand. Used by “Update prices” when the built-in sources have no price.</p>
+      ${store.sources.length ? store.sources.map(x => `<div class="row" style="padding:7px 0"><i class="ti ti-tag" style="color:var(--accent)"></i><div class="grow">${esc(x.label)} <span class="muted" style="font-size:12px">· ${esc(gameKeyLabel(x.game))}</span></div><button class="btn sm" data-sedit="${x.id}">Edit</button></div>`).join('') : '<div class="muted" style="font-size:13px;padding:4px 0 8px">No sources of your own yet.</div>'}
+      <div class="btns" style="margin-top:8px"><button class="btn sm primary" id="snew"><i class="ti ti-plus"></i>Add price source</button></div></div>
+    <div class="panel"><h3>Scan templates</h3><p class="hint" style="margin:0 0 6px">Tell the scanner where the name, set &amp; number and extra text sit on special or new layouts. When the standard spot is not sure, it tries your templates one by one.</p>
+      ${store.templates.length ? store.templates.slice().sort((a, b) => a.game.localeCompare(b.game) || a.name.localeCompare(b.name)).map(t => `<div class="row" style="padding:7px 0">${t.thumb ? `<img src="${t.thumb}" alt="" style="width:30px;aspect-ratio:63/88;object-fit:cover;border-radius:3px">` : '<span class="dot" style="background:' + GAMES[t.game].color + '"></span>'}
+        <div class="grow">${esc(t.name)} <span class="muted" style="font-size:12px">· ${esc(GAMES[t.game].label)}</span></div><button class="btn sm" data-tedit="${t.id}">Edit</button></div>`).join('') : '<div class="muted" style="font-size:13px;padding:4px 0 8px">No templates yet. Every game has its standard layout built in.</div>'}
+      <div class="btns" style="margin-top:8px"><button class="btn sm primary" id="tnew"><i class="ti ti-plus"></i>New template</button></div></div>
     <div class="panel"><h3>Card backs</h3><p class="hint" style="margin:0 0 6px">Teach the app a card back once. When you scan that back later, it switches to that game by itself.</p>
       ${Object.keys(FIND).map(g => { const n = store.backs.filter(b => b.game === g).length; return `<div class="row" style="padding:7px 0"><span class="dot" style="background:${GAMES[g].color}"></span><div class="grow">${esc(GAMES[g].label)} <span class="muted" style="font-size:12px">${n ? '· learned' : ''}</span></div>
         ${n ? `<button class="btn sm" data-forget="${g}">Forget</button>` : ''}<button class="btn sm" data-teach="${g}"><i class="ti ti-school"></i>${n ? 'Teach again' : 'Teach'}</button></div>` }).join('')}</div>
@@ -807,6 +1132,11 @@ function viewSettings(){
   $('#oadd').onchange = e => { O.autoAdd = e.target.checked; persist() };
   $('#onum').onchange = e => { O.readNum = e.target.checked; persist() };
   $('#ofull').onchange = e => { O.full = e.target.checked; persist() };
+  $('#oprice').onchange = e => { O.dailyPrices = e.target.checked; persist() };
+  $('#tnew').onclick = () => openTemplate(null, true);
+  $('#snew').onclick = () => openSource(null);
+  $$('[data-sedit]').forEach(b => b.onclick = () => openSource(store.sources.find(x => x.id === b.dataset.sedit)));
+  $$('[data-tedit]').forEach(b => b.onclick = () => openTemplate(store.templates.find(t => t.id === b.dataset.tedit), false));
   $$('[data-teach]').forEach(b => b.onclick = () => { SC.teach = b.dataset.teach; show('scan') });
   $$('[data-forget]').forEach(b => b.onclick = () => { store.backs = store.backs.filter(x => x.game !== b.dataset.forget); persist(); viewSettings() });
   $('#ogame').onchange = e => { O.game = e.target.value; persist() };
@@ -821,6 +1151,7 @@ function viewSettings(){
 
 /* ---------------------------------------------------------------- start */
 applyTheme(); tabCount(); show('scan');
+if(O.dailyPrices && store.cards.length && Date.now() - (store.lastPriceCheck || 0) > 20 * 3600 * 1000) setTimeout(() => priceCheck(false), 4000);
 </script>
 </body>
 </html>
