@@ -449,10 +449,12 @@ function viewScan(){
     </div>
     <div class="shoot">
       <div style="display:flex;flex-direction:column;gap:6px;justify-self:start"><label class="btn"><i class="ti ti-photo"></i>Photo<input type="file" id="cfile" accept="image/*" multiple hidden></label>
-        <label class="btn"><i class="ti ti-layout-grid"></i>Binder page<input type="file" id="cpage" accept="image/*" hidden></label></div>
+        <label class="btn"><i class="ti ti-layout-grid"></i>Page photo<input type="file" id="cpage" accept="image/*" hidden></label></div>
       <button class="shutter" id="cscan" aria-label="Scan now"><b><i class="ti ti-scan"></i></b></button>
       <select id="ccam" aria-label="Camera" hidden></select>
     </div>
+    <div class="ctl"><label style="color:var(--text)"><i class="ti ti-layout-grid"></i> Scan</label>
+      <select id="cmode" aria-label="What to scan"><option value="0">One card</option>${[[3,3],[3,4],[2,3],[2,2],[4,3],[4,4]].map(([r, c]) => `<option value="${r}x${c}" ${O.binder === r + 'x' + c ? 'selected' : ''}>Binder page ${r}×${c}</option>`).join('')}</select></div>
     <div class="ctl">
       <label><input type="checkbox" id="cauto" ${O.auto ? 'checked' : ''}> Scan automatically when the card is held still</label>
       <label><input type="checkbox" id="caadd" ${O.autoAdd ? 'checked' : ''}> Add automatically when sure</label>
@@ -470,6 +472,8 @@ function viewScan(){
     try{ await img.decode(); openBinder(img) }catch(err){ toast('Could not open that picture', true) } };
   $('#cauto').onchange = e => { O.auto = e.target.checked; persist() };
   $('#caadd').onchange = e => { O.autoAdd = e.target.checked; persist() };
+  $('#cmode').onchange = e => { O.binder = e.target.value === '0' ? '' : e.target.value; persist(); camRes(); SC.hist = []; SC.armed = true; drawGuide('idle');
+    if(O.binder){ if(!O.quick){ O.quick = true; persist(); $('#cquick').checked = true; renderResult() } toast('Binder mode: line the pockets up with the grid, then hold still or tap the shutter') } };
   $('#cquick').onchange = e => { O.quick = e.target.checked; persist(); renderResult(); if(O.quick && !SC.stream) toast('Quick scan on: start the camera, or pick several photos at once') };
   $('#csets').onchange = e => { O.sets = e.target.value.trim(); persist() };
   renderResult(); viewScanBanner();
@@ -501,7 +505,7 @@ async function startCamera(deviceId){
     const cur = track.getSettings().deviceId, sel = $('#ccam');
     if(devs.length > 1){ sel.hidden = false; sel.innerHTML = devs.map((d, i) => `<option value="${esc(d.deviceId)}" ${d.deviceId === cur ? 'selected' : ''}>${esc(d.label || 'Camera ' + (i + 1))}</option>`).join('');
       sel.onchange = e => { O.cam = e.target.value; persist(); startCamera(e.target.value) } }
-    clearInterval(SC.timer); SC.hist = []; SC.ref = null; SC.timer = setInterval(scanTick, 150); SC.armed = true;
+    clearInterval(SC.timer); SC.hist = []; SC.ref = null; SC.timer = setInterval(scanTick, 150); SC.armed = true; if(O.binder) camRes();
     setSt('Hold a card in the frame');
   }catch(e){
     const msg = e.name === 'NotAllowedError' ? 'Camera access was blocked. Allow the camera for this page in the browser settings, then try again.'
@@ -518,6 +522,10 @@ function stopCamera(keepUi){
   if(!SC.still){ $('#cstill').hidden = true; $('#camnote').hidden = false; drawGuide(null) }
   setSt('');
 }
+function camRes(){                                         // a page needs more pixels than a single card
+  const t = SC.stream && SC.stream.getVideoTracks()[0]; if(!t) return;
+  t.applyConstraints(O.binder ? {width:{ideal:3840}, height:{ideal:2880}} : {width:{ideal:1920}, height:{ideal:1440}}).catch(() => {});
+}
 async function toggleTorch(){
   const t = SC.stream && SC.stream.getVideoTracks()[0]; if(!t) return;
   SC.torch = !SC.torch;
@@ -528,8 +536,10 @@ document.addEventListener('visibilitychange', () => { if(document.hidden) stopCa
 
 /* the frame: the largest card-shaped box in the middle of the source, like the desktop scanner */
 function srcSize(){ if(SC.still) return {w:SC.still.width, h:SC.still.height}; const v = $('#cv'); return v && v.videoWidth ? {w:v.videoWidth, h:v.videoHeight} : null }
+const binderRC = () => { const m = /^(\d)x(\d)$/.exec(O.binder || ''); return m && !SC.still && !SC.teach ? {rows:+m[1], cols:+m[2]} : null };
 function guideRect(){
-  const s = srcSize(); if(!s) return null; const fill = SC.still ? 0.96 : 0.86;
+  const s = srcSize(); if(!s) return null; const fill = SC.still ? 0.96 : 0.86, B = binderRC();
+  if(B){ const ar = (B.cols * 66) / (B.rows * 91); let h = s.h * 0.94, w = h * ar; if(w > s.w * 0.96){ w = s.w * 0.96; h = w / ar } return {x:(s.w - w) / 2, y:(s.h - h) / 2, w, h, vw:s.w, vh:s.h, B} }
   let h = s.h * fill, w = h * 63 / 88; if(w > s.w * (SC.still ? 0.96 : 0.9)){ w = s.w * (SC.still ? 0.96 : 0.9); h = w * 88 / 63 }
   return {x:(s.w - w) / 2, y:(s.h - h) / 2, w, h, vw:s.w, vh:s.h};
 }
@@ -542,6 +552,12 @@ function drawGuide(state){
   const css = getComputedStyle(document.documentElement);
   ctx.lineWidth = 3 * dpr; ctx.strokeStyle = state === 'ok' ? css.getPropertyValue('--green').trim() : state === 'busy' ? css.getPropertyValue('--accent').trim() : 'rgba(255,255,255,.8)';
   ctx.beginPath(); ctx.roundRect(x, y, w, h, rad); ctx.stroke();
+  if(g.B){                                                   // binder page: the pocket grid
+    ctx.lineWidth = 1.5 * dpr; ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.setLineDash([6 * dpr, 4 * dpr]); ctx.beginPath();
+    for(let i = 1; i < g.B.cols; i++){ ctx.moveTo(x + w * i / g.B.cols, y); ctx.lineTo(x + w * i / g.B.cols, y + h) }
+    for(let i = 1; i < g.B.rows; i++){ ctx.moveTo(x, y + h * i / g.B.rows); ctx.lineTo(x + w, y + h * i / g.B.rows) }
+    ctx.stroke(); ctx.setLineDash([]); return;
+  }
   const L = O.game === 'auto' ? AUTO : GAMES[O.game];       // where the name is read
   ctx.setLineDash([5 * dpr, 4 * dpr]); ctx.lineWidth = 1.5 * dpr; ctx.strokeStyle = 'rgba(255,255,255,.7)';
   [L.name].concat(O.readNum ? [L.num] : []).forEach(b => ctx.strokeRect(x + b[0] * w, y + b[1] * h, (b[2] - b[0]) * w, (b[3] - b[1]) * h));
@@ -701,7 +717,7 @@ function checkBack(card){
   return back;
 }
 async function scanNow(auto){
-  if(O.quick && !SC.teach) return quickCapture();
+  if((O.quick || binderRC()) && !SC.teach) return quickCapture();
   if(SC.busy || !guideRect()) return;
   SC.busy = true; $('#cscan').classList.add('busy'); drawGuide('busy'); setSt('Reading the card ...');
   dstart(auto ? 'automatic' : SC.still ? 'photo' : 'shutter');
@@ -729,8 +745,62 @@ async function scanNow(auto){
   }
 }
 
+/* ---------------------------------------------------------------- binder page from the live camera */
+async function binderCapture(){
+  const g = guideRect(), v = $('#cv'); if(!g || !v || !v.videoWidth || SC.paging) return;
+  SC.paging = true; SC.armed = false;
+  const cw = $('#cw'); if(cw){ cw.style.outline = '3px solid var(--green)'; setTimeout(() => cw.style.outline = '', 220) }
+  if(navigator.vibrate) navigator.vibrate([20, 40, 20]);
+  try{
+    let src = null, W = v.videoWidth, H = v.videoHeight, how = 'video frame';
+    try{                                                     // full camera resolution where the browser allows it (most Android phones)
+      if(window.ImageCapture){ const blob = await new ImageCapture(SC.stream.getVideoTracks()[0]).takePhoto(); const bmp = await createImageBitmap(blob);
+        if(Math.abs(bmp.width / bmp.height - W / H) < 0.03){ src = bmp; how = 'photo ' + bmp.width + '×' + bmp.height } }
+    }catch(e){}
+    if(!src){ const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(v, 0, 0); src = c }
+    const k = (src.width || W) / W, gx = g.x * k, gy = g.y * k, gw = g.w * k, gh = g.h * k, cwd = gw / g.B.cols, cht = gh / g.B.rows;
+    let n = 0, empty = 0;
+    for(let r = 0; r < g.B.rows; r++) for(let c = 0; c < g.B.cols; c++){
+      const f = cardInCell(src, gx + c * cwd, gy + r * cht, cwd, cht);
+      if(f.empty){ empty++; continue }
+      await quickAdd(f.card); n++;
+    }
+    dstart('binder page'); dlog('page', `${g.B.rows}×${g.B.cols} grid from the ${how}: ${n} cards, ${empty} empty pockets`); DLOG.cur = null;
+    toast(n ? `Page captured: ${n} card${n === 1 ? '' : 's'}${empty ? `, ${empty} empty pocket${empty === 1 ? '' : 's'} skipped` : ''}. Turn the page.` : 'No cards found in the grid', !n);
+  } finally { SC.paging = false }
+}
+
 /* ---------------------------------------------------------------- binder page: one photo, split into its pockets */
 const BP = {box:[0.03, 0.03, 0.97, 0.97], rows:3, cols:3};
+/* find the card inside a pocket: look a bit wider than the grid cell, then trim to where the picture differs from the page around it */
+function cardInCell(src, x, y, w, h){
+  const SW = src.width || src.naturalWidth, SH = src.height || src.naturalHeight, mx = w * 0.12, my = h * 0.10;
+  const X = Math.max(0, x - mx), Y = Math.max(0, y - my), X2 = Math.min(SW, x + w + mx), Y2 = Math.min(SH, y + h + my), RW = X2 - X, RH = Y2 - Y;
+  const aw = 96, ah = Math.max(24, Math.round(96 * RH / RW)), t = document.createElement('canvas'); t.width = aw; t.height = ah;
+  const tx = t.getContext('2d', {willReadFrequently:true}); tx.drawImage(src, X, Y, RW, RH, 0, 0, aw, ah);
+  const d = tx.getImageData(0, 0, aw, ah).data, px = (i, j) => { const k = (j * aw + i) * 4; return [d[k], d[k+1], d[k+2]] };
+  // the page (and whatever lies beyond it) = the two most common colours on the edge of the search area, ignoring very dark ones (card borders)
+  const ring = []; for(let i = 0; i < aw; i++) ring.push(px(i, 0), px(i, 1), px(i, ah - 1), px(i, ah - 2)); for(let j = 0; j < ah; j++) ring.push(px(0, j), px(1, j), px(aw - 1, j), px(aw - 2, j));
+  const bins = new Map(); for(const p of ring){ const k = (p[0] >> 5) * 64 + (p[1] >> 5) * 8 + (p[2] >> 5); const e = bins.get(k) || {n:0, s:[0, 0, 0]}; e.n++; e.s[0] += p[0]; e.s[1] += p[1]; e.s[2] += p[2]; bins.set(k, e) }
+  const bgs = [];
+  for(const e of [...bins.values()].sort((x, y) => y.n - x.n)){ const m = e.s.map(v => v / e.n); if((m[0] + m[1] + m[2]) / 3 < 60) continue;
+    if(bgs.every(q => Math.abs(q[0] - m[0]) + Math.abs(q[1] - m[1]) + Math.abs(q[2] - m[2]) > 60)) bgs.push(m); if(bgs.length === 2) break }
+  if(!bgs.length) bgs.push([128, 128, 128]);
+  const diff = (i, j) => { const p = px(i, j); return bgs.every(q => Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + Math.abs(p[2] - q[2]) > 70) };
+  const longest = (n, f, need) => { let best = [0, -1], s0 = -1, gap = 0;          // widest block of "card" lines, small gaps allowed
+    for(let i = 0; i <= n; i++){ const on = i < n && f(i) >= need;
+      if(on){ if(s0 < 0) s0 = i; gap = 0 } else if(s0 >= 0 && (++gap > 2 || i === n)){ const e = i - gap; if(e - s0 > best[1] - best[0]) best = [s0, e]; s0 = -1; gap = 0 } }
+    return best };
+  const [l, r] = longest(aw, i => { let n = 0; for(let j = 0; j < ah; j++) if(diff(i, j)) n++; return n / ah }, 0.35);
+  const [tp, b] = r >= l ? longest(ah, j => { let n = 0; for(let i = l; i <= r; i++) if(diff(i, j)) n++; return n / (r - l + 1) }, 0.12) : [0, -1];
+  const fw = (r - l + 1) / aw * RW, fh = (b - tp + 1) / ah * RH, ar = fw / fh;
+  if(fw > w * 0.6 && fh > h * 0.6 && ar > 0.55 && ar < 0.9) return {card:cellCanvas(src, X + l / aw * RW, Y + tp / ah * RH, fw, fh), empty:false};   // found the card
+  // no card edges found: empty when the middle of the pocket looks like the page around it
+  const ci0 = Math.round((mx + w * 0.25) / RW * aw), ci1 = Math.round((mx + w * 0.75) / RW * aw), cj0 = Math.round((my + h * 0.25) / RH * ah), cj1 = Math.round((my + h * 0.75) / RH * ah);
+  let n = 0, tot = 0; for(let i = ci0; i < ci1; i++) for(let j = cj0; j < cj1; j++){ tot++; if(diff(i, j)) n++ }
+  const c = cellCanvas(src, x, y, w, h), f = tot ? n / tot : 1;
+  return {card:c, empty:f < 0.08 || (f < 0.25 && cellEmpty(c))};
+}
 function cellCanvas(img, x, y, w, h){ const c = document.createElement('canvas'); c.width = 756; c.height = 1056; c.getContext('2d').drawImage(img, x, y, w, h, 0, 0, 756, 1056); return c }
 function cellEmpty(c){                                  // an empty pocket is nearly one flat colour
   const t = document.createElement('canvas'); t.width = 24; t.height = 34; const x = t.getContext('2d', {willReadFrequently:true}); x.drawImage(c, 0, 0, 24, 34);
@@ -740,8 +810,7 @@ function cellEmpty(c){                                  // an empty pocket is ne
 function pageCells(img){
   const W = img.naturalWidth, H = img.naturalHeight, [x0, y0, x1, y1] = BP.box, cw = (x1 - x0) * W / BP.cols, ch = (y1 - y0) * H / BP.rows, out = [];
   for(let r = 0; r < BP.rows; r++) for(let c = 0; c < BP.cols; c++){
-    const ix = cw * 0.035, iy = ch * 0.025;                        // stay a little inside the pocket
-    out.push(cellCanvas(img, x0 * W + c * cw + ix, y0 * H + r * ch + iy, cw - 2 * ix, ch - 2 * iy));
+    out.push(cardInCell(img, x0 * W + c * cw, y0 * H + r * ch, cw, ch));
   }
   return out;
 }
@@ -758,7 +827,7 @@ function openBinder(img){
   const draw = () => { const [x0, y0, x1, y1] = BP.box;
     Object.assign(grid.style, {left:x0 * 100 + '%', top:y0 * 100 + '%', width:(x1 - x0) * 100 + '%', height:(y1 - y0) * 100 + '%', gridTemplateColumns:`repeat(${BP.cols},1fr)`, gridTemplateRows:`repeat(${BP.rows},1fr)`});
     grid.querySelectorAll('i.cell').forEach(c => c.remove());
-    const empties = pageCells(img).map(cellEmpty), n = empties.filter(e => !e).length;
+    const empties = pageCells(img).map(f => f.empty), n = empties.filter(e => !e).length;
     empties.forEach(e => { const c = document.createElement('i'); c.className = 'cell' + (e ? ' empty' : ''); grid.appendChild(c) });
     $('#bpok').innerHTML = `<i class="ti ti-bolt"></i>Scan ${n} card${n === 1 ? '' : 's'}`; $('#bpok').disabled = !n };
   draw();
@@ -778,7 +847,7 @@ function openBinder(img){
   $('#bpc').onchange = e => { BP.cols = +e.target.value; draw() };
   $('#bpx').onclick = closeModal;
   $('#bpok').onclick = async () => {
-    const cells = pageCells(img).filter(c => !cellEmpty(c)); closeModal();
+    const cells = pageCells(img).filter(f => !f.empty).map(f => f.card); closeModal();
     if(!O.quick){ O.quick = true; persist(); if($('#cquick')) $('#cquick').checked = true }
     stopCamera(true); for(const c of cells) await quickAdd(c);
     toast(`${cells.length} cards from the page are being identified`);
@@ -797,6 +866,7 @@ async function quickAdd(card){
   SC.lastCard = card; renderResult(); runQueue();
 }
 async function quickCapture(){
+  if(binderRC()) return binderCapture();
   if(!guideRect()) return;
   const card = grab(); SC.armed = false;
   const cw = $('#cw'); if(cw){ cw.style.outline = '3px solid var(--green)'; setTimeout(() => cw.style.outline = '', 180) }
