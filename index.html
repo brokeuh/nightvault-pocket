@@ -163,7 +163,7 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 .obtn.on{color:#000;background:var(--amber)}
 .sbtn{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
 .sbtn small{font-size:11px;color:var(--dim);max-width:72px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sright{display:flex;gap:14px;justify-self:end}
+.sright,.sleft{display:flex;gap:14px;justify-self:end}.sleft{justify-self:start}
 .gdot{width:18px;height:18px;border-radius:50%;display:block;box-shadow:0 0 0 3px var(--ctl),0 0 0 4px var(--line2)}
 .mitem .mdot{display:grid;place-items:center}.mitem .mdot span{width:12px;height:12px;border-radius:50%;display:block}
 .mitem.sel b{color:var(--pb)}
@@ -513,7 +513,10 @@ function viewScan(){
     <div class="cammode"><div class="oseg" id="cseg"><button data-m="card" aria-label="One card"><i class="ti ti-rectangle-vertical"></i><span>One card</span></button><button data-m="page" aria-label="Binder page"><i class="ti ti-layout-grid"></i><span>Binder</span></button></div>
         <span class="sep"></span><button class="obtn" id="cqk" aria-label="Quick scan"><i class="ti ti-bolt"></i><span>Quick</span></button></div>
     <div class="shoot">
-      <div class="sbtn"><button class="iconbtn" id="cpics" aria-label="Scan from photos"><i class="ti ti-photo"></i></button><small>Photos</small></div>
+      <div class="sleft">
+        <div class="sbtn"><button class="iconbtn" id="cpics" aria-label="Scan from photos"><i class="ti ti-photo"></i></button><small>Photos</small></div>
+        <div class="sbtn"><button class="iconbtn" id="cfind" aria-label="Search by name"><i class="ti ti-search"></i></button><small>Search</small></div>
+      </div>
       <button class="shutter" id="cscan" aria-label="Scan now"><b><i class="ti ti-scan"></i></b></button>
       <div class="sright">
         <div class="sbtn"><button class="iconbtn" id="cgame" aria-label="Card game"></button><small id="cgamel"></small></div>
@@ -535,6 +538,7 @@ function viewScan(){
     {icon:'cards', label:AUTO.label, sub:'Works out the game from the card', on:O.game === 'auto', run:() => setGame('auto')}]
     .concat(Object.entries(GAMES).map(([k, x]) => ({dot:x.color, label:x.label, on:O.game === k, run:() => setGame(k)}))));
   $('#copt').onclick = openScanOptions;
+  $('#cfind').onclick = openFind;
   $('#cfile').onchange = onPhoto;
   $('#cpage').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if(!f) return; const img = new Image(); img.src = URL.createObjectURL(f);
     try{ await img.decode(); openBinder(img) }catch(err){ toast('Could not open that picture', true) } };
@@ -547,6 +551,22 @@ function setScanMode(page){
   const was = O.binder; O.binder = page ? (O.binderSize || '3x3') : ''; persist(); camRes(); SC.hist = []; SC.armed = true; drawGuide('idle');
   if(page){ if(!O.quick){ O.quick = true; persist(); renderResult() } if(!was) toast('Binder page: line the pockets up with the grid, then hold still or tap the shutter') }
   syncScanUI();
+}
+function openFind(){
+  const r = SC.result, m = r && r.matches[SC.sel];
+  modal(`<h3>Find a card</h3>
+    <form class="bar" id="cqf" style="margin:0"><input class="grow" id="cq" type="search" placeholder="Card name" value="${esc(r && r.q || '')}" autocomplete="off" enterkeyhint="search"><button class="btn primary" type="submit"><i class="ti ti-search"></i>Search</button></form>
+    <div class="hint" style="margin-top:8px">Searching in: ${esc(O.game === 'auto' ? 'all games' : GAMES[O.game].label)}</div>
+    <div class="menu" style="margin-top:10px">
+      <button class="mitem" id="cman"><i class="ti ti-pencil-plus"></i><span><b>Add it by hand</b><small>Card not in the list, or a game that is not here</small></span></button>
+      ${SC.lastCard ? `<button class="mitem" id="ctpl"><i class="ti ti-layout-board-split"></i><span><b>Make a scan template</b><small>For a card with the name in an unusual spot</small></span></button>` : ''}
+    </div>`);
+  setTimeout(() => { const q = $('#cq'); if(q){ q.focus(); q.select() } }, 60);
+  $('#cqf').onsubmit = async e => { e.preventDefault(); const q = $('#cq').value.trim(); if(q.length < 2) return; closeModal();
+    if(O.game === 'other' || (O.game !== 'auto' && !FIND[O.game])){ openManual({name:q, game:O.game}); return }
+    try{ await lookup(q, O.game === 'auto' ? lookGames() : [O.game], new Set(), true) }catch(err){ toast(err.message, true) } };
+  $('#cman').onclick = () => { const q = $('#cq').value.trim(); closeModal(); openManual({name:q, game:O.game}) };
+  if($('#ctpl')) $('#ctpl').onclick = () => { closeModal(); openTemplate({game:m ? m.game : O.game}, true) };
 }
 function setGame(k){ O.game = k; persist(); syncScanUI(); drawGuide(SC.busy ? 'busy' : 'idle') }
 function setQuick(on){ O.quick = on; persist(); renderResult(); syncScanUI(); if(on && !SC.stream) toast('Quick scan on: start the camera, or pick several photos at once') }
@@ -1039,19 +1059,14 @@ function renderQuick(el){
   el.innerHTML = `<div class="panel">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:15px"><i class="ti ti-bolt" style="color:var(--accent)"></i> Quick scan</b>
       <span class="sub">${w ? w + ' waiting · ' : ''}${added} added · ${toCheck} to check</span></div>
-    <div class="hint" style="margin-top:4px">Hold each card in the frame for a moment, or tap the shutter, then go to the next card. Cards are identified in the background.</div>
     ${Q.recent.length ? `<div class="cands">${Q.recent.map(j => `<div class="cand-t" style="cursor:default" title="${esc(j.name || '')}"><img src="${j.thumb}" alt=""><span style="color:${col[j.status]}">${badge[j.status]} ${esc((j.name || (j.status === 'waiting' ? 'waiting' : j.status === 'working' ? 'reading' : '')).slice(0, 12))}</span></div>`).join('')}</div>` : ''}
     <div class="btns" style="margin-top:12px"><button class="btn ${SC.foil ? 'on' : ''}" id="qfoil"><i class="ti ti-sparkles"></i>Foil</button>
       <button class="btn" id="qcheck" ${toCheck ? '' : 'disabled'}><i class="ti ti-list-check"></i>Check cards${toCheck ? ' (' + toCheck + ')' : ''}</button>
       <button class="btn" id="qoff"><i class="ti ti-player-stop"></i>Stop quick scan</button></div>
-    <details id="ddet" style="margin-top:14px"><summary class="hint" style="cursor:pointer;margin:0">Scan details (for troubleshooting)</summary>
-      <div class="btns" style="margin:8px 0"><button class="btn sm" id="dcopy"><i class="ti ti-copy"></i>Copy</button></div>
-      <pre id="dtext" style="white-space:pre-wrap;word-break:break-word;font:11.5px/1.45 ui-monospace,Menlo,Consolas,monospace;background:var(--logbg);color:var(--logfg);border-radius:8px;padding:10px;max-height:340px;overflow:auto;margin:0;user-select:text"></pre></details></div>`;
+</div>`;
   $('#qfoil').onclick = () => { SC.foil = !SC.foil; renderResult() };
   $('#qcheck').onclick = () => show('review');
   $('#qoff').onclick = () => { O.quick = false; persist(); syncScanUI(); renderResult() };
-  $('#ddet').ontoggle = () => { if($('#ddet').open) $('#dtext').textContent = dreport() };
-  $('#dcopy').onclick = async () => { const t = dreport(); $('#dtext').textContent = t; try{ await navigator.clipboard.writeText(t); toast('Scan details copied') }catch(e){ toast('Select the text and copy it', true) } };
 }
 window.addEventListener('beforeunload', e => { if(Q.jobs.some(j => j.status === 'waiting' || j.status === 'working')){ e.preventDefault(); e.returnValue = '' } });
 
@@ -1096,8 +1111,9 @@ async function lookup(q, games, tokens, manual){
   showResult(r, manual); DLOG.cur = null;
 }
 function renderResult(){
-  const el = $('#cres'); if(!el) return; if(O.quick){ renderQuick(el); return } const keepOpen = $('#ddet') && $('#ddet').open; const r = SC.result, m = r && r.matches[SC.sel];
+  const el = $('#cres'); if(!el) return; if(O.quick){ renderQuick(el); return } const r = SC.result, m = r && r.matches[SC.sel];
   const price = m ? (SC.foil ? m.priceFoil : m.price) : null, owned = m ? ownedQty(m) : 0;
+  if(!m){ el.innerHTML = '<div id="csess"></div>'; renderSession(); return }
   el.innerHTML = `<div class="panel">
     ${m ? `<div class="cres-top"><div class="cardbig">${pic(m)}</div><div style="min-width:0;flex:1">
       <div class="cname">${esc(m.name)}</div>
@@ -1110,28 +1126,12 @@ function renderResult(){
         <button class="btn ${SC.foil ? 'on' : ''}" id="cfoil"><i class="ti ti-sparkles"></i>Foil</button><button class="btn" id="cundo" ${SC.last ? '' : 'disabled'}><i class="ti ti-arrow-back-up"></i>Undo</button></div>
       ${r.matches.length > 1 ? `<div class="hint" style="margin-top:12px">${r.matches.length} printings · tap the right one</div>
       <div class="cands">${r.matches.map((x, i) => `<button class="cand-t ${i === SC.sel ? 'on' : ''}" data-i="${i}" title="${esc(x.name)} · ${esc(x.showSet)} #${esc(x.showNum)}">${pic(x, 'loading="lazy"')}<span>${esc(x.showSet)} ${esc(x.showNum)}</span></button>`).join('')}</div>` : ''}`
-    : `<div class="muted" style="padding:18px 6px;text-align:center">Hold a card in the frame.<br>The result shows up here.</div>`}
-    <form class="bar" id="cqf" style="margin:14px 0 0"><input class="grow" id="cq" type="search" placeholder="Wrong or not found? Search by name" value="${esc(r ? r.q : '')}" autocomplete="off"><button class="btn" type="submit">Search</button></form>
-    <div class="hint" style="margin-top:6px">Card not in the list, or a game that is not here? <a href="#" id="cman" style="color:var(--accent)">Add it by hand</a>${SC.lastCard ? ` · Name in an unusual spot? <a href="#" id="ctpl" style="color:var(--accent)">Make a scan template</a>` : ''}</div>
-    <div id="csess"></div>
-    <details id="ddet" style="margin-top:14px"><summary class="hint" style="cursor:pointer;margin:0">Scan details (for troubleshooting)</summary>
-      <div class="btns" style="margin:8px 0"><button class="btn sm" id="dcopy"><i class="ti ti-copy"></i>Copy</button><button class="btn sm" id="dshare"><i class="ti ti-share"></i>Share</button></div>
-      <pre id="dtext" style="white-space:pre-wrap;word-break:break-word;font:11.5px/1.45 ui-monospace,Menlo,Consolas,monospace;background:var(--logbg);color:var(--logfg);border-radius:8px;padding:10px;max-height:340px;overflow:auto;margin:0;user-select:text"></pre></details></div>`;
+    : ''}</div>
+    <div id="csess"></div>`;
   if($('#cadd')) $('#cadd').onclick = addCurrent;
   if($('#cfoil')) $('#cfoil').onclick = () => { SC.foil = !SC.foil; renderResult() };
   if($('#cundo')) $('#cundo').onclick = undoLast;
   $$('#cres .cand-t').forEach(t => t.onclick = () => { SC.sel = +t.dataset.i; renderResult() });
-  $('#cqf').onsubmit = async e => { e.preventDefault(); const q = $('#cq').value.trim(); if(q.length < 2) return; $('#cq').blur();
-    if(O.game === 'other' || (O.game !== 'auto' && !FIND[O.game])){ openManual({name:q, game:O.game}); return }
-    try{ await lookup(q, O.game === 'auto' ? lookGames() : [O.game], new Set(), true) }catch(err){ toast(err.message, true) } };
-  if(keepOpen){ $('#ddet').open = true; $('#dtext').textContent = dreport() }
-  $('#ddet').ontoggle = () => { if($('#ddet').open) $('#dtext').textContent = dreport() };
-  $('#dcopy').onclick = async () => { const t = dreport(); $('#dtext').textContent = t;
-    try{ await navigator.clipboard.writeText(t); toast('Scan details copied - paste them in the chat') }
-    catch(e){ const r = document.createRange(); r.selectNodeContents($('#dtext')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast('Selected - tap Copy in the menu') } };
-  $('#dshare').onclick = async () => { const t = dreport(); try{ if(navigator.share) await navigator.share({title:'Nightvault Pocket scan details', text:t}); else throw 0 }catch(e){ if(e && e.name === 'AbortError') return; $('#dcopy').click() } };
-  if($('#ctpl')) $('#ctpl').onclick = e => { e.preventDefault(); openTemplate({game:m ? m.game : O.game}, true) };
-  if($('#cman')) $('#cman').onclick = e => { e.preventDefault(); openManual({name:$('#cq').value.trim(), game:O.game}) };
   renderSession();
 }
 
@@ -1729,6 +1729,7 @@ const SPAGES = [
   ['prices', 'tag', 'Price sources', () => store.sources.length ? store.sources.map(x => x.label).join(', ') : 'Your own sites for prices'],
   ['look', 'palette', 'Appearance', () => (THEMES.find(x => x[0] === O.theme) || THEMES[0])[1]],
   ['data', 'database', 'Card data', () => 'Where cards and prices come from'],
+  ['dev', 'code', 'Developer', () => 'Scan details for troubleshooting'],
   ['danger', 'trash', 'Remove all cards', () => 'Clear this phone'],
 ];
 function settingsPages(total){
@@ -1772,8 +1773,18 @@ function viewSettings(){
     <div class="panel" data-p="look"><h3>Appearance</h3><div class="thgrid">${THEMES.map(([id, nm]) => `<button class="thtile ${O.theme === id ? 'on' : ''}" data-t="${id}"><div class="pv" data-theme="${id}"><i style="background:var(--side);height:100%"></i><i style="background:var(--card);height:70%;border:1px solid var(--line2)"></i><i style="background:var(--accent);height:40%"></i></div><div class="nm">${nm}</div></button>`).join('')}</div></div>
     <div class="panel" data-p="data"><h3>Card data</h3>${Object.values(GAMES).filter(g => g.src).map(g => `<div class="row" style="padding:7px 0"><span class="dot" style="background:${g.color}"></span><div class="grow">${esc(g.full)}</div><span class="muted" style="font-size:12px">${esc(g.src)}</span></div>`).join('')}
       <p class="hint">Any other game can be added by hand (My cards → By hand). Card names are read on the phone. Lookups and prices need internet. Your cards stay on this phone until you export them.</p></div>
+    <div class="panel" data-p="dev"><h3>Scan details</h3>
+      <p class="hint" style="margin-top:0">What the scanner saw and tried during the last scans. Copy or share it when something does not work.</p>
+      <div class="btns" style="margin:8px 0"><button class="btn sm" id="dcopy"><i class="ti ti-copy"></i>Copy</button><button class="btn sm" id="dshare"><i class="ti ti-share"></i>Share</button></div>
+      <details id="ddet" open hidden></details>
+      <pre id="dtext" style="white-space:pre-wrap;word-break:break-word;font:11.5px/1.45 ui-monospace,Menlo,Consolas,monospace;background:var(--logbg);color:var(--logfg);border-radius:8px;padding:10px;max-height:60vh;overflow:auto;margin:0;user-select:text"></pre></div>
     <div class="panel" data-p="danger"><h3>Danger zone</h3><button class="btn danger" id="sclear" ${store.cards.length ? '' : 'disabled'}><i class="ti ti-trash"></i>Remove all cards from this phone</button>
       <p class="hint">Cards already imported into Nightvault stay there.</p></div>`;
+  $('#dtext').textContent = dreport();
+  $('#dcopy').onclick = async () => { const t = dreport(); $('#dtext').textContent = t;
+    try{ await navigator.clipboard.writeText(t); toast('Scan details copied - paste them in the chat') }
+    catch(e){ const r = document.createRange(); r.selectNodeContents($('#dtext')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast('Selected - tap Copy in the menu') } };
+  $('#dshare').onclick = async () => { const t = dreport(); try{ if(navigator.share) await navigator.share({title:'Nightvault Pocket scan details', text:t}); else throw 0 }catch(e){ if(e && e.name === 'AbortError') return; $('#dcopy').click() } };
   $('#sexp').onclick = exportNightvault; $('#scsv').onclick = exportCsv; $('#simp').onchange = importBackup;
   $('#oauto').onchange = e => { O.auto = e.target.checked; persist() };
   $('#oadd').onchange = e => { O.autoAdd = e.target.checked; persist() };
