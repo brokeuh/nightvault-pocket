@@ -165,7 +165,7 @@ const GAMES = {
   ygo:      {label:'Yu-Gi-Oh!',          full:'Yu-Gi-Oh!',             color:'#7c4dbd', name:[0.06,0.035,0.84,0.115], num:[0.52,0.715,0.95,0.775], src:'YGOPRODeck · Cardmarket €'},
   lorcana:  {label:'Lorcana',            full:'Disney Lorcana',        color:'#5a6bd6', name:[0.07,0.555,0.93,0.665], num:[0.02,0.93,0.75,0.99],   src:'Lorcast · TCGplayer $'},
   swu:      {label:'Star Wars: Unlimited',full:'Star Wars: Unlimited', color:'#4aa3c8', name:[0.10,0.575,0.90,0.665], num:[0.02,0.925,0.98,0.99],  src:'SWU-DB · TCGplayer $'},
-  riftbound:{label:'Riftbound',          full:'Riftbound',             color:'#d6595a', name:[0.10,0.565,0.90,0.655], num:[0.02,0.925,0.98,0.99],  src:'Riftcodex · riftbound.gg prices'},
+  riftbound:{label:'Riftbound',          full:'Riftbound',             color:'#d6595a', name:[0.10,0.565,0.90,0.655], num:[0.02,0.925,0.98,0.99],  src:'Riftcodex · riftbound.gg pictures'},
 };
 const AUTO = {label:'All games', name:[0.05,0.025,0.84,0.12], num:[0.02,0.88,0.98,0.99]};
 const THEMES = [['midnight','Midnight'],['light','Light'],['graphite','Graphite'],['forest','Forest'],['ember','Ember'],['violet','Violet'],['ocean','Ocean']];
@@ -189,6 +189,8 @@ const normNum = n => { const m = /^0*(\d+)(.*)$/.exec(String(n ?? '').trim()); r
 const pad = (v, w) => /^\d+$/.test(String(v)) ? String(v).padStart(w, '0') : String(v);
 const fmt = (x, cur) => (x === null || x === undefined || isNaN(x)) ? 'no price' : (cur === 'USD' ? '$ ' : '€ ') + Number(x).toFixed(2);
 const num = v => { const n = parseFloat(String(v ?? '').replace(/[^0-9.]/g, '')); return isNaN(n) ? null : n };
+function imgFail(el){ const alt = (el.dataset.alt || '').split('|').filter(Boolean); if(alt.length){ el.dataset.alt = alt.slice(1).join('|'); el.src = alt[0] } else { el.onerror = null; el.removeAttribute('src'); el.style.visibility = 'hidden' } }
+const pic = (m, extra = '') => m.image ? `<img referrerpolicy="no-referrer" ${extra} src="${esc(m.image)}" data-alt="${esc((m.alt || []).join('|'))}" onerror="imgFail(this)" alt="">` : '';
 function setSt(t){ $('#scst').textContent = t || '' }
 function toast(msg, err){
   $$('#toast .t1').forEach(e => { if(e.textContent === msg) e.remove() });
@@ -255,31 +257,17 @@ async function findSWU(q){
     name:c.Name + (c.Subtitle ? ' - ' + c.Subtitle : ''), setName:String(c.Set).toUpperCase() + (c.VariantType && c.VariantType !== 'Normal' ? ' · ' + c.VariantType : ''),
     rarity:c.Rarity || '', released:'', image:c.FrontArt || '', price:num(c.MarketPrice), priceFoil:num(c.FoilPrice), currency:'USD', psrc:'TCGplayer'}));
 }
-let DOTGG = null;           // riftbound.gg's card list (DotGG): pictures and Cardmarket / TCGplayer prices, read once per visit
-async function dotgg(){
-  if(DOTGG) return DOTGG;
-  DOTGG = (async () => {
-    try{
-      const r = await getJSON('https://api.dotgg.gg/cgfw/getcards?game=riftbound&mode=indexed'), ix = {};
-      (r.names || []).forEach((n, i) => ix[n] = i);
-      const map = new Map();
-      for(const row of r.data || []) map.set(String(row[ix.id]).toUpperCase(), {image:row[ix.image] || '', cm:num(row[ix.cmPrice]), cmf:num(row[ix.cmFoilPrice]), usd:num(row[ix.price]), usdf:num(row[ix.foilPrice]), name:row[ix.name] || ''});
-      return map;
-    }catch(e){ DOTGG = null; return new Map() }
-  })();
-  return DOTGG;
-}
 async function findRiftbound(q){
-  const [r, dg] = await Promise.all([getJSON('https://api.riftcodex.com/cards/name?fuzzy=' + enc(q) + '&size=40'), dotgg()]);
+  const r = await getJSON('https://api.riftcodex.com/cards/name?fuzzy=' + enc(q) + '&size=40');
   return (r.items || []).map(c => { const sid = String((c.set || {}).set_id || '').toUpperCase(), cn = String(c.collector_number ?? '');
     const n = c.riftbound_id || `${sid}-${cn.padStart(3, '0')}`;
-    const keys = [String(n).split('-').slice(0, 2).join('-').toUpperCase(), `${sid}-${cn.padStart(3, '0')}`, `${sid}-${cn}`];
-    const d = keys.map(k => dg.get(k)).find(Boolean) || {};
-    const eur = d.cm ?? null, usd = d.usd ?? null;
+    // Riot's own picture server refuses other sites, so pictures come from riftbound.gg (DotGG); promos fall back to the main-set art
+    const dg = k => `https://static.dotgg.gg/riftbound/cards/${k}.webp`;
+    const alt = [dg(`OGN-${cn.padStart(3, '0')}`), dg(`SFD-${cn.padStart(3, '0')}`), (c.media || {}).image_url || ''].filter(Boolean);
     return {game:'riftbound', set:sid.toLowerCase(), number:normNum(n), showSet:sid, showNum:cn, name:c.name, setName:(c.set || {}).label || sid,
-      rarity:(c.classification || {}).rarity || '', released:'', image:d.image || (c.media || {}).image_url || '',
-      price:eur ?? usd, priceFoil:eur != null ? (d.cmf ?? null) : (d.usdf ?? null), currency:eur != null ? 'EUR' : 'USD',
-      psrc:eur != null ? 'Cardmarket' : usd != null ? 'TCGplayer' : ''} });
+      rarity:(c.classification || {}).rarity || '', released:'', image:dg(`${sid}-${cn.padStart(3, '0')}`), alt,
+      price:null, priceFoil:null, currency:'USD', psrc:'',
+      link:c.tcgplayer_id ? `https://www.tcgplayer.com/product/${c.tcgplayer_id}` : `https://www.tcgplayer.com/search/riftbound-league-of-legends-trading-card-game/product?q=${enc(c.name)}`, linkLabel:'Price on TCGplayer'} });
 }
 const FIND = {mtg:findMTG, pokemon:findPokemon, ygo:findYGO, lorcana:findLorcana, swu:findSWU, riftbound:findRiftbound};
 
@@ -508,17 +496,17 @@ function renderResult(){
   const el = $('#cres'); if(!el) return; const r = SC.result, m = r && r.matches[SC.sel];
   const price = m ? (SC.foil ? m.priceFoil : m.price) : null, owned = m ? ownedQty(m) : 0;
   el.innerHTML = `<div class="panel">
-    ${m ? `<div class="cres-top"><div class="cardbig">${m.image ? `<img referrerpolicy="no-referrer" src="${esc(m.image)}" alt="">` : ''}</div><div style="min-width:0;flex:1">
+    ${m ? `<div class="cres-top"><div class="cardbig">${pic(m)}</div><div style="min-width:0;flex:1">
       <div class="cname">${esc(m.name)}</div>
       <div class="sub" style="margin:2px 0 8px">${esc(m.showSet)} #${esc(m.showNum)}${m.setName ? ' · ' + esc(m.setName) : ''}${m.rarity ? ' · ' + esc(m.rarity) : ''}</div>
       <div><span class="gtag"><span class="dot" style="background:${GAMES[m.game].color}"></span>${esc(GAMES[m.game].label)}</span></div>
       <div style="margin:8px 0 4px"><span class="conf ${r.confidence}">${{high:'Sure', medium:'Probably', low:'Not sure', manual:'Picked by name'}[r.confidence]}</span>${r.ambiguous ? '<span class="conf medium">check the set</span>' : ''}${r.pinned ? '<span class="conf high">number read</span>' : ''}</div>
-      <div class="price" style="font-size:15px;margin-bottom:10px">${SC.foil ? 'Foil ' : ''}${fmt(price, m.currency)} <span class="muted" style="font-size:12px">${esc(m.psrc)}</span>${owned ? `<div class="muted" style="font-size:12px">You own ${owned}</div>` : ''}</div>
+      <div class="price" style="font-size:15px;margin-bottom:10px">${SC.foil ? 'Foil ' : ''}${fmt(price, m.currency)} <span class="muted" style="font-size:12px">${esc(m.psrc)}</span>${price == null && m.link ? ` <a href="${esc(m.link)}" target="_blank" rel="noopener" style="font-size:12.5px;color:var(--accent)">${esc(m.linkLabel || 'Look up price')} <i class="ti ti-external-link"></i></a>` : ''}${owned ? `<div class="muted" style="font-size:12px">You own ${owned}</div>` : ''}</div>
     </div></div>
       <div class="btns" style="margin-top:12px"><button class="btn primary" id="cadd" style="flex:1"><i class="ti ti-plus"></i>Add</button>
         <button class="btn ${SC.foil ? 'on' : ''}" id="cfoil"><i class="ti ti-sparkles"></i>Foil</button><button class="btn" id="cundo" ${SC.last ? '' : 'disabled'}><i class="ti ti-arrow-back-up"></i>Undo</button></div>
       ${r.matches.length > 1 ? `<div class="hint" style="margin-top:12px">${r.matches.length} printings · tap the right one</div>
-      <div class="cands">${r.matches.map((x, i) => `<button class="cand-t ${i === SC.sel ? 'on' : ''}" data-i="${i}" title="${esc(x.name)} · ${esc(x.showSet)} #${esc(x.showNum)}">${x.image ? `<img referrerpolicy="no-referrer" loading="lazy" src="${esc(x.image)}" alt="">` : ''}<span>${esc(x.showSet)} ${esc(x.showNum)}</span></button>`).join('')}</div>` : ''}`
+      <div class="cands">${r.matches.map((x, i) => `<button class="cand-t ${i === SC.sel ? 'on' : ''}" data-i="${i}" title="${esc(x.name)} · ${esc(x.showSet)} #${esc(x.showNum)}">${pic(x, 'loading="lazy"')}<span>${esc(x.showSet)} ${esc(x.showNum)}</span></button>`).join('')}</div>` : ''}`
     : `<div class="muted" style="padding:18px 6px;text-align:center">Hold a card in the frame.<br>The result shows up here.</div>`}
     <form class="bar" id="cqf" style="margin:14px 0 0"><input class="grow" id="cq" type="search" placeholder="Wrong or not found? Search by name" value="${esc(r ? r.q : '')}" autocomplete="off"><button class="btn" type="submit">Search</button></form>
     <div id="csess"></div></div>`;
@@ -538,7 +526,7 @@ function addCard(m, foil, delta){
   const k = ckey(m, foil); let c = store.cards.find(x => x.key === k);
   if(!c){ if(delta <= 0) return 0;
     c = {uid:uid(), key:k, game:m.game, set:m.set, number:m.number, showSet:m.showSet, showNum:String(m.showNum), name:m.name, setName:m.setName || '', rarity:m.rarity || '',
-         image:m.image || '', price:m.price ?? null, priceFoil:m.priceFoil ?? null, currency:m.currency, psrc:m.psrc || '', foil:!!foil, qty:0, added:Date.now()};
+         image:m.image || '', alt:m.alt || [], link:m.link || '', price:m.price ?? null, priceFoil:m.priceFoil ?? null, currency:m.currency, psrc:m.psrc || '', foil:!!foil, qty:0, added:Date.now()};
     store.cards.unshift(c) }
   c.qty += delta; if(c.qty <= 0) store.cards = store.cards.filter(x => x !== c);
   persist(); tabCount(); return Math.max(0, c.qty);
@@ -561,7 +549,7 @@ function renderSession(){
   const el = $('#csess'); if(!el) return; const n = SC.session.reduce((a, e) => a + e.added, 0);
   const val = SC.session.reduce((a, e) => a + e.added * ((e.foil ? e.m.priceFoil : e.m.price) || 0), 0);
   el.innerHTML = SC.session.length ? `<h4>This session · ${n} card${n === 1 ? '' : 's'} · ${fmt(val, 'EUR').replace('€', '≈ €')}</h4>` +
-    SC.session.map((e, i) => `<div class="srow">${e.m.image ? `<img referrerpolicy="no-referrer" src="${esc(e.m.image)}" alt="">` : '<div class="ph"></div>'}<div class="grow"><div class="nm">${esc(e.m.name)}</div>
+    SC.session.map((e, i) => `<div class="srow">${e.m.image ? pic(e.m) : '<div class="ph"></div>'}<div class="grow"><div class="nm">${esc(e.m.name)}</div>
       <div class="meta">${esc(e.m.showSet)} #${esc(e.m.showNum)}${e.foil ? ' · foil' : ''}</div></div>
       <div class="qb"><button data-s="${i}" data-d="-1" aria-label="One less">−</button><b>${e.added}</b><button data-s="${i}" data-d="1" aria-label="One more">+</button></div></div>`).join('') : '';
   $$('#csess [data-s]').forEach(b => b.onclick = () => {
@@ -590,7 +578,7 @@ function viewCards(){
     const pv = c => ((c.foil ? c.priceFoil : c.price) || 0) * c.qty;
     rows.sort(F.sort === 'name' ? (a, b) => a.name.localeCompare(b.name) : F.sort === 'value' ? (a, b) => pv(b) - pv(a)
             : F.sort === 'set' ? (a, b) => a.showSet.localeCompare(b.showSet) || normNum(a.number).localeCompare(normNum(b.number), undefined, {numeric:true}) : (a, b) => b.added - a.added);
-    $('#mlist').innerHTML = rows.length ? rows.map(c => `<div class="srow">${c.image ? `<img referrerpolicy="no-referrer" src="${esc(c.image)}" alt="" loading="lazy">` : '<div class="ph"></div>'}
+    $('#mlist').innerHTML = rows.length ? rows.map(c => `<div class="srow">${c.image ? pic(c, 'loading="lazy"') : '<div class="ph"></div>'}
       <div class="grow"><div class="nm">${esc(c.name)}</div><div class="meta"><span class="dot" style="background:${GAMES[c.game].color};margin-right:5px"></span>${esc(c.showSet)} #${esc(c.showNum)}${c.foil ? ' · foil' : ''} · <span class="price">${fmt(c.foil ? c.priceFoil : c.price, c.currency)}</span></div></div>
       <div class="qb"><button data-u="${c.uid}" data-d="-1" aria-label="One less">−</button><b>${c.qty}</b><button data-u="${c.uid}" data-d="1" aria-label="One more">+</button></div></div>`).join('')
       : `<div class="empty">${cs.length ? 'Nothing matches that filter.' : 'No cards yet.<br>Scan a card and tap Add.'}<br><button class="btn primary" id="mgo" style="margin-top:12px"><i class="ti ti-camera"></i>Scan cards</button></div>`;
