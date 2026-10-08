@@ -22,6 +22,7 @@
 [data-theme="violet"]{--bg:#110f17;--side:#151320;--card:#161421;--line:#2a2640;--line2:#332e4c;--text:#ece9f6;--mut:#a29cb8;--dim:#756f8c;--accent:#a98bff;--accentbg:#231c3f;--accentline:#4c3f87;--green:#6fd6a6;--greenbg:#112620;--amber:#e6b062;--amberbg:#2b2110;--red:#ff7f8f;--sub:#1c1930;--ctl:#181627;--ctlh:#1f1c30;--lineh:#433d63;--pan:#2a2640;--modal:#151320;--track:#28243e;--chipbg:#221e3a;--logbg:#0c0a12;--logfg:#cbc6dc;--onacc:#120a28;--pg:#8fe6bd;--pa:#f2c27a;--pb:#cdbcff;--pgr:#b0aac4;color-scheme:dark}
 [data-theme="ocean"]{--bg:#0b1318;--side:#0f181e;--card:#101a21;--line:#1f3039;--line2:#27404b;--text:#e3eef2;--mut:#93aab4;--dim:#65808c;--accent:#4cc9d9;--accentbg:#0f2a32;--accentline:#1f5a68;--green:#5fcf9a;--greenbg:#10261c;--amber:#e0b25a;--amberbg:#2a2110;--red:#ff7f78;--sub:#15232b;--ctl:#121e26;--ctlh:#182730;--lineh:#36505c;--pan:#1f3039;--modal:#0f181e;--track:#1f323c;--chipbg:#12282f;--logbg:#080e12;--logfg:#bcd0d8;--onacc:#04161a;--pg:#8fe6bd;--pa:#f2c27a;--pb:#a6e8f0;--pgr:#a5bac3;color-scheme:dark}
 [data-theme="graphite"]{--bg:#000000;--side:#0a0a0a;--card:#0d0d0d;--line:#1f1f1f;--line2:#2a2a2a;--text:#ececec;--mut:#9a9a9a;--dim:#6c6c6c;--accent:#e8e8e8;--accentbg:#1d1d1d;--accentline:#444444;--green:#5fcf9a;--greenbg:#10261c;--amber:#e0a85a;--amberbg:#2c200f;--red:#ff7b72;--sub:#151515;--ctl:#111111;--ctlh:#181818;--lineh:#3a3a3a;--pan:#1f1f1f;--modal:#0d0d0d;--track:#222222;--chipbg:#1a1a1a;--logbg:#050505;--logfg:#c8c8c8;--onacc:#111111;--pg:#8fe6bd;--pa:#f2c27a;--pb:#cfcfcf;--pgr:#aaaaaa;color-scheme:dark}
+
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
 body{overscroll-behavior:none}
@@ -68,7 +69,7 @@ select{width:auto}
 .empty{border:1px dashed var(--line2);border-radius:12px;padding:30px 18px;text-align:center;color:var(--mut)}
 
 /* camera */
-.camwrap{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:3/4;max-height:56vh;width:100%;margin-inline:auto;border:1px solid var(--line)}
+.camwrap{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:3/4;max-height:64vh;width:100%;margin-inline:auto;border:1px solid var(--line)}
 .camwrap video,.camwrap canvas,.camwrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .camnote{position:absolute;inset:0;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--mut)}
 .camnote i.big{font-size:40px;color:var(--dim)}
@@ -153,6 +154,19 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 .iconbtn{width:46px;height:46px;border-radius:50%;border:1px solid var(--line2);background:var(--ctl);color:var(--text);display:grid;place-items:center;font-size:21px;position:relative}
 .iconbtn.on{border-color:var(--accentline);color:var(--pb)}
 .iconbtn .dotn{position:absolute;right:-2px;top:-2px;min-width:18px;height:18px;border-radius:9px;background:var(--amber);color:#000;font-size:11px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+.cammode{position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;gap:8px;pointer-events:none}
+.cammode > *{pointer-events:auto}
+.oseg{display:inline-flex;background:#000b;border-radius:999px;padding:3px;gap:2px;backdrop-filter:blur(6px)}
+.oseg button,.obtn{border:0;background:none;color:#fffc;padding:7px 12px;border-radius:999px;font-size:13px;display:inline-flex;gap:6px;align-items:center}
+.oseg button.on{background:#fff;color:#000}
+.obtn{background:#000b;backdrop-filter:blur(6px)}.obtn.on{background:var(--amber);color:#000}
+.sbtn{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.sbtn small{font-size:11px;color:var(--dim);max-width:72px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sright{display:flex;gap:14px;justify-self:end}
+.gdot{width:18px;height:18px;border-radius:50%;display:block;box-shadow:0 0 0 3px var(--ctl),0 0 0 4px var(--line2)}
+.mitem .mdot{display:grid;place-items:center}.mitem .mdot span{width:12px;height:12px;border-radius:50%;display:block}
+.mitem.sel b{color:var(--pb)}
+.mfoot{display:flex;justify-content:space-between;gap:8px;margin-top:14px}
 .scanbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .optrow{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--sub)}.optrow:last-child{border-bottom:0}
 .optrow .grow{flex:1;min-width:0}.optrow small{display:block;color:var(--dim);font-size:12px}
@@ -294,7 +308,7 @@ function closeModal(){ $('#modal').innerHTML = '' }
 /* a menu of actions in a bottom sheet: items = [{icon, label, sub, run, danger, disabled}] */
 function menuSheet(title, items){
   items = items.filter(Boolean);
-  modal(`${title ? `<h3>${esc(title)}</h3>` : ''}<div class="menu">${items.map((it, i) => `<button class="mitem ${it.danger ? 'danger' : ''}" data-i="${i}" ${it.disabled ? 'disabled' : ''}><i class="ti ti-${it.icon}"></i><span><b>${esc(it.label)}</b>${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span></button>`).join('')}</div>`);
+  modal(`${title ? `<h3>${esc(title)}</h3>` : ''}<div class="menu">${items.map((it, i) => `<button class="mitem ${it.danger ? 'danger' : ''} ${it.on ? 'sel' : ''}" data-i="${i}" ${it.disabled ? 'disabled' : ''}>${it.dot ? `<i class="mdot"><span style="background:${it.dot}"></span></i>` : `<i class="ti ti-${it.icon}"></i>`}<span><b>${esc(it.label)}</b>${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span>${it.on ? '<i class="ti ti-check chev" style="color:var(--accent)"></i>' : ''}</button>`).join('')}</div>`);
   $$('.mbox .mitem').forEach(b => b.onclick = () => { closeModal(); items[+b.dataset.i].run() });
 }
 async function getJSON(url){ const r = await fetch(url, {headers:{Accept:'application/json'}}); if(!r.ok) throw Object.assign(new Error('HTTP ' + r.status), {status:r.status}); return r.json() }
@@ -489,34 +503,24 @@ function tabCount(){ const r = (store.review || []).length; $('#tabn').textConte
 function viewScan(){
   const g = O.game, nrv = (store.review || []).length;
   $('#main').innerHTML = `
-    <div class="chips" id="games">
-      <button class="chip ${g === 'auto' ? 'on' : ''}" data-g="auto"><i class="ti ti-cards"></i>${AUTO.label}</button>
-      ${Object.entries(GAMES).map(([k, x]) => `<button class="chip ${g === k ? 'on' : ''}" data-g="${k}"><span class="dot" style="background:${x.color}"></span>${esc(x.label)}</button>`).join('')}
-    </div>
-    <div class="scanbar"><div class="seg" id="cseg"><button data-m="card"><i class="ti ti-rectangle-vertical"></i>One card</button><button data-m="page"><i class="ti ti-layout-grid"></i>Binder page</button></div>
-      <button class="pill" id="cqk"><i class="ti ti-bolt"></i>Quick scan</button></div>
     <div id="teachb"></div>
     <div class="camwrap" id="cw"><video id="cv" playsinline muted></video><img id="cstill" alt="" hidden><canvas id="cg"></canvas>
       <div class="camnote" id="camnote"><i class="ti ti-camera big"></i><div>Fill the frame with the card, upright, with even light and no glare.</div>
         <button class="btn primary" id="cstart"><i class="ti ti-camera"></i>Start camera</button></div>
       <div class="camtools" id="ctools" hidden><button id="ctorch" hidden aria-label="Flashlight"><i class="ti ti-bolt"></i></button><button id="cflip" hidden aria-label="Switch camera"><i class="ti ti-camera-rotate"></i></button><button id="cstop" aria-label="Stop camera"><i class="ti ti-x"></i></button></div>
+      <div class="cammode"><div class="oseg" id="cseg"><button data-m="card" aria-label="One card"><i class="ti ti-rectangle-vertical"></i><span>One card</span></button><button data-m="page" aria-label="Binder page"><i class="ti ti-layout-grid"></i><span>Binder</span></button></div>
+        <button class="obtn" id="cqk" aria-label="Quick scan"><i class="ti ti-bolt"></i><span>Quick</span></button></div>
     </div>
     <div class="shoot">
-      <button class="iconbtn" id="cpics" aria-label="Scan from photos"><i class="ti ti-photo"></i></button>
+      <div class="sbtn"><button class="iconbtn" id="cpics" aria-label="Scan from photos"><i class="ti ti-photo"></i></button><small>Photos</small></div>
       <button class="shutter" id="cscan" aria-label="Scan now"><b><i class="ti ti-scan"></i></b></button>
-      <button class="iconbtn" id="copt" aria-label="Scan options"><i class="ti ti-adjustments-horizontal"></i></button>
+      <div class="sright">
+        <div class="sbtn"><button class="iconbtn" id="cgame" aria-label="Card game"></button><small id="cgamel"></small></div>
+        <div class="sbtn"><button class="iconbtn" id="copt" aria-label="Scan options"><i class="ti ti-adjustments-horizontal"></i></button><small>Options</small></div>
+      </div>
     </div>
     <input type="file" id="cfile" accept="image/*" multiple hidden><input type="file" id="cpage" accept="image/*" hidden>
-    <div class="panel" id="copts" hidden><h3>Scan options</h3>
-      <label class="optrow"><input type="checkbox" id="cauto" ${O.auto ? 'checked' : ''}><span class="grow">Scan automatically<small>When a card is held still in the frame</small></span></label>
-      <label class="optrow"><input type="checkbox" id="caadd" ${O.autoAdd ? 'checked' : ''}><span class="grow">Add automatically when sure<small>Normal scanning: no need to tap Add</small></span></label>
-      <label class="optrow"><input type="checkbox" id="cquick" ${O.quick ? 'checked' : ''}><span class="grow">Quick scan<small>Scan many cards fast, check the unsure ones later</small></span></label>
-      <div class="optrow"><span class="grow">Binder page layout<small>Rows × cards per row</small></span><select id="cmode" aria-label="Binder page layout">${[[3,3],[3,4],[2,3],[2,2],[4,3],[4,4]].map(([r, c]) => `<option value="${r}x${c}" ${(O.binderSize || '3x3') === r + 'x' + c ? 'selected' : ''}>${r} × ${c}</option>`).join('')}</select></div>
-      <div class="optrow"><span class="grow">Only these sets<small>Optional, e.g. neo mh3</small></span><input id="csets" type="text" style="max-width:140px" value="${esc(O.sets)}" autocapitalize="off" autocomplete="off"></div>
-      <div class="optrow" id="ccamrow" hidden><span class="grow">Camera</span><select id="ccam" aria-label="Camera" style="max-width:170px"></select></div>
-    </div>
     <div id="cres" style="margin-top:14px"></div>`;
-  $$('#games [data-g]').forEach(b => b.onclick = () => { O.game = b.dataset.g; persist(); $$('#games .chip').forEach(c => c.classList.toggle('on', c === b)); drawGuide('idle') });
   $('#cstart').onclick = () => startCamera();
   $('#cstop').onclick = () => { SC.still = null; stopCamera() };
   $('#ctorch').onclick = toggleTorch;
@@ -526,17 +530,15 @@ function viewScan(){
   $('#cpics').onclick = () => menuSheet('Scan from photos', [
     {icon:'photo', label:'Photos of cards', sub:'Pick one or more photos, one card per photo', run:() => $('#cfile').click()},
     {icon:'layout-grid', label:'Photo of a binder page', sub:'Fit a grid over the page, every card gets scanned', run:() => $('#cpage').click()}]);
-  $('#copt').onclick = () => { $('#copts').hidden = !$('#copts').hidden; $('#copt').classList.toggle('on', !$('#copts').hidden); if(!$('#copts').hidden) $('#copts').scrollIntoView({block:'nearest', behavior:'smooth'}) };
+  $('#cgame').onclick = () => menuSheet('Card game', [
+    {icon:'cards', label:AUTO.label, sub:'Works out the game from the card', on:O.game === 'auto', run:() => setGame('auto')}]
+    .concat(Object.entries(GAMES).map(([k, x]) => ({dot:x.color, label:x.label, on:O.game === k, run:() => setGame(k)}))));
+  $('#copt').onclick = openScanOptions;
   $('#cfile').onchange = onPhoto;
   $('#cpage').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if(!f) return; const img = new Image(); img.src = URL.createObjectURL(f);
     try{ await img.decode(); openBinder(img) }catch(err){ toast('Could not open that picture', true) } };
-  $('#cauto').onchange = e => { O.auto = e.target.checked; persist() };
-  $('#caadd').onchange = e => { O.autoAdd = e.target.checked; persist() };
-  $('#cmode').onchange = e => { O.binderSize = e.target.value; if(O.binder) setScanMode(true); else persist() };
-  $('#cquick').onchange = e => { O.quick = e.target.checked; persist(); renderResult(); syncScanUI(); if(O.quick && !SC.stream) toast('Quick scan on: start the camera, or pick several photos at once') };
   $$('#cseg button').forEach(b => b.onclick = () => setScanMode(b.dataset.m === 'page'));
-  $('#cqk').onclick = () => { $('#cquick').checked = !O.quick; $('#cquick').onchange({target:$('#cquick')}) };
-  $('#csets').onchange = e => { O.sets = e.target.value.trim(); persist() };
+  $('#cqk').onclick = () => setQuick(!O.quick);
   syncScanUI(); renderResult(); viewScanBanner();
   setSt(SC.session.length ? '' : 'Hold a card in the frame');
 }
@@ -545,7 +547,30 @@ function setScanMode(page){
   if(page){ if(!O.quick){ O.quick = true; persist(); renderResult() } if(!was) toast('Binder page: line the pockets up with the grid, then hold still or tap the shutter') }
   syncScanUI();
 }
+function setGame(k){ O.game = k; persist(); syncScanUI(); drawGuide(SC.busy ? 'busy' : 'idle') }
+function setQuick(on){ O.quick = on; persist(); renderResult(); syncScanUI(); if(on && !SC.stream) toast('Quick scan on: start the camera, or pick several photos at once') }
+function openScanOptions(){
+  modal(`<h3>Scan options</h3>
+    <label class="optrow"><input type="checkbox" id="cauto" ${O.auto ? 'checked' : ''}><span class="grow">Scan automatically<small>When a card is held still in the frame</small></span></label>
+    <label class="optrow"><input type="checkbox" id="caadd" ${O.autoAdd ? 'checked' : ''}><span class="grow">Add automatically when sure<small>Normal scanning: no need to tap Add</small></span></label>
+    <label class="optrow"><input type="checkbox" id="cquick" ${O.quick ? 'checked' : ''}><span class="grow">Quick scan<small>Scan many cards fast, check the unsure ones later</small></span></label>
+    <div class="optrow"><span class="grow">Binder page layout<small>Rows × cards per row</small></span><select id="cmode" aria-label="Binder page layout">${[[3,3],[3,4],[2,3],[2,2],[4,3],[4,4]].map(([r, c]) => `<option value="${r}x${c}" ${(O.binderSize || '3x3') === r + 'x' + c ? 'selected' : ''}>${r} × ${c}</option>`).join('')}</select></div>
+    <div class="optrow"><span class="grow">Only these sets<small>Optional, e.g. neo mh3</small></span><input id="csets" type="text" style="max-width:140px" value="${esc(O.sets)}" autocapitalize="off" autocomplete="off"></div>
+    ${(SC.devs || []).length > 1 ? `<div class="optrow"><span class="grow">Camera</span><select id="ccam" aria-label="Camera" style="max-width:170px">${SC.devs.map((d, i) => `<option value="${esc(d.deviceId)}" ${d.deviceId === (SC.stream && SC.stream.getVideoTracks()[0].getSettings().deviceId) ? 'selected' : ''}>${esc(d.label || 'Camera ' + (i + 1))}</option>`).join('')}</select></div>` : ''}
+    <div class="mfoot"><button class="btn sm" id="cmore"><i class="ti ti-settings"></i>More in Settings</button><button class="btn primary sm" id="cdone">Done</button></div>`);
+  $('#cauto').onchange = e => { O.auto = e.target.checked; persist() };
+  $('#caadd').onchange = e => { O.autoAdd = e.target.checked; persist() };
+  $('#cquick').onchange = e => setQuick(e.target.checked);
+  $('#cmode').onchange = e => { O.binderSize = e.target.value; if(O.binder) setScanMode(true); else persist() };
+  $('#csets').onchange = e => { O.sets = e.target.value.trim(); persist() };
+  if($('#ccam')) $('#ccam').onchange = e => { O.cam = e.target.value; persist(); startCamera(e.target.value) };
+  $('#cdone').onclick = () => { if($('#csets')) $('#csets').onchange({target:$('#csets')}); closeModal() };
+  $('#cmore').onclick = () => { closeModal(); SP.page = 'scan'; show('settings') };
+}
 function syncScanUI(){
+  const gb = $('#cgame'); if(gb){ const G = O.game === 'auto' ? null : GAMES[O.game];
+    gb.innerHTML = G ? `<span class="gdot" style="background:${G.color}"></span>` : '<i class="ti ti-cards"></i>';
+    $('#cgamel').textContent = G ? G.label : 'Any game' }
   $$('#cseg button').forEach(b => b.classList.toggle('on', (b.dataset.m === 'page') === !!O.binder));
   if($('#cqk')) $('#cqk').classList.toggle('on', !!O.quick); if($('#cquick')) $('#cquick').checked = !!O.quick;
   if($('#cmode')) $('#cmode').value = O.binderSize || '3x3';
@@ -573,10 +598,7 @@ async function startCamera(deviceId){
     $('#ctorch').hidden = !caps.torch; SC.torch = false; $('#ctorch').classList.remove('on');
     if(caps.focusMode && caps.focusMode.includes('continuous')) track.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(() => {});
     const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
-    const cur = track.getSettings().deviceId, sel = $('#ccam');
     SC.devs = devs; if($('#cflip')) $('#cflip').hidden = devs.length < 2;
-    if(devs.length > 1){ sel.hidden = false; if($('#ccamrow')) $('#ccamrow').hidden = false; sel.innerHTML = devs.map((d, i) => `<option value="${esc(d.deviceId)}" ${d.deviceId === cur ? 'selected' : ''}>${esc(d.label || 'Camera ' + (i + 1))}</option>`).join('');
-      sel.onchange = e => { O.cam = e.target.value; persist(); startCamera(e.target.value) } }
     clearInterval(SC.timer); SC.hist = []; SC.ref = null; SC.timer = setInterval(scanTick, 150); SC.armed = true; if(O.binder) camRes();
     setSt('Hold a card in the frame');
   }catch(e){
@@ -727,7 +749,6 @@ function backVec(card){
   return v.map(x => +(x / q).toFixed(4));
 }
 function matchBack(vec){ let best = null; for(const b of store.backs){ let s = 0; for(let i = 0; i < vec.length; i++) s += vec[i] * b.vec[i]; if(!best || s > best.s) best = {game:b.game, s} } return best && best.s >= 0.9 ? best : null }
-function setGame(g){ O.game = g; persist(); $$('#games .chip').forEach(c => c.classList.toggle('on', c.dataset.g === g)); drawGuide('idle') }
 function detectGame(text){
   const sc = Object.entries(CLUES).map(([g, rs]) => [g, rs.filter(r => r.test(text)).length]).sort((a, b) => b[1] - a[1]);
   const need = Math.min(2, (CLUES[sc[0][0]] || []).length);
