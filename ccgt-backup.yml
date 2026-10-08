@@ -1,0 +1,87 @@
+# Keeps a copy of the CCG Trader card catalog (295 games: sets, card numbers, names, rarity and picture links)
+# in data/ccgt/ once a week, so Nightvault Pocket keeps working if ccgtrader.net is down.
+# About 26 MB of card details. The pictures themselves stay on CCG Trader (they would be ~28 GB).
+name: Back up the CCG Trader catalog
+
+on:
+  schedule:
+    - cron: "23 3 * * 0"      # every Sunday around 05:23 Brussels time
+  workflow_dispatch:           # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy the catalog
+        run: |
+          python3 - <<'EOF'
+          import datetime, json, os, time, urllib.parse, urllib.request
+
+          API = "https://api.ccgtrader.co.uk/_/items/"
+          os.makedirs("data/ccgt", exist_ok=True)
+
+          def get(path, params):
+              url = API + path + "?" + urllib.parse.urlencode(params, doseq=True)
+              req = urllib.request.Request(url, headers={"User-Agent": "nightvault-pocket backup (personal card collection app, once a week)"})
+              for attempt in range(4):
+                  try:
+                      with urllib.request.urlopen(req, timeout=180) as r:
+                          return json.load(r).get("data") or []
+                  except Exception as e:
+                      if attempt == 3:
+                          raise
+                      time.sleep(5 * (attempt + 1))
+
+          games = get("game", {"fields[]": ["id", "name"], "limit": -1, "sort": "name"})
+          rar = {r["id"]: r.get("name") or "" for r in get("rarities", {"limit": -1})}
+          index, failed = [], []
+          for g in games:
+              gid, name = g["id"], str(g.get("name") or "").strip()
+              try:
+                  sets = get("set", {"fields[]": ["id", "name", "release_date"], "filter[series.game][eq]": gid, "limit": -1})
+                  cards, page = [], 1
+                  while True:                                   # in pages, so very big games do not time out
+                      rows = get("card", {"fields[]": ["set", "number", "name", "rarity", "image.private_hash"],
+                                          "filter[set.series.game][eq]": gid, "sort": "id", "limit": 2000, "page": page})
+                      cards += rows
+                      if len(rows) < 2000:
+                          break
+                      page += 1
+                      time.sleep(0.5)
+              except Exception as e:
+                  print(f"{name}: skipped ({e})"); failed.append(name); continue
+              out = {"updated": datetime.date.today().isoformat(), "gid": gid, "name": name,
+                     "sets": [{"code": str(s["id"]), "id": s["id"], "name": str(s.get("name") or "").strip(),
+                               "released": str(s.get("release_date") or "")[:10]} for s in sets],
+                     "cards": [[(c.get("set") or {}).get("id") if isinstance(c.get("set"), dict) else c.get("set"),
+                                c.get("number"), str(c.get("name") or "").strip(), (c.get("rarity") or {}).get("id") if isinstance(c.get("rarity"), dict) else c.get("rarity"),
+                                (c.get("image") or {}).get("private_hash")] for c in cards]}
+              with open(f"data/ccgt/{gid}.json", "w", encoding="utf-8") as f:
+                  json.dump(out, f, separators=(",", ":"), ensure_ascii=False)
+              index.append([gid, name, len(cards)])
+              print(f"{name}: {len(sets)} sets, {len(cards)} cards")
+              time.sleep(0.5)
+          if len(index) < 50:
+              raise SystemExit("Too few games came back - keeping the old copy.")
+          with open("data/ccgt/index.json", "w", encoding="utf-8") as f:
+              json.dump({"updated": datetime.date.today().isoformat(), "games": index, "rarities": rar}, f, separators=(",", ":"), ensure_ascii=False)
+          print(len(index), "games saved,", sum(x[2] for x in index), "cards;", len(failed), "skipped:", ", ".join(failed[:20]))
+          EOF
+
+      - name: Save the copy
+        run: |
+          git config user.name "card-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ccgt
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
+          else
+            git commit -m "Back up the CCG Trader catalog"
+            git push
+          fi

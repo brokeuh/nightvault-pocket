@@ -1,0 +1,105 @@
+# Builds one small card file per game in data/ once a day, so Nightvault Pocket can search, scan and show binders
+# for games whose websites do not let other websites read their data.
+#  - Gundam, Digimon, Flesh and Blood, Sorcery, Weiss Schwarz and three Dragon Ball games: TCGplayer's public
+#    price list, copied daily by tcgcsv.com (cards, numbers, rarity, pictures, prices in $)
+#  (World of Warcraft TCG and the other CCG Trader games need no job: the app reads CCG Trader directly.)
+name: Update card data
+
+on:
+  schedule:
+    - cron: "53 4 * * *"      # every day around 06:53 Brussels time
+  workflow_dispatch:           # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  cards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the card files
+        run: |
+          python3 - <<'EOF'
+          import datetime, json, os, re, time, urllib.request
+
+          GAMES = {"gundam": 86, "digimon": 63, "fab": 62, "sorcery": 77, "ws": 20, "dbsfw": 80, "dbsm": 27, "dbz": 23}
+          SEALED = re.compile(r"\b(booster|box|case|pack|bundle|deck|display|sleeves?|playmat|binder|tin|kit|collection|set of|starter|blister|tournament|gift)\b", re.I)
+          os.makedirs("data", exist_ok=True)
+
+          def get(url):
+              req = urllib.request.Request(url, headers={"User-Agent": "nightvault-pocket (personal card collection app, once a day)"})
+              for attempt in range(3):
+                  try:
+                      return json.load(urllib.request.urlopen(req, timeout=90))
+                  except Exception as e:
+                      if attempt == 2:
+                          raise
+                      time.sleep(3)
+
+          def money(v):
+              return round(float(v), 2) if v not in (None, "") else None
+
+          def save(key, sets, cards, source):
+              if len(cards) < 50:
+                  print(key, "- only", len(cards), "cards, keeping the old file"); return
+              with open(f"data/{key}.json", "w", encoding="utf-8") as f:
+                  json.dump({"updated": datetime.date.today().isoformat(), "game": key, "source": source, "currency": "USD",
+                             "sets": sets, "cards": cards}, f, separators=(",", ":"), ensure_ascii=False)
+              print(key, len(sets), "sets,", len(cards), "cards")
+
+          for key, cat in GAMES.items():
+              try:
+                  groups = get(f"https://tcgcsv.com/tcgplayer/{cat}/groups")["results"]
+              except Exception as e:
+                  print(key, "skipped:", e); continue
+              groups.sort(key=lambda g: g.get("publishedOn") or "", reverse=True)
+              sets, cards, used = [], [], set()
+              for g in groups:
+                  try:
+                      prods = get(f"https://tcgcsv.com/tcgplayer/{cat}/{g['groupId']}/products")["results"]
+                      prices = get(f"https://tcgcsv.com/tcgplayer/{cat}/{g['groupId']}/prices")["results"]
+                  except Exception as e:
+                      print(key, g.get("name"), "skipped:", e); continue
+                  px = {}
+                  for p in prices:
+                      v = p.get("marketPrice") or p.get("midPrice") or p.get("lowPrice")
+                      slot = px.setdefault(p["productId"], [None, None])
+                      if (p.get("subTypeName") or "Normal") == "Normal":
+                          slot[0] = money(v)
+                      elif slot[1] is None:
+                          slot[1] = money(v)
+                  rows = []
+                  for p in prods:
+                      ext = {e.get("name"): e.get("value") for e in p.get("extendedData") or []}
+                      if not ("Number" in ext or "Rarity" in ext) or ("Number" not in ext and SEALED.search(p.get("name", ""))):
+                          continue
+                      if (ext.get("Rarity") or "").lower() in ("sealed", "none"):
+                          continue
+                      pr = px.get(p["productId"], [None, None])
+                      rows.append([len(sets), str(ext.get("Number") or ""), p.get("name") or "", ext.get("Rarity") or "", p["productId"], pr[0], pr[1]])
+                  if not rows:
+                      continue
+                  code = re.sub(r"[^a-z0-9]+", "", (g.get("abbreviation") or "").lower()) or f"g{g['groupId']}"
+                  if code in used:
+                      code = f"{code}{g['groupId']}"
+                  used.add(code)
+                  sets.append({"code": code, "name": g.get("name") or code.upper(), "released": (g.get("publishedOn") or "")[:10], "total": len(rows)})
+                  cards.extend(rows)
+                  time.sleep(0.15)
+              save(key, sets, cards, "TCGplayer via tcgcsv.com")
+
+          EOF
+
+      - name: Save the new card files
+        run: |
+          git config user.name "card-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
+          else
+            git commit -m "Update card data"
+            git push
+          fi
