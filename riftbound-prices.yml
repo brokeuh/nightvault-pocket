@@ -1,0 +1,58 @@
+# Copies Riftbound prices from riftbound.gg (DotGG) into riftbound-prices.json once a day,
+# so Nightvault Pocket can show them (riftbound.gg does not let other websites read its prices directly).
+name: Update Riftbound prices
+
+on:
+  schedule:
+    - cron: "17 4 * * *"      # every day around 06:17 Brussels time
+  workflow_dispatch:           # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  prices:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download prices
+        run: |
+          python3 - <<'EOF'
+          import datetime, json, urllib.request
+          req = urllib.request.Request(
+              "https://api.dotgg.gg/cgfw/getcards?game=riftbound&mode=indexed",
+              headers={"User-Agent": "nightvault-pocket (personal card collection app, once a day)"})
+          data = json.load(urllib.request.urlopen(req, timeout=90))
+          ix = {name: i for i, name in enumerate(data["names"])}
+
+          def price(v):
+              try:
+                  return round(float(v), 2) if v not in (None, "") else None
+              except ValueError:
+                  return None
+
+          cards = {}
+          for row in data["data"]:
+              cards[str(row[ix["id"]]).upper()] = [price(row[ix["cmPrice"]]), price(row[ix["cmFoilPrice"]]),
+                                                   price(row[ix["price"]]), price(row[ix["foilPrice"]])]
+          if len(cards) < 100:
+              raise SystemExit(f"Only {len(cards)} cards came back - keeping the old prices.")
+          out = {"updated": datetime.date.today().isoformat(), "source": "riftbound.gg (DotGG)",
+                 "fields": ["cardmarket_eur", "cardmarket_foil_eur", "tcgplayer_usd", "tcgplayer_foil_usd"], "cards": cards}
+          with open("riftbound-prices.json", "w", encoding="utf-8") as f:
+              json.dump(out, f, separators=(",", ":"))
+          print(f"{len(cards)} cards saved")
+          EOF
+
+      - name: Save the new prices
+        run: |
+          git config user.name "price-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add riftbound-prices.json
+          if git diff --cached --quiet; then
+            echo "Prices did not change."
+          else
+            git commit -m "Update Riftbound prices"
+            git push
+          fi

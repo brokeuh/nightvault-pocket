@@ -1,0 +1,134 @@
+# Makes swu-cards.json once a day: every Star Wars: Unlimited set and card, so Nightvault Pocket's binder and search
+# work without asking Star Wars sites directly (most of them do not let other websites read their data).
+# Cards and pictures: the official card list on starwarsunlimited.com (backup: github.com/Team-Zura/swu-cards-json, CC0).
+# Prices: swu-db.com when it answers.
+name: Update Star Wars Unlimited cards
+
+on:
+  schedule:
+    - cron: "41 4 * * *"      # every day around 06:41 Brussels time
+  workflow_dispatch:           # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  cards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the card list
+        run: |
+          python3 - <<'EOF'
+          import datetime, json, time, urllib.request
+
+          def get(url, timeout=180):
+              req = urllib.request.Request(url, headers={"User-Agent": "nightvault-pocket (personal card collection app, once a day)",
+                                                         "Accept": "application/json"})
+              return json.load(urllib.request.urlopen(req, timeout=timeout))
+
+          def en(v):
+              return (v.get("en") or next(iter(v.values()), "")) if isinstance(v, dict) else (v or "")
+
+          # 1. all cards: the official card list first (newest sets), the Team-Zura copy if that fails
+          sets, cards = {}, {}
+
+          def add(code, name, released, order, row, count=0):
+              code = code.lower()
+              cards.setdefault(code, []).append({k: v for k, v in row.items() if v})
+              s = sets.setdefault(code, {"code": code, "name": name or code.upper(), "released": released or "", "total": 0, "order": order or 0})
+              s["total"] = max(s["total"], count or 0)
+
+          def at(x):
+              d = (x or {}).get("data") or {}
+              return d.get("attributes", d) if isinstance(d, dict) else {}
+
+          try:
+              exp = {}
+              for x in get("https://admin.starwarsunlimited.com/api/card-expansions?locale=en&pagination[pageSize]=100")["data"]:
+                  a = x.get("attributes", x)
+                  exp[a.get("code")] = (a.get("name"), str(a.get("releaseDate") or a.get("publishedAt") or "")[:10], a.get("sortValue") or 0)
+              page = 1
+              while True:
+                  j = get("https://admin.starwarsunlimited.com/api/card-list?locale=en&pagination[pageSize]=250&sort=cardNumber"
+                          f"&filters[variantTypes][name][$notContainsi]=foil&pagination[page]={page}")
+                  for c in j["data"]:
+                      a = c.get("attributes", c)
+                      vt = (a.get("variantTypes") or {}).get("data") or []
+                      v = (vt[0].get("attributes", {}).get("name") if vt else None) or "Standard"
+                      if any(w in v.lower() for w in ("prerelease", "judge")):
+                          continue
+                      code = at(a.get("expansion")).get("code")
+                      if not code:
+                          continue
+                      art = at(a.get("artFront"))
+                      img = ((art.get("formats") or {}).get("card") or {}).get("url") or art.get("url") or ""
+                      nm, rel, order = exp.get(code, (code, "", 0))
+                      add(code, nm, rel, order, {"Set": code.upper(), "Number": str(a.get("cardNumber") or "").zfill(3), "Name": a.get("title") or "",
+                                                 "Subtitle": a.get("subtitle") or "", "VariantType": "Normal" if v == "Standard" else v,
+                                                 "Rarity": at(a.get("rarity")).get("name") or "", "FrontArt": img}, a.get("cardCount"))
+                  print("page", page, "of", j["meta"]["pagination"]["pageCount"])
+                  if page >= j["meta"]["pagination"]["pageCount"]:
+                      break
+                  page += 1
+                  time.sleep(0.3)
+          except Exception as e:
+              print("official card list failed, using the Team-Zura copy:", e)
+              sets, cards = {}, {}
+              for c in get("https://raw.githubusercontent.com/Team-Zura/swu-cards-json/main/data/v1/all-cards.json"):
+                  st = c.get("set") or {}
+                  if not st.get("code") or not c.get("number"):
+                      continue
+                  variant = "Hyperspace" if c.get("hyperspace") else "Showcase" if c.get("showcase") else "Normal"
+                  add(st["code"], st.get("name"), st.get("release_date"), st.get("id"),
+                      {"Set": st["code"].upper(), "Number": str(c["number"]).zfill(3), "Name": en(c.get("name")), "Subtitle": en(c.get("subtitle")),
+                       "VariantType": variant, "Rarity": c.get("rarity") or "", "FrontArt": en(c.get("front_image_url"))}, c.get("card_count"))
+          print(len(sets), "sets,", sum(map(len, cards.values())), "cards")
+
+          # 2. prices (and release dates) from swu-db where it answers
+          try:
+              info = get("https://api.swu-db.com/sets", 60)
+              info = info if isinstance(info, list) else info.get("data", [])
+              for x in info:
+                  code = str(x.get("setId") or "").lower()
+                  if code in sets and x.get("releaseDate"):
+                      sets[code]["released"] = x["releaseDate"]
+              for code in list(cards):
+                  try:
+                      d = get("https://api.swu-db.com/cards/" + code, 90)
+                  except Exception as e:
+                      print("no prices for", code, e); continue
+                  px = {(str(r.get("Number", "")).zfill(3), r.get("VariantType") or "Normal"): r for r in (d.get("data", []) if isinstance(d, dict) else d)}
+                  for row in cards[code]:
+                      p = px.get((row["Number"], row.get("VariantType", "Normal")))
+                      if p:
+                          for k in ("MarketPrice", "FoilPrice"):
+                              if p.get(k) not in (None, ""):
+                                  row[k] = p[k]
+                  time.sleep(0.5)
+          except Exception as e:
+              print("swu-db did not answer, saving without prices:", e)
+
+          if sum(map(len, cards.values())) < 200:
+              raise SystemExit("Too few cards came back - keeping the old copy.")
+          for code in cards:
+              cards[code].sort(key=lambda r: (int("".join(ch for ch in r["Number"] if ch.isdigit()) or 0), r["Number"]))
+          order = sorted(sets.values(), key=lambda s: -s.pop("order"))
+          with open("swu-cards.json", "w", encoding="utf-8") as f:
+              json.dump({"updated": datetime.date.today().isoformat(), "source": "starwarsunlimited.com, prices swu-db.com",
+                         "sets": order, "cards": cards}, f, separators=(",", ":"))
+          print("saved", len(order), "sets")
+          EOF
+
+      - name: Save the new copy
+        run: |
+          git config user.name "card-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add swu-cards.json
+          if git diff --cached --quiet; then
+            echo "Cards did not change."
+          else
+            git commit -m "Update Star Wars Unlimited cards"
+            git push
+          fi
