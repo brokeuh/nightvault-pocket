@@ -126,7 +126,7 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 .steps li{margin:3px 0}
 
 /* tabs */
-#tabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--side);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+#tabs{display:grid;grid-template-columns:repeat(4,1fr);background:var(--side);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 #tabs button{border:0;background:none;padding:9px 0 8px;color:var(--dim);font-size:11.5px;display:grid;justify-items:center;gap:2px}
 #tabs button i{font-size:22px}
 #tabs button.on{color:var(--text)}
@@ -139,6 +139,24 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 .mback{position:fixed;inset:0;background:#000a;display:flex;align-items:flex-end;justify-content:center;z-index:40}
 .mbox{background:var(--modal);border:1px solid var(--line2);border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));width:100%;max-width:560px;max-height:88vh;overflow-y:auto}
 .mbox h3{margin:0 0 10px;font-size:17px}
+/* binder view */
+.bgames{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.bgame{background:var(--card);border:1px solid var(--pan);border-radius:12px;padding:12px;text-align:left;color:var(--text);display:grid;gap:4px}
+.bgame b{font-size:14.5px}.bgame .muted{font-size:12px}
+.bar2{height:5px;border-radius:3px;background:var(--track);overflow:hidden}.bar2 i{display:block;height:100%;background:var(--gc,var(--accent))}
+.bset{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--sub);background:none;border-left:0;border-right:0;border-top:0;text-align:left;color:var(--text);width:100%}
+.bset .muted{font-size:12px}.bset .bar2{grid-column:1/-1}
+.bcards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (min-width:600px){.bcards{grid-template-columns:repeat(5,1fr)}}
+.bcard{position:relative;aspect-ratio:63/88;border-radius:6px;overflow:hidden;background:var(--sub);border:1px solid var(--line);padding:0}
+.bcard img{width:100%;height:100%;object-fit:cover;display:block}
+.bcard.miss img{filter:grayscale(1);opacity:.28}
+.bcard .no{position:absolute;left:4px;top:4px;font-size:10.5px;background:#000a;color:#fff;border-radius:4px;padding:0 5px}
+.bcard .q{position:absolute;right:4px;top:4px;font-size:11px;font-weight:700;background:var(--accent);color:var(--onacc);border-radius:999px;padding:1px 7px}
+.bcard .nm{position:absolute;inset:auto 0 0 0;padding:18px 6px 6px;font-size:10.5px;color:#fff;background:linear-gradient(transparent,#000c);text-align:left;line-height:1.2}
+.bstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.bstats div{background:var(--card);border:1px solid var(--pan);border-radius:10px;padding:8px 10px;min-width:0}
+.bstats b{display:block;font-size:16px;font-variant-numeric:tabular-nums}.bstats span{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
 /* binder page grid */
 .bpage{position:relative;width:100%;margin:6px 0;border-radius:8px;overflow:visible;touch-action:none;user-select:none;background:#000}
 .bpage img{display:block;width:100%;height:100%;border-radius:8px;pointer-events:none}
@@ -167,6 +185,7 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
   <nav id="tabs">
     <button data-v="scan" class="on"><i class="ti ti-camera"></i>Scan cards</button>
     <button data-v="cards"><i class="ti ti-stack"></i><span>My cards<span class="n" id="tabn"></span></span></button>
+    <button data-v="binder"><i class="ti ti-book-2"></i>Binder</button>
     <button data-v="settings"><i class="ti ti-settings"></i>Settings</button>
   </nav>
 </div>
@@ -238,7 +257,7 @@ function dreport(){
   const v = $('#cv'), a = SC.auto || {};
   const head = [`Nightvault Pocket scan details · ${new Date().toLocaleString()}`, `Phone: ${navigator.userAgent}`,
     `Camera: ${v && v.videoWidth ? v.videoWidth + '×' + v.videoHeight : 'off'} · game chip: ${O.game} · auto-scan ${O.auto ? 'on' : 'off'} · whole card ${O.full ? 'on' : 'off'} · number ${O.readNum ? 'on' : 'off'} · backs learned: ${store.backs.map(b => b.game).join(', ') || 'none'}`,
-    `Auto-scan now: ${a.ticks || 0} checks · movement ${a.moved ?? '-'} (still below 0.25) · contrast ${a.contrast ?? '-'} (card above 12) · ready ${SC.armed ? 'yes' : 'no'} · still checks in a row ${a.run || 0}`];
+    `Auto-scan now: ${a.nocard ? 'no card shape seen (' + a.nocard + ' checks) · ' : ''}${a.ticks || 0} checks · movement ${a.moved ?? '-'} (still below 0.25) · contrast ${a.contrast ?? '-'} (card above 12) · ready ${SC.armed ? 'yes' : 'no'} · still checks in a row ${a.run || 0}`];
   const scans = DLOG.scans.map((c, i) => [`--- scan ${i + 1} at ${c.when} (${c.how}, chip ${c.mode})`, ...c.steps.map(([t, k, x]) => `${String(t).padStart(5)} ms  ${k}: ${x}`)].join('\n'));
   return head.concat(DLOG.notes || [], scans.length ? scans : ['(no scans yet)']).join('\n');
 }
@@ -259,17 +278,42 @@ function lev(a, b){ a = a.toLowerCase(); b = b.toLowerCase(); if(a === b) return
 const sim = (a, b) => { const base = s => s.split(' - ')[0].trim(); a = base(a); b = base(b); const m = Math.max(a.length, b.length) || 1; return 1 - lev(a, b) / m };
 
 /* ================================================================ card lookups (each returns printings in Nightvault's set/number form) */
+/* card mappers shared by search and the binder (same set codes and numbers as Nightvault) */
+const mtgMap = c => ({game:'mtg', set:c.set.toLowerCase(), number:normNum(c.collector_number), showSet:c.set.toUpperCase(), showNum:c.collector_number,
+    name:c.name, setName:c.set_name, rarity:c.rarity, released:c.released_at || '',
+    image:(c.image_uris || (c.card_faces && c.card_faces[0].image_uris) || {}).normal || '',
+    price:num(c.prices.eur) ?? num(c.prices.usd), priceFoil:num(c.prices.eur_foil) ?? num(c.prices.usd_foil),
+    currency:(c.prices.eur != null || c.prices.eur_foil != null) ? 'EUR' : 'USD', psrc:(c.prices.eur != null) ? 'Cardmarket' : 'TCGplayer'});
+const pkmMap = c => { const cm = (c.cardmarket || {}).prices || {}, tp = (c.tcgplayer || {}).prices || {}, tpv = Object.values(tp)[0] || {};
+    const eur = cm.averageSellPrice ?? cm.trendPrice;
+    return {game:'pokemon', set:c.set.id.toLowerCase(), number:normNum(c.number), showSet:(c.set.ptcgoCode || c.set.id).toUpperCase(), showNum:c.number + (c.set.printedTotal ? '/' + c.set.printedTotal : ''),
+      name:c.name, setName:c.set.name, rarity:c.rarity || '', released:(c.set.releaseDate || '').replace(/\//g, '-'), image:(c.images || {}).small || '',
+      price:eur ?? tpv.market ?? null, priceFoil:cm.reverseHoloTrend ?? (tp.holofoil || tp.reverseHolofoil || {}).market ?? null,
+      currency:eur != null ? 'EUR' : 'USD', psrc:eur != null ? 'Cardmarket' : 'TCGplayer'} };
+const lorMap = c => { const im = (c.image_uris || {}).digital || c.image_uris || {}, p = c.prices || {};
+    return {game:'lorcana', set:pad(String(c.set.code).toLowerCase(), 2), number:normNum(c.collector_number), showSet:String(c.set.code), showNum:c.collector_number,
+      name:c.name + (c.version ? ' - ' + c.version : ''), setName:c.set.name, rarity:c.rarity || '', released:c.released_at || '',
+      image:im.small || im.normal || '', price:num(p.usd), priceFoil:num(p.usd_foil), currency:'USD', psrc:'TCGplayer'} };
+const swuMap = c => ({game:'swu', set:String(c.Set).toLowerCase(), number:normNum(c.Number), showSet:String(c.Set).toUpperCase(), showNum:c.Number,
+    name:c.Name + (c.Subtitle ? ' - ' + c.Subtitle : ''), setName:String(c.Set).toUpperCase() + (c.VariantType && c.VariantType !== 'Normal' ? ' · ' + c.VariantType : ''),
+    rarity:c.Rarity || '', released:'', image:c.FrontArt || '', price:num(c.MarketPrice), priceFoil:num(c.FoilPrice), currency:'USD', psrc:'TCGplayer'});
+const rbMap = (c, pr) => { const sid = String((c.set || {}).set_id || '').toUpperCase(), cn = String(c.collector_number ?? '');
+    const n = c.riftbound_id || `${sid}-${cn.padStart(3, '0')}`;
+    // Riot's own picture server refuses other sites, so pictures come from riftbound.gg (DotGG); promos fall back to the main-set art
+    const dg = k => `https://static.dotgg.gg/riftbound/cards/${k}.webp`;
+    const alt = [dg(`OGN-${cn.padStart(3, '0')}`), dg(`SFD-${cn.padStart(3, '0')}`), (c.media || {}).image_url || ''].filter(Boolean);
+    const p = (pr.cards || {})[`${sid}-${cn.padStart(3, '0')}`] || (pr.cards || {})[`${sid}-${cn}`] || [], eur = p[0] ?? null, usd = p[2] ?? null;
+    return {game:'riftbound', set:sid.toLowerCase(), number:normNum(n), showSet:sid, showNum:cn, name:c.name, setName:(c.set || {}).label || sid,
+      rarity:(c.classification || {}).rarity || '', released:'', image:dg(`${sid}-${cn.padStart(3, '0')}`), alt,
+      price:eur ?? usd, priceFoil:eur != null ? (p[1] ?? null) : (p[3] ?? null), currency:eur != null ? 'EUR' : 'USD', psrc:eur != null ? 'Cardmarket' : usd != null ? 'TCGplayer' : '',
+      link:c.tcgplayer_id ? `https://www.tcgplayer.com/product/${c.tcgplayer_id}` : `https://www.tcgplayer.com/search/riftbound-league-of-legends-trading-card-game/product?q=${enc(c.name)}`, linkLabel:'Price on TCGplayer'} };
 async function findMTG(q){
   let card;
   try{ card = await getJSON('https://api.scryfall.com/cards/named?fuzzy=' + enc(q)) }
   catch(e){ const ac = await getJSON('https://api.scryfall.com/cards/autocomplete?q=' + enc(q)).catch(() => ({data:[]})); if(!ac.data || !ac.data.length) return [];
             card = await getJSON('https://api.scryfall.com/cards/named?exact=' + enc(ac.data[0])) }
   let prints = [card]; try{ prints = (await getJSON(card.prints_search_uri + '&unique=prints')).data.slice(0, 60) }catch(e){}
-  return prints.map(c => ({game:'mtg', set:c.set.toLowerCase(), number:normNum(c.collector_number), showSet:c.set.toUpperCase(), showNum:c.collector_number,
-    name:c.name, setName:c.set_name, rarity:c.rarity, released:c.released_at || '',
-    image:(c.image_uris || (c.card_faces && c.card_faces[0].image_uris) || {}).normal || '',
-    price:num(c.prices.eur) ?? num(c.prices.usd), priceFoil:num(c.prices.eur_foil) ?? num(c.prices.usd_foil),
-    currency:(c.prices.eur != null || c.prices.eur_foil != null) ? 'EUR' : 'USD', psrc:(c.prices.eur != null) ? 'Cardmarket' : 'TCGplayer'}));
+  return prints.map(mtgMap);
 }
 async function findPokemon(q){
   const base = 'https://api.pokemontcg.io/v2/cards?pageSize=40&orderBy=-set.releaseDate&select=id,name,set,number,images,rarity,cardmarket,tcgplayer&q=';
@@ -277,12 +321,7 @@ async function findPokemon(q){
   if(r.down) return findTCGdex(q);
   if(!r.data || !r.data.length){ const w = q.split(' ')[0].replace(/[^\p{L}\-']/gu, ''); if(w.length >= 3) r = await getJSON(base + enc(`name:${w}*`)).catch(() => ({data:[]})) }
   if(!r.data || !r.data.length) return findTCGdex(q);
-  return (r.data || []).map(c => { const cm = (c.cardmarket || {}).prices || {}, tp = (c.tcgplayer || {}).prices || {}, tpv = Object.values(tp)[0] || {};
-    const eur = cm.averageSellPrice ?? cm.trendPrice;
-    return {game:'pokemon', set:c.set.id.toLowerCase(), number:normNum(c.number), showSet:(c.set.ptcgoCode || c.set.id).toUpperCase(), showNum:c.number + (c.set.printedTotal ? '/' + c.set.printedTotal : ''),
-      name:c.name, setName:c.set.name, rarity:c.rarity || '', released:(c.set.releaseDate || '').replace(/\//g, '-'), image:(c.images || {}).small || '',
-      price:eur ?? tpv.market ?? null, priceFoil:cm.reverseHoloTrend ?? (tp.holofoil || tp.reverseHolofoil || {}).market ?? null,
-      currency:eur != null ? 'EUR' : 'USD', psrc:eur != null ? 'Cardmarket' : 'TCGplayer'} });
+  return (r.data || []).map(pkmMap);
 }
 async function findYGO(q){
   let r = await getJSON('https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=' + enc(q)).catch(() => ({data:[]}));
@@ -299,16 +338,11 @@ async function findYGO(q){
 }
 async function findLorcana(q){
   const r = await getJSON('https://api.lorcast.com/v0/cards/search?q=' + enc(q));
-  return (r.results || []).slice(0, 40).map(c => { const im = (c.image_uris || {}).digital || c.image_uris || {}, p = c.prices || {};
-    return {game:'lorcana', set:pad(String(c.set.code).toLowerCase(), 2), number:normNum(c.collector_number), showSet:String(c.set.code), showNum:c.collector_number,
-      name:c.name + (c.version ? ' - ' + c.version : ''), setName:c.set.name, rarity:c.rarity || '', released:c.released_at || '',
-      image:im.small || im.normal || '', price:num(p.usd), priceFoil:num(p.usd_foil), currency:'USD', psrc:'TCGplayer'} });
+  return (r.results || []).slice(0, 40).map(lorMap);
 }
 async function findSWU(q){
   const r = await getJSON('https://api.swu-db.com/cards/search?q=' + enc(q));
-  return (r.data || []).slice(0, 40).map(c => ({game:'swu', set:String(c.Set).toLowerCase(), number:normNum(c.Number), showSet:String(c.Set).toUpperCase(), showNum:c.Number,
-    name:c.Name + (c.Subtitle ? ' - ' + c.Subtitle : ''), setName:String(c.Set).toUpperCase() + (c.VariantType && c.VariantType !== 'Normal' ? ' · ' + c.VariantType : ''),
-    rarity:c.Rarity || '', released:'', image:c.FrontArt || '', price:num(c.MarketPrice), priceFoil:num(c.FoilPrice), currency:'USD', psrc:'TCGplayer'}));
+  return (r.data || []).slice(0, 40).map(swuMap);
 }
 /* Riftbound prices: riftbound.gg (DotGG) blocks other websites, so a daily GitHub job copies its prices into
    riftbound-prices.json next to this app (see .github/workflows/riftbound-prices.yml) */
@@ -324,16 +358,7 @@ function rbPrices(){
 }
 async function findRiftbound(q){
   const [r, pr] = await Promise.all([getJSON('https://api.riftcodex.com/cards/name?fuzzy=' + enc(q) + '&size=40'), rbPrices()]);
-  return (r.items || []).map(c => { const sid = String((c.set || {}).set_id || '').toUpperCase(), cn = String(c.collector_number ?? '');
-    const n = c.riftbound_id || `${sid}-${cn.padStart(3, '0')}`;
-    // Riot's own picture server refuses other sites, so pictures come from riftbound.gg (DotGG); promos fall back to the main-set art
-    const dg = k => `https://static.dotgg.gg/riftbound/cards/${k}.webp`;
-    const alt = [dg(`OGN-${cn.padStart(3, '0')}`), dg(`SFD-${cn.padStart(3, '0')}`), (c.media || {}).image_url || ''].filter(Boolean);
-    const p = (pr.cards || {})[`${sid}-${cn.padStart(3, '0')}`] || (pr.cards || {})[`${sid}-${cn}`] || [], eur = p[0] ?? null, usd = p[2] ?? null;
-    return {game:'riftbound', set:sid.toLowerCase(), number:normNum(n), showSet:sid, showNum:cn, name:c.name, setName:(c.set || {}).label || sid,
-      rarity:(c.classification || {}).rarity || '', released:'', image:dg(`${sid}-${cn.padStart(3, '0')}`), alt,
-      price:eur ?? usd, priceFoil:eur != null ? (p[1] ?? null) : (p[3] ?? null), currency:eur != null ? 'EUR' : 'USD', psrc:eur != null ? 'Cardmarket' : usd != null ? 'TCGplayer' : '',
-      link:c.tcgplayer_id ? `https://www.tcgplayer.com/product/${c.tcgplayer_id}` : `https://www.tcgplayer.com/search/riftbound-league-of-legends-trading-card-game/product?q=${enc(c.name)}`, linkLabel:'Price on TCGplayer'} });
+  return (r.items || []).map(c => rbMap(c, pr));
 }
 async function findTCGdex(q){                                       // second Pokémon source (also older sets)
   const list = await getJSON('https://api.tcgdex.net/v2/en/cards?name=' + enc(q)), top = (list || []).slice(0, 12);
@@ -427,7 +452,7 @@ let VIEW = 'scan';
 function show(v){
   VIEW = v; $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === (v === 'review' ? 'cards' : v)));
   if(v !== 'scan') stopCamera();
-  ({scan:viewScan, cards:viewCards, settings:viewSettings, review:viewReview})[v]();
+  ({scan:viewScan, cards:viewCards, settings:viewSettings, review:viewReview, binder:viewBinder})[v]();
   $('#main').scrollTop = 0;
 }
 $$('#tabs button').forEach(b => b.onclick = () => show(b.dataset.v));
@@ -569,6 +594,17 @@ window.addEventListener('resize', () => drawGuide(SC.busy ? 'busy' : 'idle'));
 const _sm = document.createElement('canvas'); _sm.width = 24; _sm.height = 34; const _smc = _sm.getContext('2d', {willReadFrequently:true});
 /* auto-scan for a hand-held phone: compare with the picture from ~0.6 s ago (so slow movement still counts as movement),
    on shape only (so the phone's auto-exposure does not), and scan again only after the card changed or was moved away */
+/* is there a card in the frame? (looks for a card-shaped object with clear edges, on a small copy of the camera picture) */
+const _pv = document.createElement('canvas');
+function cardInView(v, g){
+  if(SC.teach) return true;                                   // card backs: always allowed
+  const k = Math.min(1, 640 / v.videoWidth); _pv.width = Math.round(v.videoWidth * k); _pv.height = Math.round(v.videoHeight * k);
+  _pv.getContext('2d').drawImage(v, 0, 0, _pv.width, _pv.height);
+  if(g.B){ let n = 0; const cw = g.w * k / g.B.cols, ch = g.h * k / g.B.rows;
+    for(let r = 0; r < g.B.rows; r++) for(let c = 0; c < g.B.cols; c++) if(cardInCell(_pv, g.x * k + c * cw, g.y * k + r * ch, cw, ch).found) n++;
+    return n > 0 }
+  return cardInCell(_pv, g.x * k, g.y * k, g.w * k, g.h * k).found;
+}
 function scanTick(){
   const v = $('#cv'), g = guideRect(); if(!v || !g || v.readyState < 2) return;
   _smc.drawImage(v, g.x, g.y, g.w, g.h, 0, 0, 24, 34);
@@ -583,7 +619,8 @@ function scanTick(){
   if(!card || moved > 0.4 || (SC.ref && dist(SC.ref, gray) > 0.3)){ if(!SC.armed){ SC.armed = true; SC.tries = 0 } SC.ref = null }
   if(SC.retryAt && Date.now() > SC.retryAt){ SC.retryAt = 0; SC.armed = true }
   drawGuide(SC.busy ? 'busy' : (still && SC.armed ? 'ok' : 'idle'));
-  if(O.auto && SC.armed && !SC.busy && still){ SC.armed = false; SC.ref = gray; SC.tries = (SC.tries || 0) + 1; scanNow(true) }
+  if(O.auto && SC.armed && !SC.busy && still && !cardInView(v, g)){ A.nocard = (A.nocard || 0) + 1; if(A.nocard % 8 === 1) setSt(binderRC() ? 'No cards in the grid' : 'No card in the frame - the whole card should fit inside it'); return }
+  if(O.auto && SC.armed && !SC.busy && still){ A.nocard = 0; SC.armed = false; SC.ref = gray; SC.tries = (SC.tries || 0) + 1; scanNow(true) }
 }
 async function onPhoto(e){
   const files = [...e.target.files]; e.target.value = ''; if(!files.length) return;
@@ -655,21 +692,34 @@ function nameCandidates(text){
     if(c.length >= 3 && c.length <= 40 && words <= 6 && !out.includes(c)) out.push(c) }
   return out.slice(0, 8);
 }
+/* read text with the reader's own confidence (0-100); lines=true also gives each line with its confidence */
+async function readText(w, canvas, lines){
+  const r = await w.recognize(canvas, {}, lines ? {text:true, blocks:true} : {text:true}), d = (r && r.data) || {}, L = [];
+  if(lines && Array.isArray(d.blocks)) for(const b of d.blocks) for(const p of (b.paragraphs || [])) for(const l of (p.lines || [])) L.push({text:l.text || '', conf:typeof l.confidence === 'number' ? l.confidence : 100});
+  return {text:d.text || '', conf:typeof d.confidence === 'number' ? d.confidence : 100, lines:L};
+}
+const MIN_NAME_CONF = 55, MIN_LINE_CONF = 65;
 /* recognise one card picture (756×1056). Used by the normal scan and by quick scan in the background.
    Returns {kind:'result', r} | {kind:'manual', name, game} | {kind:'none'} */
 async function identify(card, G, say){
   const w = await ocr(), isAuto = G === 'auto', noLookup = g => g === 'other' || (g !== 'auto' && !FIND[g]);
-  let full = '', found = '', tokens = new Set(), best = null, anyName = false;
+  let full = '', fullSure = '', found = '', tokens = new Set(), best = null, anyName = false;
   const tried = new Set();
   const readFull = async () => {
     if(full || !(O.full || isAuto)) return; say('Reading the whole card ...');
-    try{ full = (await w.recognize(crop(card, [0, 0, 1, 1], false))).data.text; numTokens(full).forEach(x => tokens.add(x)); dlog('whole card read', JSON.stringify(full.trim().slice(0, 1200))) }
+    try{ const R = await readText(w, crop(card, [0, 0, 1, 1], false), true); full = R.text;
+      fullSure = R.lines.length ? R.lines.filter(l => l.conf >= MIN_LINE_CONF).map(l => l.text).join('\n') : (R.conf >= MIN_LINE_CONF ? full : '');
+      numTokens(full).forEach(x => tokens.add(x));
+      dlog('whole card read', `(reader ${Math.round(R.conf)}% sure) ` + JSON.stringify(full.trim().slice(0, 1000)));
+      if(R.lines.length) dlog('lines the reader is sure of', JSON.stringify(fullSure.trim().slice(0, 300)) || 'none') }
     catch(e){ dlog('whole card read failed', e.message) }
   };
   const clues = txt => { const g = detectGame(txt);
     dlog('game clues', Object.entries(CLUES).map(([k, rs]) => k + ' ' + rs.filter(r => r.test(txt)).length).join(', ') + ' → ' + (g || 'not sure')); return g };
+  const nameLike = q => { const letters = (q.match(/\p{L}/gu) || []).length; return letters >= 4 && q.split(/\s+/).length <= 6 && letters / q.replace(/\s/g, '').length >= 0.7 && !/^(.)\1+$/i.test(q.replace(/\s/g, '')) };
   const lookFor = async (q, games, tpl) => {
     const key = q + '|' + games.join(','); if(tried.has(key) || (q.length < 3 && !games.includes('onepiece'))) return; tried.add(key);
+    if(q && !nameLike(q)){ dlog(`skipped “${q}”`, 'does not look like a card name'); return }
     say(`Looking up “${q}”${games.length === 1 ? ' (' + GAMES[games[0]].label + ')' : ''} ...`);
     const r = await search(q, games, tokens); r.tpl = tpl;
     dlog(`lookup “${q}”`, `${r.list.length} results in ${games.join(', ')} · best name match ${r.best.toFixed(2)}` + (r.list[0] ? ` (${r.list.slice().sort((x, y) => y.sim - x.sim)[0].name})` : '') + (r.failed.length ? ' · could not reach: ' + r.failed.join(', ') : '') + (r.errors ? ' · ' + r.errors : ''));
@@ -679,13 +729,13 @@ async function identify(card, G, say){
   // In All games the whole card is read first: it tells which game this is
   if(isAuto){ await readFull(); found = clues(full) || '' }
   if(found && !FIND[found]){ dlog('game', GAMES[found].label + ' has no card lookup'); const t0 = templateList(found)[0];
-    return {kind:'manual', game:found, name:cleanName((await w.recognize(crop(card, t0.zones.name))).data.text) || nameCandidates(full)[0] || ''} }
+    return {kind:'manual', game:found, name:cleanName((await readText(w, crop(card, t0.zones.name))).text) || nameCandidates(fullSure)[0] || ''} }
   const gameNow = found || (isAuto ? '' : G);
   const tpls = templateList(gameNow === 'other' ? '' : gameNow);
   dlog('templates to try', tpls.map(t => t.label + (t.game && !gameNow ? ' (' + GAMES[t.game].label + ')' : '')).join(', '));
   for(const t of tpls.slice(0, 8)){
-    const txt = (await w.recognize(crop(card, t.zones.name))).data.text, q = cleanName(txt); if(q.length >= 3) anyName = true;
-    dlog(`template “${t.label}” name`, JSON.stringify(txt.trim()) + ' → ' + JSON.stringify(q));
+    const NR = await readText(w, crop(card, t.zones.name)), txt = NR.text, q0 = cleanName(txt), q = NR.conf >= MIN_NAME_CONF ? q0 : ''; if(q.length >= 3) anyName = true;
+    dlog(`template “${t.label}” name`, JSON.stringify(txt.trim()) + ' → ' + JSON.stringify(q0) + ` (reader ${Math.round(NR.conf)}% sure${q0 && !q ? ', too unsure - ignored' : ''})`);
     if(t.zones.num && (O.readNum || !t.std)){ try{ const nt = (await w.recognize(crop(card, t.zones.num))).data.text; numTokens(nt).forEach(x => tokens.add(x)); dlog(`template “${t.label}” set & number`, JSON.stringify(nt.trim())) }catch(e){} }
     let extra = [];
     if(t.zones.text){ try{ const xt = (await w.recognize(crop(card, t.zones.text, false))).data.text; extra = nameCandidates(xt); numTokens(xt).forEach(x => tokens.add(x)); dlog(`template “${t.label}” extra text`, JSON.stringify(xt.trim().slice(0, 300))) }catch(e){} }
@@ -694,13 +744,13 @@ async function identify(card, G, say){
     for(const q2 of [q, ...extra].slice(0, 3)){ await lookFor(q2, games, t); if(sure()) break }
     if(sure()) break;
   }
-  if(noLookup(G)){ await readFull(); return {kind:'manual', name:nameCandidates(full)[0] || '', game:G} }
+  if(noLookup(G)){ await readFull(); return {kind:'manual', name:nameCandidates(fullSure)[0] || '', game:G} }
   // Not sure yet: try the other lines of the whole card
   if(!sure()){
     await readFull();
     if(isAuto && !found && full){ found = clues(full) || '' }
     const games2 = found ? [found] : (isAuto ? lookGames() : [G]);
-    const cands = nameCandidates(full); if(cands.length) anyName = true;
+    const cands = nameCandidates(fullSure); if(cands.length) anyName = true;
     for(const q of cands.slice(0, 4)){ await lookFor(q, games2, null); if(sure()) break }
     if(!best && games2.includes('onepiece') && tokens.size) await lookFor('', ['onepiece'], null);   // One Piece: the card number alone is enough
   }
@@ -741,7 +791,7 @@ async function scanNow(auto){
     DLOG.cur = null; if($('#ddet') && $('#ddet').open) $('#dtext').textContent = dreport();
     SC.busy = false; const b = $('#cscan'); if(b) b.classList.remove('busy'); drawGuide('idle');
     const missed = !SC.result || SC.result.confidence === 'low';
-    if(auto && SC.stream && missed && !SC.teach && (SC.tries || 0) < 3) SC.retryAt = Date.now() + 1200;
+    if(auto && SC.stream && missed && !SC.teach && (SC.tries || 0) < 2) SC.retryAt = Date.now() + 1500;
   }
 }
 
@@ -759,13 +809,14 @@ async function binderCapture(){
     }catch(e){}
     if(!src){ const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(v, 0, 0); src = c }
     const k = (src.width || W) / W, gx = g.x * k, gy = g.y * k, gw = g.w * k, gh = g.h * k, cwd = gw / g.B.cols, cht = gh / g.B.rows;
-    let n = 0, empty = 0;
+    let n = 0, empty = 0, weak = 0;
     for(let r = 0; r < g.B.rows; r++) for(let c = 0; c < g.B.cols; c++){
       const f = cardInCell(src, gx + c * cwd, gy + r * cht, cwd, cht);
       if(f.empty){ empty++; continue }
-      await quickAdd(f.card); n++;
+      if(!f.found) weak++;
+      await quickAdd(f.card, !f.found); n++;
     }
-    dstart('binder page'); dlog('page', `${g.B.rows}×${g.B.cols} grid from the ${how}: ${n} cards, ${empty} empty pockets`); DLOG.cur = null;
+    dstart('binder page'); dlog('page', `${g.B.rows}×${g.B.cols} grid from the ${how}: ${n} pockets to read (${weak} without clear card edges), ${empty} empty`); DLOG.cur = null;
     toast(n ? `Page captured: ${n} card${n === 1 ? '' : 's'}${empty ? `, ${empty} empty pocket${empty === 1 ? '' : 's'} skipped` : ''}. Turn the page.` : 'No cards found in the grid', !n);
   } finally { SC.paging = false }
 }
@@ -794,12 +845,12 @@ function cardInCell(src, x, y, w, h){
   const [l, r] = longest(aw, i => { let n = 0; for(let j = 0; j < ah; j++) if(diff(i, j)) n++; return n / ah }, 0.35);
   const [tp, b] = r >= l ? longest(ah, j => { let n = 0; for(let i = l; i <= r; i++) if(diff(i, j)) n++; return n / (r - l + 1) }, 0.12) : [0, -1];
   const fw = (r - l + 1) / aw * RW, fh = (b - tp + 1) / ah * RH, ar = fw / fh;
-  if(fw > w * 0.6 && fh > h * 0.6 && ar > 0.55 && ar < 0.9) return {card:cellCanvas(src, X + l / aw * RW, Y + tp / ah * RH, fw, fh), empty:false};   // found the card
+  if(fw > w * 0.6 && fh > h * 0.6 && ar > 0.55 && ar < 0.9) return {card:cellCanvas(src, X + l / aw * RW, Y + tp / ah * RH, fw, fh), empty:false, found:true};   // found the card
   // no card edges found: empty when the middle of the pocket looks like the page around it
   const ci0 = Math.round((mx + w * 0.25) / RW * aw), ci1 = Math.round((mx + w * 0.75) / RW * aw), cj0 = Math.round((my + h * 0.25) / RH * ah), cj1 = Math.round((my + h * 0.75) / RH * ah);
   let n = 0, tot = 0; for(let i = ci0; i < ci1; i++) for(let j = cj0; j < cj1; j++){ tot++; if(diff(i, j)) n++ }
   const c = cellCanvas(src, x, y, w, h), f = tot ? n / tot : 1;
-  return {card:c, empty:f < 0.08 || (f < 0.25 && cellEmpty(c))};
+  return {card:c, empty:f < 0.08 || (f < 0.25 && cellEmpty(c)), found:false};
 }
 function cellCanvas(img, x, y, w, h){ const c = document.createElement('canvas'); c.width = 756; c.height = 1056; c.getContext('2d').drawImage(img, x, y, w, h, 0, 0, 756, 1056); return c }
 function cellEmpty(c){                                  // an empty pocket is nearly one flat colour
@@ -847,9 +898,9 @@ function openBinder(img){
   $('#bpc').onchange = e => { BP.cols = +e.target.value; draw() };
   $('#bpx').onclick = closeModal;
   $('#bpok').onclick = async () => {
-    const cells = pageCells(img).filter(f => !f.empty).map(f => f.card); closeModal();
+    const cells = pageCells(img).filter(f => !f.empty); closeModal();
     if(!O.quick){ O.quick = true; persist(); if($('#cquick')) $('#cquick').checked = true }
-    stopCamera(true); for(const c of cells) await quickAdd(c);
+    stopCamera(true); for(const f of cells) await quickAdd(f.card, !f.found);
     toast(`${cells.length} cards from the page are being identified`);
   };
 }
@@ -858,10 +909,10 @@ function openBinder(img){
 const Q = {jobs:[], running:false, recent:[]};
 const smallThumb = card => { const c = document.createElement('canvas'); c.width = 160; c.height = 224; c.getContext('2d').drawImage(card, 0, 0, 160, 224); return c.toDataURL('image/jpeg', 0.6) };
 const qCount = st => Q.jobs.filter(j => j.status === st).length;
-async function quickAdd(card){
+async function quickAdd(card, weak){
   if(checkBack(card)) return;
   const blob = await new Promise(r => card.toBlob(r, 'image/jpeg', 0.88));
-  const job = {id:uid(), blob, thumb:smallThumb(card), status:'waiting', foil:SC.foil, game:O.game, when:Date.now()};
+  const job = {id:uid(), blob, weak:!!weak, thumb:smallThumb(card), status:'waiting', foil:SC.foil, game:O.game, when:Date.now()};
   Q.jobs.push(job); Q.recent.unshift(job); Q.recent.length = Math.min(Q.recent.length, 12);
   SC.lastCard = card; renderResult(); runQueue();
 }
@@ -892,7 +943,11 @@ async function runQueue(){
 }
 const candOf = m => { const o = {}; for(const k of ['game', 'gameName', 'set', 'number', 'showSet', 'showNum', 'name', 'setName', 'rarity', 'image', 'alt', 'link', 'price', 'priceFoil', 'currency', 'psrc']) if(m[k] != null) o[k] = m[k]; return o };
 function quickResult(job, res){
-  const rr = res.kind === 'result' ? rank(res.r, false) : null;
+  let rr = res.kind === 'result' ? rank(res.r, false) : null;
+  if(rr && rr.confidence === 'low'){ dlog('result', `weak match (${rr.matches[0].name}) - not added`); rr = null }
+  if(job.weak && !(rr && rr.confidence === 'high')){                 // no clear card edges and no sure match: probably not a card
+    job.status = 'skipped'; job.name = 'no card'; dlog('result', 'no clear card and no sure match - skipped'); return;
+  }
   if(rr && rr.confidence === 'high' && !rr.ambiguous){
     addCard(rr.matches[0], job.foil, 1); job.status = 'sure'; job.name = rr.matches[0].name; dlog('result', 'sure: ' + job.name + ' - added'); return;
   }
@@ -910,8 +965,8 @@ function quickResult(job, res){
 }
 function renderQuick(el){
   const w = qCount('waiting') + qCount('working'), added = Q.jobs.filter(j => j.status === 'sure' || j.status === 'check').length, toCheck = (store.review || []).length;
-  const badge = {waiting:'<i class="ti ti-clock"></i>', working:'<i class="ti ti-loader-2"></i>', sure:'<i class="ti ti-check"></i>', check:'<i class="ti ti-alert-triangle"></i>', failed:'<i class="ti ti-question-mark"></i>'};
-  const col = {waiting:'var(--dim)', working:'var(--accent)', sure:'var(--green)', check:'var(--amber)', failed:'var(--red)'};
+  const badge = {skipped:'<i class="ti ti-ban"></i>', waiting:'<i class="ti ti-clock"></i>', working:'<i class="ti ti-loader-2"></i>', sure:'<i class="ti ti-check"></i>', check:'<i class="ti ti-alert-triangle"></i>', failed:'<i class="ti ti-question-mark"></i>'};
+  const col = {skipped:'var(--dim)', waiting:'var(--dim)', working:'var(--accent)', sure:'var(--green)', check:'var(--amber)', failed:'var(--red)'};
   el.innerHTML = `<div class="panel">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:15px"><i class="ti ti-bolt" style="color:var(--accent)"></i> Quick scan</b>
       <span class="sub">${w ? w + ' waiting · ' : ''}${added} added · ${toCheck} to check</span></div>
@@ -1380,6 +1435,117 @@ function viewReview(){
   setSt('');
 }
 
+/* ---------------------------------------------------------------- binder: every set of a game, all its cards, the ones you own filled in */
+const BD = {game:null, set:null, filter:'all', q:'', sets:{}, cards:{}};
+const SETSRC = {
+  mtg:{list:async () => (await getJSON('https://api.scryfall.com/sets')).data.filter(x => !x.digital && x.card_count > 0).map(x => ({code:x.code, name:x.name, released:x.released_at || '', total:x.card_count})),
+       cards:async st => { let u = 'https://api.scryfall.com/cards/search?order=set&unique=prints&q=' + enc('set:' + st.code), out = [];
+         while(u && out.length < 1200){ const j = await getJSON(u); out.push(...j.data.map(mtgMap)); u = j.has_more ? j.next_page : null; if(u) await sleep(110) } return out }},
+  pokemon:{list:async () => { try{ return (await getJSON('https://api.pokemontcg.io/v2/sets?orderBy=-releaseDate&pageSize=250')).data.map(x => ({code:x.id, name:x.name, released:(x.releaseDate || '').replace(/\//g, '-'), total:x.total})) }
+         catch(e){ return (await getJSON('https://api.tcgdex.net/v2/en/sets')).reverse().map(x => ({code:String(x.id).toLowerCase(), id:x.id, tcgdex:true, name:x.name, released:'', total:(x.cardCount || {}).total || 0})) } },   // backup: TCGdex
+       cards:async st => { if(st.tcgdex){ const j = await getJSON('https://api.tcgdex.net/v2/en/sets/' + st.id); return (j.cards || []).map(c => ({game:'pokemon', set:st.code, number:normNum(c.localId), showSet:st.code.toUpperCase(), showNum:c.localId,
+           name:c.name, setName:j.name || st.name, rarity:'', released:'', image:c.image ? c.image + '/low.webp' : '', price:null, priceFoil:null, currency:'EUR', psrc:''})) }
+         let out = [], page = 1;
+         while(page < 6){ const j = await getJSON(`https://api.pokemontcg.io/v2/cards?q=${enc('set.id:' + st.code)}&pageSize=250&page=${page}&orderBy=number&select=id,name,set,number,images,rarity,cardmarket,tcgplayer`);
+           out.push(...j.data.map(pkmMap)); if(j.data.length < 250) break; page++ } return out }},
+  ygo:{list:async () => (await getJSON('https://db.ygoprodeck.com/api/v7/cardsets.php')).map(x => ({code:String(x.set_code).toLowerCase(), name:x.set_name, released:x.tcg_date || '', total:x.num_of_cards})),
+       cards:async st => { const j = await getJSON('https://db.ygoprodeck.com/api/v7/cardinfo.php?cardset=' + enc(st.name)), out = [];
+         for(const c of j.data || []) for(const x of (c.card_sets || []).filter(x => x.set_name === st.name)){ const [code, n] = String(x.set_code).split(/-(.*)/s);
+           out.push({game:'ygo', set:(code || '').toLowerCase(), number:normNum(n || ''), showSet:code, showNum:n || '', name:c.name, setName:st.name, rarity:x.set_rarity || '', released:'',
+             image:(c.card_images || [])[0]?.image_url_small || '', price:num(x.set_price) || num((c.card_prices || [])[0]?.cardmarket_price), priceFoil:null, currency:'EUR', psrc:'Cardmarket'}) }
+         return out.sort((a, b) => String(a.showNum).localeCompare(String(b.showNum), undefined, {numeric:true})) }},
+  lorcana:{list:async () => (await getJSON('https://api.lorcast.com/v0/sets')).results.map(x => ({code:pad(String(x.code).toLowerCase(), 2), id:x.id, name:x.name, released:x.released_at || '', total:0})),
+       cards:async st => (await getJSON('https://api.lorcast.com/v0/sets/' + st.id + '/cards')).map(lorMap)},
+  swu:{list:async () => { const j = await getJSON('https://api.swu-db.com/sets'); return (Array.isArray(j) ? j : j.data || []).map(x => ({code:String(x.setId || x.code || '').toLowerCase(), name:x.fullName || x.name, released:x.releaseDate || '', total:x.numberCards || 0})).filter(x => x.code) },
+       cards:async st => { const j = await getJSON('https://api.swu-db.com/cards/' + st.code); return (j.data || j || []).map(swuMap) }},
+  riftbound:{list:async () => { const j = await getJSON('https://api.riftcodex.com/sets?size=100'); return (j.items || j || []).map(x => ({code:String(x.set_id).toLowerCase(), name:x.name || x.label || x.set_id, released:x.published_on || x.publish_date || '', total:x.card_count || 0})) },
+       cards:async st => { const pr = await rbPrices(), out = []; let page = 1;
+         while(page < 8){ const j = await getJSON(`https://api.riftcodex.com/cards?set_id=${enc(st.code)}&sort=collector_number&size=100&page=${page}`); out.push(...(j.items || []).map(c => rbMap(c, pr))); if(!j.pages || page >= j.pages) break; page++ } return out }},
+  onepiece:{list:async () => { const all = await opdb(), m = new Map(); for(const c of all){ const st = String(c.card_set_id || '').split('-')[0]; if(!st) continue; const e = m.get(st) || {code:st.toLowerCase(), name:c.set_name || st, released:'', total:0}; e.total++; m.set(st, e) } return [...m.values()].sort((a, b) => b.code.localeCompare(a.code)) },
+       cards:null},
+  swccg:{list:async () => { const all = await swdb(), m = new Map(); for(const c of all){ const k = String(c.set || ''); const img = (c.front || {}).imageUrl || ''; const label = ((img.split('/cards/')[1] || '').split('/')[0] || '').replace(/-(Light|Dark)$/, '').replace(/([a-z])([A-Z])/g, '$1 $2');
+         const e = m.get(k) || {code:k.toLowerCase(), name:label || 'Set ' + k, released:'', total:0}; e.total++; m.set(k, e) } return [...m.values()] },
+       cards:null},
+};
+// One Piece and Star Wars CCG come from one big list each: cut it by set
+SETSRC.onepiece.cards = async st => { const all = await opdb(); return all.filter(c => String(c.card_set_id || '').split('-')[0].toLowerCase() === st.code).map(c => { const [s0, n] = String(c.card_set_id).split('-'), v = String(c.card_image_id || '').split('_')[1];
+  return {game:'onepiece', set:s0.toLowerCase(), number:normNum(n) + (v ? '-' + v : ''), showSet:s0, showNum:n + (v ? ' ' + v.toUpperCase() : ''), name:opBase(c.card_name) + (/parallel/i.test(c.card_name) ? ' (Parallel)' : ''),
+    setName:c.set_name || '', rarity:c.rarity || '', released:'', image:c.card_image || '', price:num(c.market_price), priceFoil:null, currency:'USD', psrc:'TCGplayer'} }).sort((a, b) => a.showNum.localeCompare(b.showNum, undefined, {numeric:true})) };
+SETSRC.swccg.cards = async st => { const all = await swdb(); return all.filter(c => String(c.set || '').toLowerCase() === st.code).map(c => ({game:'swccg', set:st.code, number:String(c.gempId || c.id), showSet:st.name, showNum:String(c.gempId || c.id),
+  name:String((c.front || {}).title || '').replace(/[•<>]/g, '').trim(), setName:st.name, rarity:c.rarity || '', released:'', image:(c.front || {}).imageUrl || '', price:null, priceFoil:null, currency:'USD', psrc:''})) };
+
+const ownedIn = g => store.cards.filter(c => c.game === g);
+const ownedMap = g => { const m = new Map(); for(const c of ownedIn(g)){ const k = c.set + '|' + c.number; m.set(k, (m.get(k) || 0) + c.qty) } return m };
+const valueOf = cs => cs.reduce((a, c) => a + ((c.foil ? c.priceFoil : c.price) || 0) * c.qty, 0);
+function bdLoad(kind, key, fn){ if(!BD[kind][key]) BD[kind][key] = fn().catch(e => { delete BD[kind][key]; throw e }); return BD[kind][key] }
+
+function viewBinder(){ setSt(''); if(!BD.game) return binderGames(); if(!BD.set) return binderSets(); return binderSet() }
+function binderGames(){
+  const games = Object.keys(GAMES).filter(g => g !== 'other' && (SETSRC[g] || ownedIn(g).length));
+  const eur = valueOf(store.cards.filter(c => c.currency === 'EUR')), usd = valueOf(store.cards.filter(c => c.currency === 'USD'));
+  $('#main').innerHTML = `<div class="head"><h1>Binder</h1><div class="sp"></div><span class="sub">${fmt(eur, 'EUR')}${usd ? ' + ' + fmt(usd, 'USD') : ''}</span></div>
+    <p class="hint" style="margin:-6px 0 12px">Pick a game to see its sets. Cards you own are shown in colour, the rest greyed out.</p>
+    <div class="bgames">${games.map(g => { const cs = ownedIn(g), n = cs.reduce((a, c) => a + c.qty, 0);
+      return `<button class="bgame" data-g="${g}" style="--gc:${GAMES[g].color}"><span><span class="dot" style="background:${GAMES[g].color};margin-right:6px"></span><b>${esc(GAMES[g].label)}</b></span>
+        <span class="muted">${n ? `${n.toLocaleString()} cards · ${fmt(valueOf(cs), cs[0] ? cs[0].currency : 'EUR')}` : 'No cards yet'}</span></button>` }).join('')}</div>`;
+  $$('.bgame').forEach(b => b.onclick = () => { BD.game = b.dataset.g; BD.set = null; BD.q = ''; viewBinder(); $('#main').scrollTop = 0 });
+}
+async function binderSets(){
+  const g = BD.game, own = ownedIn(g), om = ownedMap(g), cur = own[0] ? own[0].currency : 'EUR';
+  const ownedSets = new Map(); for(const c of own){ const e = ownedSets.get(c.set) || {n:0, uniq:new Set(), name:c.setName || c.showSet, show:c.showSet}; e.n += c.qty; e.uniq.add(c.number); ownedSets.set(c.set, e) }
+  $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Games</button><h1 style="font-size:18px">${esc(GAMES[g].label)}</h1></div>
+    <div class="bstats"><div><b>${own.reduce((a, c) => a + c.qty, 0).toLocaleString()}</b><span>Cards</span></div><div><b>${ownedSets.size}</b><span>Sets</span></div><div><b>${fmt(valueOf(own), cur)}</b><span>Value</span></div></div>
+    <div class="bar"><input class="grow" id="bdq" type="search" placeholder="Find a set" value="${esc(BD.q)}"></div><div id="bdl"><div class="muted" style="padding:16px 4px">Loading the sets ...</div></div>`;
+  $('#bdb').onclick = () => { BD.game = null; viewBinder() };
+  let sets = [];
+  if(SETSRC[g]){ try{ sets = await bdLoad('sets', g, SETSRC[g].list) }catch(e){ toast(`${GAMES[g].label} sets could not be loaded: ${e.message}`, true) } }
+  const known = new Set(sets.map(x => x.code)); for(const [k, e] of ownedSets) if(!known.has(k)) sets.push({code:k, name:e.name, released:'', total:0, local:true});
+  const draw = () => { const q = BD.q.toLowerCase();
+    const rows = sets.filter(x => !q || (x.name + ' ' + x.code).toLowerCase().includes(q))
+      .sort((a, b) => (ownedSets.has(b.code) - ownedSets.has(a.code)) || String(b.released).localeCompare(String(a.released)));
+    $('#bdl').innerHTML = rows.slice(0, 400).map(x => { const e = ownedSets.get(x.code), u = e ? e.uniq.size : 0, t = x.total || 0;
+      return `<button class="bset" data-s="${esc(x.code)}"><span><b>${esc(x.name)}</b> <span class="muted">${esc(String(x.code).toUpperCase())}${x.released ? ' · ' + esc(String(x.released).slice(0, 4)) : ''}</span></span>
+        <span class="muted">${u ? `<b style="color:var(--text)">${u}</b>${t ? ' / ' + t : ''}` : (t ? t + ' cards' : '')}</span>${u && t ? `<div class="bar2" style="--gc:${GAMES[g].color}"><i style="width:${Math.min(100, Math.round(100 * u / t))}%"></i></div>` : ''}</button>` }).join('') || '<div class="empty">No sets found.</div>';
+    $$('.bset').forEach(b => b.onclick = () => { BD.set = sets.find(x => x.code === b.dataset.s); BD.filter = 'all'; viewBinder(); $('#main').scrollTop = 0 }) };
+  draw(); let t; $('#bdq').oninput = e => { clearTimeout(t); t = setTimeout(() => { BD.q = e.target.value; draw() }, 150) };
+}
+async function binderSet(){
+  const g = BD.game, st = BD.set;
+  $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Sets</button><h1 style="font-size:17px;min-width:0;flex:1">${esc(st.name)}</h1></div>
+    <div id="bds"></div><div class="chips" id="bdf"></div><div id="bdc"><div class="muted" style="padding:16px 4px">Loading the cards ...</div></div>`;
+  $('#bdb').onclick = () => { BD.set = null; viewBinder() };
+  let cards = [];
+  if(SETSRC[g] && !st.local){ try{ cards = await bdLoad('cards', g + '|' + st.code, () => SETSRC[g].cards(st)) }catch(e){ toast(`Could not load the cards of ${st.name}: ${e.message}`, true) } }
+  const seen = new Set(cards.map(c => c.set + '|' + c.number));
+  for(const c of ownedIn(g).filter(c => c.set === st.code)) if(!seen.has(c.set + '|' + c.number)){ cards.push({...c}); seen.add(c.set + '|' + c.number) }   // owned cards the list does not have
+  const draw = () => {
+    const om = ownedMap(g), own = ownedIn(g).filter(c => c.set === st.code), have = cards.filter(c => om.get(c.set + '|' + c.number));
+    const cur = (cards.find(c => c.price != null) || own[0] || {}).currency || 'EUR';
+    const missVal = cards.filter(c => !om.get(c.set + '|' + c.number)).reduce((a, c) => a + (c.price || 0), 0);
+    $('#bds').innerHTML = `<div class="bstats"><div><b>${have.length} / ${cards.length || st.total || '?'}</b><span>Collected</span></div><div><b>${fmt(valueOf(own), own[0] ? own[0].currency : cur)}</b><span>Your value</span></div><div><b>${missVal ? fmt(missVal, cur) : '–'}</b><span>Missing</span></div></div>
+      <div class="bar2" style="--gc:${GAMES[g].color};margin:-4px 0 12px"><i style="width:${cards.length ? Math.round(100 * have.length / cards.length) : 0}%"></i></div>`;
+    $('#bdf').innerHTML = [['all', 'All'], ['have', 'I have'], ['miss', 'Missing']].map(([k, l]) => `<button class="chip ${BD.filter === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('');
+    const list = cards.filter(c => BD.filter === 'all' || (BD.filter === 'have') === !!om.get(c.set + '|' + c.number));
+    $('#bdc').innerHTML = list.length ? `<div class="bcards">${list.map((c, i) => { const q = om.get(c.set + '|' + c.number) || 0;
+      return `<button class="bcard ${q ? '' : 'miss'}" data-i="${cards.indexOf(c)}" title="${esc(c.name)}">${c.image ? pic(c, 'loading="lazy"') : ''}${q ? `<span class="q">${q}</span>` : ''}<span class="nm">${esc(c.name)}</span><span class="no">${esc(c.showNum)}</span></button>` }).join('')}</div>`
+      : `<div class="empty">${BD.filter === 'have' ? 'You have no cards from this set yet.' : BD.filter === 'miss' ? 'Complete! You have every card in this set.' : 'No cards in this set.'}</div>`;
+    $$('#bdf .chip').forEach(b => b.onclick = () => { BD.filter = b.dataset.f; draw() });
+    $$('#bdc .bcard').forEach(b => b.onclick = () => binderCard(cards[+b.dataset.i], draw));
+  };
+  draw();
+}
+function binderCard(m, redraw){
+  const mine = store.cards.filter(c => c.game === m.game && c.set === m.set && c.number === m.number);
+  const q = f => (mine.find(c => !!c.foil === f) || {}).qty || 0;
+  modal(`<div class="cres-top"><div class="cardbig">${pic(m)}</div><div style="min-width:0;flex:1"><div class="cname">${esc(m.name)}</div>
+      <div class="sub" style="margin:2px 0 8px">${esc(m.showSet)} #${esc(m.showNum)}${m.rarity ? ' · ' + esc(m.rarity) : ''}</div>
+      <div class="price">${fmt(m.price, m.currency)}${m.priceFoil != null ? ` <span class="muted">· foil ${fmt(m.priceFoil, m.currency)}</span>` : ''}</div></div></div>
+    ${[false, true].map(f => `<div class="row"><div class="grow">${f ? 'Foil' : 'Normal'}</div><div class="qb"><button data-f="${f ? 1 : 0}" data-d="-1">−</button><b id="bq${f ? 1 : 0}">${q(f)}</b><button data-f="${f ? 1 : 0}" data-d="1">+</button></div></div>`).join('')}
+    <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" id="bcx">Done</button></div>`);
+  $$('.mbox [data-d]').forEach(b => b.onclick = () => { const f = b.dataset.f === '1'; addCard(m, f, +b.dataset.d); $('#bq' + b.dataset.f).textContent = (store.cards.find(c => c.key === ckey(m, f)) || {}).qty || 0 });
+  $('#bcx').onclick = () => { closeModal(); redraw() };
+}
+
 /* ---------------------------------------------------------------- my cards */
 const F = {q:'', game:'all', set:'all', sort:'new'};
 function viewCards(){
@@ -1463,17 +1629,20 @@ async function importBackup(e){
   try{
     const d = JSON.parse(await f.text()); if(d.format !== PHONE_FORMAT || !Array.isArray(d.cards)) throw 0;
     for(const g of Array.isArray(d.games) ? d.games : []){ if(g && g.id && g.label && !BUILTIN.has(g.id) && !store.games.some(x => x.id === g.id)) store.games.push(g) } registerGames();
-    let n = 0;
+    let n = 0, np = 0;
     for(const x of d.cards){ if(!x || !x.game || !x.set || !x.number) continue; if(!GAMES[x.game] || x.game === 'other'){ x.game_name = x.game_name || x.game; x.game = 'other' }
       const k = (x.game === 'other' ? ['other:' + String(x.game_name || '').toLowerCase()] : [x.game]).concat([x.set, x.number, x.foil ? 1 : 0]).join('|'), ex = store.cards.find(c => c.uid === x.uid || c.key === k);
-      if(ex){ ex.qty = Math.max(ex.qty, +x.qty || 0); continue }
+      if(ex){ ex.qty = Math.max(ex.qty, +x.qty || 0);
+        if(d.source === 'nightvault' && x.price != null){ if(x.foil) ex.priceFoil = x.price; else ex.price = x.price; ex.currency = x.currency || ex.currency; ex.psrc = 'Nightvault'; ex.priced = Date.now(); np++ }
+        if(!ex.setName && x.set_name) ex.setName = x.set_name; continue }
       store.cards.push({uid:x.uid || uid(), key:k, game:x.game, gameName:x.game === 'other' ? x.game_name : '', set:x.set, number:x.number, showSet:x.show_set || x.set.toUpperCase(), showNum:String(x.show_number || x.number),
         name:x.name || '?', setName:x.set_name || '', rarity:x.rarity || '', image:x.image || '', price:x.foil ? null : x.price ?? null, priceFoil:x.foil ? x.price ?? null : null,
-        currency:x.currency || 'EUR', psrc:'', foil:!!x.foil, qty:Math.max(1, +x.qty || 1), added:x.added || Date.now()}); n++ }
+        currency:x.currency || 'EUR', psrc:d.source === 'nightvault' ? 'Nightvault' : '', foil:!!x.foil, qty:Math.max(1, +x.qty || 1), added:x.added || Date.now()}); n++ }
     let nt = 0; for(const t of Array.isArray(d.templates) ? d.templates : []){ if(t && t.id && GAMES[t.game] && t.zones && t.zones.name && !store.templates.some(x => x.id === t.id)){ store.templates.push(t); nt++ } }
     for(const x of Array.isArray(d.sources) ? d.sources : []){ if(x && x.id && /^https:\/\//.test(x.url || '') && !store.sources.some(y => y.id === x.id)) store.sources.push(x) }
     for(const b of Array.isArray(d.backs) ? d.backs : []){ if(b && GAMES[b.game] && Array.isArray(b.vec) && store.backs.filter(x => x.game === b.game).length < 3) store.backs.push(b) }
-    persist(); tabCount(); toast(`Restored ${n} new entr${n === 1 ? 'y' : 'ies'}${nt ? ` and ${nt} scan template${nt === 1 ? '' : 's'}` : ''}`); viewSettings();
+    if(d.source === 'nightvault') store.lastFromPC = Date.now();
+    persist(); tabCount(); toast(d.source === 'nightvault' ? `From Nightvault: ${n} card${n === 1 ? '' : 's'} added, ${np} price${np === 1 ? '' : 's'} updated` : `Restored ${n} new entr${n === 1 ? 'y' : 'ies'}${nt ? ` and ${nt} scan template${nt === 1 ? '' : 's'}` : ''}`); viewSettings();
   }catch(err){ toast('That file is not a Nightvault Pocket export.', true) }
 }
 
@@ -1484,8 +1653,8 @@ function viewSettings(){
     <div class="panel"><h3>Send to Nightvault</h3>
       <p style="margin:0 0 10px;font-size:13.5px">${total.toLocaleString()} cards on this phone${store.lastExport ? ` · last sent ${new Date(store.lastExport).toLocaleString()}` : ''}.</p>
       <div class="btns"><button class="btn primary" id="sexp"><i class="ti ti-device-desktop-up"></i>Export for Nightvault</button><button class="btn" id="scsv"><i class="ti ti-file-spreadsheet"></i>Export CSV</button>
-        <label class="btn"><i class="ti ti-file-import"></i>Restore a backup<input type="file" id="simp" accept=".json,application/json" hidden></label></div>
-      <p class="hint">The Nightvault export is also your backup. In Nightvault: Cards → <b>Import from phone</b>.</p></div>
+        <label class="btn"><i class="ti ti-file-import"></i>Restore / open a file<input type="file" id="simp" accept=".json,application/json" hidden></label></div>
+      <p class="hint">The Nightvault export is also your backup. In Nightvault: Cards → <b>Import from phone</b>. To get your PC collection and its prices here: Nightvault → <b>Send to phone</b>, then <b>Restore / open a file</b>.${store.lastFromPC ? ` Last file from Nightvault: ${new Date(store.lastFromPC).toLocaleDateString()}.` : ''}</p></div>
     <div class="panel"><h3>Scanning</h3>
       <label class="row"><input type="checkbox" id="oauto" ${O.auto ? 'checked' : ''}><div class="grow">Scan automatically when the card is held still</div></label>
       <label class="row"><input type="checkbox" id="oadd" ${O.autoAdd ? 'checked' : ''}><div class="grow">Add automatically when sure<div class="hint" style="margin:2px 0 0">Only when the name matched and the printing is clear.</div></div></label>
