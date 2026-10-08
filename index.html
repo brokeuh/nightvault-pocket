@@ -322,7 +322,7 @@ function dstart(how){ DLOG.cur = {when:new Date().toLocaleTimeString(), how, mod
 function dreport(){
   const v = $('#cv'), a = SC.auto || {};
   const head = [`Nightvault Pocket scan details · ${new Date().toLocaleString()}`, `Phone: ${navigator.userAgent}`,
-    `Camera: ${v && v.videoWidth ? v.videoWidth + '×' + v.videoHeight : 'off'} · game chip: ${O.game} · auto-scan ${O.auto ? 'on' : 'off'} · whole card ${O.full ? 'on' : 'off'} · number ${O.readNum ? 'on' : 'off'} · backs learned: ${store.backs.map(b => b.game).join(', ') || 'none'}`,
+    `Camera: ${v && v.videoWidth ? v.videoWidth + '×' + v.videoHeight : 'off'}${SC.camInfo ? ' (' + SC.camInfo + ')' : ''} · zoom ${O.zoom || 1} · game chip: ${O.game} · auto-scan ${O.auto ? 'on' : 'off'} · whole card ${O.full ? 'on' : 'off'} · number ${O.readNum ? 'on' : 'off'} · backs learned: ${store.backs.map(b => b.game).join(', ') || 'none'}`,
     `Auto-scan now: ${a.nocard ? 'no card shape seen (' + a.nocard + ' checks) · ' : ''}${a.ticks || 0} checks · movement ${a.moved ?? '-'} (still below 0.25) · contrast ${a.contrast ?? '-'} (card above 12) · ready ${SC.armed ? 'yes' : 'no'} · still checks in a row ${a.run || 0}`];
   const scans = DLOG.scans.map((c, i) => [`--- scan ${i + 1} at ${c.when} (${c.how}, chip ${c.mode})`, ...c.steps.map(([t, k, x]) => `${String(t).padStart(5)} ms  ${k}: ${x}`)].join('\n'));
   return head.concat(SITECHECK ? [SITECHECK] : [], DLOG.notes || [], scans.length ? scans : ['(no scans yet)']).join('\n');
@@ -729,6 +729,7 @@ function openScanOptions(){
     <div class="optrow"><span class="grow">Binder page layout<small>Rows × cards per row</small></span><select id="cmode" aria-label="Binder page layout">${[[3,3],[3,4],[2,3],[2,2],[4,3],[4,4]].map(([r, c]) => `<option value="${r}x${c}" ${(O.binderSize || '3x3') === r + 'x' + c ? 'selected' : ''}>${r} × ${c}</option>`).join('')}</select></div>
     <div class="optrow"><span class="grow">Only these sets<small>Optional, e.g. neo mh3</small></span><input id="csets" type="text" style="max-width:140px" value="${esc(O.sets)}" autocapitalize="off" autocomplete="off"></div>
     ${(SC.devs || []).length > 1 ? `<div class="optrow"><span class="grow">Camera</span><select id="ccam" aria-label="Camera" style="max-width:170px">${SC.devs.map((d, i) => `<option value="${esc(d.deviceId)}" ${d.deviceId === (SC.stream && SC.stream.getVideoTracks()[0].getSettings().deviceId) ? 'selected' : ''}>${esc(d.label || 'Camera ' + (i + 1))}</option>`).join('')}</select></div>` : ''}
+    ${(SC.devs || []).length > 1 ? '<div class="optrow"><span class="grow">Blurry picture?<small>Test every camera again and pick the sharpest one</small></span><button class="btn sm" id="crecam">Find best camera</button></div>' : ''}
     <div class="mfoot"><button class="btn sm" id="cmore"><i class="ti ti-settings"></i>More in Settings</button><button class="btn primary sm" id="cdone">Done</button></div>`);
   $('#cauto').onchange = e => { O.auto = e.target.checked; persist() };
   $('#caadd').onchange = e => { O.autoAdd = e.target.checked; persist() };
@@ -736,6 +737,7 @@ function openScanOptions(){
   $('#cmode').onchange = e => { O.binderSize = e.target.value; if(O.binder) setScanMode(true); else persist() };
   $('#csets').onchange = e => { O.sets = e.target.value.trim(); persist() };
   if($('#ccam')) $('#ccam').onchange = e => { O.cam = e.target.value; persist(); startCamera(e.target.value) };
+  if($('#crecam')) $('#crecam').onclick = async () => { closeModal(); setSt('Testing the cameras ...'); const best = await pickMainCamera(SC.devs, O.cam); if(best){ O.cam = best; O.camPicked = 2; persist() } startCamera(best || O.cam); toast('Camera checked - see Settings → Developer for the details') };
   $('#cdone').onclick = () => { if($('#csets')) $('#csets').onchange({target:$('#csets')}); closeModal() };
   $('#cmore').onclick = () => { closeModal(); SP.page = 'scan'; show('settings') };
 }
@@ -773,6 +775,10 @@ async function startCamera(deviceId){
     $('#czoom').hidden = !(caps.zoom && caps.zoom.max > caps.zoom.min); if(!$('#czoom').hidden) setZoom(O.zoom || 1, true);
     const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
     SC.devs = devs; if($('#cflip')) $('#cflip').hidden = devs.length < 2;
+    SC.camInfo = `${track.label || 'camera'} · ${track.getSettings().width}×${track.getSettings().height} · focus: ${(caps.focusMode || ['?']).join('/')}${caps.focusDistance ? ` · closest ${caps.focusDistance.min} m` : ''}`;
+    if(!deviceId && O.camPicked !== 2 && devs.length > 2){ O.camPicked = 2; persist();                  // first time: find the main rear camera
+      const best = await pickMainCamera(devs, track.getSettings().deviceId);
+      if(best && best !== track.getSettings().deviceId){ O.cam = best; persist(); toast('Switched to the main camera for sharper pictures'); return startCamera(best) } }
     clearInterval(SC.timer); SC.hist = []; SC.ref = null; SC.timer = setInterval(scanTick, 150); SC.armed = true; if(O.binder) camRes();
     setSt('Hold a card in the frame');
   }catch(e){
@@ -782,6 +788,24 @@ async function startCamera(deviceId){
     $('#cstart').onclick = () => startCamera();
   }
 }
+/* Android phones have several rear cameras and the browser often opens the wide-angle one, which cannot focus close.
+   Try each rear camera once and keep the one that has autofocus (and the most pixels). */
+async function pickMainCamera(devs, current){
+  const backs = devs.filter(d => !/front|user|selfie/i.test(d.label)); if(backs.length < 2) return null;
+  const old = SC.stream; if(old) old.getTracks().forEach(t => t.stop()); SC.stream = null;
+  let best = null, bs = -1; const notes = [];
+  for(const d of backs){
+    try{ const st = await navigator.mediaDevices.getUserMedia({audio:false, video:{deviceId:{exact:d.deviceId}, width:{ideal:1920}, height:{ideal:1440}}});
+      const t = st.getVideoTracks()[0], c = t.getCapabilities ? t.getCapabilities() : {}, set = t.getSettings();
+      if(set.facingMode === 'user'){ st.getTracks().forEach(x => x.stop()); continue }
+      const af = (c.focusMode || []).some(m => m === 'continuous' || m === 'single-shot'), close = c.focusDistance ? c.focusDistance.min : null;
+      let sc = (af ? 100 : 0) + Math.min(40, ((c.width && c.width.max) || set.width || 0) / 100) + (/\b0\b|camera2 0|main/i.test(d.label) ? 15 : 0) - (/wide|ultra|tele|depth|macro/i.test(d.label) ? 30 : 0);
+      notes.push(`${d.label || 'camera'}: focus ${(c.focusMode || ['none']).join('/')}${close != null ? ', closest ' + close + ' m' : ''}, ${(c.width && c.width.max) || set.width}px → ${Math.round(sc)}`);
+      st.getTracks().forEach(x => x.stop()); if(sc > bs){ bs = sc; best = d.deviceId } }
+    catch(e){ notes.push(`${d.label || 'camera'}: could not open (${e.name})`) }
+  }
+  dlogNote('cameras tried: ' + notes.join(' | '));
+  return best || current }
 function stopCamera(keepUi){
   clearInterval(SC.timer); SC.timer = null; SC.prev = null; SC.stable = 0;
   if(SC.stream){ SC.stream.getTracks().forEach(t => t.stop()); SC.stream = null }
