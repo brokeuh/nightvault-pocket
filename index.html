@@ -1616,11 +1616,13 @@ const PRICED = new Set(['mtg', 'pokemon', 'ygo', 'lorcana', 'swu', 'riftbound', 
 const priced = g => PRICED.has(g) || !!(GAMES[g] && GAMES[g].custom && FIND[g]);
 const PC = {running:false, stop:false, done:0, total:0, filled:0, updated:0, missed:0};
 const priceOf = c => c.foil ? c.priceFoil : c.price;
-/* dollars to euros, so the collection has one total (daily rate of the European Central Bank via frankfurter.app) */
+/* dollars to euros, so the collection has one total (daily rate of the European Central Bank via frankfurter.dev, backup open.er-api.com) */
 const usdEur = () => (O.fx && O.fx.rate) || 0.92;
 const toEur = (x, cur) => x == null ? null : cur === 'USD' ? x * usdEur() : x;
 function refreshFx(){ if(O.fx && Date.now() - O.fx.at < 20 * 3600e3) return;
-  getJSON('https://api.frankfurter.app/latest?from=USD&to=EUR').then(j => { if(j && j.rates && j.rates.EUR){ O.fx = {rate:j.rates.EUR, at:Date.now(), day:j.date}; persist(); if(VIEW === 'cards') viewCards() } }).catch(() => {}) }
+  const got = (rate, day) => { if(rate > 0.3 && rate < 3){ O.fx = {rate, at:Date.now(), day}; persist(); if(VIEW === 'cards') viewCards() } };
+  getJSON('https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR').then(j => got(j.rates.EUR, j.date))
+    .catch(() => getJSON('https://open.er-api.com/v6/latest/USD').then(j => got(j.rates.EUR, (j.time_last_update_utc || '').slice(5, 16)))).catch(() => {}) }
 const valueEur = cs => cs.reduce((a, c) => a + (toEur(priceOf(c), c.currency) || 0) * c.qty, 0);
 /* the value of the collection, once a day, for the graph in My cards */
 function recordValue(){ const d = new Date().toISOString().slice(0, 10), v = +valueEur(store.cards).toFixed(2), n = store.cards.reduce((a, c) => a + c.qty, 0);
