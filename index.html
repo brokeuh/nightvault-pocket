@@ -13,7 +13,6 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230f1115'/%3E%3Cpath d='M18.6 14.2A7.6 7.6 0 1 1 9.8 5.4a6.4 6.4 0 0 0 8.8 8.8z' fill='%236ea8ff'/%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%230f1115'/%3E%3Cpath d='M18.6 14.2A7.6 7.6 0 1 1 9.8 5.4a6.4 6.4 0 0 0 8.8 8.8z' fill='%236ea8ff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <style>
 /* Nightvault themes (same tokens as the desktop app) */
 :root,[data-theme="midnight"]{--bg:#0f1115;--side:#13161c;--card:#14171d;--line:#23283a;--line2:#2a303c;--text:#e7eaf0;--mut:#9aa3b2;--dim:#6d7686;--accent:#6ea8ff;--accentbg:#1b2740;--accentline:#2f4a7d;--green:#5fcf9a;--greenbg:#10261c;--amber:#e0a85a;--amberbg:#2c200f;--red:#ff7b72;--sub:#1a1e27;--ctl:#171a21;--ctlh:#1b1f28;--lineh:#3a4150;--pan:#242934;--modal:#14181f;--track:#232a38;--chipbg:#1c2230;--logbg:#0b0d11;--logfg:#c3cad6;--onacc:#0b1220;--pg:#8fe6bd;--pa:#f2c27a;--pb:#a8cbff;--pgr:#aab3c2;color-scheme:dark}
@@ -172,6 +171,7 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 .mitem .mdot{display:grid;place-items:center}.mitem .mdot span{width:12px;height:12px;border-radius:50%;display:block}
 .mitem.sel b{color:var(--pb)}
 .steps{font-size:13.5px}.steps ol{margin:4px 0 10px;padding-left:22px;color:var(--mut)}.steps li{margin:2px 0}
+.spark{margin:-4px 0 12px}.spark svg{width:100%;height:46px;display:block}
 .mfoot{display:flex;justify-content:space-between;gap:8px;margin-top:14px}
 .scanbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .optrow{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--sub)}.optrow:last-child{border-bottom:0}
@@ -183,7 +183,8 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 /* binder view */
 .bgames{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .bgame{background:var(--card);border:1px solid var(--pan);border-radius:12px;padding:12px;text-align:left;color:var(--text);display:grid;gap:4px}
-.bgame{position:relative}.bgame .bstar,.gprow .bstar{border:0;background:none;color:var(--dim);font-size:18px;padding:4px;line-height:1}
+.bgame{position:relative}.bcard{position:relative}.bflag{position:absolute;top:4px;right:4px;background:#000a;color:#ff8fa3;border-radius:50%;width:22px;height:22px;display:grid;place-items:center;font-size:13px}
+.bgame .bstar,.gprow .bstar{border:0;background:none;color:var(--dim);font-size:18px;padding:4px;line-height:1}
 .bgame .bstar{position:absolute;top:6px;right:6px}.bstar.on{color:var(--amber)}
 .gprow{display:flex;align-items:center}.gprow .mitem{flex:1}.gphead{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);padding:10px 10px 2px}
 .bgame b{font-size:14.5px}.bgame .muted{font-size:12px}
@@ -224,7 +225,7 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 </head>
 <body>
 <div id="app">
-  <header id="top"><div class="logo"><i class="ti ti-moon-stars"></i>Nightvault <small>Pocket</small></div><div id="scst"></div><button id="fsbtn" class="hbtn" hidden aria-label="Full screen"><i class="ti ti-maximize"></i></button></header>
+  <header id="top"><div class="logo"><i class="ti ti-moon-stars"></i>Nightvault <small>Pocket</small><span id="testbadge" hidden style="margin-left:8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;background:var(--amber);color:#000;border-radius:6px;padding:2px 6px">TEST</span></div><div id="scst"></div><button id="fsbtn" class="hbtn" hidden aria-label="Full screen"><i class="ti ti-maximize"></i></button></header>
   <main id="main"></main>
   <nav id="tabs">
     <button data-v="scan" class="on"><i class="ti ti-camera"></i>Scan cards</button>
@@ -292,9 +293,39 @@ const NOISE = /\b(basic|stage ?[12]?|evolves|from|hp|lv\.?|trainer|item|supporte
 const PHONE_FORMAT = 'nightvault-phone-cards';
 
 /* ================================================================ storage */
-const KEY = 'nightvault.pocket.v1';
+/* the test version lives at /test/: it keeps its own cards (your real collection is never touched) and reads the data files of the main site */
+const TEST = /\/test\/?$/.test(location.pathname.replace(/index\.html$/, '')), BASE = TEST ? '../' : '';
+const KEY = TEST ? 'nightvault.pocket.test.v1' : 'nightvault.pocket.v1', NAVKEY = TEST ? 'nightvault.pocket.test.nav' : 'nightvault.pocket.nav';
 const store = (() => { try{ return JSON.parse(localStorage.getItem(KEY) || '{}') }catch(e){ return {} } })();
-function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(store)) }catch(e){ toast('This browser does not let the page save. Export your cards before closing it.', true) } }
+let RESTORING = false;
+function persist(){ if(RESTORING) return; try{ localStorage.setItem(KEY, JSON.stringify(store)) }catch(e){ toast('This browser does not let the page save. Export your cards before closing it.', true) }
+  if(store.cards && store.cards.length && Date.now() - (store.lastSnap || 0) > 20 * 3600e3){ store.lastSnap = Date.now(); setTimeout(() => snapshot('daily'), 500) } }
+/* ---------------------------------------------------------------- backups
+   1. the phone is asked to keep the app's storage (not wipe it when space runs low)
+   2. a snapshot inside the app every day and before anything that removes cards (last 14 kept)
+   3. a backup file you save outside the app (Google Drive, mail, ...) - reminded every week */
+const SNAPDB = 'nvpocket-snapshots' + (TEST ? '-test' : '');
+function snapDB(){ return new Promise((res, rej) => { const r = indexedDB.open(SNAPDB, 1); r.onupgradeneeded = () => r.result.createObjectStore('s', {keyPath:'at'}); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error) }) }
+const txDone = tx => new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error) });
+async function snapList(){ try{ const db = await snapDB(), tx = db.transaction('s'), r = tx.objectStore('s').getAll(); await txDone(tx); return (r.result || []).sort((a, b) => b.at - a.at) }catch(e){ return [] } }
+async function snapshot(why){
+  const item = {at:Date.now(), why, n:(store.cards || []).reduce((a, c) => a + c.qty, 0), data:JSON.stringify(store)};     // taken right now, before anything changes
+  try{ const db = await snapDB(); let tx = db.transaction('s', 'readwrite');
+    tx.objectStore('s').put(item); await txDone(tx);
+    const all = await snapList(); if(all.length > 14){ tx = db.transaction('s', 'readwrite'); for(const x of all.slice(14)) tx.objectStore('s').delete(x.at); await txDone(tx) } }
+  catch(e){ dlogNote('snapshot failed: ' + e.message) } }
+function backupData(){ const s = JSON.parse(JSON.stringify(store)); (s.sources || []).forEach(x => x.key = ''); (s.games || []).forEach(g => { if(g.lookup) g.lookup.key = '' });
+  return {format:'nightvault-pocket-backup', version:1, app:'Nightvault Pocket', saved:new Date().toISOString(), cards:(s.cards || []).length, store:s} }
+async function saveBackup(){
+  const r = await saveFile(`nightvault-pocket-backup_${stamp()}.json`, JSON.stringify(backupData()), 'application/json');
+  if(r !== 'cancelled'){ store.lastBackup = Date.now(); persist(); toast(r === 'shared' ? 'Backup shared - keep it somewhere safe' : 'Backup saved to your downloads') }
+  return r }
+async function restoreStore(data, why){
+  await snapshot('before restoring ' + why);
+  try{ localStorage.setItem(KEY, JSON.stringify(data)) }catch(e){ toast('Could not restore: ' + e.message, true); return }
+  RESTORING = true;                                             // nothing may save over the restored cards while the app reloads
+  toast('Restored - reloading ...'); setTimeout(() => location.reload(), 600) }
+if(navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {});
 store.cards = Array.isArray(store.cards) ? store.cards : [];
 store.backs = Array.isArray(store.backs) ? store.backs : [];
 store.templates = Array.isArray(store.templates) ? store.templates : [];
@@ -459,7 +490,7 @@ async function findSWU(q){
 let RBP = null;
 function rbPrices(){
   if(!RBP) RBP = (async () => {
-    for(const u of ['riftbound-prices.json', 'https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/riftbound-prices.json']){
+    for(const u of [BASE + 'riftbound-prices.json', 'https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/riftbound-prices.json']){
       try{ const j = await getJSON(u + '?d=' + new Date().toISOString().slice(0, 10)); if(j && j.cards){ dlog('Riftbound prices', `${Object.keys(j.cards).length} cards, updated ${j.updated}`); return j } }catch(e){ dlog('Riftbound prices', `${u}: ${e.message}`) }
     }
     return {cards:{}};
@@ -512,7 +543,7 @@ const DGAMES = ['gundam', 'digimon', 'fab', 'sorcery', 'ws', 'dbsfw', 'dbsm', 'd
 const _dg = {};
 function dgData(g){
   if(!_dg[g]) _dg[g] = (async () => {
-    for(const u of [`data/${g}.json`, `https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/${g}.json`]) try{ const d = await getJSON(u); if(d && d.cards) return d }catch(e){}
+    for(const u of [`${BASE}data/${g}.json`, `https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/${g}.json`]) try{ const d = await getJSON(u); if(d && d.cards) return d }catch(e){}
     delete _dg[g]; throw new Error(`No card list for ${GAMES[g].label} yet - run “Update card data” once on GitHub (Actions tab)`) })();
   return _dg[g] }
 const lwr = x => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
@@ -542,7 +573,7 @@ const _ccgt = {sets:{}};
 /* the weekly copy on GitHub (data/ccgt/, made by .github/workflows/ccgt-backup.yml) - used when CCG Trader does not answer */
 const _ccgtB = {};
 function ccgtCopy(name){ if(!_ccgtB[name]) _ccgtB[name] = (async () => {
-    for(const u of [`data/ccgt/${name}.json`, `https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/ccgt/${name}.json`]) try{ const d = await getJSON(u); if(d) return d }catch(e){}
+    for(const u of [`${BASE}data/ccgt/${name}.json`, `https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/ccgt/${name}.json`]) try{ const d = await getJSON(u); if(d) return d }catch(e){}
     delete _ccgtB[name]; throw new Error('CCG Trader is not reachable right now, and there is no copy of this game on GitHub yet') })();
   return _ccgtB[name] }
 const ccgtRow = r => ({set:{id:r[0]}, number:r[1], name:r[2], rarity:{id:r[3]}, image:{private_hash:r[4]}});
@@ -726,6 +757,7 @@ function openScanOptions(){
     <label class="optrow"><input type="checkbox" id="cauto" ${O.auto ? 'checked' : ''}><span class="grow">Scan automatically<small>When a card is held still in the frame</small></span></label>
     <label class="optrow"><input type="checkbox" id="caadd" ${O.autoAdd ? 'checked' : ''}><span class="grow">Add automatically when sure<small>Normal scanning: no need to tap Add</small></span></label>
     <label class="optrow"><input type="checkbox" id="cquick" ${O.quick ? 'checked' : ''}><span class="grow">Quick scan<small>Scan many cards fast, check the unsure ones later</small></span></label>
+    <label class="optrow"><input type="checkbox" id="cart" ${O.artMatch !== false ? 'checked' : ''}><span class="grow">Match card pictures<small>Compare the photo with the card pictures to find the right set and version</small></span></label>
     <div class="optrow"><span class="grow">Binder page layout<small>Rows × cards per row</small></span><select id="cmode" aria-label="Binder page layout">${[[3,3],[3,4],[2,3],[2,2],[4,3],[4,4]].map(([r, c]) => `<option value="${r}x${c}" ${(O.binderSize || '3x3') === r + 'x' + c ? 'selected' : ''}>${r} × ${c}</option>`).join('')}</select></div>
     <div class="optrow"><span class="grow">Only these sets<small>Optional, e.g. neo mh3</small></span><input id="csets" type="text" style="max-width:140px" value="${esc(O.sets)}" autocapitalize="off" autocomplete="off"></div>
     ${(SC.devs || []).length > 1 ? `<div class="optrow"><span class="grow">Camera</span><select id="ccam" aria-label="Camera" style="max-width:170px">${SC.devs.map((d, i) => `<option value="${esc(d.deviceId)}" ${d.deviceId === (SC.stream && SC.stream.getVideoTracks()[0].getSettings().deviceId) ? 'selected' : ''}>${esc(d.label || 'Camera ' + (i + 1))}</option>`).join('')}</select></div>` : ''}
@@ -733,6 +765,7 @@ function openScanOptions(){
     <div class="mfoot"><button class="btn sm" id="cmore"><i class="ti ti-settings"></i>More in Settings</button><button class="btn primary sm" id="cdone">Done</button></div>`);
   $('#cauto').onchange = e => { O.auto = e.target.checked; persist() };
   $('#caadd').onchange = e => { O.autoAdd = e.target.checked; persist() };
+  $('#cart').onchange = e => { O.artMatch = e.target.checked; persist() };
   $('#cquick').onchange = e => setQuick(e.target.checked);
   $('#cmode').onchange = e => { O.binderSize = e.target.value; if(O.binder) setScanMode(true); else persist() };
   $('#csets').onchange = e => { O.sets = e.target.value.trim(); persist() };
@@ -770,7 +803,7 @@ async function startCamera(deviceId){
     $('#camnote').hidden = true; $('#cstill').hidden = true; v.hidden = false; $('#ctools').hidden = false;
     const track = SC.stream.getVideoTracks()[0], caps = track.getCapabilities ? track.getCapabilities() : {};
     $('#ctorch').hidden = !caps.torch; SC.torch = false; $('#ctorch').classList.remove('on');
-    SC.caps = caps;
+    SC.caps = caps; loadTesseract().catch(() => {});
     if(caps.focusMode && caps.focusMode.includes('continuous')) track.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(() => {});
     $('#czoom').hidden = !(caps.zoom && caps.zoom.max > caps.zoom.min); if(!$('#czoom').hidden) setZoom(O.zoom || 1, true);
     const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
@@ -938,9 +971,15 @@ async function onPhoto(e){
 }
 
 /* ---------------------------------------------------------------- OCR */
+/* the text reader (Tesseract, about 3 MB) is only loaded when it is needed: the app opens faster */
+let _tess;
+function loadTesseract(){ if(window.Tesseract) return Promise.resolve();
+  if(!_tess) _tess = new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+    sc.onload = res; sc.onerror = () => { _tess = null; rej(new Error('The text reader did not load. Check the internet connection and try again.')) }; document.head.appendChild(sc) });
+  return _tess }
 async function ocr(){
   if(SC.worker) return SC.worker;
-  if(!window.Tesseract) throw new Error('The text reader did not load. Check the internet connection and reload.');
+  await loadTesseract();
   setSt('Loading the text reader (first time only) ...');
   SC.worker = await Tesseract.createWorker('eng');
   return SC.worker;
@@ -1092,7 +1131,7 @@ async function scanNow(auto){
     if(res.kind === 'manual'){ openManual({name:res.name, game:res.game}); return }
     if(res.kind === 'none'){ setSt('Could not read the name - try again or search by name'); toast('Could not read the name. More light, less glare, or make a scan template for this layout.', true); SC.result = null; renderResult(); return }
     if($('#cq')) $('#cq').value = res.r.q;
-    showResult(res.r, false);
+    showResult(res.r, false, await artRefine(rank(res.r, false), card));
   }catch(e){ setSt(e.message); toast(e.message, true); dlog('error', e.message) }
   finally{
     dlog('result', SC.result ? `${SC.result.matches[0].name} · ${SC.result.matches[0].showSet} #${SC.result.matches[0].showNum} · ${SC.result.confidence}${SC.result.ambiguous ? ', check the set' : ''}${SC.result.pinned ? ', number read' : ''}` : 'nothing found');
@@ -1243,6 +1282,7 @@ async function runQueue(){
         card.getContext('2d').drawImage(bmp, 0, 0, 756, 1056);
         dstart('quick scan'); dlog('picture', 'from the quick scan queue');
         const res = await identify(card, job.game, t => setSt(`Quick scan · ${qCount('waiting') + 1} left · ${t}`));
+        if(res.kind === 'result') res.rr = await artRefine(rank(res.r, false), card);
         quickResult(job, res);
       }catch(e){ dlog('error', e.message); quickResult(job, {kind:'none', err:e.message}) }
       finally{ DLOG.cur = null; job.blob = null; renderResult() }
@@ -1251,7 +1291,7 @@ async function runQueue(){
 }
 const candOf = m => { const o = {}; for(const k of ['game', 'gameName', 'set', 'number', 'showSet', 'showNum', 'name', 'setName', 'rarity', 'image', 'alt', 'link', 'price', 'priceFoil', 'currency', 'psrc']) if(m[k] != null) o[k] = m[k]; return o };
 function quickResult(job, res){
-  let rr = res.kind === 'result' ? rank(res.r, false) : null;
+  let rr = res.kind === 'result' ? (res.rr || rank(res.r, false)) : null;
   if(rr && rr.confidence === 'low'){ dlog('result', `weak match (${rr.matches[0].name}) - not added`); rr = null }
   if(job.weak && !(rr && rr.confidence === 'high')){                 // no clear card edges and no sure match: probably not a card
     job.status = 'skipped'; job.name = 'no card'; dlog('result', 'no clear card and no sure match - skipped'); return;
@@ -1311,8 +1351,42 @@ function rank(r, manual){
   return {q, matches, detected:r.detected || '', confidence: manual ? 'manual' : best >= 0.9 ? 'high' : best >= 0.7 ? 'medium' : 'low',
           ambiguous: !pinned && new Set(sameName.map(m => m.set)).size > 1, pinned};
 }
-function showResult(r, manual){
-  const rr = rank(r, manual);
+/* ---------------------------------------------------------------- picture matching
+   After the name is read, the photo is compared with the pictures of the candidate printings (a small colour fingerprint of
+   each), so the right set and version come first. Card sites that do not let other websites read their pictures are skipped. */
+const _fpc = document.createElement('canvas'); _fpc.width = 20; _fpc.height = 28;
+const _fpx = _fpc.getContext('2d', {willReadFrequently:true}), _fpCache = new Map();
+function fingerprint(src){
+  const w = src.naturalWidth || src.width, h = src.naturalHeight || src.height, mx = w * 0.05, my = h * 0.04;    // skip the outer edge (sleeves, borders)
+  _fpx.clearRect(0, 0, 20, 28);
+  if(w > h * 1.15){ _fpx.save(); _fpx.translate(20, 0); _fpx.rotate(Math.PI / 2); _fpx.drawImage(src, mx, my, w - 2 * mx, h - 2 * my, 0, 0, 28, 20); _fpx.restore() }  // landscape picture
+  else _fpx.drawImage(src, mx, my, w - 2 * mx, h - 2 * my, 0, 0, 20, 28);
+  const d = _fpx.getImageData(0, 0, 20, 28).data, v = new Float32Array(20 * 28 * 3);
+  for(let c = 0; c < 3; c++){ let m = 0, q = 0; for(let i = 0; i < 560; i++) m += d[i * 4 + c]; m /= 560;
+    for(let i = 0; i < 560; i++) q += (d[i * 4 + c] - m) ** 2; const sd = Math.sqrt(q / 560) + 4;
+    for(let i = 0; i < 560; i++) v[c * 560 + i] = (d[i * 4 + c] - m) / sd }
+  return v }
+const fpSim = (a, b) => { let s = 0; for(let i = 0; i < a.length; i++) s += a[i] * b[i]; return s / a.length };   // correlation, 1 = identical
+const fpLoad = url => new Promise(res => { const im = new Image(); im.crossOrigin = 'anonymous'; const t = setTimeout(() => res(null), 6000);
+  im.onload = () => { clearTimeout(t); try{ res(fingerprint(im)) }catch(e){ res(null) } }; im.onerror = () => { clearTimeout(t); res(null) }; im.src = url });
+function fpOfUrl(url){                                         // straight from the card site, or through images.weserv.nl for sites that block it
+  if(!_fpCache.has(url)) _fpCache.set(url, fpLoad(url).then(f => f || (/^https?:/.test(url) ? fpLoad('https://images.weserv.nl/?w=200&url=' + encodeURIComponent(url)) : null)));
+  return _fpCache.get(url) }
+async function artRefine(rr, card){
+  if(!rr || !card || rr.confidence === 'manual' || O.artMatch === false) return rr;
+  if(rr.confidence === 'high' && !rr.ambiguous) return rr;                        // already sure
+  const lead = rr.matches[0], group = rr.matches.filter(m => m.image && (m.name === lead.name || rr.confidence !== 'high')).slice(0, 10);
+  if(group.length < 1) return rr;
+  const me = fingerprint(card), scored = (await Promise.all(group.map(async m => [m, await fpOfUrl(m.image)]))).filter(x => x[1]).map(([m, f]) => [m, fpSim(me, f)]);
+  if(!scored.length){ dlog('picture match', 'card pictures could not be compared (the card site does not allow it)'); return rr }
+  scored.sort((a, b) => b[1] - a[1]); const [bm, bs] = scored[0], second = scored[1] ? scored[1][1] : -1;
+  dlog('picture match', scored.slice(0, 5).map(([m, x]) => `${m.showSet} ${m.showNum} ${x.toFixed(2)}`).join(' · '));
+  const picked = new Set(scored.map(x => x[0])), order = scored.map(x => x[0]).concat(rr.matches.filter(m => !picked.has(m)));
+  const out = Object.assign({}, rr, {matches:order, art:{best:+bs.toFixed(2), second:+second.toFixed(2)}});
+  if(bs >= 0.6 && bs - second >= 0.06){ out.ambiguous = false; if(rr.confidence === 'medium' && bs >= 0.7) out.confidence = 'high'; out.byArt = true }
+  return out }
+function showResult(r, manual, pre){
+  const rr = pre || rank(r, manual);
   if(!rr){
     SC.result = null; renderResult();
     const why = r.failed.length ? ` ${r.failed.map(g => GAMES[g].label).join(', ')} could not be reached.` : '';
@@ -1338,7 +1412,7 @@ function renderResult(){
       <div class="cname">${esc(m.name)}</div>
       <div class="sub" style="margin:2px 0 8px">${esc(m.showSet)} #${esc(m.showNum)}${m.setName ? ' · ' + esc(m.setName) : ''}${m.rarity ? ' · ' + esc(m.rarity) : ''}</div>
       <div><span class="gtag"><span class="dot" style="background:${GAMES[m.game].color}"></span>${esc(m.gameName || GAMES[m.game].label)}</span>${r.detected ? ' <span class="muted" style="font-size:11.5px">recognised from the card</span>' : ''}</div>
-      <div style="margin:8px 0 4px"><span class="conf ${r.confidence}">${{high:'Sure', medium:'Probably', low:'Not sure', manual:'Picked by name'}[r.confidence]}</span>${r.ambiguous ? '<span class="conf medium">check the set</span>' : ''}${r.pinned ? '<span class="conf high">number read</span>' : ''}</div>
+      <div style="margin:8px 0 4px"><span class="conf ${r.confidence}">${{high:'Sure', medium:'Probably', low:'Not sure', manual:'Picked by name'}[r.confidence]}</span>${r.ambiguous ? '<span class="conf medium">check the set</span>' : ''}${r.pinned ? '<span class="conf high">number read</span>' : ''}${r.byArt ? '<span class="conf high">picture matched</span>' : ''}</div>
       <div class="price" style="font-size:15px;margin-bottom:10px">${SC.foil ? 'Foil ' : ''}${fmt(price, m.currency)} <span class="muted" style="font-size:12px">${esc(m.psrc)}</span>${price == null && m.link ? ` <a href="${esc(m.link)}" target="_blank" rel="noopener" style="font-size:12.5px;color:var(--accent)">${esc(m.linkLabel || 'Look up price')} <i class="ti ti-external-link"></i></a>` : ''}${owned ? `<div class="muted" style="font-size:12px">You own ${owned}</div>` : ''}</div>
     </div></div>
       <div class="btns" style="margin-top:12px"><button class="btn primary" id="cadd" style="flex:1"><i class="ti ti-plus"></i>Add</button>
@@ -1542,11 +1616,38 @@ const PRICED = new Set(['mtg', 'pokemon', 'ygo', 'lorcana', 'swu', 'riftbound', 
 const priced = g => PRICED.has(g) || !!(GAMES[g] && GAMES[g].custom && FIND[g]);
 const PC = {running:false, stop:false, done:0, total:0, filled:0, updated:0, missed:0};
 const priceOf = c => c.foil ? c.priceFoil : c.price;
+/* dollars to euros, so the collection has one total (daily rate of the European Central Bank via frankfurter.app) */
+const usdEur = () => (O.fx && O.fx.rate) || 0.92;
+const toEur = (x, cur) => x == null ? null : cur === 'USD' ? x * usdEur() : x;
+function refreshFx(){ if(O.fx && Date.now() - O.fx.at < 20 * 3600e3) return;
+  getJSON('https://api.frankfurter.app/latest?from=USD&to=EUR').then(j => { if(j && j.rates && j.rates.EUR){ O.fx = {rate:j.rates.EUR, at:Date.now(), day:j.date}; persist(); if(VIEW === 'cards') viewCards() } }).catch(() => {}) }
+const valueEur = cs => cs.reduce((a, c) => a + (toEur(priceOf(c), c.currency) || 0) * c.qty, 0);
+/* the value of the collection, once a day, for the graph in My cards */
+function recordValue(){ const d = new Date().toISOString().slice(0, 10), v = +valueEur(store.cards).toFixed(2), n = store.cards.reduce((a, c) => a + c.qty, 0);
+  store.hist = (store.hist || []).filter(x => x.d !== d).concat([{d, v, n}]).slice(-400) }
+function sparkline(h){
+  if(!h || h.length < 2) return '';
+  const W = 300, H = 46, vs = h.map(x => x.v), lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
+  const pts = h.map((x, i) => `${(i / (h.length - 1) * W).toFixed(1)},${(H - 4 - (x.v - lo) / span * (H - 8)).toFixed(1)}`).join(' ');
+  const first = h.length > 7 ? h[h.length - 8] : h[0], last = h[h.length - 1], dv = last.v - first.v, pct = first.v ? dv / first.v * 100 : 0, up = dv >= 0;
+  const label = h.length > 7 ? 'this week' : `since ${new Date(first.d).toLocaleDateString()}`;
+  return `<div class="spark"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${up ? 'var(--green)' : 'var(--red)'}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+    <span class="sub" style="color:${up ? 'var(--green)' : 'var(--red)'}">${up ? '▲' : '▼'} € ${Math.abs(dv).toFixed(2)} (${up ? '+' : '−'}${Math.abs(pct).toFixed(1)}%) ${label}</span></div>` }
+function openMovers(){
+  const ch = store.cards.filter(c => c.prev != null && priceOf(c) != null && priceOf(c) !== c.prev).map(c => ({c, d:(toEur(priceOf(c), c.currency) - toEur(c.prev, c.currency)) * c.qty}))
+    .sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 40);
+  modal(`<h3>Price changes</h3><p class="hint" style="margin-top:0">Cards whose price changed at the last price update, biggest change first.</p>
+    ${ch.length ? ch.map(({c, d}) => { const p0 = c.prev, p1 = priceOf(c), pct = p0 ? (p1 - p0) / p0 * 100 : 0;
+      return `<div class="row" style="padding:7px 0"><div class="grow"><b style="font-weight:500">${esc(c.name)}</b>${c.qty > 1 ? ` <span class="muted">×${c.qty}</span>` : ''}<div class="muted" style="font-size:12px">${esc(c.showSet)} #${esc(c.showNum)} · ${fmt(p0, c.currency)} → ${fmt(p1, c.currency)}</div></div>
+        <span style="color:${d >= 0 ? 'var(--green)' : 'var(--red)'};font-weight:600;font-size:13px">${d >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(0)}%</span></div>` }).join('')
+      : '<div class="muted" style="padding:10px 0">No price changes yet. They show up after the next “Update prices”.</div>'}
+    <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" onclick="closeModal()">Close</button></div>`) }
 const tcgSearch = c => `https://www.tcgplayer.com/search/all/product?q=${enc(c.name.split(' - ')[0])}`;
 /* look up the price of one card in my collection: the game's own card database first, then my own price sources.
    Returns 'filled' (it had no price), 'updated', 'same' or 'missed'. */
-async function priceOne(c, cache = new Map()){
-  const before = priceOf(c), k = c.game + '|' + c.name.toLowerCase();
+async function priceOne(c, cache = new Map()){ const r = await priceOne0(c, cache); if((r === 'updated') && c._before != null){ c.prev = c._before; c.prevAt = Date.now() } delete c._before; return r }
+async function priceOne0(c, cache){
+  const before = priceOf(c), k = c.game + '|' + c.name.toLowerCase(); c._before = before;
   if(c.game === 'pokemon'){                                    // Pokémon: ask TCGdex for this exact card (set id + card number)
     try{ const d = await getJSON(`https://api.tcgdex.net/v2/en/cards/${enc(c.set)}-${enc(String(c.showNum).split('/')[0])}`), cm = (d.pricing || {}).cardmarket || {};
       const eur = cm.avg ?? cm.trend ?? null, holo = cm['avg-holo'] ?? cm['trend-holo'] ?? null;
@@ -1593,7 +1694,7 @@ async function priceCheck(onlyMissing){
     PC.done++;
     if(PC.done % 5 === 0 || PC.done === PC.total){ persist(); drawPC() }
   }
-  PC.running = false; store.lastPriceCheck = Date.now(); persist(); drawPC();
+  PC.running = false; store.lastPriceCheck = Date.now(); recordValue(); persist(); drawPC();
   toast(PC.stop ? 'Price check stopped' : `Prices checked: ${PC.filled} filled in, ${PC.updated} changed${PC.missed ? `, ${PC.missed} still without a price` : ''}`); if(PC.missed && PC.lastErr) dlogNote('Last price source problem: ' + PC.lastErr);
   if(VIEW === 'cards') viewCards();
 }
@@ -1740,7 +1841,7 @@ const BD = {game:null, set:null, filter:'all', q:'', sets:{}, cards:{}};
    .github/workflows/swu-cards.yml), and as last resort the known sets with a card search */
 let _swuM;
 async function swuMirror(){ if(_swuM !== undefined) return _swuM; _swuM = null;
-  for(const u of ['swu-cards.json', 'https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/swu-cards.json']) try{ _swuM = await getJSON(u); break }catch(e){}
+  for(const u of [BASE + 'swu-cards.json', 'https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/swu-cards.json']) try{ _swuM = await getJSON(u); break }catch(e){}
   return _swuM }
 const SWU_SETS = [['sor', 'Spark of Rebellion', '2024-03-08'], ['shd', 'Shadows of the Galaxy', '2024-07-12'], ['twi', 'Twilight of the Republic', '2024-11-08'],
   ['jtl', 'Jump to Lightspeed', '2025-03-14'], ['lof', 'Legends of the Force', '2025-07-11'], ['sec', 'Secrets of Power', '']];
@@ -1869,16 +1970,38 @@ async function binderSet(){
     const missVal = cards.filter(c => !om.get(c.set + '|' + c.number)).reduce((a, c) => a + (c.price || 0), 0);
     $('#bds').innerHTML = `<div class="bstats"><div><b>${have.length} / ${cards.length || st.total || '?'}</b><span>Collected</span></div><div><b>${fmt(valueOf(own), own[0] ? own[0].currency : cur)}</b><span>Your value</span></div><div><b>${missVal ? fmt(missVal, cur) : '–'}</b><span>Missing</span></div></div>
       <div class="bar2" style="--gc:${GAMES[g].color};margin:-4px 0 12px"><i style="width:${cards.length ? Math.round(100 * have.length / cards.length) : 0}%"></i></div>`;
-    $('#bdf').innerHTML = [['all', 'All'], ['have', 'I have'], ['miss', 'Missing']].map(([k, l]) => `<button class="chip ${BD.filter === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('');
-    const list = cards.filter(c => BD.filter === 'all' || (BD.filter === 'have') === !!om.get(c.set + '|' + c.number));
+    $('#bdf').innerHTML = [['all', 'All'], ['have', 'I have'], ['miss', 'Missing'], ['want', 'Wanted']].map(([k, l]) => `<button class="chip ${BD.filter === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')
+      + `<button class="chip ${BD.tick ? 'on' : ''}" id="bdtick" style="margin-left:auto"><i class="ti ti-checkbox"></i> Tick off</button>`;
+    const list = cards.filter(c => BD.filter === 'all' || (BD.filter === 'want' ? isWant(c) : (BD.filter === 'have') === !!om.get(c.set + '|' + c.number)));
     $('#bdc').innerHTML = list.length ? `<div class="bcards">${list.map((c, i) => { const q = om.get(c.set + '|' + c.number) || 0;
-      return `<button class="bcard ${q ? '' : 'miss'}" data-i="${cards.indexOf(c)}" title="${esc(c.name)}">${c.image ? pic(c, 'loading="lazy"') : ''}${q ? `<span class="q">${q}</span>` : ''}<span class="nm">${esc(c.name)}</span><span class="no">${esc(c.showNum)}</span></button>` }).join('')}</div>`
-      : `<div class="empty">${BD.filter === 'have' ? 'You have no cards from this set yet.' : BD.filter === 'miss' ? 'Complete! You have every card in this set.' : 'No cards in this set.'}</div>`;
+      return `<button class="bcard ${q ? '' : 'miss'}" data-i="${cards.indexOf(c)}" title="${esc(c.name)}">${c.image ? pic(c, 'loading="lazy"') : ''}${q ? `<span class="q">${q}</span>` : ''}${isWant(c) ? '<span class="bflag"><i class="ti ti-heart-filled"></i></span>' : own.some(o => o.number === c.number && o.trade) ? '<span class="bflag"><i class="ti ti-arrows-exchange"></i></span>' : ''}<span class="nm">${esc(c.name)}</span><span class="no">${esc(c.showNum)}</span></button>` }).join('')}</div>`
+      : `<div class="empty">${BD.filter === 'want' ? 'No cards from this set on your wishlist. Tap a card and choose “Want this”.' : BD.filter === 'have' ? 'You have no cards from this set yet.' : BD.filter === 'miss' ? 'Complete! You have every card in this set.' : 'No cards in this set.'}</div>`;
     $$('#bdf .chip').forEach(b => b.onclick = () => { BD.filter = b.dataset.f; draw() });
-    $$('#bdc .bcard').forEach(b => b.onclick = () => binderCard(cards[+b.dataset.i], draw));
+    $('#bdtick').onclick = () => { BD.tick = !BD.tick; if(BD.tick) toast('Tick off: tap a card you have to add it, tap again to take it off'); draw() };
+    $$('#bdc .bcard').forEach(b => b.onclick = async () => { const m = cards[+b.dataset.i];
+      if(!BD.tick) return binderCard(m, draw);
+      const q = om.get(m.set + '|' + m.number) || 0;
+      if(q > 1) return binderCard(m, draw);                                          // several copies: change them in the card window
+      addCard(m, false, q ? -1 : 1); if(!q && isWant(m)) toggleWant(m); draw();
+      const c = !q && store.cards.find(x => x.key === ckey(m, false));
+      if(c && priceOf(c) == null && (priced(c.game) || sourcesFor(c).length)){ await priceOne(c); persist(); draw() } });
   };
   draw();
 }
+/* wishlist (cards you want) and trade list (cards you offer) */
+const wkey = m => `${m.game}|${m.set}|${m.number}`;
+const isWant = m => !!(store.want || {})[wkey(m)];
+function toggleWant(m){ store.want = store.want || {}; const k = wkey(m);
+  if(store.want[k]) delete store.want[k]; else store.want[k] = {game:m.game, set:m.set, number:m.number, name:m.name, showSet:m.showSet, showNum:m.showNum, setName:m.setName || '', image:m.image || '', price:m.price ?? null, currency:m.currency || 'EUR', added:Date.now()};
+  persist(); return !!store.want[k] }
+function shareLists(){
+  const line = x => `- ${x.name} (${x.showSet} #${x.showNum}${x.foil ? ', foil' : ''})${x.qty > 1 ? ' ×' + x.qty : ''}`, by = l => { const o = {}; for(const x of l){ const g = (GAMES[x.game] || {}).label || x.gameName || 'Other'; (o[g] = o[g] || []).push(x) } return o };
+  const trade = store.cards.filter(c => c.trade), want = Object.values(store.want || {});
+  if(!trade.length && !want.length){ toast('Your trade list and wishlist are empty - mark cards in the Binder first'); return }
+  const part = (title, l) => l.length ? `${title}\n` + Object.entries(by(l)).map(([g, xs]) => `${g}:\n` + xs.map(line).join('\n')).join('\n\n') : '';
+  const text = [part('FOR TRADE', trade), part('LOOKING FOR', want)].filter(Boolean).join('\n\n') + '\n\n(from Nightvault Pocket)';
+  if(navigator.share) navigator.share({title:'My card lists', text}).catch(() => {});
+  else navigator.clipboard.writeText(text).then(() => toast('Lists copied - paste them in a message')).catch(() => toast('Could not copy', true)) }
 function binderCard(m, redraw){
   const mine = store.cards.filter(c => c.game === m.game && c.set === m.set && c.number === m.number);
   const q = f => (mine.find(c => !!c.foil === f) || {}).qty || 0;
@@ -1886,9 +2009,16 @@ function binderCard(m, redraw){
       <div class="sub" style="margin:2px 0 8px">${esc(m.showSet)} #${esc(m.showNum)}${m.rarity ? ' · ' + esc(m.rarity) : ''}</div>
       <div class="price">${fmt(m.price, m.currency)}${m.priceFoil != null ? ` <span class="muted">· foil ${fmt(m.priceFoil, m.currency)}</span>` : ''}</div></div></div>
     ${[false, true].map(f => `<div class="row"><div class="grow">${f ? 'Foil' : 'Normal'}</div><div class="qb"><button data-f="${f ? 1 : 0}" data-d="-1">−</button><b id="bq${f ? 1 : 0}">${q(f)}</b><button data-f="${f ? 1 : 0}" data-d="1">+</button></div></div>`).join('')}
+    <div class="btns" style="margin-top:10px"><button class="btn sm ${isWant(m) ? 'on' : ''}" id="bwant"><i class="ti ti-heart${isWant(m) ? '-filled' : ''}"></i>${isWant(m) ? 'On my wishlist' : 'Want this'}</button>
+      <button class="btn sm ${mine.some(c => c.trade) ? 'on' : ''}" id="btrade" ${mine.length ? '' : 'disabled'}><i class="ti ti-arrows-exchange"></i>${mine.some(c => c.trade) ? 'For trade' : 'Offer for trade'}</button></div>
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" id="bcx">Done</button></div>`);
+  $('#bwant').onclick = () => { const on = toggleWant(m); $('#bwant').classList.toggle('on', on); $('#bwant').innerHTML = `<i class="ti ti-heart${on ? '-filled' : ''}"></i>${on ? 'On my wishlist' : 'Want this'}` };
+  $('#btrade').onclick = () => { const own = store.cards.filter(c => c.game === m.game && c.set === m.set && c.number === m.number); if(!own.length) return;
+    const on = !own.some(c => c.trade); own.forEach(c => c.trade = on); persist(); $('#btrade').classList.toggle('on', on); $('#btrade').innerHTML = `<i class="ti ti-arrows-exchange"></i>${on ? 'For trade' : 'Offer for trade'}` };
   $$('.mbox [data-d]').forEach(b => b.onclick = async () => { const f = b.dataset.f === '1'; addCard(m, f, +b.dataset.d);
     const c = store.cards.find(x => x.key === ckey(m, f)); $('#bq' + b.dataset.f).textContent = (c || {}).qty || 0;
+    if(c && +b.dataset.d > 0 && isWant(m)){ toggleWant(m); $('#bwant').classList.remove('on'); $('#bwant').innerHTML = '<i class="ti ti-heart"></i>Want this'; toast('Got it - removed from your wishlist') }
+    $('#btrade').disabled = !store.cards.some(x => x.game === m.game && x.set === m.set && x.number === m.number);
     if(c && +b.dataset.d > 0 && priceOf(c) == null && (priced(c.game) || sourcesFor(c).length)){          // no price in the set list: look it up now
       const el = $('.mbox .price'); if(el) el.innerHTML = '<span class="muted">Looking up the price ...</span>';
       const r = await priceOne(c); persist();
@@ -1901,6 +2031,7 @@ function binderCard(m, redraw){
 /* ---------------------------------------------------------------- my cards */
 const F = {q:'', game:'all', set:'all', sort:'new'};
 function viewCards(){
+  refreshFx(); if(store.cards.length){ const d = new Date().toISOString().slice(0, 10); if(!(store.hist || []).some(x => x.d === d)){ recordValue(); persist() } }
   const cs = store.cards, total = cs.reduce((a, c) => a + c.qty, 0);
   const val = cur => cs.filter(c => c.currency === cur).reduce((a, c) => a + ((c.foil ? c.priceFoil : c.price) || 0) * c.qty, 0);
   const unpriced = cs.filter(c => (c.foil ? c.priceFoil : c.price) == null).reduce((a, c) => a + c.qty, 0);
@@ -1908,10 +2039,15 @@ function viewCards(){
   const eur = val('EUR'), usd = val('USD');
   const nrv = (store.review || []).length;
   $('#main').innerHTML = `<div class="head"><h1>My cards</h1><div class="sp"></div><button class="iconbtn" id="mmenu" aria-label="More">${nrv ? `<span class="dotn">${nrv}</span>` : ''}<i class="ti ti-dots"></i></button></div>
-    <div class="valuehead"><b>${fmt(eur, 'EUR')}</b>${usd ? `<b style="font-size:16px">+ ${fmt(usd, 'USD')}</b>` : ''}<span class="sub">${total.toLocaleString()} cards · ${cs.length.toLocaleString()} different${unpriced ? ` · ${unpriced} without a price` : ''}</span></div>
+    <div class="valuehead"><b>${fmt(eur + usd * usdEur(), 'EUR')}</b><span class="sub">${total.toLocaleString()} cards · ${cs.length.toLocaleString()} different${unpriced ? ` · ${unpriced} without a price` : ''}${usd ? `<br>${fmt(eur, 'EUR')} + ${fmt(usd, 'USD')} (1 $ = € ${usdEur().toFixed(3)})` : ''}</span></div>
+    ${sparkline(store.hist)}
     ${nrv ? `<button class="panel" id="mrv" style="display:flex;gap:10px;align-items:center;padding:10px 12px;width:100%;text-align:left;color:var(--text);border-color:color-mix(in srgb,var(--amber) 45%,var(--pan))"><i class="ti ti-alert-triangle" style="color:var(--amber);font-size:20px"></i>
       <span style="flex:1;min-width:0;font-size:13.5px"><b>${nrv} card${nrv === 1 ? '' : 's'} to check</b><span class="muted" style="display:block;font-size:12px">Quick scan was not sure about these</span></span><i class="ti ti-chevron-right muted"></i></button>` : ''}
+    ${cs.length && Date.now() - (store.lastBackup || 0) > 7 * 864e5 && Date.now() - (store.bkLater || 0) > 864e5 ? `<div class="panel" id="mbk" style="display:flex;gap:10px;align-items:center;padding:10px 12px;border-color:var(--accentline)"><i class="ti ti-shield-check" style="color:var(--accent);font-size:22px"></i>
+      <span style="flex:1;min-width:0;font-size:13.5px"><b>${store.lastBackup ? 'Time for a backup' : 'Back up your cards'}</b><span class="muted" style="display:block;font-size:12px">${store.lastBackup ? 'Last one ' + new Date(store.lastBackup).toLocaleDateString() : 'Save a copy to Google Drive or mail, in case the phone loses them'}</span></span>
+      <button class="btn sm primary" id="mbks">Save</button><button class="btn sm" id="mbkl" aria-label="Later">Later</button></div>` : ''}
     <div id="mpc"></div>
+    <div class="chips" id="mlists" style="margin-bottom:8px">${[['all', 'My cards', cs.length], ['trade', 'For trade', cs.filter(c => c.trade).length], ['want', 'Wishlist', Object.keys(store.want || {}).length]].map(([k, l, n]) => `<button class="chip ${(F.list || 'all') === k ? 'on' : ''}" data-l="${k}">${l}${k !== 'all' && n ? ' · ' + n : ''}</button>`).join('')}</div>
     <div class="bar"><input class="grow" id="mq" type="search" placeholder="Search by name" value="${esc(F.q)}">
       <select id="mgame"><option value="all">All games</option>${games.map(g => `<option value="${g}" ${F.game === g ? 'selected' : ''}>${esc(GAMES[g].label)}</option>`).join('')}</select>
       <select id="mset"><option value="all">All sets</option>${sets.map(s => `<option ${F.set === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
@@ -1919,7 +2055,13 @@ function viewCards(){
     <div id="mlist"></div>`;
   const draw = () => {
     const q = F.q.toLowerCase();
-    let rows = cs.filter(c => (F.game === 'all' || c.game === F.game) && (F.set === 'all' || c.showSet === F.set) && (!q || (c.name + ' ' + c.setName).toLowerCase().includes(q)));
+    if(F.list === 'want'){                                     // the wishlist: cards you do not have yet
+      const ws = Object.values(store.want || {}).filter(w => (F.game === 'all' || w.game === F.game) && (!q || w.name.toLowerCase().includes(q))).sort((a, b) => b.added - a.added);
+      $('#mlist').innerHTML = ws.length ? ws.map(w => `<div class="srow">${w.image ? pic(w, 'loading="lazy"') : '<div class="ph"></div>'}<div class="grow"><div class="nm">${esc(w.name)}</div><div class="meta"><span class="dot" style="background:${(GAMES[w.game] || GAMES.other).color};margin-right:5px"></span>${esc(w.showSet)} #${esc(w.showNum)} · ${fmt(w.price, w.currency)}</div></div>
+        <button class="btn sm" data-wk="${esc(wkey(w))}" aria-label="Remove from wishlist"><i class="ti ti-heart-off"></i></button></div>`).join('')
+        : '<div class="empty">Your wishlist is empty.<br>In the Binder, tap a card you are missing and choose “Want this”.</div>';
+      $$('#mlist [data-wk]').forEach(b => b.onclick = () => { delete store.want[b.dataset.wk]; persist(); viewCards() }); return }
+    let rows = cs.filter(c => (F.list !== 'trade' || c.trade) && (F.game === 'all' || c.game === F.game) && (F.set === 'all' || c.showSet === F.set) && (!q || (c.name + ' ' + c.setName).toLowerCase().includes(q)));
     const pv = c => ((c.foil ? c.priceFoil : c.price) || 0) * c.qty;
     rows.sort(F.sort === 'name' ? (a, b) => a.name.localeCompare(b.name) : F.sort === 'value' ? (a, b) => pv(b) - pv(a)
             : F.sort === 'set' ? (a, b) => a.showSet.localeCompare(b.showSet) || normNum(a.number).localeCompare(normNum(b.number), undefined, {numeric:true}) : (a, b) => b.added - a.added);
@@ -1935,12 +2077,17 @@ function viewCards(){
   $('#mgame').onchange = e => { F.game = e.target.value; F.set = 'all'; viewCards() };
   $('#mset').onchange = e => { F.set = e.target.value; draw() };
   $('#msort').onchange = e => { F.sort = e.target.value; draw() };
+  $$('#mlists [data-l]').forEach(b => b.onclick = () => { F.list = b.dataset.l; viewCards() });
   if($('#mrv')) $('#mrv').onclick = () => { RV.i = 0; RV.sel = 0; show('review') };
+  if($('#mbks')) $('#mbks').onclick = async () => { await saveBackup(); viewCards() };
+  if($('#mbkl')) $('#mbkl').onclick = () => { store.bkLater = Date.now(); persist(); viewCards() };
   $('#mmenu').onclick = () => menuSheet('', [
     {icon:'plus', label:'Add a card by hand', sub:'Any game, also ones the scanner does not know', run:() => openManual({})},
     nrv && {icon:'list-check', label:`Check cards (${nrv})`, sub:'Cards quick scan was not sure about', run:() => { RV.i = 0; RV.sel = 0; show('review') }},
     {icon:'refresh', label:'Update prices', sub:store.lastPriceCheck ? 'Last checked ' + new Date(store.lastPriceCheck).toLocaleDateString() : 'Look every card up again', disabled:PC.running || !cs.length, run:() => priceCheck(false)},
     unpriced && {icon:'tag', label:'Only missing prices', sub:`${unpriced} card${unpriced === 1 ? '' : 's'} without a price`, disabled:PC.running, run:() => priceCheck(true)},
+    {icon:'share', label:'Share my lists', sub:'Send your trade list and wishlist to a friend', run:shareLists},
+    {icon:'chart-line', label:'Price changes', sub:'Which cards went up or down', run:openMovers},
     {icon:'device-desktop-up', label:'Send to Nightvault', sub:'Export the collection for the PC app', disabled:!cs.length, run:exportNightvault},
     {icon:'file-spreadsheet', label:'Export CSV', sub:'For Excel or Google Sheets', disabled:!cs.length, run:exportCsv}]);
   drawPC();
@@ -1982,7 +2129,12 @@ function exportCsv(){
 async function importBackup(e){
   const f = e.target.files[0]; e.target.value = ''; if(!f) return;
   try{
-    const d = JSON.parse(await f.text()); if(d.format !== PHONE_FORMAT || !Array.isArray(d.cards)) throw 0;
+    const d = JSON.parse(await f.text());
+    if(d.format === 'nightvault-pocket-backup' && d.store && Array.isArray(d.store.cards)){
+      if(!confirm(`Restore this backup from ${new Date(d.saved).toLocaleString()} (${d.store.cards.length} different cards)? It replaces the cards on this phone - a snapshot of the current ones is kept.`)) return;
+      return restoreStore(d.store, 'a backup file') }
+    if(d.format !== PHONE_FORMAT || !Array.isArray(d.cards)) throw 0;
+    await snapshot('before importing a file');
     for(const g of Array.isArray(d.games) ? d.games : []){ if(g && g.id && g.label && !BUILTIN.has(g.id) && !store.games.some(x => x.id === g.id)) store.games.push(g) } registerGames();
     let n = 0, np = 0;
     for(const x of d.cards){ if(!x || !x.game || !x.set || !x.number) continue; if(!GAMES[x.game] || x.game === 'other'){ x.game_name = x.game_name || x.game; x.game = 'other' }
@@ -2004,6 +2156,8 @@ async function importBackup(e){
 /* ---------------------------------------------------------------- settings */
 const SP = {page:null};
 const SPAGES = [
+  ['backup', 'shield-check', 'Backups', () => store.lastBackup ? 'Last backup file ' + new Date(store.lastBackup).toLocaleDateString() : 'No backup file saved yet'],
+  ...(TEST ? [['test', 'flask', 'Test version', () => 'Separate from your real collection']] : []),
   ['sync', 'device-desktop-up', 'Nightvault sync', t => `${t.toLocaleString()} cards on this phone${store.lastExport ? ' · last sent ' + new Date(store.lastExport).toLocaleDateString() : ''}`],
   ['app', 'device-mobile', 'Use as an app', () => APPMODE() ? 'Installed - running without browser bars' : 'Full screen, without the browser bars'],
   ['scan', 'scan', 'Scanning', () => [O.auto && 'auto-scan', O.full && 'whole card', O.dailyPrices && 'daily prices'].filter(Boolean).join(' · ') || 'Options for reading cards'],
@@ -2021,9 +2175,9 @@ var SITECHECK = '';
 async function checkSites(){
   const L = [['Magic · Scryfall', 'https://api.scryfall.com/sets'], ['Pokémon · pokemontcg.io', 'https://api.pokemontcg.io/v2/sets?pageSize=1'], ['Pokémon · TCGdex', 'https://api.tcgdex.net/v2/en/sets'],
     ['Yu-Gi-Oh! · YGOPRODeck', 'https://db.ygoprodeck.com/api/v7/cardsets.php'], ['Lorcana · Lorcast', 'https://api.lorcast.com/v0/sets'],
-    ['CCG Trader catalog', CCGT + 'game?limit=1&fields[]=id'], ['CCG Trader · copy on GitHub', 'data/ccgt/index.json'], ['SWU · official card list', SWUO + 'card-expansions?locale=en'], ['SWU · swu-db sets', 'https://api.swu-db.com/sets'], ['SWU · swu-db search', 'https://api.swu-db.com/cards/search?q=luke'], ['SWU · swu-db set cards', 'https://api.swu-db.com/cards/sor'],
-    ['SWU · copy next to app', 'swu-cards.json'], ['Riftbound · Riftcodex', 'https://api.riftcodex.com/sets?size=5'], ['Riftbound · prices file', 'riftbound-prices.json'],
-    ['One Piece · optcgapi', 'https://optcgapi.com/api/allSetCards/'], ['Star Wars CCG · GitHub', 'https://cdn.jsdelivr.net/gh/swccgpc/swccg-card-json@main/Light.json'], ...DGAMES.map(g => [GAMES[g].label + ' · card file', `data/${g}.json`])];
+    ['CCG Trader catalog', CCGT + 'game?limit=1&fields[]=id'], ['CCG Trader · copy on GitHub', BASE + 'data/ccgt/index.json'], ['SWU · official card list', SWUO + 'card-expansions?locale=en'], ['SWU · swu-db sets', 'https://api.swu-db.com/sets'], ['SWU · swu-db search', 'https://api.swu-db.com/cards/search?q=luke'], ['SWU · swu-db set cards', 'https://api.swu-db.com/cards/sor'],
+    ['SWU · copy next to app', BASE + 'swu-cards.json'], ['Riftbound · Riftcodex', 'https://api.riftcodex.com/sets?size=5'], ['Riftbound · prices file', BASE + 'riftbound-prices.json'],
+    ['One Piece · optcgapi', 'https://optcgapi.com/api/allSetCards/'], ['Star Wars CCG · GitHub', 'https://cdn.jsdelivr.net/gh/swccgpc/swccg-card-json@main/Light.json'], ...DGAMES.map(g => [GAMES[g].label + ' · card file', `${BASE}data/${g}.json`])];
   const b = $('#dsites'); if(b){ b.disabled = true; b.innerHTML = '<i class="ti ti-loader-2"></i>Checking ...' }
   const out = await Promise.all(L.map(async ([nm, u]) => { const t = performance.now();
     try{ const r = await fetch(u, {headers:{Accept:'application/json'}}); const ms = Math.round(performance.now() - t); return `${r.ok ? 'OK     ' : 'HTTP ' + r.status} ${nm} (${ms} ms)` }
@@ -2139,6 +2293,15 @@ function viewSettings(){
       <b>Chrome</b><ol><li>Tap the <i class="ti ti-dots-vertical"></i> menu</li><li>Tap <b>Add to Home screen</b>, then <b>Install</b></li></ol>
       <b>iPhone (Safari)</b><ol><li>Tap <i class="ti ti-share"></i> Share, then <b>Add to Home Screen</b></li></ol></div>`}
       ${document.fullscreenEnabled ? `<div class="optrow" style="margin-top:10px"><span class="grow">Full screen now<small>Hides the browser bars until you leave it. Also the <i class="ti ti-maximize"></i> button at the top.</small></span><button class="btn sm" id="sfull"><i class="ti ti-maximize"></i>${document.fullscreenElement ? 'Leave' : 'Full screen'}</button></div>` : ''}`}</div>
+    <div class="panel" data-p="backup"><h3>Backups</h3>
+      <p style="margin:0 0 10px;font-size:13.5px">Your cards live on this phone. Save a backup file now and then (Google Drive, mail, WhatsApp to yourself ...) so you can always get them back, also on a new phone.</p>
+      <div class="btns"><button class="btn primary sm" id="bksave"><i class="ti ti-cloud-upload"></i>Save a backup file</button><label class="btn sm"><i class="ti ti-file-import"></i>Restore from a file<input type="file" id="bkfile" accept=".json,application/json" hidden></label></div>
+      <p class="hint">${store.lastBackup ? 'Last backup file: ' + new Date(store.lastBackup).toLocaleString() : 'No backup file saved yet.'}</p>
+      <h4 style="margin:14px 0 6px">Snapshots on this phone</h4><p class="hint" style="margin-top:0">Made every day and before cards are removed - to undo a mistake.</p><div id="bksnaps" class="muted" style="font-size:13px">Loading ...</div></div>
+    <div class="panel" data-p="test"><h3>Test version</h3>
+      <p style="margin:0 0 10px;font-size:13.5px">This is the test version of Nightvault Pocket, with new features to try. It keeps its <b>own</b> cards: nothing you do here changes your real collection in the normal app.</p>
+      <div class="btns"><button class="btn primary sm" id="tcopy"><i class="ti ti-copy"></i>Copy my real cards in</button><button class="btn sm" id="treset"><i class="ti ti-refresh"></i>Start empty</button></div>
+      <p class="hint">Copying replaces the cards in this test version with a copy of the ones in the normal app.</p></div>
     <div class="panel" data-p="dev"><h3>Scan details</h3>
       <p class="hint" style="margin-top:0">What the scanner saw and tried during the last scans. Copy or share it when something does not work.</p>
       <div class="btns" style="margin:8px 0"><button class="btn sm" id="dcopy"><i class="ti ti-copy"></i>Copy</button><button class="btn sm" id="dshare"><i class="ti ti-share"></i>Share</button><button class="btn sm" id="dsites"><i class="ti ti-world-check"></i>Check card sites</button></div>
@@ -2148,6 +2311,15 @@ function viewSettings(){
       <p class="hint">Cards already imported into Nightvault stay there.</p></div>`;
   if($('#sinst')) $('#sinst').onclick = installApp;
   if($('#sfull')) $('#sfull').onclick = async () => { await toggleFull(); viewSettings() };
+  if($('#tcopy')) $('#tcopy').onclick = () => { let real = null; try{ real = JSON.parse(localStorage.getItem('nightvault.pocket.v1') || 'null') }catch(e){}
+    if(!real || !Array.isArray(real.cards)){ toast('No cards found in the normal app on this phone', true); return }
+    if(store.cards.length && !confirm(`Replace the ${store.cards.length} cards in the test version with your ${real.cards.length} real cards?`)) return; snapshot('before copying the real cards');
+    Object.assign(store, JSON.parse(JSON.stringify(real))); persist(); registerGames(); toast(`${real.cards.length} cards copied into the test version`); viewSettings() };
+  if($('#treset')) $('#treset').onclick = () => { if(!confirm('Remove all cards from the test version? (Your real collection is not touched.)')) return; store.cards = []; store.review = []; persist(); toast('Test version emptied'); viewSettings() };
+  if($('#bksave')) $('#bksave').onclick = async () => { await saveBackup(); viewSettings() };
+  if($('#bkfile')) $('#bkfile').onchange = importBackup;
+  if($('#bksnaps') && SP.page === 'backup') snapList().then(l => { $('#bksnaps').innerHTML = l.length ? l.map(x => `<div class="row" style="padding:6px 0"><div class="grow">${new Date(x.at).toLocaleString()}<div class="muted" style="font-size:12px">${esc(x.why)} · ${x.n.toLocaleString()} cards</div></div><button class="btn sm" data-snap="${x.at}">Restore</button></div>`).join('') : 'No snapshots yet - the first one is made today.';
+    $$('[data-snap]').forEach(b => b.onclick = () => { const x = l.find(y => y.at === +b.dataset.snap); if(x && confirm(`Go back to the cards of ${new Date(x.at).toLocaleString()} (${x.n} cards)?`)) restoreStore(JSON.parse(x.data), 'a snapshot') }) });
   $('#dtext').textContent = dreport();
   $('#dsites').onclick = checkSites;
   $('#dcopy').onclick = async () => { const t = dreport(); $('#dtext').textContent = t;
@@ -2175,7 +2347,7 @@ function viewSettings(){
   $('#sclear').onclick = () => {
     modal(`<h3>Remove all cards?</h3><p style="margin:0 0 6px">This removes ${total.toLocaleString()} cards from this phone. ${store.lastExport ? '' : '<b>You have not exported them yet.</b>'}</p>
       <div class="btns" style="justify-content:flex-end;margin-top:14px"><button class="btn" id="cx">Cancel</button><button class="btn danger" id="cy"><i class="ti ti-trash"></i>Remove all</button></div>`);
-    $('#cx').onclick = closeModal; $('#cy').onclick = () => { store.cards = []; SC.session = []; SC.last = null; persist(); tabCount(); closeModal(); toast('All cards removed'); viewSettings() };
+    $('#cx').onclick = closeModal; $('#cy').onclick = async () => { await snapshot('before removing all cards'); store.cards = []; SC.session = []; SC.last = null; persist(); tabCount(); closeModal(); toast('All cards removed'); viewSettings() };
   };
   settingsPages(total);
   setSt('');
@@ -2189,7 +2361,7 @@ const atRoot = () => VIEW === 'scan' && !$('#modal').innerHTML.trim();
 function saveNav(){
   O.nav = {at:Date.now(), view:VIEW === 'review' ? 'review' : VIEW, game:BD.game, set:BD.set ? {code:BD.set.code, id:BD.set.id, name:BD.set.name, abbr:BD.set.abbr, tcgdex:BD.set.tcgdex, local:BD.set.local, released:BD.set.released} : null,
     sp:SP.page, f:Object.assign({}, F), cam:VIEW === 'scan' && (!!SC.stream || !!O.camWasOn)};
-  try{ localStorage.setItem('nightvault.pocket.nav', JSON.stringify(O.nav)) }catch(e){} }
+  try{ localStorage.setItem(NAVKEY, JSON.stringify(O.nav)) }catch(e){} }
 let _navT;
 function navSync(){ clearTimeout(_navT); _navT = setTimeout(() => { saveNav(); if(!atRoot() && !(history.state && history.state.nv)) history.pushState({nv:1}, '') }, 30) }
 function goBack(){
@@ -2204,13 +2376,14 @@ window.addEventListener('popstate', () => { goBack(); navSync() });
 new MutationObserver(navSync).observe($('#main'), {childList:true});
 new MutationObserver(navSync).observe($('#modal'), {childList:true});
 function restoreNav(){
-  let n = null; try{ n = JSON.parse(localStorage.getItem('nightvault.pocket.nav') || 'null') }catch(e){}
+  let n = null; try{ n = JSON.parse(localStorage.getItem(NAVKEY) || 'null') }catch(e){}
   if(!n || Date.now() - (n.at || 0) > 2 * 3600e3 || !n.view || n.view === 'scan'){ show('scan'); if(n && n.cam && Date.now() - (n.at || 0) < 2 * 3600e3) startCamera(); return }
   if(n.f) Object.assign(F, n.f);
   if(n.view === 'binder'){ BD.game = n.game && (GAMES[n.game] || store.games.some(g => g.id === n.game)) ? n.game : null; BD.set = BD.game ? n.set : null }
   if(n.view === 'settings') SP.page = n.sp || null;
   show(n.view);
 }
+if(TEST){ $('#testbadge').hidden = false; document.title = 'Pocket TEST' }
 applyTheme(); tabCount(); restoreNav(); fsSync(); $('#fsbtn').onclick = toggleFull;
 if(O.dailyPrices && store.cards.length && Date.now() - (store.lastPriceCheck || 0) > 20 * 3600 * 1000) setTimeout(() => priceCheck(false), 4000);
 </script>
