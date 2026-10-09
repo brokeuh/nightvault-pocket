@@ -105,6 +105,22 @@ select{width:auto}
 #viewer .vtext{align-self:flex-start;width:100%;max-width:560px;margin:0 auto;background:var(--card);color:var(--text);border-radius:14px;padding:16px;line-height:1.5;font-size:14.5px}
 #viewer .vtext .vt{white-space:pre-wrap}#viewer .vtext .vf{font-style:italic;color:var(--mut);margin-top:10px}#viewer .vtext dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0 0 12px}#viewer .vtext dt{color:var(--dim)}#viewer .vtext dd{margin:0}
 .cname{font-size:17px;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.bstats.four{grid-template-columns:repeat(4,1fr)}
+.fld{display:block;margin:10px 0 0}.fld span{display:block;font-size:12px;color:var(--dim);margin-bottom:4px}.fld select{width:100%}
+.dsf{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px;align-items:flex-end}.fsel{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--dim);min-width:0;flex:1 1 30%}
+.fsel select,.fsel input{padding:6px 8px;font-size:13px;width:100%}.fsel.on select{border-color:var(--accentline);color:var(--pb)}
+.dgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.dtile{display:flex;flex-direction:column;gap:3px;min-width:0}
+.dimg{position:relative;border:0;padding:0;background:var(--card);border-radius:7px;aspect-ratio:63/88;overflow:hidden;display:grid;place-items:center;color:var(--dim);font-size:11px}
+.dimg img{width:100%;height:100%;object-fit:cover}.dtile.in .dimg{outline:2px solid var(--accent)}
+.dn{position:absolute;top:4px;right:4px;background:var(--accent);color:var(--onacc);border-radius:999px;min-width:22px;height:22px;display:grid;place-items:center;font-size:12px}
+.dh{position:absolute;left:4px;top:4px;background:rgba(0,0,0,.6);color:#fff;border-radius:6px;padding:2px 3px;font-size:13px}
+.dnm{font-size:12px;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.dsub{font-size:11px;color:var(--dim)}
+.dtile .qb{justify-content:space-between}.dtile .qb button{width:28px;height:26px}.dtile .qb button[disabled]{opacity:.35}
+.dgh{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);margin:14px 0 2px}
+.curve{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;height:70px;margin:-2px 0 12px;align-items:end}
+.curve div{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative;padding-top:13px}
+.curve i{width:70%;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px;opacity:.8}.curve span{font-size:10.5px;color:var(--dim)}.curve b{position:absolute;top:0;font-size:10px;font-weight:500;color:var(--mut)}
+#tabs button{font-size:10.5px}
 .lnk{background:none;border:0;padding:0;color:var(--accent);font:inherit;font-size:12.5px;cursor:pointer}.lnk .price{color:inherit}
 .pxrow{display:flex;gap:10px;align-items:flex-start;padding:9px 8px;border-radius:10px;border:1px solid transparent}.pxrow.on{border-color:var(--accent);background:var(--accentbg)}
 .pxrow .btn{flex:none}.pxn{width:22px;height:22px;border-radius:50%;background:var(--chipbg);display:grid;place-items:center;font-size:12px;font-weight:600;flex:none;margin-top:1px}
@@ -144,7 +160,7 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 .steps li{margin:3px 0}
 
 /* tabs */
-#tabs{display:grid;grid-template-columns:repeat(4,1fr);background:var(--side);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+#tabs{display:grid;grid-template-columns:repeat(5,1fr);background:var(--side);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 #tabs button{border:0;background:none;padding:9px 0 8px;color:var(--dim);font-size:11.5px;display:grid;justify-items:center;gap:2px}
 #tabs button i{font-size:22px}
 #tabs button.on{color:var(--text)}
@@ -246,6 +262,7 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
     <button data-v="scan" class="on"><i class="ti ti-camera"></i>Scan cards</button>
     <button data-v="cards" style="position:relative"><i class="ti ti-stack"></i>My cards<span class="tbadge" id="tabn" hidden></span></button>
     <button data-v="binder"><i class="ti ti-book-2"></i>Binder</button>
+    <button data-v="decks"><i class="ti ti-cards"></i>Decks</button>
     <button data-v="settings"><i class="ti ti-settings"></i>Settings</button>
   </nav>
 </div>
@@ -712,7 +729,7 @@ let VIEW = 'scan';
 function show(v){
   VIEW = v; $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === (v === 'review' ? 'cards' : v)));
   if(v !== 'scan') stopCamera();
-  ({scan:viewScan, cards:viewCards, settings:viewSettings, review:viewReview, binder:viewBinder})[v]();
+  ({scan:viewScan, cards:viewCards, settings:viewSettings, review:viewReview, binder:viewBinder, decks:viewDecks})[v]();
   $('#main').scrollTop = 0;
 }
 $$('#tabs button').forEach(b => b.onclick = () => show(b.dataset.v));
@@ -1457,7 +1474,7 @@ function renderResult(){
       <div class="price" style="font-size:15px;margin-bottom:10px">${SC.foil ? 'Foil ' : ''}${fmt(price, m.currency)} <span class="muted" style="font-size:12px">${esc(m.psrc)}</span><button class="lnk" id="cpx">${price == null ? 'Check prices' : 'All prices'} <i class="ti ti-chevron-right"></i></button>${owned ? `<div class="muted" style="font-size:12px">You own ${owned}</div>` : ''}</div>
     </div></div>
       <div class="btns" style="margin-top:12px"><button class="btn primary" id="cadd" style="flex:1"><i class="ti ti-plus"></i>Add</button>
-        <button class="btn ${SC.foil ? 'on' : ''}" id="cfoil"><i class="ti ti-sparkles"></i>Foil</button><button class="btn" id="cinfo" aria-label="Details"><i class="ti ti-info-circle"></i></button><button class="btn" id="cundo" ${SC.last ? '' : 'disabled'}><i class="ti ti-arrow-back-up"></i>Undo</button></div>
+        <button class="btn ${SC.foil ? 'on' : ''}" id="cfoil"><i class="ti ti-sparkles"></i>Foil</button><button class="btn" id="cinfo" aria-label="Details"><i class="ti ti-info-circle"></i></button><button class="btn" id="cdeck" aria-label="Add to deck"><i class="ti ti-cards"></i></button><button class="btn" id="cundo" ${SC.last ? '' : 'disabled'}><i class="ti ti-arrow-back-up"></i>Undo</button></div>
       ${r.matches.length > 1 ? `<div class="hint" style="margin-top:12px">${r.sameArt ? `<b>Same artwork in ${r.sameArt.length} sets</b> - check the set symbol or number on your card and tap the right one` : r.matches.length + ' printings · tap the right one'}</div>
       <div class="cands">${r.matches.map((x, i) => `<button class="cand-t ${i === SC.sel ? 'on' : ''}" data-i="${i}" title="${esc(x.name)} · ${esc(x.showSet)} #${esc(x.showNum)}">${pic(x, 'loading="lazy"')}<span>${esc(x.showSet)} ${esc(x.showNum)}</span></button>`).join('')}</div>` : ''}`
     : ''}</div>
@@ -1466,6 +1483,7 @@ function renderResult(){
   if($('#czm')) $('#czm').onclick = () => openViewer(m);
   if($('#cinfo')) $('#cinfo').onclick = () => openViewer(m, 'info');
   if($('#cpx')) $('#cpx').onclick = () => openPrices(m, renderResult);
+  if($('#cdeck')) $('#cdeck').onclick = () => deckPick(m);
   if($('#cfoil')) $('#cfoil').onclick = () => { SC.foil = !SC.foil; renderResult() };
   if($('#cundo')) $('#cundo').onclick = undoLast;
   $$('#cres .cand-t').forEach(t => t.onclick = () => { SC.sel = +t.dataset.i; renderResult() });
@@ -2192,11 +2210,12 @@ function binderCard(m, redraw){
       <div class="sub" style="margin:2px 0 8px">${esc(m.showSet)} #${esc(m.showNum)}${m.rarity ? ' · ' + esc(m.rarity) : ''}</div>
       <div class="price">${fmt(m.price, m.currency)}${m.priceFoil != null ? ` <span class="muted">· foil ${fmt(m.priceFoil, m.currency)}</span>` : ''}</div></div></div>
     ${[false, true].map(f => `<div class="row"><div class="grow">${f ? 'Foil' : 'Normal'}</div><div class="qb"><button data-f="${f ? 1 : 0}" data-d="-1">−</button><b id="bq${f ? 1 : 0}">${q(f)}</b><button data-f="${f ? 1 : 0}" data-d="1">+</button></div></div>`).join('')}
-    <div class="btns" style="margin-top:10px"><button class="btn sm" id="binfo"><i class="ti ti-info-circle"></i>Details</button><button class="btn sm" id="bpx"><i class="ti ti-coin-euro"></i>Prices</button><button class="btn sm ${isWant(m) ? 'on' : ''}" id="bwant"><i class="ti ti-heart${isWant(m) ? '-filled' : ''}"></i>${isWant(m) ? 'On my wishlist' : 'Want this'}</button>
+    <div class="btns" style="margin-top:10px"><button class="btn sm" id="binfo"><i class="ti ti-info-circle"></i>Details</button><button class="btn sm" id="bprices"><i class="ti ti-coin-euro"></i>Prices</button><button class="btn sm" id="bdeck"><i class="ti ti-cards"></i>Add to deck</button><button class="btn sm ${isWant(m) ? 'on' : ''}" id="bwant"><i class="ti ti-heart${isWant(m) ? '-filled' : ''}"></i>${isWant(m) ? 'On my wishlist' : 'Want this'}</button>
       <button class="btn sm ${mine.some(c => c.trade) ? 'on' : ''}" id="btrade" ${mine.length ? '' : 'disabled'}><i class="ti ti-arrows-exchange"></i>${mine.some(c => c.trade) ? 'For trade' : 'Offer for trade'}</button></div>
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" id="bcx">Done</button></div>`);
   $('#bzm').onclick = () => openViewer(m); $('#binfo').onclick = () => openViewer(m, 'info');
-  $('#bpx').onclick = () => { const own = store.cards.find(c => c.game === m.game && c.set === m.set && c.number === m.number); openPrices(own || m, () => binderCard(m, redraw)) };
+  $('#bdeck').onclick = () => deckPick(m, () => binderCard(m, redraw));
+  $('#bprices').onclick = () => { const own = store.cards.find(c => c.game === m.game && c.set === m.set && c.number === m.number); openPrices(own || m, () => binderCard(m, redraw)) };
   $('#bwant').onclick = () => { const on = toggleWant(m); $('#bwant').classList.toggle('on', on); $('#bwant').innerHTML = `<i class="ti ti-heart${on ? '-filled' : ''}"></i>${on ? 'On my wishlist' : 'Want this'}` };
   $('#btrade').onclick = () => { const own = store.cards.filter(c => c.game === m.game && c.set === m.set && c.number === m.number); if(!own.length) return;
     const on = !own.some(c => c.trade); own.forEach(c => c.trade = on); persist(); $('#btrade').classList.toggle('on', on); $('#btrade').innerHTML = `<i class="ti ti-arrows-exchange"></i>${on ? 'For trade' : 'Offer for trade'}` };
@@ -2544,6 +2563,329 @@ function viewSettings(){
   setSt('');
 }
 
+/* ================================================================ decks
+   One deck builder for every game. A deck holds cards of one game (main deck and sideboard).
+   Searching: Magic, Yu-Gi-Oh! and Pokémon are searched on their own sites with their own filters. Every other game loads its
+   whole card list once, and the filters are made from what that list knows (cost, color, type, rarity ...). */
+const DK = {id:null, search:false, zone:'main', q:'', inText:false, f:{}, sets:[], setNames:{}, owned:false, allPrints:false, res:null, shown:60, fg:null, busy:false, err:''};
+const decks = () => (store.decks ||= []);
+const deckOf = id => decks().find(d => d.id === id);
+const dkey = m => `${m.set}|${m.number}`;
+const deckCount = (d, side) => d.cards.filter(x => side == null || !!x.side === side).reduce((a, x) => a + x.n, 0);
+const deckSlim = m => { const o = {}; for(const k of ['game', 'set', 'number', 'showSet', 'showNum', 'name', 'setName', 'rarity', 'image', 'alt', 'link', 'info', 'f', 'px', 'price', 'priceFoil', 'currency', 'psrc', 'pid']) if(m[k] != null) o[k] = m[k]; return o };
+const inDeck = (d, m, side) => (d.cards.find(y => y.k === dkey(m) && !!y.side === !!side) || {}).n || 0;
+const nameKey = s => String(s || '').split(' (')[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+function ownByName(g){ const m = new Map(); for(const c of ownedIn(g)){ const k = nameKey(c.name); m.set(k, (m.get(k) || 0) + c.qty) } return m }
+const mPrice = m => toEur(m.price ?? m.priceFoil, m.currency);
+const deckValue = (d, side) => d.cards.filter(x => side == null || !!x.side === side).reduce((a, x) => a + (mPrice(x.m) || 0) * x.n, 0);
+function deckAdd(d, m, delta, side){
+  const k = dkey(m); let x = d.cards.find(y => y.k === k && !!y.side === !!side);
+  if(!x){ if(delta <= 0) return 0; x = {k, m:deckSlim(m), n:0, side:!!side}; d.cards.push(x);
+    if(!x.m.px) capturePx(x.m); addExtras(x.m).then(got => { if(got){ pickPx(x.m, null); persist() } }).catch(() => {}); pickPx(x.m, null) }
+  x.n = Math.max(0, x.n + delta); if(!x.n) d.cards = d.cards.filter(y => y !== x);
+  d.at = Date.now(); persist(); return x.n }
+/* what kind of card (for grouping) and what it costs (for sorting and the curve) */
+const MTG_TYPES = ['Creature', 'Planeswalker', 'Battle', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Land'];
+function typeOf(m){ const f = m.f || {}, it = String((m.info || {}).type || '');
+  if(m.game === 'mtg') return MTG_TYPES.find(t => it.includes(t)) || 'Other';
+  for(const k of ['Type', 'Card Type', 'CardType', 'CardCategory', 'Category']) if(f[k] != null) return String(Array.isArray(f[k]) ? f[k][0] : f[k]);
+  if(m.game === 'ygo') return /monster/i.test(it) ? 'Monster' : /spell/i.test(it) ? 'Spell' : /trap/i.test(it) ? 'Trap' : 'Other';
+  return it.split(/ · | — | - /)[0].trim() || 'Cards' }
+function costOf(m){ const f = m.f || {};
+  for(const k of ['Cost', 'PlayCost', 'Mana value', 'Level', 'LevelLv']) if(typeof f[k] === 'number') return f[k];
+  const c = String((m.info || {}).cost || ''); if(m.game === 'mtg' && c){ let n = 0; for(const s of c.split('//')[0].match(/\{[^}]+\}/g) || []){ const v = s.slice(1, -1); n += /^\d+$/.test(v) ? +v : /^[XYZ]$/.test(v) ? 0 : 1 } return n }
+  const n = /(\d+)/.exec(c); return n ? +n[1] : null }
+
+/* ---------------------------------------------------------------- card lists for the deck search (whole game, with details) */
+const nul = v => v == null || v === 'NULL' || String(v).trim() === '' ? undefined : String(v).trim();
+const numF = v => v == null || v === '' || v === 'NULL' || !isFinite(+v) ? undefined : +v;
+const spl = (v, re) => { const s = nul(v); return s ? s.split(re).map(x => x.trim()).filter(Boolean) : undefined };
+function cleanF(f){ const o = {}; for(const [k, v] of Object.entries(f || {})){ if(v == null || v === '' || (Array.isArray(v) && !v.length)) continue;
+  o[k] = Array.isArray(v) ? v.map(String) : typeof v === 'number' ? v : /^-?\d+(\.\d+)?$/.test(String(v).trim()) ? +v : String(v).trim() } return o }
+async function firstJSON(paths){ for(const p of paths) for(const u of [BASE + p, 'https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/' + p]) try{ return await getJSON(u) }catch(e){} return null }
+const gidOf = g => CCGT_BUILTIN[g] || ((store.games || []).find(x => x.id === g) || {}).ccgt || null;
+const REMOTE = new Set(['mtg', 'ygo', 'pokemon']);
+const SPECIAL_SET = /loot|extended|oversiz|promo|alternate|alt\.? art|full art|foil|prerelease|judge|serial|signed/i;
+const _pool = {};
+function deckPool(g){ if(!_pool[g]) _pool[g] = loadPool(g).then(l => l.map(m => Object.assign(m, {f:cleanF(m.f)}))).catch(e => { delete _pool[g]; throw e }); return _pool[g] }
+async function loadPool(g){
+  if(g === 'onepiece') return (await opdb()).map(c => Object.assign(opMap(c), {f:{Color:spl(c.card_color, /[\s\/]+/), Type:nul(c.card_type), Cost:numF(c.card_cost), Power:numF(c.card_power),
+    Counter:numF(c.counter_amount), Attribute:spl(c.attribute, /\s*\/\s*/), Subtype:spl(c.sub_types, /\s*\/\s*/), Rarity:nul(c.rarity)}, txt:clean(c.card_text)}));
+  if(g === 'swccg') return (await swdb()).map(c => { const fr = c.front || {};
+    return Object.assign(swccgMap(c), {f:{Side:nul(c.side), Type:nul(fr.type), Subtype:nul(fr.subType), Rarity:nul(c.rarity), Destiny:numF(fr.destiny), Deploy:numF(fr.deploy), Forfeit:numF(fr.forfeit), Power:numF(fr.power)},
+      txt:clean(fr.gametext)}) });
+  if(g === 'swu'){ const mm = await swuMirror(); if(!mm || !mm.cards) throw new Error('The Star Wars Unlimited list is not available right now');
+    return Object.values(mm.cards).flat().map(c => Object.assign(swuMap(c), {f:{Cost:c.Cost, Type:c.Type, Aspect:c.Aspects, Trait:c.Traits, Arena:c.Arenas, Rarity:c.Rarity, Power:c.Power, HP:c.HP,
+      Version:c.VariantType || 'Normal'}, txt:clean(c.Text)})) }
+  if(g === 'lorcana'){ const sets = await SETSRC.lorcana.list(), out = [];
+    for(const st of sets){ try{ for(const c of await getJSON('https://api.lorcast.com/v0/sets/' + st.id + '/cards'))
+        out.push(Object.assign(lorMap(c), {f:{Ink:c.ink, Cost:c.cost, Type:c.type, Classification:c.classifications, Rarity:nul(c.rarity) && c.rarity.replace(/_/g, ' '), Inkable:c.inkwell ? 'Yes' : 'No',
+          Strength:c.strength, Willpower:c.willpower, Lore:c.lore}, txt:clean(c.text)})) }catch(e){} await sleep(60) }
+    return out }
+  if(g === 'riftbound'){ const sets = await SETSRC.riftbound.list(), pr = await rbPrices(), out = [];
+    for(const st of sets){ let page = 1;
+      while(page < 8){ let j; try{ j = await getJSON(`https://api.riftcodex.com/cards?set_id=${enc(st.code)}&sort=collector_number&size=100&page=${page}`) }catch(e){ break }
+        for(const c of j.items || []){ const cl = c.classification || {}, at = c.attributes || {};
+          out.push(Object.assign(rbMap(c, pr), {f:{Domain:cl.domain, Type:cl.type, Supertype:cl.supertype, Rarity:cl.rarity, Energy:at.energy, Might:at.might, Power:at.power}, txt:clean((c.text || {}).plain || '')})) }
+        if(!j.pages || page >= j.pages) break; page++ } }
+    return out }
+  if(DGAMES.includes(g)){ const d = await dgData(g), fac = (await firstJSON([`data/facets/${g}.json`])) || {};
+    return d.cards.map(r => { const m = dgMap(g, d, r); return Object.assign(m, {f:Object.assign({Rarity:r[3] || undefined}, fac[String(r[4])] || {})}) }) }
+  const gid = gidOf(g);
+  if(gid){ const [d, idx, txt] = await Promise.all([firstJSON([`data/ccgt/${gid}.json`]), firstJSON(['data/ccgt/index.json']), firstJSON([`data/text/${g}.json`])]);
+    if(!d) throw new Error('No card list for this game yet - run “Back up the CCG Trader catalog” once on GitHub');
+    const rar = (idx || {}).rarities || {}, used = new Set(), sets = new Map(), tx = (txt && txt.format === 'nightvault-card-text' && txt.cards) || {};
+    for(const x of d.sets){ const w = String(x.name || '').match(/[A-Za-z0-9']+/g) || [], ab0 = w.filter(t => !/^(of|the|and|a)$/i.test(t)).map(t => t[0]).join('').toUpperCase() || 'SET';
+      let ab = ab0, n = 2; while(used.has(ab)) ab = ab0 + n++; used.add(ab); sets.set(String(x.id), {abbr:ab, name:x.name, released:x.released}) }
+    return d.cards.map(c => { const st = sets.get(String(c[0])) || {}, n = c[1] == null || c[1] === 0 || c[1] === '' ? '' : String(c[1]), nm = String(c[2] || '').trim();
+      const m = {game:g, set:String(c[0]), number:n || slugOf(nm), showSet:st.abbr || '', showNum:n, name:nm, setName:st.name || '', rarity:rar[c[3]] || '', released:st.released || '',
+        image:ccgtImg(c[4]), price:null, priceFoil:null, currency:'USD', psrc:'', link:`https://www.ebay.com/sch/i.html?_nkw=${enc((GAMES[g] || {label:''}).label + ' ' + nm)}`, linkLabel:'Look up on eBay'};
+      const t = tx[dkey(m)]; if(t){ m.info = {type:t[0] || '', text:t[1] || ''}; m.txt = t[1] || '' }
+      m.f = {Rarity:m.rarity || undefined, Type:t && t[0] ? t[0].split(/ · | - | — /)[0] : undefined}; return m }) }
+  return ownedIn(g).map(c => Object.assign({}, c, {f:{Rarity:c.rarity || undefined}}));                // games added by hand: the cards you have
+}
+async function poolText(g, list){                                // card text for "search in card text" (TCGplayer games keep it in a separate file)
+  if(!DGAMES.includes(g) || list._txt) return; list._txt = true;
+  if(!_dgText[g]) _dgText[g] = getJSON(`${BASE}data/text/${g}.json`).catch(() => getJSON(`https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/text/${g}.json`)).catch(() => ({}));
+  const t = await _dgText[g]; for(const m of list){ const x = m.pid && t[m.pid]; if(x){ m.txt = x[1] || ''; m.info ||= {type:x[0], text:x[1]} } } }
+
+/* ---------------------------------------------------------------- searching on the card sites (Magic, Yu-Gi-Oh!, Pokémon) */
+const o2 = l => l.map(x => Array.isArray(x) ? x : [x, x]);
+const RFILT = {
+  mtg:[{k:'color', label:'Color', opts:[['w', 'White'], ['u', 'Blue'], ['b', 'Black'], ['r', 'Red'], ['g', 'Green'], ['c', 'Colorless'], ['m', 'Multicolor']]},
+    {k:'type', label:'Card type', opts:MTG_TYPES.map(x => [x.toLowerCase(), x])}, {k:'sub', label:'Creature type', text:true, ph:'e.g. Elf'},
+    {k:'mv', label:'Mana value', opts:o2(['0', '1', '2', '3', '4', '5', '6', '7+'])}, {k:'r', label:'Rarity', opts:[['common', 'Common'], ['uncommon', 'Uncommon'], ['rare', 'Rare'], ['mythic', 'Mythic']]},
+    {k:'fmt', label:'Legal in', opts:['standard', 'pioneer', 'modern', 'legacy', 'vintage', 'commander', 'pauper'].map(x => [x, x[0].toUpperCase() + x.slice(1)])}],
+  ygo:[{k:'type', label:'Card type', opts:o2(['Effect Monster', 'Normal Monster', 'Ritual Effect Monster', 'Fusion Monster', 'Synchro Monster', 'XYZ Monster', 'Link Monster', 'Pendulum Effect Monster', 'Spell Card', 'Trap Card'])},
+    {k:'attribute', label:'Attribute', opts:o2(['DARK', 'LIGHT', 'EARTH', 'WATER', 'FIRE', 'WIND', 'DIVINE'])},
+    {k:'race', label:'Monster / spell type', opts:o2(['Aqua', 'Beast', 'Beast-Warrior', 'Cyberse', 'Dinosaur', 'Divine-Beast', 'Dragon', 'Fairy', 'Fiend', 'Fish', 'Illusion', 'Insect', 'Machine', 'Plant', 'Psychic', 'Pyro', 'Reptile', 'Rock', 'Sea Serpent', 'Spellcaster', 'Thunder', 'Warrior', 'Winged Beast', 'Wyrm', 'Zombie', 'Normal', 'Continuous', 'Quick-Play', 'Field', 'Equip', 'Ritual', 'Counter'])},
+    {k:'level', label:'Level / Rank', opts:o2(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])}, {k:'archetype', label:'Archetype', text:true, ph:'e.g. Blue-Eyes'}],
+  pokemon:[{k:'category', label:'Category', opts:[['Pokemon', 'Pokémon'], ['Trainer', 'Trainer'], ['Energy', 'Energy']]},
+    {k:'types', label:'Type', opts:o2(['Grass', 'Fire', 'Water', 'Lightning', 'Psychic', 'Fighting', 'Darkness', 'Metal', 'Dragon', 'Fairy', 'Colorless'])},
+    {k:'stage', label:'Stage', opts:o2(['Basic', 'Stage1', 'Stage2', 'V', 'VMAX', 'VSTAR', 'BREAK', 'MEGA'])}, {k:'hp', label:'HP at least', opts:o2(['50', '80', '100', '150', '200', '250', '300'])}],
+};
+async function searchRemote(g){
+  const f = DK.f, q = DK.q.trim();
+  if(g === 'mtg'){ const p = [];
+    if(q) p.push(DK.inText ? `o:"${q.replace(/"/g, '')}"` : q);
+    if(f.color) p.push(f.color === 'm' ? 'c:m' : f.color === 'c' ? 'c:c' : 'c>=' + f.color);
+    if(f.type) p.push('t:' + f.type); if(f.sub) p.push(`t:"${f.sub.replace(/"/g, '')}"`); if(f.mv) p.push(f.mv === '7+' ? 'mv>=7' : 'mv=' + f.mv); if(f.r) p.push('r:' + f.r); if(f.fmt) p.push('f:' + f.fmt);
+    if(DK.sets.length) p.push('(' + DK.sets.map(s => 'e:' + s).join(' or ') + ')');
+    if(!p.length) throw new Error('Type a name or pick a filter first');
+    const out = []; let u = `https://api.scryfall.com/cards/search?order=name&unique=${DK.allPrints ? 'prints' : 'cards'}&q=` + enc(p.join(' '));
+    while(u && out.length < 350){ let j; try{ j = await getJSON(u) }catch(e){ if(e.status === 404) break; throw e }
+      out.push(...j.data.map(c => Object.assign(mtgMap(c), {f:{}}))); u = j.has_more ? j.next_page : null; if(u) await sleep(110) }
+    return out }
+  if(g === 'ygo'){ const p = new URLSearchParams();
+    if(q) p.set('fname', q); for(const k of ['type', 'attribute', 'race', 'level', 'archetype']) if(f[k]) p.set(k, f[k]);
+    if(DK.sets.length === 1) p.set('cardset', DK.setNames[DK.sets[0]] || DK.sets[0]);
+    if(![...p.keys()].length) throw new Error('Type a name or pick a filter first');
+    p.set('num', '300'); p.set('offset', '0');
+    let j; try{ j = await getJSON('https://db.ygoprodeck.com/api/v7/cardinfo.php?' + p) }catch(e){ if(e.status === 400 || e.status === 404) return []; throw e }
+    const want = new Set(DK.sets.map(s => s.toLowerCase())), out = [];
+    for(const c of j.data || []){ const prints = (c.card_sets || []).filter(x => !want.size || want.has(String(x.set_code).split('-')[0].toLowerCase()));
+      for(const x of (DK.allPrints ? prints : prints.slice(0, 1)).concat(prints.length ? [] : [null])){ const [code, n] = x ? String(x.set_code).split(/-(.*)/s) : ['', ''];
+        out.push({game:'ygo', set:(code || '').toLowerCase(), number:n ? normNum(n) : slugOf(c.name), showSet:code || '', showNum:n || '', name:c.name, setName:x ? x.set_name : '', rarity:x ? x.set_rarity || '' : '',
+          released:'', image:(c.card_images || [])[0]?.image_url_small || '', price:(x && num(x.set_price)) || num((c.card_prices || [])[0]?.cardmarket_price), priceFoil:null, currency:'EUR', psrc:'Cardmarket',
+          info:ygoInfo(c), f:{Level:c.level}}) } }
+    return out }
+  if(g === 'pokemon'){ const p = new URLSearchParams();
+    if(q) p.set('name', q); for(const k of ['category', 'types', 'stage']) if(f[k]) p.set(k, f[k]); if(f.hp) p.set('hp', 'gte:' + f.hp);
+    if(![...p.keys()].length && !DK.sets.length) throw new Error('Type a name or pick a filter first');
+    p.set('pagination:itemsPerPage', '250');
+    let l = [];
+    if(![...p.keys()].filter(k => !k.startsWith('pagination')).length) for(const s of DK.sets){ const j = await getJSON('https://api.tcgdex.net/v2/en/sets/' + s).catch(() => ({cards:[]})); l.push(...(j.cards || []).map(c => Object.assign(c, {id:c.id || `${s}-${c.localId}`}))) }
+    else l = await getJSON('https://api.tcgdex.net/v2/en/cards?' + p);
+    const want = new Set(DK.sets.map(s => s.toLowerCase()));
+    return (l || []).map(c => { const set = String(c.id).slice(0, String(c.id).lastIndexOf('-'));
+      return {game:'pokemon', set:set.toLowerCase(), number:normNum(c.localId), showSet:set.toUpperCase(), showNum:c.localId, name:c.name, setName:'', rarity:'', released:'',
+        image:c.image ? c.image + '/low.webp' : '', price:null, priceFoil:null, currency:'EUR', psrc:'', f:{}} }).filter(m => !want.size || want.has(m.set)) }
+  return [] }
+
+/* ---------------------------------------------------------------- the Decks tab */
+function viewDecks(){ const d = DK.id && deckOf(DK.id); if(!d){ DK.id = null; DK.search = false; return decksList() } return DK.search ? deckSearch(d) : deckView(d) }
+function decksList(){
+  const l = decks().slice().sort((a, b) => (b.at || 0) - (a.at || 0));
+  $('#main').innerHTML = `<div class="head"><h1 style="flex:1">Decks</h1><button class="btn sm primary" id="dknew"><i class="ti ti-plus"></i>New deck</button></div>
+    ${l.length ? `<div class="slist">${l.map(d => { const g = GAMES[d.game] || GAMES.other, sd = deckCount(d, true);
+      return `<button class="mitem" data-dk="${d.id}"><i class="mdot"><span style="background:${g.color}"></span></i><span><b>${esc(d.name)}</b><small>${esc(g.label)} · ${deckCount(d, false)} cards${sd ? ` + ${sd} side` : ''} · ${fmt(deckValue(d), 'EUR')}</small></span><i class="ti ti-chevron-right chev"></i></button>` }).join('')}</div>`
+      : `<div class="empty">No decks yet.<br>Make one, then search the cards of its game by name, cost, color, type and more.<br>You can also add cards to a deck from the binder.</div>`}`;
+  $('#dknew').onclick = () => newDeck(null, d => { DK.id = d.id; DK.search = false; viewDecks() });
+  $$('#main [data-dk]').forEach(b => b.onclick = () => { DK.id = b.dataset.dk; DK.search = false; DK.zone = 'main'; viewDecks() });
+}
+function newDeck(game, then){
+  const keys = Object.keys(GAMES).filter(k => k !== 'other'), g0 = game || DK.fg || O.game;
+  modal(`<h3>New deck</h3><label class="fld"><span>Name</span><input type="text" id="dnn" placeholder="My deck" maxlength="60"></label>
+    <label class="fld"><span>Game</span><select id="dng">${keys.map(k => `<option value="${k}" ${k === g0 ? 'selected' : ''}>${esc(GAMES[k].label)}</option>`).join('')}</select></label>
+    <div class="btns" style="justify-content:flex-end;margin-top:14px"><button class="btn" id="dnx">Cancel</button><button class="btn primary" id="dnok">Make deck</button></div>`);
+  if(game) $('#dng').disabled = true;
+  setTimeout(() => $('#dnn') && $('#dnn').focus(), 50);
+  $('#dnx').onclick = closeModal;
+  $('#dnok').onclick = () => { const g = $('#dng').value, d = {id:uid(), name:$('#dnn').value.trim() || `${GAMES[g].label} deck`, game:g, cards:[], at:Date.now()};
+    decks().push(d); persist(); closeModal(); then && then(d) };
+}
+function deckView(d){
+  const g = d.game, side = DK.zone === 'side', own = ownByName(g), need = new Map();
+  for(const x of d.cards){ const k = nameKey(x.m.name); need.set(k, (need.get(k) || 0) + x.n) }
+  let haveN = 0, missV = 0, allN = 0; for(const x of d.cards){ allN += x.n }
+  for(const [k, n] of need){ const h = Math.min(n, own.get(k) || 0); haveN += h }
+  for(const x of d.cards){ const k = nameKey(x.m.name), short = Math.max(0, (need.get(k) || 0) - (own.get(k) || 0)); if(short) missV += (mPrice(x.m) || 0) * Math.min(x.n, short) }
+  const rows = d.cards.filter(x => !!x.side === side), groups = new Map();
+  for(const x of rows){ const t = typeOf(x.m); if(!groups.has(t)) groups.set(t, []); groups.get(t).push(x) }
+  const order = [...groups.keys()].sort((a, b) => { const ia = MTG_TYPES.indexOf(a), ib = MTG_TYPES.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b) });
+  const curve = {}; for(const x of d.cards.filter(y => !y.side)){ const c = costOf(x.m); if(c != null && !(g === 'mtg' && typeOf(x.m) === 'Land')){ const b = Math.min(7, c); curve[b] = (curve[b] || 0) + x.n } }
+  const cmax = Math.max(1, ...Object.values(curve));
+  const ownTag = x => { const k = nameKey(x.m.name), h = own.get(k) || 0, n = need.get(k) || 0; return h >= n ? '<span style="color:var(--green)">✓ you have it</span>' : h ? `<span style="color:var(--amber)">you have ${h} of ${n}</span>` : '<span class="muted">missing</span>' };
+  $('#main').innerHTML = `<div class="head"><button class="btn sm" id="dkb"><i class="ti ti-arrow-left"></i>Decks</button><h1 style="font-size:17px;min-width:0;flex:1;overflow-wrap:anywhere">${esc(d.name)}</h1><button class="btn sm" id="dkm" aria-label="More"><i class="ti ti-dots"></i></button></div>
+    <div class="bstats four"><div><b>${deckCount(d, false)}${deckCount(d, true) ? ` <small style="font-weight:400">+${deckCount(d, true)}</small>` : ''}</b><span>Cards</span></div><div><b>${fmt(deckValue(d), 'EUR')}</b><span>Value</span></div><div><b>${allN ? `${haveN}/${allN}` : '–'}</b><span>You have</span></div><div><b>${missV ? fmt(missV, 'EUR') : '–'}</b><span>Missing</span></div></div>
+    ${Object.keys(curve).length > 1 ? `<div class="curve">${[0, 1, 2, 3, 4, 5, 6, 7].map(i => `<div><i style="height:${Math.round(100 * (curve[i] || 0) / cmax)}%"></i><span>${i === 7 ? '7+' : i}</span><b>${curve[i] || ''}</b></div>`).join('')}</div>` : ''}
+    <div class="bar"><button class="btn primary" id="dkadd" style="flex:1"><i class="ti ti-search"></i>Add cards</button><div class="oseg" id="dkz"><button data-z="main" class="${side ? '' : 'on'}">Main ${deckCount(d, false)}</button><button data-z="side" class="${side ? 'on' : ''}">Side ${deckCount(d, true)}</button></div></div>
+    <div id="dkl">${rows.length ? order.map(t => { const l = groups.get(t).sort((a, b) => (costOf(a.m) ?? 99) - (costOf(b.m) ?? 99) || a.m.name.localeCompare(b.m.name));
+      return `<div class="dgh">${esc(t)} <span class="muted">${l.reduce((a, x) => a + x.n, 0)}</span></div>` + l.map(x => `<div class="srow"><span data-dz="${d.cards.indexOf(x)}" style="display:contents">${x.m.image ? pic(x.m, 'loading="lazy"') : '<div class="ph"></div>'}</span>
+        <div class="grow"><div class="nm">${esc(x.m.name)}</div><div class="meta">${esc(x.m.showSet)}${x.m.showNum ? ' #' + esc(x.m.showNum) : ''} · ${x.m.price != null || x.m.priceFoil != null ? fmt(x.m.price ?? x.m.priceFoil, x.m.currency) : 'no price'} · ${ownTag(x)}</div></div>
+        <div class="qb"><button data-dq="${d.cards.indexOf(x)}" data-d="-1" aria-label="One less">−</button><b>${x.n}</b><button data-dq="${d.cards.indexOf(x)}" data-d="1" aria-label="One more">+</button></div></div>`).join('') }).join('')
+      : `<div class="empty">${side ? 'No sideboard cards yet.' : 'This deck is empty.'}<br>Tap <b>Add cards</b> to search, or add cards from the binder.</div>`}</div>`;
+  $('#dkb').onclick = () => { DK.id = null; viewDecks() };
+  deckEnrich(d);
+  $('#dkadd').onclick = () => { DK.search = true; viewDecks() };
+  $$('#dkz [data-z]').forEach(b => b.onclick = () => { DK.zone = b.dataset.z; deckView(d) });
+  $$('#dkl [data-dq]').forEach(b => b.onclick = () => { const x = d.cards[+b.dataset.dq]; deckAdd(d, x.m, +b.dataset.d, x.side); deckView(d) });
+  $$('#dkl [data-dz]').forEach(b => b.onclick = () => openViewer(d.cards[+b.dataset.dz].m));
+  $('#dkm').onclick = () => menuSheet(d.name, [
+    {icon:'pencil', label:'Rename', run:() => { modal(`<h3>Rename deck</h3><label class="fld"><span>Name</span><input type="text" id="drn" value="${esc(d.name)}" maxlength="60"></label><div class="btns" style="justify-content:flex-end;margin-top:14px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="drok">Save</button></div>`);
+      $('#drok').onclick = () => { d.name = $('#drn').value.trim() || d.name; persist(); closeModal(); deckView(d) } }},
+    {icon:'clipboard-text', label:'Paste a deck list', sub:'Lines like “4 Lightning Bolt” - from a website or another app', run:() => deckImport(d)},
+    {icon:'copy', label:'Copy deck list', sub:'As text, to paste or share', run:() => deckExport(d)},
+    {icon:'heart', label:'Put missing cards on my wishlist', disabled:!missV && haveN >= allN, run:() => { let n = 0; for(const x of d.cards){ const k = nameKey(x.m.name); if((own.get(k) || 0) < (need.get(k) || 0) && !isWant(x.m)){ toggleWant(x.m); n++ } } toast(n ? `${n} card${n === 1 ? '' : 's'} put on your wishlist` : 'They are already on your wishlist') }},
+    {icon:'coin-euro', label:'Look up prices', sub:'For the cards in this deck without a price', run:() => deckPrices(d)},
+    {icon:'trash', label:'Delete deck', danger:true, run:() => { if(confirm(`Delete “${d.name}”? Your cards stay in your collection.`)){ snapshot('before deleting a deck'); store.decks = decks().filter(x => x !== d); persist(); DK.id = null; viewDecks() } }},
+  ]);
+}
+async function deckEnrich(d){                                  // Cardmarket / TCGplayer prices from the daily price file, once per card
+  const todo = d.cards.filter(x => !x.m._xp); if(!todo.length) return; let got = false;
+  for(const x of todo){ x.m._xp = 1; if(!x.m.px) capturePx(x.m); try{ if(await addExtras(x.m)){ pickPx(x.m, null); got = true } }catch(e){} }
+  persist(); if(got && VIEW === 'decks' && DK.id === d.id && !DK.search) deckView(d) }
+function deckExport(d){
+  const lines = side => d.cards.filter(x => !!x.side === side).map(x => `${x.n} ${x.m.name}${x.m.showSet ? ` (${x.m.showSet})${x.m.showNum ? ' ' + x.m.showNum : ''}` : ''}`);
+  const side = lines(true), text = `${d.name}\n\n${lines(false).join('\n')}${side.length ? '\n\nSideboard\n' + side.join('\n') : ''}\n`;
+  const done = () => toast('Deck list copied');
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(done).catch(() => navigator.share ? navigator.share({title:d.name, text}).catch(() => {}) : toast('Copying is not allowed here', true)) }
+async function deckPrices(d){
+  const todo = d.cards.filter(x => x.m.price == null && x.m.priceFoil == null); if(!todo.length) return toast('Every card in this deck has a price');
+  toast(`Looking up ${todo.length} price${todo.length === 1 ? '' : 's'} ...`); let n = 0;
+  for(const x of todo){ const t = Object.assign({}, x.m, {foil:false, qty:1}); try{ await priceOne(t) }catch(e){}
+    if(t.price != null || t.priceFoil != null){ for(const k of ['px', 'price', 'priceFoil', 'currency', 'psrc', 'image']) if(t[k] != null) x.m[k] = t[k]; n++ } }
+  persist(); toast(`${n} of ${todo.length} prices found`); if(VIEW === 'decks' && DK.id === d.id && !DK.search) deckView(d) }
+async function deckImport(d){
+  modal(`<h3>Paste a deck list</h3><p class="hint" style="margin-top:0">One card per line, like <b>4 Lightning Bolt</b> or <b>2x Monkey.D.Luffy</b>. A line “Sideboard” puts the cards after it in the sideboard.</p>
+    <textarea id="dli" rows="10" style="width:100%;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);padding:10px;font:inherit;font-size:13px" placeholder="4 Lightning Bolt\n2 Counterspell\n\nSideboard\n1 Pyroblast"></textarea>
+    <div id="dlst" class="hint"></div><div class="btns" style="justify-content:flex-end;margin-top:10px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="dlok">Add to deck</button></div>`);
+  $('#dlok').onclick = async () => {
+    const lines = $('#dli').value.split(/\r?\n/); let side = false, ok = 0; const miss = [];
+    $('#dlok').disabled = true; const pool = REMOTE.has(d.game) ? null : await deckPool(d.game).catch(() => null);
+    for(const raw of lines){ const ln = raw.trim(); if(!ln) continue;
+      if(/^(sideboard|side ?deck|side)\s*:?$/i.test(ln)){ side = true; continue } if(/^(deck|main ?deck|main|commander)\s*:?$/i.test(ln)){ side = false; continue }
+      const mm = /^(\d+)\s*x?\s+(.+?)\s*(?:\(([^)]+)\)\s*([\w-]+)?)?\s*$/i.exec(ln); if(!mm){ miss.push(ln); continue }
+      const n = +mm[1], name = mm[2].replace(/\s*\*.*$/, ''), setc = (mm[3] || '').toLowerCase(), numc = mm[4] ? normNum(mm[4]) : '';
+      $('#dlst').textContent = `Looking up ${name} ...`;
+      let cands = [];
+      if(pool) cands = pool.filter(m => nameKey(m.name) === nameKey(name)).sort((a, b) => SPECIAL_SET.test(a.setName || '') - SPECIAL_SET.test(b.setName || ''));
+      else if(FIND[d.game]){ try{ cands = (await FIND[d.game](name, new Set([setc.toUpperCase(), numc.toUpperCase()]))).filter(m => sim(m.name, name) >= 0.85) }catch(e){} await sleep(120) }
+      const m = cands.find(x => setc && (x.set === setc || String(x.showSet).toLowerCase() === setc) && (!numc || String(x.number) === numc)) || cands.find(x => setc && (x.set === setc || String(x.showSet).toLowerCase() === setc)) || cands[0];
+      if(m){ deckAdd(d, m, n, side); ok += n } else miss.push(ln) }
+    closeModal(); deckView(d); toast(`${ok} card${ok === 1 ? '' : 's'} added${miss.length ? ` · not found: ${miss.slice(0, 3).join(', ')}${miss.length > 3 ? ' ...' : ''}` : ''}`, !!miss.length) } }
+
+/* ---------------------------------------------------------------- searching cards for a deck */
+const FACET_ORDER = ['Color', 'Colour', 'Aspect', 'Ink', 'Domain', 'Element', 'Class', 'Talent', 'Side', 'Type', 'Card Type', 'CardType', 'CardCategory', 'Category', 'Subtype', 'CardSubType', 'Supertype', 'Classification', 'DigimonType', 'Trait', 'Character Traits', 'Attribute', 'Arena', 'Cost', 'PlayCost', 'Pitch Value', 'Level', 'LevelLv', 'Threshold', 'Energy', 'Might', 'Power', 'HP', 'Rarity', 'Version'];
+const facetLabel = k => k.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^Level Lv$/, 'Level').replace(/\s+/g, ' ');
+function facetsOf(list){
+  const vals = {}; for(const m of list) for(const [k, v] of Object.entries(m.f || {})){ const s = vals[k] ||= new Map(); for(const x of Array.isArray(v) ? v : [v]) s.set(x, (s.get(x) || 0) + 1) }
+  return Object.entries(vals).filter(([k, s]) => s.size > 1 && (s.size <= 80 || [...s.keys()].every(x => typeof x === 'number')) && s.size < list.length)
+    .sort(([a], [b]) => { const ia = FACET_ORDER.indexOf(a), ib = FACET_ORDER.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b) })
+    .map(([k, s]) => ({k, label:facetLabel(k), opts:[...s.keys()].sort((a, b) => typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b), undefined, {numeric:true})).slice(0, 200).map(x => [String(x), String(x)])})) }
+async function deckSearch(d){
+  const g = d.game, remote = REMOTE.has(g);
+  if(DK.fg !== g){ Object.assign(DK, {fg:g, q:'', f:{}, sets:[], setNames:{}, res:null, shown:60, err:''}) }
+  $('#main').innerHTML = `<div class="head"><button class="btn sm" id="dsb"><i class="ti ti-arrow-left"></i>Deck</button><h1 style="font-size:16px;min-width:0;flex:1;overflow-wrap:anywhere">Add to ${esc(d.name)}</h1><span class="gtag"><span class="dot" style="background:${(GAMES[g] || GAMES.other).color}"></span>${esc((GAMES[g] || GAMES.other).label)}</span></div>
+    <div class="bar"><input class="grow" id="dsq" type="search" enterkeyhint="search" placeholder="${DK.inText ? 'Words in the card text' : 'Card name'}" value="${esc(DK.q)}"><button class="btn primary" id="dsgo" aria-label="Search"><i class="ti ti-search"></i></button></div>
+    <div class="chips" id="dsc"><button class="chip ${DK.inText ? '' : 'on'}" data-t="0">Name</button><button class="chip ${DK.inText ? 'on' : ''}" data-t="1">Card text</button>
+      <button class="chip ${DK.sets.length ? 'on' : ''}" id="dsset"><i class="ti ti-books"></i> ${DK.sets.length ? DK.sets.length + ' set' + (DK.sets.length === 1 ? '' : 's') : 'All sets'}</button>
+      <button class="chip ${DK.owned ? 'on' : ''}" id="dsown"><i class="ti ti-stack"></i> Cards I have</button><button class="chip ${DK.allPrints ? 'on' : ''}" id="dspr">All printings</button>
+      <button class="chip on" id="dsz">to ${DK.zone === 'side' ? 'sideboard' : 'main deck'}</button></div>
+    <div id="dsf" class="dsf"></div><div id="dsr"><div class="muted" style="padding:14px 4px">${remote ? 'Type a name or pick filters, then search.' : 'Loading every card of this game ...'}</div></div>`;
+  $('#dsb').onclick = () => { DK.search = false; viewDecks() };
+  const run = () => { DK.q = $('#dsq').value; DK.shown = 60; remote ? doRemote() : drawLocal() };
+  $('#dsgo').onclick = run; $('#dsq').onkeydown = e => { if(e.key === 'Enter'){ $('#dsq').blur(); run() } };
+  if(!remote){ let t; $('#dsq').oninput = () => { clearTimeout(t); t = setTimeout(run, 250) } }
+  $$('#dsc [data-t]').forEach(b => b.onclick = async () => { DK.inText = b.dataset.t === '1'; if(DK.inText && pool) await poolText(g, pool); deckSearch(d) });
+  $('#dsown').onclick = () => { DK.owned = !DK.owned; $('#dsown').classList.toggle('on', DK.owned); DK.shown = 60; remote ? drawResults() : drawLocal() };
+  $('#dspr').onclick = () => { DK.allPrints = !DK.allPrints; $('#dspr').classList.toggle('on', DK.allPrints); DK.shown = 60; remote ? doRemote() : drawLocal() };
+  $('#dsz').onclick = () => { DK.zone = DK.zone === 'side' ? 'main' : 'side'; $('#dsz').textContent = 'to ' + (DK.zone === 'side' ? 'sideboard' : 'main deck'); drawResults() };
+  $('#dsset').onclick = () => pickSets(d, () => deckSearch(d));
+  const own = ownByName(g);
+  const filterUI = (all) => { const defs = all.length > 8 && !DK.moreF ? all.filter((x, i) => i < 8 || DK.f[x.k]) : all;
+    $('#dsf').innerHTML = defs.map(x => x.text ? `<label class="fsel"><span>${esc(x.label)}</span><input type="text" data-fk="${x.k}" placeholder="${esc(x.ph || '')}" value="${esc(DK.f[x.k] || '')}"></label>`
+      : `<label class="fsel ${DK.f[x.k] ? 'on' : ''}"><span>${esc(x.label)}</span><select data-fk="${x.k}"><option value="">Any</option>${x.opts.map(([v, l]) => `<option value="${esc(v)}" ${DK.f[x.k] === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`).join('')
+      + (all.length > defs.length ? `<button class="btn sm" id="dsmf">More filters (${all.length - defs.length})</button>` : '')
+      + (Object.values(DK.f).some(Boolean) ? '<button class="btn sm" id="dsclr">Clear filters</button>' : '');
+    $$('#dsf [data-fk]').forEach(el => el.onchange = () => { DK.f[el.dataset.fk] = el.value; DK.shown = 60; if(remote) doRemote(); else { filterUI(all); drawLocal() } });
+    if($('#dsmf')) $('#dsmf').onclick = () => { DK.moreF = true; filterUI(all) };
+    if($('#dsclr')) $('#dsclr').onclick = () => { DK.f = {}; DK.shown = 60; filterUI(all); remote ? doRemote() : drawLocal() } };
+  function drawResults(){
+    const el = $('#dsr'); if(!el) return; if(DK.err){ el.innerHTML = `<div class="empty">${esc(DK.err)}</div>`; return } if(!DK.res){ return }
+    const l = DK.res.filter(m => !DK.owned || own.has(nameKey(m.name))), side = DK.zone === 'side';
+    el.innerHTML = l.length ? `<div class="hint" style="margin:0 0 8px">${l.length.toLocaleString()} card${l.length === 1 ? '' : 's'}${l.length >= 350 && remote ? ' (first 350 - narrow the search)' : ''}</div>
+      <div class="dgrid">${l.slice(0, DK.shown).map((m, i) => { const n = inDeck(d, m, side), c = costOf(m), h = own.get(nameKey(m.name));
+        return `<div class="dtile ${n ? 'in' : ''}"><button class="dimg" data-dv="${i}">${m.image ? pic(m, 'loading="lazy"') : `<span>${esc(m.name)}</span>`}${n ? `<b class="dn">${n}</b>` : ''}${h ? '<i class="ti ti-stack-2 dh" title="You have this card"></i>' : ''}</button>
+          <div class="dnm">${esc(m.name)}</div><div class="dsub">${esc(m.showSet)}${m.showNum ? ' ' + esc(m.showNum) : ''}${c != null ? ' · ' + c : ''}</div>
+          <div class="qb"><button data-da="${i}" data-d="-1" ${n ? '' : 'disabled'} aria-label="One less">−</button><b>${n}</b><button data-da="${i}" data-d="1" aria-label="One more">+</button></div></div>` }).join('')}</div>
+      ${l.length > DK.shown ? '<div style="text-align:center;margin:12px 0"><button class="btn" id="dsmore">Show more</button></div>' : ''}`
+      : `<div class="empty">No cards found${DK.owned ? ' among the cards you have' : ''}.</div>`;
+    $$('#dsr [data-da]').forEach(b => b.onclick = () => { deckAdd(d, l[+b.dataset.da], +b.dataset.d, side); drawResults() });
+    $$('#dsr [data-dv]').forEach(b => b.onclick = () => openViewer(l[+b.dataset.dv]));
+    if($('#dsmore')) $('#dsmore').onclick = () => { DK.shown += 90; drawResults() } }
+  async function doRemote(){ if(DK.busy) return; DK.busy = true; DK.err = ''; $('#dsr').innerHTML = '<div class="muted" style="padding:14px 4px">Searching ...</div>';
+    try{ DK.res = await searchRemote(g) }catch(e){ DK.res = null; DK.err = e.message || String(e) } DK.busy = false; if(VIEW === 'decks' && DK.search) drawResults() }
+  let pool = null;
+  function drawLocal(){ if(!pool) return; const q = nameKey(DK.q), sets = new Set(DK.sets), want = Object.entries(DK.f).filter(([, v]) => v);
+    const seen = new Set();
+    DK.res = pool.filter(m => (!sets.size || sets.has(m.set)) && (!q || (DK.inText ? nameKey(m.txt || (m.info || {}).text || '') : nameKey(m.name)).includes(q))
+      && want.every(([k, v]) => { const x = (m.f || {})[k]; return Array.isArray(x) ? x.includes(v) : x != null && String(x) === v })
+      && (DK.allPrints || !seen.has(nameKey(m.name)) && seen.add(nameKey(m.name))));
+    if(q && !DK.inText) DK.res.sort((a, b) => (nameKey(b.name).startsWith(q)) - (nameKey(a.name).startsWith(q)));
+    drawResults() }
+  if(remote){ filterUI(RFILT[g] || []); if(DK.res) drawResults(); return }
+  try{ pool = await deckPool(g) }catch(e){ $('#dsr').innerHTML = `<div class="empty">${esc(e.message || String(e))}</div>`; return }
+  if(VIEW !== 'decks' || !DK.search || !$('#dsf')) return;
+  if(DK.inText) await poolText(g, pool);
+  const inSets = DK.sets.length ? pool.filter(m => DK.sets.includes(m.set)) : pool, defs = facetsOf(inSets);
+  for(const k of Object.keys(DK.f)) if(!defs.some(x => x.k === k)) delete DK.f[k];
+  filterUI(defs); drawLocal() }
+async function pickSets(d, done){
+  const g = d.game; let sets = [];
+  modal('<h3>Sets</h3><div class="muted">Loading the sets ...</div>');
+  try{ if(REMOTE.has(g) || !SRC(g)) throw 0; sets = await bdLoad('sets', g, SRC(g).list) }catch(e){ try{ if(REMOTE.has(g)) sets = await bdLoad('sets', g, SRC(g).list) }catch(e2){} }
+  if(!REMOTE.has(g)){ const pool = await deckPool(g).catch(() => []), m = new Map(sets.map(s => [s.code, s]));
+    for(const c of pool) if(!m.has(c.set)) m.set(c.set, {code:c.set, name:c.setName || c.showSet || c.set, released:c.released || ''});
+    const used = new Set(pool.map(c => c.set)); sets = [...m.values()].filter(s => used.has(s.code)) }
+  sets.sort((a, b) => String(b.released || '').localeCompare(String(a.released || '')) || String(a.name).localeCompare(String(b.name)));
+  const pick = new Set(DK.sets), one = g === 'ygo';
+  const draw = (q = '') => { const l = sets.filter(s => !q || (s.name + ' ' + s.code).toLowerCase().includes(q.toLowerCase())).slice(0, 300);
+    $('#psl').innerHTML = l.map(s => `<label class="row" style="padding:6px 2px"><input type="${one ? 'radio' : 'checkbox'}" name="pss" data-s="${esc(s.code)}" ${pick.has(s.code) ? 'checked' : ''}><div class="grow">${esc(s.name)} <span class="muted" style="font-size:12px">${esc(String(s.code).toUpperCase())}${s.released ? ' · ' + esc(String(s.released).slice(0, 4)) : ''}</span></div></label>`).join('') || '<div class="muted">No sets match.</div>';
+    $$('#psl [data-s]').forEach(el => el.onchange = () => { if(one) pick.clear(); el.checked ? pick.add(el.dataset.s) : pick.delete(el.dataset.s); $('#psn').textContent = pick.size ? pick.size + ' picked' : 'All sets' }) };
+  modal(`<h3>Sets</h3>${one ? '<p class="hint" style="margin-top:0">Yu-Gi-Oh! searches one set at a time.</p>' : ''}<input id="psq" type="search" placeholder="Find a set" style="width:100%;margin-bottom:8px">
+    <div id="psl" style="max-height:50vh;overflow:auto"></div>
+    <div class="btns" style="justify-content:space-between;margin-top:10px"><button class="btn" id="psall">All sets</button><span style="display:flex;gap:8px;align-items:center"><span class="muted" id="psn">${pick.size ? pick.size + ' picked' : 'All sets'}</span><button class="btn primary" id="psok">Done</button></span></div>`);
+  draw(); $('#psq').oninput = () => draw($('#psq').value);
+  $('#psall').onclick = () => { DK.sets = []; closeModal(); DK.res = REMOTE.has(g) ? null : DK.res; done() };
+  $('#psok').onclick = () => { DK.sets = [...pick]; for(const s of sets) if(pick.has(s.code)) DK.setNames[s.code] = s.name; closeModal(); if(REMOTE.has(g)) DK.res = null; done() } }
+/* "Add to deck" from the binder and the scanner */
+function deckPick(m, back){
+  const l = decks().filter(d => d.game === m.game).sort((a, b) => (b.at || 0) - (a.at || 0));
+  const add = d => { deckAdd(d, m, 1, false); toast(`Added to ${d.name} (${inDeck(d, m, false)} in the deck)`); if(back) back() };
+  menuSheet('Add to a deck', l.map(d => ({icon:'cards', label:d.name, sub:`${deckCount(d, false)} cards${inDeck(d, m, false) ? ` · ${inDeck(d, m, false)} of this card` : ''}`, run:() => add(d)}))
+    .concat([{icon:'plus', label:'New deck', sub:`A new ${(GAMES[m.game] || GAMES.other).label} deck with this card`, run:() => newDeck(m.game, add)}])) }
+
 /* ---------------------------------------------------------------- start */
 /* ---------------------------------------------------------------- back gesture and coming back to where you were
    The phone's back gesture steps back inside the app (close a pop-up, set -> game -> games, settings page -> settings,
@@ -2551,7 +2893,7 @@ function viewSettings(){
 const atRoot = () => VIEW === 'scan' && !$('#modal').innerHTML.trim() && !$('#viewer').innerHTML.trim();
 function saveNav(){
   O.nav = {at:Date.now(), view:VIEW === 'review' ? 'review' : VIEW, game:BD.game, set:BD.set ? {code:BD.set.code, id:BD.set.id, name:BD.set.name, abbr:BD.set.abbr, tcgdex:BD.set.tcgdex, local:BD.set.local, released:BD.set.released} : null,
-    sp:SP.page, f:Object.assign({}, F), cam:VIEW === 'scan' && (!!SC.stream || !!O.camWasOn)};
+    sp:SP.page, f:Object.assign({}, F), dk:DK.id, dks:DK.search, cam:VIEW === 'scan' && (!!SC.stream || !!O.camWasOn)};
   try{ localStorage.setItem(NAVKEY, JSON.stringify(O.nav)) }catch(e){} }
 let _navT;
 function navSync(){ clearTimeout(_navT); _navT = setTimeout(() => { saveNav(); if(!atRoot() && !(history.state && history.state.nv)) history.pushState({nv:1}, '') }, 30) }
@@ -2561,6 +2903,8 @@ function goBack(){
   if(VIEW === 'binder' && BD.set){ BD.set = null; viewBinder(); return }
   if(VIEW === 'binder' && BD.game){ BD.game = null; viewBinder(); return }
   if(VIEW === 'settings' && SP.page){ SP.page = null; viewSettings(); return }
+  if(VIEW === 'decks' && DK.search){ DK.search = false; viewDecks(); return }
+  if(VIEW === 'decks' && DK.id){ DK.id = null; viewDecks(); return }
   if(VIEW === 'review'){ show('cards'); return }
   if(VIEW !== 'scan') show('scan');
 }
@@ -2574,6 +2918,7 @@ function restoreNav(){
   if(n.f) Object.assign(F, n.f);
   if(n.view === 'binder'){ BD.game = n.game && (GAMES[n.game] || store.games.some(g => g.id === n.game)) ? n.game : null; BD.set = BD.game ? n.set : null }
   if(n.view === 'settings') SP.page = n.sp || null;
+  if(n.view === 'decks'){ DK.id = n.dk && deckOf(n.dk) ? n.dk : null; DK.search = !!(DK.id && n.dks) }
   show(n.view);
 }
 if(TEST){ $('#testbadge').hidden = false; document.title = 'Pocket TEST' }
