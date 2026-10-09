@@ -1863,7 +1863,7 @@ const PSRC = {cardmarket:{label:'Cardmarket', cur:'EUR', desc:'Europe’s bigges
   other:{label:'Other sources', cur:null, desc:'Your own price sites, Nightvault and other card databases'}};
 const porder = () => { const o = (store.porder || []).filter(k => PSRC[k]); for(const k of Object.keys(PSRC)) if(!o.includes(k)) o.push(k); return o };
 const srcKey = s => /\(normal price\)/.test(s || '') ? 'none' : /cardmarket/i.test(s || '') ? 'cardmarket' : /tcgplayer/i.test(s || '') ? 'tcgplayer' : /^my own/i.test(s || '') ? 'mine' : 'other';
-const myPx = o => (store.myPx || {})[wkey(o)];
+const myPx = o => { const v = (store.myPx || {})[wkey(o)]; return v && (v[0] != null || v[1] != null) ? v : null };
 function capturePx(o){
   if(!o.psrc || (o.price == null && o.priceFoil == null)) return;
   const k = srcKey(o.psrc); if(k === 'mine' || k === 'none') return;
@@ -1926,8 +1926,8 @@ function openPrices(o, after){
   const done = () => { if(!owned) pickPx(o, null); store.cards.filter(c => wkey(c) === wkey(o)).forEach(c => pickPx(c)); persist(); if(after) after() };
   const num = x => { const v = parseFloat(String(x).replace(',', '.')); return isFinite(v) && v > 0 ? +v.toFixed(2) : null };
   $('#pxsave').onclick = () => { const a = num($('#pxm0').value), b = num($('#pxm1').value); store.myPx ||= {};
-    if(a == null && b == null) delete store.myPx[wkey(o)]; else store.myPx[wkey(o)] = [a, b, Date.now()]; done(); openPrices(o, after); toast('Saved your price') };
-  if($('#pxclr')) $('#pxclr').onclick = () => { delete (store.myPx || {})[wkey(o)]; done(); openPrices(o, after) };
+    store.myPx[wkey(o)] = [a, b, Date.now()]; done(); openPrices(o, after); toast('Saved your price') };
+  if($('#pxclr')) $('#pxclr').onclick = () => { (store.myPx ||= {})[wkey(o)] = [null, null, Date.now()]; done(); openPrices(o, after) };
   $('#pxchk').onclick = async () => { $('#pxchk').disabled = true; $('#pxchk').innerHTML = '<i class="ti ti-loader-2"></i>Checking ...';
     if(owned) await priceOne(o); else { capturePx(o); await addExtras(o).catch(() => {}) }
     for(const c of store.cards.filter(c => c !== o && wkey(c) === wkey(o))){ c.px = Object.assign(c.px || {}, o.px) }
@@ -2410,7 +2410,7 @@ function closeViewer(){ _vw.m = null; $('#viewer').innerHTML = '' }
 const wkey = m => `${m.game}|${m.set}|${m.number}`;
 const isWant = m => !!(store.want || {})[wkey(m)];
 function toggleWant(m){ store.want = store.want || {}; const k = wkey(m);
-  if(store.want[k]) delete store.want[k]; else store.want[k] = {game:m.game, set:m.set, number:m.number, name:m.name, showSet:m.showSet, showNum:m.showNum, setName:m.setName || '', image:m.image || '', price:m.price ?? null, currency:m.currency || 'EUR', added:Date.now()};
+  if(store.want[k]){ delete store.want[k]; (store.wantRemoved ||= {})[k] = Date.now() } else store.want[k] = {game:m.game, set:m.set, number:m.number, name:m.name, showSet:m.showSet, showNum:m.showNum, setName:m.setName || '', image:m.image || '', price:m.price ?? null, currency:m.currency || 'EUR', added:Date.now()};
   persist(); return !!store.want[k] }
 function shareLists(){
   const line = x => `- ${x.name} (${x.showSet} #${x.showNum}${x.foil ? ', foil' : ''})${x.qty > 1 ? ' ×' + x.qty : ''}`, by = l => { const o = {}; for(const x of l){ const g = (GAMES[x.game] || {}).label || x.gameName || 'Other'; (o[g] = o[g] || []).push(x) } return o };
@@ -2481,7 +2481,7 @@ function viewCards(){
       $('#mlist').innerHTML = ws.length ? ws.map(w => `<div class="srow">${w.image ? pic(w, 'loading="lazy"') : '<div class="ph"></div>'}<div class="grow"><div class="nm">${esc(w.name)}</div><div class="meta"><span class="dot" style="background:${(GAMES[w.game] || GAMES.other).color};margin-right:5px"></span>${esc(w.showSet)} #${esc(w.showNum)} · ${fmt(w.price, w.currency)}</div></div>
         <button class="btn sm" data-wk="${esc(wkey(w))}" aria-label="Remove from wishlist"><i class="ti ti-heart-off"></i></button></div>`).join('')
         : '<div class="empty">Your wishlist is empty.<br>In the Binder, tap a card you are missing and choose “Want this”.</div>';
-      $$('#mlist [data-wk]').forEach(b => b.onclick = () => { delete store.want[b.dataset.wk]; persist(); viewCards() }); return }
+      $$('#mlist [data-wk]').forEach(b => b.onclick = () => { delete store.want[b.dataset.wk]; (store.wantRemoved ||= {})[b.dataset.wk] = Date.now(); persist(); viewCards() }); return }
     let rows = cs.filter(c => (F.list !== 'trade' || c.trade) && (F.game === 'all' || c.game === F.game) && (F.set === 'all' || c.showSet === F.set) && (!q || (c.name + ' ' + c.setName).toLowerCase().includes(q)));
     const pv = c => ((c.foil ? c.priceFoil : c.price) || 0) * c.qty;
     rows.sort(F.sort === 'name' ? (a, b) => a.name.localeCompare(b.name) : F.sort === 'value' ? (a, b) => pv(b) - pv(a)
@@ -2519,10 +2519,39 @@ function viewCards(){
 
 /* ---------------------------------------------------------------- export / import */
 const stamp = () => new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '');
+/* sync with Nightvault on the PC (version 2): per card, how many copies are this phone's own (count minus what came
+   from the PC). Each app applies only the other's changes, so more, fewer and removed copies arrive exactly once. */
+const syncKey = c => [c.game === 'other' ? (String(c.gameName || 'other').toLowerCase().replace(/[^a-z0-9]+/g, '') || 'other') : c.game, String(c.set).toLowerCase(), c.number, c.foil ? 1 : 0].join('|');
+function syncState(){ const S = store.sync ||= {}; S.seen ||= {}; S.contrib ||= {}; return S }
+function syncOwn(){ const S = syncState(), own = {};
+  for(const c of store.cards){ const k = syncKey(c); own[k] = (own[k] || 0) + c.qty }
+  for(const k of Object.keys(own)) own[k] -= (S.contrib[k] || 0);
+  for(const k of new Set([...Object.keys(S.contrib), ...Object.keys(S.sent || {})])) if(!(k in own)) own[k] = -(S.contrib[k] || 0);   // gone here: tell the PC
+  S.sent = Object.fromEntries(Object.entries(own).filter(([k, v]) => v || S.contrib[k]).map(([k]) => [k, 1]));
+  return own }
+function sharedOut(){ const cut = Date.now() - 180 * 864e5, fresh = o => Object.fromEntries(Object.entries(o || {}).filter(([, t]) => t > cut));
+  return {decks:decks().map(d => ({...d, cards:d.cards.map(x => ({k:x.k, n:x.n, side:!!x.side, m:Object.fromEntries(Object.entries(x.m).filter(([k]) => !['f', 'px', 'alt', 'link'].includes(k)))}))})),
+    decks_removed:fresh(store.decksRemoved), want:store.want || {}, want_removed:fresh(store.wantRemoved), my_prices:store.myPx || {},
+    price_order:{order:porder(), at:store.porderAt || 0}} }
+function mergeShared(d){ let n = 0;                                    // the newest change of each record wins
+  const gone = {...(store.decksRemoved || {})}; for(const [k, t] of Object.entries(d.decks_removed || {})) if(t > (gone[k] || 0)) gone[k] = t;
+  const byId = new Map(decks().map(x => [x.id, x]));
+  for(const x of Array.isArray(d.decks) ? d.decks : []){ if(!x || !x.id || !Array.isArray(x.cards)) continue; const cur = byId.get(x.id);
+    if(!cur || (x.at || 0) > (cur.at || 0)){ byId.set(x.id, {...x, cards:x.cards.map(c => ({...c, m:{...c.m}}))}); n++ } }
+  store.decks = [...byId.values()].filter(x => (x.at || 0) >= (gone[x.id] || 0)); store.decksRemoved = gone;
+  const wg = {...(store.wantRemoved || {})}; for(const [k, t] of Object.entries(d.want_removed || {})) if(t > (wg[k] || 0)) wg[k] = t;
+  const want = {...(store.want || {})};
+  for(const [k, x] of Object.entries(d.want || {})) if(x && (!want[k] || (x.added || 0) > (want[k].added || 0))){ want[k] = x; n++ }
+  store.want = Object.fromEntries(Object.entries(want).filter(([k, x]) => (x.added || 0) >= (wg[k] || 0))); store.wantRemoved = wg;
+  const mp = {...(store.myPx || {})};
+  for(const [k, x] of Object.entries(d.my_prices || {})) if(Array.isArray(x) && x.length >= 3 && (!mp[k] || (x[2] || 0) > (mp[k][2] || 0))){ mp[k] = x.slice(0, 3); n++ }
+  store.myPx = mp;
+  const po = d.price_order || {}; if(Array.isArray(po.order) && (po.at || 0) > (store.porderAt || 0)){ store.porder = po.order.filter(k => PSRC[k]); store.porderAt = po.at; n++ }
+  return n }
 function payload(){
-  return {format:PHONE_FORMAT, version:1, app:'Nightvault Pocket', exported:new Date().toISOString(), games:store.games.map(g => ({...g, lookup:g.lookup ? {...g.lookup, key:''} : null})), templates:store.templates, backs:store.backs, sources:store.sources.map(x => ({...x, key:''})),
+  return {format:PHONE_FORMAT, version:2, sync_own:syncOwn(), ...sharedOut(), app:'Nightvault Pocket', exported:new Date().toISOString(), games:store.games.map(g => ({...g, lookup:g.lookup ? {...g.lookup, key:''} : null})), templates:store.templates, backs:store.backs, sources:store.sources.map(x => ({...x, key:''})),
     cards:store.cards.map(c => ({uid:c.uid, game:c.game === 'other' ? (String(c.gameName || 'other').toLowerCase().replace(/[^a-z0-9]+/g, '') || 'other') : c.game, game_name:c.game === 'other' ? c.gameName : GAMES[c.game].full, set:c.set, number:c.number, name:c.name, set_name:c.setName, show_set:c.showSet, show_number:c.showNum,
-      rarity:c.rarity, foil:c.foil, qty:c.qty, price:c.foil ? c.priceFoil : c.price, currency:c.currency, image:c.image, added:c.added}))};
+      rarity:c.rarity, foil:c.foil, qty:c.qty, price:c.foil ? c.priceFoil : c.price, currency:c.currency, image:c.image, added:c.added, trade:!!c.trade}))};
 }
 async function saveFile(name, text, type){
   const blob = new Blob([text], {type});
@@ -2559,7 +2588,24 @@ async function importBackup(e){
     if(d.format !== PHONE_FORMAT || !Array.isArray(d.cards)) throw 0;
     await snapshot('before importing a file');
     for(const g of Array.isArray(d.games) ? d.games : []){ if(g && g.id && g.label && !BUILTIN.has(g.id) && !store.games.some(x => x.id === g.id)) store.games.push(g) } registerGames();
-    let n = 0, np = 0;
+    let n = 0, np = 0, nr = 0;
+    const v2 = d.source === 'nightvault' && +d.version >= 2 && d.sync_own && typeof d.sync_own === 'object', S = syncState(), firstSync = v2 && !S.v2;
+    if(v2 && !firstSync){
+      const info = new Map(d.cards.filter(x => x && x.game && x.set && x.number != null).map(x => [[x.game, String(x.set).toLowerCase(), x.number, x.foil ? 1 : 0].join('|'), x]));
+      for(const [k, own0] of Object.entries(d.sync_own)){ const own = +own0 || 0, delta = own - (S.seen[k] || 0), x = info.get(k);
+        let c = store.cards.find(y => syncKey(y) === k), applied = 0;
+        if(delta > 0 && !c && x){ const g = GAMES[x.game] && x.game !== 'other' ? x.game : 'other';
+          c = {uid:x.uid || uid(), key:(g === 'other' ? ['other:' + String(x.game_name || x.game).toLowerCase()] : [g]).concat([x.set, x.number, x.foil ? 1 : 0]).join('|'), game:g, gameName:g === 'other' ? (x.game_name || x.game) : '',
+            set:x.set, number:x.number, showSet:x.show_set || String(x.set).toUpperCase(), showNum:String(x.show_number || x.number), name:x.name || '?', setName:x.set_name || '', rarity:x.rarity || '', image:x.image || '',
+            price:x.foil ? null : x.price ?? null, priceFoil:x.foil ? x.price ?? null : null, currency:x.currency || 'EUR', psrc:'Nightvault', foil:!!x.foil, qty:0, added:Date.now()};
+          store.cards.push(c); n++ }
+        if(c && delta){ applied = Math.max(delta, -c.qty); c.qty += applied; if(applied < 0) nr -= applied; if(c.qty <= 0) store.cards = store.cards.filter(y => y !== c) }
+        else if(!c && delta < 0) applied = delta;
+        S.contrib[k] = (S.contrib[k] || 0) + applied; if(!S.contrib[k]) delete S.contrib[k];
+        S.seen[k] = own;
+        if(c && x){ if(x.price != null){ if(x.foil) c.priceFoil = x.price; else c.price = x.price; c.currency = x.currency || c.currency; c.psrc = 'Nightvault'; c.priced = Date.now(); np++ }
+          if(x.trade != null) c.trade = !!x.trade; if(!c.setName && x.set_name) c.setName = x.set_name } }
+    } else
     for(const x of d.cards){ if(!x || !x.game || !x.set || !x.number) continue; if(!GAMES[x.game] || x.game === 'other'){ x.game_name = x.game_name || x.game; x.game = 'other' }
       const k = (x.game === 'other' ? ['other:' + String(x.game_name || '').toLowerCase()] : [x.game]).concat([x.set, x.number, x.foil ? 1 : 0]).join('|'), ex = store.cards.find(c => c.uid === x.uid || c.key === k);
       if(ex){ ex.qty = Math.max(ex.qty, +x.qty || 0);
@@ -2571,8 +2617,14 @@ async function importBackup(e){
     let nt = 0; for(const t of Array.isArray(d.templates) ? d.templates : []){ if(t && t.id && GAMES[t.game] && t.zones && t.zones.name && !store.templates.some(x => x.id === t.id)){ store.templates.push(t); nt++ } }
     for(const x of Array.isArray(d.sources) ? d.sources : []){ if(x && x.id && /^https:\/\//.test(x.url || '') && !store.sources.some(y => y.id === x.id)) store.sources.push(x) }
     for(const b of Array.isArray(d.backs) ? d.backs : []){ if(b && GAMES[b.game] && Array.isArray(b.vec) && store.backs.filter(x => x.game === b.game).length < 3) store.backs.push(b) }
+    if(firstSync){ const qty = {}; for(const c of store.cards){ const k = syncKey(c); qty[k] = (qty[k] || 0) + c.qty }
+      S.seen = {...d.sync_own}; S.contrib = {};
+      for(const [k, q] of Object.entries(qty)){ const v = Math.max(0, q - (+(d.sync_contrib || {})[k] || 0)); if(v && k in d.sync_own) S.contrib[k] = Math.min(v, Math.max(0, +d.sync_own[k] || 0)) }
+      S.v2 = true }
+    const ns = d.source === 'nightvault' ? mergeShared(d) : 0;
     if(d.source === 'nightvault') store.lastFromPC = Date.now();
-    persist(); tabCount(); toast(d.source === 'nightvault' ? `From Nightvault: ${n} card${n === 1 ? '' : 's'} added, ${np} price${np === 1 ? '' : 's'} updated` : `Restored ${n} new entr${n === 1 ? 'y' : 'ies'}${nt ? ` and ${nt} scan template${nt === 1 ? '' : 's'}` : ''}`); viewSettings();
+    if(d.source === 'nightvault') repickAll();
+    persist(); tabCount(); toast(d.source === 'nightvault' ? `From Nightvault: ${n} card${n === 1 ? '' : 's'} added${nr ? `, ${nr} taken off` : ''}, ${np} price${np === 1 ? '' : 's'} updated${ns ? `, ${ns} deck/wishlist/price change${ns === 1 ? '' : 's'}` : ''}` : `Restored ${n} new entr${n === 1 ? 'y' : 'ies'}${nt ? ` and ${nt} scan template${nt === 1 ? '' : 's'}` : ''}`); viewSettings();
   }catch(err){ toast('That file is not a Nightvault Pocket export.', true) }
 }
 
@@ -2762,7 +2814,7 @@ function viewSettings(){
   $('#oprice').onchange = e => { O.dailyPrices = e.target.checked; persist() };
   $('#tnew').onclick = () => openTemplate(null, true);
   $('#snew').onclick = () => openSource(null);
-  $$('#porder [data-pmv]').forEach(b => b.onclick = () => { const [i, d] = b.dataset.pmv.split(':').map(Number), o = porder(); [o[i], o[i + d]] = [o[i + d], o[i]]; store.porder = o; repickAll(); viewSettings() });
+  $$('#porder [data-pmv]').forEach(b => b.onclick = () => { const [i, d] = b.dataset.pmv.split(':').map(Number), o = porder(); [o[i], o[i + d]] = [o[i + d], o[i]]; store.porder = o; store.porderAt = Date.now(); repickAll(); viewSettings() });
   $('#gnew').onclick = () => openGame(null);
   $('#gcat').onclick = () => openCatalog();
   $$('[data-gedit]').forEach(b => b.onclick = () => { const g = store.games.find(x => x.id === b.dataset.gedit); g && g.ccgt ? editCatalogGame(g) : openGame(g) });
@@ -2831,7 +2883,7 @@ function editRules(d, then){
   if($('#rstd')) $('#rstd').onclick = () => { const s = RULES0[d.game]; for(const [id, k] of [['rmin', 'min'], ['rmax', 'max'], ['rside', 'side'], ['rcop', 'copies']]) $('#' + id).value = s[k] ?? '' };
   $('#rok').onclick = () => { const nr = {}; for(const [id, k] of [['rmin', 'min'], ['rmax', 'max'], ['rside', 'side'], ['rcop', 'copies']]){ const x = n(id); if(x != null) nr[k] = x }
     if(nr.min && nr.max && nr.min > nr.max) return toast('“At least” is more than “at most”', true);
-    d.rules = nr; if($('#rdef').checked){ store.deckRules ||= {}; store.deckRules[d.game] = nr } persist(); closeModal(); then && then() } }
+    d.rules = nr; d.at = Date.now(); if($('#rdef').checked){ store.deckRules ||= {}; store.deckRules[d.game] = nr } persist(); closeModal(); then && then() } }
 const rulesLine = d => { const r = deckRules(d), p = [];
   if(r.min && r.max && r.min === r.max) p.push(`${r.min} cards`); else { if(r.min) p.push(`at least ${r.min}`); if(r.max) p.push(`at most ${r.max}`) }
   if(r.copies) p.push(`max ${r.copies} of a card`); if(r.side != null) p.push(r.side ? `sideboard ${r.side}` : 'no sideboard'); return p.join(' · ') || 'no limits' };
@@ -3016,13 +3068,13 @@ function deckView(d){
   $$('#dkl [data-dz]').forEach(b => b.onclick = () => openViewer(d.cards[+b.dataset.dz].m));
   $('#dkm').onclick = () => menuSheet(d.name, [
     {icon:'pencil', label:'Rename', run:() => { modal(`<h3>Rename deck</h3><label class="fld"><span>Name</span><input type="text" id="drn" value="${esc(d.name)}" maxlength="60"></label><div class="btns" style="justify-content:flex-end;margin-top:14px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="drok">Save</button></div>`);
-      $('#drok').onclick = () => { d.name = $('#drn').value.trim() || d.name; persist(); closeModal(); deckView(d) } }},
+      $('#drok').onclick = () => { d.name = $('#drn').value.trim() || d.name; d.at = Date.now(); persist(); closeModal(); deckView(d) } }},
     {icon:'ruler-2', label:'Deck rules', sub:rulesLine(d), run:() => editRules(d, () => deckView(d))},
     {icon:'clipboard-text', label:'Paste a deck list', sub:'Lines like “4 Lightning Bolt” - from a website or another app', run:() => deckImport(d)},
     {icon:'copy', label:'Copy deck list', sub:'As text, to paste or share', run:() => deckExport(d)},
     {icon:'heart', label:'Put missing cards on my wishlist', disabled:!missV && haveN >= allN, run:() => { let n = 0; for(const x of d.cards){ const k = nameKey(x.m.name); if((own.get(k) || 0) < (need.get(k) || 0) && !isWant(x.m)){ toggleWant(x.m); n++ } } toast(n ? `${n} card${n === 1 ? '' : 's'} put on your wishlist` : 'They are already on your wishlist') }},
     {icon:'coin-euro', label:'Look up prices', sub:'For the cards in this deck without a price', run:() => deckPrices(d)},
-    {icon:'trash', label:'Delete deck', danger:true, run:() => { if(confirm(`Delete “${d.name}”? Your cards stay in your collection.`)){ snapshot('before deleting a deck'); store.decks = decks().filter(x => x !== d); persist(); DK.id = null; viewDecks() } }},
+    {icon:'trash', label:'Delete deck', danger:true, run:() => { if(confirm(`Delete “${d.name}”? Your cards stay in your collection.`)){ snapshot('before deleting a deck'); store.decks = decks().filter(x => x !== d); (store.decksRemoved ||= {})[d.id] = Date.now(); persist(); DK.id = null; viewDecks() } }},
   ]);
 }
 async function deckEnrich(d){                                  // Cardmarket / TCGplayer prices from the daily price file, once per card
