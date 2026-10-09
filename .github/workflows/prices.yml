@@ -92,6 +92,10 @@ jobs:
               for t in theirs:
                   by_group[t[0]].append(t); by_name[nm(t[1])].append(t)
               gnames = {g: {nm(t[1]) for t in ts} for g, ts in by_group.items()}
+              in_sets = defaultdict(set)                # a name in several of our sets (reprint, loot, promo): never guess by name alone
+              for s, cards in ours.items():
+                  for _, n in cards:
+                      in_sets[nm(n)].add(s)
               out, sets_matched = {}, 0
               for s, cards in ours.items():
                   names = {nm(n) for _, n in cards}
@@ -114,7 +118,7 @@ jobs:
                       if len(c) > 1 and num:
                           same = [t for t in c if t[2] and norm_num(str(t[2]).split("/")[0]) == norm_num(num)]
                           c = same or c
-                      if not c:
+                      if not c and len(in_sets[key]) == 1:
                           everywhere = by_name.get(key, [])
                           if everywhere and len({t[0] for t in everywhere}) == 1:
                               c = everywhere
@@ -129,7 +133,7 @@ jobs:
               (r"warcraft|\bwow\b", "wow", ("ccgt", 22)), (r"spoils", "ccgt178", ("ccgt", 178)),
               (r"final fantasy", "ccgt288", ("ccgt", 288)), (r"wei(ss|ß)", "ws", ("dg", "ws")),
               (r"dragoborne", "ccgt282", ("ccgt", 282)), (r"little pony", "ccgt213", ("ccgt", 213)),
-              (r"fusion world", "dbsfw", ("dg", "dbsfw")), (r"dragon ?ball", "dbsm", ("dg", "dbsm")),
+              (r"dragon ?ball", "dbsfw", ("dg", "dbsfw")), (r"dragon ?ball", "dbsm", ("dg", "dbsm")), (r"dragon ?ball", "ccgt260", ("ccgt", 260)),
               (r"destiny", "ccgt217", ("ccgt", 217)), (r"flesh", "fab", ("dg", "fab")), (r"digimon", "digimon", ("dg", "digimon")),
               (r"unlimited", "swu", ("swu",)), (r"gundam", "gundam", ("dg", "gundam")), (r"sorcery", "sorcery", ("dg", "sorcery")),
               (r"one ?piece", "onepiece", None), (r"lorcana", "lorcana", None), (r"riftbound", "riftbound", None),
@@ -148,6 +152,23 @@ jobs:
                   return {"ccgt": lambda: ours_ccgt(spec[1]), "dg": lambda: ours_dg(spec[1]), "swu": ours_swu}[spec[0]]()
               except Exception as e:
                   print("   no card list", spec, e); return None
+
+          def link_one(key, spec, gid, theirs):
+              o = out_for(key); o["cm"] = gid
+              if spec:
+                  ours = load_ours(spec)
+                  if ours:
+                      m, ns = match(ours, theirs)
+                      for k, pay in m.items():
+                          o["cards"].setdefault(k, {})["c"] = pay
+                      print(f"   matched {len(m)} cards, {ns} of {len(ours)} sets")
+              else:                                     # no card list here: by card name
+                  names = defaultdict(list)
+                  for t in theirs:
+                      if t[3][0] is not None or t[3][1] is not None:
+                          names[nm(t[1])].append(t[3])
+                  o["names"] = names
+                  print(f"   {len(names)} card names")
 
           # 1. Cardmarket
           found = []
@@ -168,27 +189,11 @@ jobs:
                   g = px.get(p["idProduct"], {})
                   pay = [r2(g.get("trend") or g.get("avg")), r2(g.get("trend-foil") or g.get("avg-foil")), r2(g.get("low")), r2(g.get("avg30")), p["idProduct"]]
                   theirs.append((p.get("idExpansion"), p.get("name") or "", "", pay))
-              link = next(((k, spec) for pat, k, spec in CM_LINKS if re.search(pat, cat, re.I)), None)
-              found.append([gid, cat, len(prods), link[0] if link else None])
-              print(f"Cardmarket game {gid}: {cat!r}, {len(prods)} cards ->", link[0] if link else "not used")
-              if not link:
-                  continue
-              key, spec = link
-              o = out_for(key); o["cm"] = gid
-              if spec:
-                  ours = load_ours(spec)
-                  if ours:
-                      m, ns = match(ours, theirs)
-                      for k, pay in m.items():
-                          o["cards"].setdefault(k, {})["c"] = pay
-                      print(f"   matched {len(m)} cards, {ns} of {len(ours)} sets")
-              else:                                     # no card list here: by card name
-                  names = defaultdict(list)
-                  for t in theirs:
-                      if t[3][0] is not None or t[3][1] is not None:
-                          names[nm(t[1])].append(t[3])
-                  o["names"] = names
-                  print(f"   {len(names)} card names")
+              links = [(k, spec) for pat, k, spec in CM_LINKS if re.search(pat, cat, re.I)]
+              found.append([gid, cat, len(prods), [k for k, _ in links]])
+              print(f"Cardmarket game {gid}: {cat!r}, {len(prods)} cards ->", ", ".join(k for k, _ in links) or "not used")
+              for key, spec in links:
+                  link_one(key, spec, gid, theirs)
 
           # 2. TCGplayer, older games
           for cat, gid in TP_LINKS.items():
