@@ -677,7 +677,7 @@ function viewScan(){
     <input type="file" id="cfile" accept="image/*" multiple hidden><input type="file" id="cpage" accept="image/*" hidden>
     <div id="cres" style="margin-top:14px"></div>`;
   $('#cstart').onclick = () => startCamera();
-  $('#cstop').onclick = () => { SC.still = null; stopCamera() };
+  $('#cstop').onclick = () => { SC.still = null; O.camWasOn = false; stopCamera(); saveNav() };
   $('#ctorch').onclick = toggleTorch;
   $('#czoom').onclick = e => { e.stopPropagation(); const z = O.zoom || 1; setZoom(z < 1.5 ? 1.5 : z < 2 ? 2 : 1) };
   $('#cw').addEventListener('click', e => { if(!SC.stream || e.target.closest('button')) return; const r = $('#cw').getBoundingClientRect(); focusAt((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height, true) });
@@ -854,7 +854,9 @@ async function toggleTorch(){
   try{ await t.applyConstraints({advanced:[{torch:SC.torch}]}) }catch(e){ SC.torch = false }
   $('#ctorch').classList.toggle('on', SC.torch);
 }
-document.addEventListener('visibilitychange', () => { if(document.hidden) stopCamera() });
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){ SC.resume = !!SC.stream && VIEW === 'scan'; O.camWasOn = SC.resume; persist(); stopCamera() }
+  else if(SC.resume && VIEW === 'scan' && !SC.stream){ SC.resume = false; startCamera() } });    // back in the app: the camera comes back on
 
 /* the frame: the largest card-shaped box in the middle of the source, like the desktop scanner */
 function srcSize(){ if(SC.still) return {w:SC.still.width, h:SC.still.height}; const v = $('#cv'); return v && v.videoWidth ? {w:v.videoWidth, h:v.videoHeight} : null }
@@ -2180,7 +2182,36 @@ function viewSettings(){
 }
 
 /* ---------------------------------------------------------------- start */
-applyTheme(); tabCount(); show('scan'); fsSync(); $('#fsbtn').onclick = toggleFull;
+/* ---------------------------------------------------------------- back gesture and coming back to where you were
+   The phone's back gesture steps back inside the app (close a pop-up, set -> game -> games, settings page -> settings,
+   other tabs -> scan). Only on the scan screen does it leave the app. Where you were is remembered for 2 hours. */
+const atRoot = () => VIEW === 'scan' && !$('#modal').innerHTML.trim();
+function saveNav(){
+  O.nav = {at:Date.now(), view:VIEW === 'review' ? 'review' : VIEW, game:BD.game, set:BD.set ? {code:BD.set.code, id:BD.set.id, name:BD.set.name, abbr:BD.set.abbr, tcgdex:BD.set.tcgdex, local:BD.set.local, released:BD.set.released} : null,
+    sp:SP.page, f:Object.assign({}, F), cam:VIEW === 'scan' && (!!SC.stream || !!O.camWasOn)};
+  try{ localStorage.setItem('nightvault.pocket.nav', JSON.stringify(O.nav)) }catch(e){} }
+let _navT;
+function navSync(){ clearTimeout(_navT); _navT = setTimeout(() => { saveNav(); if(!atRoot() && !(history.state && history.state.nv)) history.pushState({nv:1}, '') }, 30) }
+function goBack(){
+  if($('#modal').innerHTML.trim()){ closeModal(); return }
+  if(VIEW === 'binder' && BD.set){ BD.set = null; viewBinder(); return }
+  if(VIEW === 'binder' && BD.game){ BD.game = null; viewBinder(); return }
+  if(VIEW === 'settings' && SP.page){ SP.page = null; viewSettings(); return }
+  if(VIEW === 'review'){ show('cards'); return }
+  if(VIEW !== 'scan') show('scan');
+}
+window.addEventListener('popstate', () => { goBack(); navSync() });
+new MutationObserver(navSync).observe($('#main'), {childList:true});
+new MutationObserver(navSync).observe($('#modal'), {childList:true});
+function restoreNav(){
+  let n = null; try{ n = JSON.parse(localStorage.getItem('nightvault.pocket.nav') || 'null') }catch(e){}
+  if(!n || Date.now() - (n.at || 0) > 2 * 3600e3 || !n.view || n.view === 'scan'){ show('scan'); if(n && n.cam && Date.now() - (n.at || 0) < 2 * 3600e3) startCamera(); return }
+  if(n.f) Object.assign(F, n.f);
+  if(n.view === 'binder'){ BD.game = n.game && (GAMES[n.game] || store.games.some(g => g.id === n.game)) ? n.game : null; BD.set = BD.game ? n.set : null }
+  if(n.view === 'settings') SP.page = n.sp || null;
+  show(n.view);
+}
+applyTheme(); tabCount(); restoreNav(); fsSync(); $('#fsbtn').onclick = toggleFull;
 if(O.dailyPrices && store.cards.length && Date.now() - (store.lastPriceCheck || 0) > 20 * 3600 * 1000) setTimeout(() => priceCheck(false), 4000);
 </script>
 </body>
