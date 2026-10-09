@@ -106,6 +106,8 @@ select{width:auto}
 #viewer .vtext .vt{white-space:pre-wrap}#viewer .vtext .vf{font-style:italic;color:var(--mut);margin-top:10px}#viewer .vtext dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0 0 12px}#viewer .vtext dt{color:var(--dim)}#viewer .vtext dd{margin:0}
 .cname{font-size:17px;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
 .bstats.four{grid-template-columns:repeat(4,1fr)}.bar #bdg{max-width:48%;flex:none}.bdgl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}#bdg.on{border-color:var(--accentline);color:var(--pb)}
+.uprow{display:flex;gap:12px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--sub);background:none;color:var(--text);padding:9px 2px;text-align:left;font-size:13px}.uprow .nm{font-weight:500;overflow-wrap:anywhere}.uprow .meta{color:var(--dim);font-size:12px}
+.upd{display:flex;flex-direction:column;align-items:center;width:38px;flex:none;line-height:1.1}.upd b{font-size:17px}.upd span{font-size:10.5px;color:var(--dim);text-transform:uppercase}
 .bgh{display:flex;align-items:center;gap:6px;width:100%;border:0;background:none;padding:10px 2px 6px;text-align:left;cursor:pointer}.bgh i{font-size:15px}
 .rgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 .fld{display:block;margin:10px 0 0}.fld span{display:block;font-size:12px;color:var(--dim);margin-bottom:4px}.fld select{width:100%}
@@ -2000,13 +2002,18 @@ const MTG_GROUP = {core:'Main sets', expansion:'Main sets', masters:'Masters & d
   starter:'Decks & special products', duel_deck:'Decks & special products', planechase:'Decks & special products', archenemy:'Decks & special products', premium_deck:'Decks & special products',
   from_the_vault:'Decks & special products', spellbook:'Decks & special products', arsenal:'Decks & special products', treasure_chest:'Decks & special products', vanguard:'Decks & special products',
   masterpiece:'Masterpieces', promo:'Promos', token:'Tokens & extras', memorabilia:'Tokens & extras', minigame:'Tokens & extras', funny:'Un-sets & playtest'};
-const GROUP_ORDER = ['Main sets', 'Booster sets', 'Extra boosters', 'Masters & draft specials', 'Commander decks', 'Secret Lair', 'Decks', 'Decks & special products', 'Collections & boxes',
+const GROUP_ORDER = ['Decipher expansions', 'Decipher special products', 'Virtual sets (Players Committee)', 'Main sets', 'Booster sets', 'Extra boosters', 'Masters & draft specials', 'Commander decks', 'Secret Lair', 'Decks', 'Decks & special products', 'Collections & boxes',
   'Boxed sets & collections', 'Masterpieces', 'Promos', 'Extras & special printings', 'Tokens & extras', 'Un-sets & playtest', 'Other'];
 const PKM_SERIES = [[/^sv/, 'Scarlet & Violet'], [/^swsh/, 'Sword & Shield'], [/^sm/, 'Sun & Moon'], [/^xy/, 'XY'], [/^bw/, 'Black & White'], [/^(hgss|col)/, 'HeartGold & SoulSilver'],
   [/^(pl|dp)/, 'Diamond & Pearl / Platinum'], [/^ex/, 'EX'], [/^(ecard|neo|gym|base|si|lc)/, 'Original series'], [/^(cel|pgo|mcd|me)/, 'Specials']];
 function setGroup(g, st){
   const n = String(st.name || ''), c = String(st.code || '').toUpperCase();
   if(g === 'mtg'){ if(/secret lair/i.test(n) || c === 'SLD') return 'Secret Lair'; if(st.type === 'box') return 'Boxed sets & collections'; return MTG_GROUP[st.type] || 'Other' }
+  if(g === 'swccg'){ const n = parseInt(st.code, 10);
+    if(/d$/i.test(st.code) || (n >= 200 && n < 400)) return 'Virtual sets (Players Committee)';
+    if(n < 100) return st.cycle === 'premium' || n === 10 || n === 13 ? 'Decipher special products' : 'Decipher expansions';
+    if(n < 200) return 'Decipher special products';
+    return 'Other' }
   if(g === 'pokemon'){ if(st.series) return st.series; const id = String(st.code || '').toLowerCase(); return (PKM_SERIES.find(([re]) => re.test(id)) || [0, 'Other'])[1] }
   if(/secret lair/i.test(n)) return 'Secret Lair';
   if(/^loot\b|^foils?\b|extended art|oversiz|\btokens?\b|^alternate|alt\.? art|full art|^art series/i.test(n)) return 'Extras & special printings';
@@ -2067,7 +2074,11 @@ const SETSRC = {
        cards:async st => (await opdb()).filter(c => String(c.card_set_id || '').split('-')[0].toLowerCase() === st.code).map(opMap)
          .sort((a, b) => String(a.showNum).localeCompare(String(b.showNum), undefined, {numeric:true}))},
   swccg:{list:async () => { const all = await swdb(), m = new Map(); for(const c of all){ const k = String(c.set || ''); const img = (c.front || {}).imageUrl || ''; const label = ((img.split('/cards/')[1] || '').split('/')[0] || '').replace(/-(Light|Dark)$/, '').replace(/([a-z])([A-Z])/g, '$1 $2');
-         const e = m.get(k) || {code:k.toLowerCase(), name:label || 'Set ' + k, released:'', total:0}; e.total++; m.set(k, e) } return [...m.values()] },
+         const e = m.get(k) || {code:k.toLowerCase(), name:label || 'Set ' + k, released:'', total:0}; e.total++; m.set(k, e) }
+         const meta = await getJSON('https://cdn.jsdelivr.net/gh/swccgpc/swccg-card-json@main/sets.json').catch(() => []);     // official names, codes and dates
+         for(const x of Array.isArray(meta) ? meta : []){ const e = m.get(String(x.id)); if(!e) continue;
+           Object.assign(e, {name:x.name || e.name, abbr:x.abbr || '', released:/^0000/.test(x.date_release || '') ? '' : String(x.date_release || '').slice(0, 10), cycle:x.cycle_code || ''}) }
+         return [...m.values()] },
        cards:async st => (await swdb()).filter(c => String(c.set || '').toLowerCase() === st.code).map(swccgMap)
          .sort((a, b) => a.name.localeCompare(b.name))},
   ...DGSRC(),
@@ -2085,17 +2096,49 @@ const ownedMap = g => { const m = new Map(); for(const c of ownedIn(g)){ const k
 const valueOf = cs => cs.reduce((a, c) => a + ((c.foil ? c.priceFoil : c.price) || 0) * c.qty, 0);
 function bdLoad(kind, key, fn){ if(!BD[kind][key]) BD[kind][key] = fn().catch(e => { delete BD[kind][key]; throw e }); return BD[kind][key] }
 
-function viewBinder(){ setSt(''); if(!BD.game) return binderGames(); if(!BD.set) return binderSets(); return binderSet() }
+function viewBinder(){ setSt(''); if(BD.up) return viewUpcoming(); if(!BD.game) return binderGames(); if(!BD.set) return binderSets(); return binderSet() }
+/* ---------------------------------------------------------------- upcoming releases (data/upcoming.json, made every day from Scryfall and TCGplayer) */
+let _upc = null;
+const upcData = () => _upc || (_upc = firstJSON(['data/upcoming.json']).then(d => d || {items:[]}).catch(() => { _upc = null; return {items:[]} }));
+const shortGame = x => (GAMES[x.game] ? GAMES[x.game].label : String(x.gameName || '').replace(/: League of Legends Trading Card Game/, '').replace(/\s*(OFFICIAL CARD GAME|TCG|Card Game)$/i, '').replace(/^YuGiOh$/, 'Yu-Gi-Oh!'));
+const MTG_KIND = {expansion:'Main set', core:'Main set', masters:'Masters', draft_innovation:'Special draft set', commander:'Commander', box:'Box / Secret Lair', promo:'Promos', starter:'Starter', duel_deck:'Decks', funny:'Un-set', masterpiece:'Masterpieces', arsenal:'Collection', spellbook:'Spellbook', from_the_vault:'From the Vault', premium_deck:'Premium deck', planechase:'Planechase', archenemy:'Archenemy', treasure_chest:'Collection'};
+async function viewUpcoming(){
+  $('#main').innerHTML = `<div class="head"><button class="btn sm" id="upb"><i class="ti ti-arrow-left"></i>Games</button><h1 style="font-size:18px;flex:1">Upcoming releases</h1></div>
+    <div class="chips" id="upf"></div><div id="upl"><div class="muted" style="padding:16px 4px">Loading ...</div></div>`;
+  $('#upb').onclick = () => { BD.up = false; viewBinder() };
+  const d = await upcData(); if(!BD.up || VIEW !== 'binder') return;
+  const today = new Date().toISOString().slice(0, 10), mine = new Set([...store.cards.map(c => c.game), ...(O.favs || []), ...decks().map(x => x.game)]);
+  const items = (d.items || []).map(x => Object.assign({}, x, {grp:x.game === 'mtg' ? (MTG_KIND[x.kind] || 'Other') : x.kind === 'supplemental' ? 'Extras' : setGroup(x.game || 'x', {name:x.name, code:x.code})}));
+  const hasMine = items.some(x => mine.has(x.game));
+  if(BD.upMine == null) BD.upMine = hasMine;
+  const draw = () => {
+    const l = items.filter(x => !BD.upMine || mine.has(x.game)), soon = l.filter(x => x.date >= today), past = l.filter(x => x.date < today).reverse();
+    $('#upf').innerHTML = `<button class="chip ${BD.upMine ? 'on' : ''}" data-m="1" ${hasMine ? '' : 'disabled'}><i class="ti ti-star"></i> My games</button><button class="chip ${BD.upMine ? '' : 'on'}" data-m="0">All games</button>`
+      + `<span class="muted" style="font-size:11.5px;align-self:center;margin-left:auto;flex:none">updated ${esc(d.updated || '?')}</span>`;
+    $$('#upf [data-m]').forEach(b => b.onclick = () => { BD.upMine = b.dataset.m === '1'; draw() });
+    const days = dt => { const n = Math.round((new Date(dt) - new Date(today)) / 864e5); return n === 0 ? 'today' : n === 1 ? 'tomorrow' : n > 0 ? `in ${n} days` : n === -1 ? 'yesterday' : `${-n} days ago` };
+    const row = x => { const g = GAMES[x.game], dt = new Date(x.date + 'T12:00:00');
+      return `<button class="uprow" ${g && SRC(x.game) ? `data-g="${esc(x.game)}" data-n="${esc(x.name)}"` : ''}><div class="upd"><b>${dt.getDate()}</b><span>${dt.toLocaleDateString(undefined, {weekday:'short'})}</span></div>
+        <div class="grow" style="min-width:0"><div class="nm">${esc(x.name)}</div><div class="meta"><span class="dot" style="background:${g ? g.color : 'var(--dim)'};margin-right:5px"></span>${esc(shortGame(x))}${x.code ? ' · ' + esc(x.code) : ''}${x.grp && x.grp !== 'Main sets' ? ' · ' + esc(x.grp) : ''}</div></div>
+        <span class="muted" style="font-size:11.5px;flex:none">${days(x.date)}</span></button>` };
+    let html = '', month = '';
+    for(const x of soon){ const m = new Date(x.date + 'T12:00:00').toLocaleDateString(undefined, {month:'long', year:'numeric'}); if(m !== month){ month = m; html += `<div class="dgh">${esc(m)}</div>` } html += row(x) }
+    if(past.length) html += `<button class="dgh bgh" id="uppast"><i class="ti ti-chevron-${BD.upPast ? 'down' : 'right'}"></i>Just released <span class="muted">${past.length}</span></button>` + (BD.upPast ? past.map(row).join('') : '');
+    $('#upl').innerHTML = html || `<div class="empty">${BD.upMine ? 'Nothing coming up for your games. Tap “All games” to see every game.' : 'No release dates yet - the list is made every morning.'}</div>`;
+    if($('#uppast')) $('#uppast').onclick = () => { BD.upPast = !BD.upPast; draw() };
+    $$('#upl [data-g]').forEach(b => b.onclick = () => { BD.up = false; BD.game = b.dataset.g; BD.set = null; BD.grp = 'all'; BD.q = b.dataset.n.split(/[:(]/)[0].trim(); viewBinder(); $('#main').scrollTop = 0 }) };
+  draw() }
 function binderGames(){
   const games = myGameKeys().filter(g => g !== 'other' && (SRC(g) || ownedIn(g).length));
   const eur = valueOf(store.cards.filter(c => c.currency === 'EUR')), usd = valueOf(store.cards.filter(c => c.currency === 'USD'));
-  $('#main').innerHTML = `<div class="head"><h1>Binder</h1><div class="sp"></div><span class="sub">${fmt(eur, 'EUR')}${usd ? ' + ' + fmt(usd, 'USD') : ''}</span></div>
+  $('#main').innerHTML = `<div class="head"><h1>Binder</h1><div class="sp"></div><span class="sub">${fmt(eur, 'EUR')}${usd ? ' + ' + fmt(usd, 'USD') : ''}</span><button class="btn sm" id="bdup"><i class="ti ti-calendar-event"></i>Upcoming</button></div>
     <div class="bar"><input class="grow" id="bdgq" type="search" placeholder="Search games, also the 295 in the catalog" value="${esc(BD.gq || '')}" autocomplete="off"></div>
     <div class="bgames" id="bdgl">${games.map(g => { const cs = ownedIn(g), n = cs.reduce((a, c) => a + c.qty, 0);
       return `<button class="bgame" data-g="${g}" data-name="${esc(lwr(GAMES[g].label + ' ' + GAMES[g].full))}" style="--gc:${GAMES[g].color}"><span class="bstar ${isFav(g) ? 'on' : ''}" data-fav="${g}" role="button" aria-label="Favourite"><i class="ti ti-star${isFav(g) ? '-filled' : ''}"></i></span><span style="padding-right:22px"><span class="dot" style="background:${GAMES[g].color};margin-right:6px"></span><b>${esc(GAMES[g].label)}</b></span>
         <span class="muted">${n ? `${n.toLocaleString()} cards · ${fmt(valueOf(cs), cs[0] ? cs[0].currency : 'EUR')}` : 'No cards yet'}</span></button>` }).join('')}
       <button class="bgame" id="bdall" style="--gc:var(--accent)"><span><i class="ti ti-books" style="color:var(--accent);margin-right:6px"></i><b>All card games</b></span><span class="muted">295 more games from the catalog</span></button></div>
     <div id="bdcat"></div>`;
+  $('#bdup').onclick = () => { BD.up = true; viewBinder(); $('#main').scrollTop = 0 };
   $$('.bgame[data-g]').forEach(b => b.onclick = e => { if(e.target.closest('[data-fav]')){ toggleFav(b.dataset.g); return binderGames() } BD.game = b.dataset.g; BD.set = null; BD.q = ''; BD.gq = ''; viewBinder(); $('#main').scrollTop = 0 });
   let cat = null, t;
   const filter = () => { const q = lwr($('#bdgq').value); BD.gq = $('#bdgq').value;
@@ -2125,7 +2168,7 @@ async function binderSets(){
   if(!groups.includes(BD.grp)) BD.grp = 'all';
   if(BD.openFor !== g){ BD.open = {[groups[0]]:true}; BD.openFor = g }
   const row = x => { const e = ownedSets.get(x.code), u = e ? e.uniq.size : 0, t = x.total || 0;
-      return `<button class="bset" data-s="${esc(x.code)}"><span><b>${esc(x.name)}</b> <span class="muted">${esc(String(x.code).toUpperCase())}${x.released ? ' · ' + esc(String(x.released).slice(0, 4)) : ''}</span></span>
+      return `<button class="bset" data-s="${esc(x.code)}"><span><b>${esc(x.name)}</b> <span class="muted">${esc(String(x.abbr || x.code).toUpperCase())}${x.released ? ' · ' + esc(String(x.released).slice(0, 4)) : ''}</span></span>
         <span class="muted">${u ? `<b style="color:var(--text)">${u}</b>${t ? ' / ' + t : ''}` : (t ? t + ' cards' : '')}</span>${u && t ? `<div class="bar2" style="--gc:${GAMES[g].color}"><i style="width:${Math.min(100, Math.round(100 * u / t))}%"></i></div>` : ''}</button>` };
   const draw = () => { const q = BD.q.toLowerCase(), many = groups.length > 1;
     const rows = sets.filter(x => (!q || (x.name + ' ' + x.code).toLowerCase().includes(q)) && (BD.grp === 'all' || x.grp === BD.grp))
@@ -2979,13 +3022,14 @@ function deckPick(m, back){
 const atRoot = () => VIEW === 'scan' && !$('#modal').innerHTML.trim() && !$('#viewer').innerHTML.trim();
 function saveNav(){
   O.nav = {at:Date.now(), view:VIEW === 'review' ? 'review' : VIEW, game:BD.game, set:BD.set ? {code:BD.set.code, id:BD.set.id, name:BD.set.name, abbr:BD.set.abbr, tcgdex:BD.set.tcgdex, local:BD.set.local, released:BD.set.released} : null,
-    sp:SP.page, f:Object.assign({}, F), dk:DK.id, dks:DK.search, cam:VIEW === 'scan' && (!!SC.stream || !!O.camWasOn)};
+    sp:SP.page, f:Object.assign({}, F), dk:DK.id, dks:DK.search, up:!!BD.up, cam:VIEW === 'scan' && (!!SC.stream || !!O.camWasOn)};
   try{ localStorage.setItem(NAVKEY, JSON.stringify(O.nav)) }catch(e){} }
 let _navT;
 function navSync(){ clearTimeout(_navT); _navT = setTimeout(() => { saveNav(); if(!atRoot() && !(history.state && history.state.nv)) history.pushState({nv:1}, '') }, 30) }
 function goBack(){
   if($('#viewer').innerHTML.trim()){ closeViewer(); return }
   if($('#modal').innerHTML.trim()){ closeModal(); return }
+  if(VIEW === 'binder' && BD.up){ BD.up = false; viewBinder(); return }
   if(VIEW === 'binder' && BD.set){ BD.set = null; viewBinder(); return }
   if(VIEW === 'binder' && BD.game){ BD.game = null; viewBinder(); return }
   if(VIEW === 'settings' && SP.page){ SP.page = null; viewSettings(); return }
@@ -3002,6 +3046,7 @@ function restoreNav(){
   let n = null; try{ n = JSON.parse(localStorage.getItem(NAVKEY) || 'null') }catch(e){}
   if(!n || Date.now() - (n.at || 0) > 2 * 3600e3 || !n.view || n.view === 'scan'){ show('scan'); if(n && n.cam && Date.now() - (n.at || 0) < 2 * 3600e3) startCamera(); return }
   if(n.f) Object.assign(F, n.f);
+  if(n.view === 'binder') BD.up = !!n.up && !n.game;
   if(n.view === 'binder'){ BD.game = n.game && (GAMES[n.game] || store.games.some(g => g.id === n.game)) ? n.game : null; BD.set = BD.game ? n.set : null }
   if(n.view === 'settings') SP.page = n.sp || null;
   if(n.view === 'decks'){ DK.id = n.dk && deckOf(n.dk) ? n.dk : null; DK.search = !!(DK.id && n.dks) }
