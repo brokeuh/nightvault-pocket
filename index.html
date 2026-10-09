@@ -132,9 +132,11 @@ select{width:auto}
 .upd{display:flex;flex-direction:column;align-items:center;width:38px;flex:none;line-height:1.1}.upd b{font-size:17px}.upd span{font-size:10.5px;color:var(--dim);text-transform:uppercase}
 .bgh{display:flex;align-items:center;gap:6px;width:100%;border:0;background:none;padding:10px 2px 6px;text-align:left;cursor:pointer}.bgh i{font-size:15px}
 .nvi{width:100%;height:100%;display:block}
-.hic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;padding:8px;color:var(--accent);margin-bottom:8px;
-  background:radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--accent) 30%,transparent),color-mix(in srgb,var(--accent) 8%,transparent) 70%);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent)}
-.hic.big{width:52px;height:52px;margin:0;color:var(--onacc);background:color-mix(in srgb,var(--onacc) 14%,transparent);border-color:color-mix(in srgb,var(--onacc) 25%,transparent)}
+.hic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;padding:7px;margin-bottom:8px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 6px 16px rgba(0,0,0,.25);
+  background:radial-gradient(circle at 50% 18%,color-mix(in srgb,var(--accent) 30%,#22275c) 0%,color-mix(in srgb,var(--accent) 9%,#121636) 60%,#0a0d22 100%)}
+.hic.big{width:56px;height:56px;margin:0;padding:7px}
+.nvi .a{stroke:var(--accent)}.nvi .f{fill:color-mix(in srgb,var(--accent) 22%,#1b2150)}.nvi .b{fill:color-mix(in srgb,var(--accent) 13%,#161b42);opacity:.85}
+.nvi .s{fill:#eef1ff;stroke:none}.nvi .c{fill:var(--accent);stroke:none}.nvi .w{stroke:#eef1ff}.nvi .l{stroke:#eef1ff;opacity:.5}
 .gbadge{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:none;position:relative;overflow:hidden;
   background:linear-gradient(145deg,color-mix(in srgb,var(--gc) 92%,#fff),color-mix(in srgb,var(--gc) 55%,#000));box-shadow:inset 0 0 0 1px color-mix(in srgb,#fff 18%,transparent)}
 .gbadge::after{content:"";position:absolute;right:5px;top:5px;width:6px;height:6px;background:#fff;opacity:.55;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)}
@@ -790,16 +792,27 @@ function show(v){
 $$('#tabs button').forEach(b => b.onclick = () => show(b.dataset.v));
 $('#setbtn').onclick = () => { SP.page = null; show('settings') };
 /* ---------------------------------------------------------------- Nightvault icons (drawn for the app) and game emblems */
-const NVI = (body) => `<svg class="nvi" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
-const STAR4 = (x, y, r) => `<path d="M${x} ${y - r}l${r * .28} ${r * .72} ${r * .72} ${r * .28}-${r * .72} ${r * .28}-${r * .28} ${r * .72}-${r * .28}-${r * .72}-${r * .72}-${r * .28} ${r * .72}-${r * .28}z" fill="currentColor" stroke="none"/>`;
+/* in-app icons in the style of the logo: rounded cards with accent outlines, dark card faces, a moon-white sparkle and constellation dots */
+const NVI = (body) => `<svg class="nvi" viewBox="0 0 100 100" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const SPK = (x, y, r, cls = 's') => { const k = r * .29; return `<path class="${cls}" d="M${x} ${y - r}L${x + k} ${y - k}L${x + r} ${y}L${x + k} ${y + k}L${x} ${y + r}L${x - k} ${y + k}L${x - r} ${y}L${x - k} ${y - k}Z"/>` };
+const DOTS = (pts, accentAt = -1) => `<path class="l" stroke-width="2.4" d="M${pts.map(p => p.join(' ')).join('L')}"/>` + pts.map((p, i) => `<circle class="${i === accentAt ? 'c' : 's'}" cx="${p[0]}" cy="${p[1]}" r="${p[2] || 3.4}"/>`).join('');
 const NV_ICONS = {
-  scan:NVI(`<path d="M5 11V7.5A2.5 2.5 0 0 1 7.5 5H11M21 5h3.5A2.5 2.5 0 0 1 27 7.5V11M27 21v3.5a2.5 2.5 0 0 1-2.5 2.5H21M11 27H7.5A2.5 2.5 0 0 1 5 24.5V21"/><rect x="11" y="8.5" width="10" height="15" rx="1.6"/><path d="M8 16h16" opacity=".55"/>${STAR4(16, 12.4, 2.2)}`),
-  cards:NVI(`<rect x="10" y="6" width="14" height="19" rx="2.2"/><path d="M7 9.5V24a3 3 0 0 0 3 3h10.5" opacity=".6"/>${STAR4(17, 15.5, 3.4)}`),
-  binder:NVI(`<rect x="8.5" y="4.5" width="18" height="23" rx="2.4"/><path d="M8.5 10H5.5M8.5 16H5.5M8.5 22H5.5"/><rect x="12" y="8.5" width="5" height="6.5" rx="1" opacity=".7"/><rect x="18.5" y="8.5" width="4.5" height="6.5" rx="1" opacity=".7"/><rect x="12" y="17.5" width="5" height="6.5" rx="1" opacity=".7"/><rect x="18.5" y="17.5" width="4.5" height="6.5" rx="1" fill="currentColor" stroke="none" opacity=".85"/>`),
-  decks:NVI(`<rect x="9.5" y="5" width="13" height="18" rx="2" transform="rotate(-16 16 27)" opacity=".55"/><rect x="9.5" y="5" width="13" height="18" rx="2" transform="rotate(16 16 27)" opacity=".55"/><rect x="9.5" y="5" width="13" height="18" rx="2"/>${STAR4(16, 13.5, 3)}`),
-  upcoming:NVI(`<rect x="4.5" y="7" width="23" height="20.5" rx="3"/><path d="M4.5 12.5h23M11 4v5M21 4v5"/><path d="M18.2 15.6a4.6 4.6 0 1 0 2.4 7.3 3.7 3.7 0 1 1-2.4-7.3z" fill="currentColor" stroke="none"/>`),
-  vault:NVI(`<rect x="4.5" y="4.5" width="23" height="23" rx="4"/><circle cx="16" cy="16" r="7.5"/><circle cx="16" cy="16" r="2.4"/><path d="M16 8.5v3.6M16 19.9v3.6M8.5 16h3.6M19.9 16h3.6" opacity=".7"/><path d="M4.5 10.5H3M4.5 21.5H3"/>`),
-  prices:NVI(`<circle cx="16" cy="16" r="11"/><circle cx="16" cy="16" r="7.6" opacity=".4"/><path d="M19.6 12.4a4.6 4.6 0 1 0 0 7.2M10.8 15h6.4M10.8 17.4h6.4"/>`),
+  scan:NVI(`<path class="a" stroke-width="6" d="M12 32V20a8 8 0 0 1 8-8h12M68 12h12a8 8 0 0 1 8 8v12M88 68v12a8 8 0 0 1-8 8H68M32 88H20a8 8 0 0 1-8-8V68"/>
+    <rect class="f a" stroke-width="5.5" x="33" y="24" width="34" height="52" rx="7"/><path class="l" stroke-width="2.6" d="M22 50h10M68 50h10"/>${SPK(50, 50, 10)}`),
+  cards:NVI(`<rect class="b a" stroke-width="5" x="20" y="26" width="36" height="52" rx="7" transform="rotate(-14 38 52)"/>
+    <rect class="f a" stroke-width="6" x="40" y="30" width="40" height="56" rx="8"/>${SPK(60, 58, 10)}${DOTS([[14, 18, 3.6], [28, 10, 2.8], [44, 15, 3.2]], 1)}`),
+  binder:NVI(`<rect class="f a" stroke-width="6" x="22" y="10" width="64" height="80" rx="9"/><path class="a" stroke-width="6" d="M12 30h10M12 50h10M12 70h10"/>
+    <g class="a" stroke-width="3" opacity=".65"><rect x="32" y="21" width="21" height="27" rx="4"/><rect x="58" y="21" width="20" height="27" rx="4"/><rect x="32" y="54" width="21" height="27" rx="4"/></g>
+    <rect class="c" x="58" y="54" width="20" height="27" rx="4" opacity=".28"/>${SPK(68, 67.5, 8)}`),
+  decks:NVI(`<rect class="b a" stroke-width="5" x="32" y="30" width="36" height="52" rx="7" transform="rotate(-20 50 96)"/>
+    <rect class="b a" stroke-width="5" x="32" y="30" width="36" height="52" rx="7" transform="rotate(20 50 96)"/>
+    <rect class="f a" stroke-width="6" x="32" y="26" width="36" height="52" rx="7"/>${SPK(50, 52, 10)}${DOTS([[34, 12, 2.6], [50, 7, 3.6], [66, 12, 2.6]], 1)}`),
+  upcoming:NVI(`<rect class="f a" stroke-width="6" x="14" y="20" width="72" height="68" rx="10"/><path class="a" stroke-width="5" d="M14 37h72M34 11v16M66 11v16"/>
+    <path class="s" d="M57 46a16 16 0 1 0 0 30a12.8 12.8 0 1 1 0-30z"/>${SPK(70, 52, 6, 'c')}<circle class="s" cx="30" cy="72" r="2.6"/>`),
+  vault:NVI(`<rect class="f a" stroke-width="6" x="14" y="12" width="74" height="76" rx="13"/><circle class="a" stroke-width="5" cx="51" cy="50" r="21"/>
+    <path class="a" stroke-width="5" d="M8 32h6M8 68h6"/><path class="l" stroke-width="3" d="M51 29v-6M51 77v-6M30 50h-6M78 50h-6"/>${SPK(51, 50, 10)}`),
+  prices:NVI(`<circle class="f a" stroke-width="6" cx="47" cy="53" r="34"/><circle class="a" stroke-width="2.6" cx="47" cy="53" r="25" opacity=".45"/>
+    <path class="w" stroke-width="5.5" d="M58 40a14.5 14.5 0 1 0 0 26M33 49h20M33 57h20"/>${SPK(82, 18, 8)}<circle class="s" cx="88" cy="36" r="2.8"/>`),
 };
 const GCODE = {mtg:'MTG', pokemon:'PKM', ygo:'YGO', lorcana:'LOR', swu:'SWU', onepiece:'OP', swccg:'SWC', riftbound:'RB', gundam:'GD', digimon:'DGM', fab:'FAB',
   sorcery:'SOR', ws:'WS', dbsfw:'FW', dbsm:'DBS', dbz:'DBZ', dbzccg:'DBZ', dbgt:'GT', wow:'WOW'};
