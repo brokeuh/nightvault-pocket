@@ -1,0 +1,254 @@
+# Collects extra card prices once a day into data/prices/<game>.json, so Nightvault Pocket can show prices from
+# more than one shop and fall back to the next shop when the first has none (handy for out-of-print games).
+#  - Cardmarket (EUR): Cardmarket's own public daily price guide files
+#  - TCGplayer (USD): TCGplayer's price list as copied daily by tcgcsv.com, for older games the app had no prices for
+# Prices are matched to the app's card lists (CCG Trader copy in data/ccgt, data/<game>.json, swu-cards.json)
+# by set (the set whose card names overlap most) and then by card name and number.
+name: Update extra prices
+
+on:
+  schedule:
+    - cron: "17 5 * * *"      # every day around 07:17 Brussels time (after the card data job)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Collect prices
+        run: |
+          python3 - <<'EOF'
+          import datetime, json, os, re, time, unicodedata, urllib.request
+          from collections import defaultdict
+
+          os.makedirs("data/prices", exist_ok=True)
+          TODAY = datetime.date.today().isoformat()
+
+          def get(url, tries=3):
+              req = urllib.request.Request(url, headers={"User-Agent": "nightvault-pocket (personal card collection app, once a day)"})
+              for a in range(tries):
+                  try:
+                      with urllib.request.urlopen(req, timeout=180) as r:
+                          return json.load(r)
+                  except Exception as e:
+                      if getattr(e, "code", 0) in (403, 404) or a == tries - 1:
+                          raise
+                      time.sleep(4 * (a + 1))
+
+          def slug(t):
+              t = unicodedata.normalize("NFD", str(t or "")).encode("ascii", "ignore").decode().lower()
+              return re.sub(r"[^a-z0-9]+", "", t)
+
+          def nm(t):                                    # card name for matching: no "(V.1)" style suffixes, letters and digits only
+              return slug(re.sub(r"\([^)]*\)", "", str(t or "")))
+
+          def norm_num(n):
+              s = str(n if n is not None else "").strip()
+              m = re.match(r"^0*(\d+)(.*)$", s)
+              return str(int(m.group(1))) + m.group(2) if m else s
+
+          def r2(v):
+              try:
+                  return round(float(v), 2) if v not in (None, "") and float(v) > 0 else None
+              except Exception:
+                  return None
+
+          # ---- the app's own card lists: {set: [(number, name)]}, same set codes and numbers the app uses
+          def ours_ccgt(gid):
+              d = json.load(open(f"data/ccgt/{gid}.json", encoding="utf-8"))
+              out = defaultdict(list)
+              for c in d["cards"]:
+                  n = c[1]
+                  num = slug(c[2]) if n in (None, "", 0) else str(n)
+                  out[str(c[0])].append((num, c[2]))
+              return out
+
+          def ours_dg(key):
+              d = json.load(open(f"data/{key}.json", encoding="utf-8"))
+              out = defaultdict(list)
+              for r in d["cards"]:
+                  st = d["sets"][r[0]]
+                  out[st["code"]].append((norm_num(r[1]) if r[1] else slug(r[2]), r[2]))
+              return out
+
+          def ours_swu():
+              d = json.load(open("swu-cards.json", encoding="utf-8"))
+              out = defaultdict(list)
+              for code, rows in d["cards"].items():
+                  for c in rows:
+                      if (c.get("VariantType") or "Normal") in ("Normal", "Standard"):
+                          out[code].append((norm_num(c["Number"]), c["Name"] + (" - " + c["Subtitle"] if c.get("Subtitle") else "")))
+              return out
+
+          # ---- match a shop's cards to ours.  theirs: [(group, name, number or "", payload)]
+          def match(ours, theirs):
+              by_group, by_name = defaultdict(list), defaultdict(list)
+              for t in theirs:
+                  by_group[t[0]].append(t); by_name[nm(t[1])].append(t)
+              gnames = {g: {nm(t[1]) for t in ts} for g, ts in by_group.items()}
+              out, sets_matched = {}, 0
+              for s, cards in ours.items():
+                  names = {nm(n) for _, n in cards}
+                  cand = defaultdict(int)
+                  for n in names:
+                      for g in {t[0] for t in by_name.get(n, [])}:
+                          cand[g] += 1
+                  best, bs = None, 0
+                  for g, common in cand.items():
+                      score = common / max(1, len(names)) + common / max(1, len(gnames[g])) * 0.25
+                      if common >= min(3, len(names)) and score > bs:
+                          best, bs = g, score
+                  if best is not None and bs >= 0.3:
+                      sets_matched += 1
+                  else:
+                      best = None
+                  for num, name in cards:
+                      key = nm(name)
+                      c = [t for t in by_group.get(best, []) if nm(t[1]) == key] if best is not None else []
+                      if len(c) > 1 and num:
+                          same = [t for t in c if t[2] and norm_num(str(t[2]).split("/")[0]) == norm_num(num)]
+                          c = same or c
+                      if not c:
+                          everywhere = by_name.get(key, [])
+                          if everywhere and len({t[0] for t in everywhere}) == 1:
+                              c = everywhere
+                      if c:
+                          priced = [t for t in c if t[3][0] is not None or t[3][1] is not None] or c
+                          out[f"{s}|{num}"] = priced[0][3]
+              return out, sets_matched
+
+          # ---- which shop goes with which game of the app
+          # Cardmarket game id -> recognised by the category name in its file; the app game keys it feeds
+          CM_LINKS = [  # (pattern on category name, app key, card list)
+              (r"warcraft|\bwow\b", "wow", ("ccgt", 22)), (r"spoils", "ccgt178", ("ccgt", 178)),
+              (r"final fantasy", "ccgt288", ("ccgt", 288)), (r"wei(ss|ß)", "ws", ("dg", "ws")),
+              (r"dragoborne", "ccgt282", ("ccgt", 282)), (r"little pony", "ccgt213", ("ccgt", 213)),
+              (r"fusion world", "dbsfw", ("dg", "dbsfw")), (r"dragon ?ball", "dbsm", ("dg", "dbsm")),
+              (r"destiny", "ccgt217", ("ccgt", 217)), (r"flesh", "fab", ("dg", "fab")), (r"digimon", "digimon", ("dg", "digimon")),
+              (r"unlimited", "swu", ("swu",)), (r"gundam", "gundam", ("dg", "gundam")), (r"sorcery", "sorcery", ("dg", "sorcery")),
+              (r"one ?piece", "onepiece", None), (r"lorcana", "lorcana", None), (r"riftbound", "riftbound", None),
+          ]
+          # TCGplayer category -> CCG Trader game (for games the app had no prices for)
+          TP_LINKS = {13: 22, 19: 297, 38: 213, 26: 217, 24: 288, 25: 168, 28: 282, 30: 342, 36: 1111, 37: 259, 47: 261, 48: 214,
+                      53: 218, 54: 216, 57: 407, 58: 244, 61: 712, 65: 850, 7: 194, 10: 212, 18: 494, 23: 128, 27: 260}
+          CCGT_KEYS = {22: "wow", 128: "dbzccg", 127: "dbgt"}
+
+          files = {}                                    # app key -> output
+          def out_for(key):
+              return files.setdefault(key, {"updated": TODAY, "game": key, "cards": {}})
+
+          def load_ours(spec):
+              try:
+                  return {"ccgt": lambda: ours_ccgt(spec[1]), "dg": lambda: ours_dg(spec[1]), "swu": ours_swu}[spec[0]]()
+              except Exception as e:
+                  print("   no card list", spec, e); return None
+
+          # 1. Cardmarket
+          found = []
+          for gid in range(1, 41):
+              if gid in (1, 3, 6):                      # Magic, Yu-Gi-Oh!, Pokemon: the app already gets Cardmarket prices for these
+                  continue
+              try:
+                  prods = get(f"https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_{gid}.json", 2)["products"]
+                  guide = get(f"https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_{gid}.json", 2)["priceGuides"]
+              except Exception as e:
+                  continue
+              if not prods:
+                  continue
+              cat = prods[0].get("categoryName") or ""
+              px = {g["idProduct"]: g for g in guide}
+              theirs = []
+              for p in prods:
+                  g = px.get(p["idProduct"], {})
+                  pay = [r2(g.get("trend") or g.get("avg")), r2(g.get("trend-foil") or g.get("avg-foil")), r2(g.get("low")), r2(g.get("avg30")), p["idProduct"]]
+                  theirs.append((p.get("idExpansion"), p.get("name") or "", "", pay))
+              link = next(((k, spec) for pat, k, spec in CM_LINKS if re.search(pat, cat, re.I)), None)
+              found.append([gid, cat, len(prods), link[0] if link else None])
+              print(f"Cardmarket game {gid}: {cat!r}, {len(prods)} cards ->", link[0] if link else "not used")
+              if not link:
+                  continue
+              key, spec = link
+              o = out_for(key); o["cm"] = gid
+              if spec:
+                  ours = load_ours(spec)
+                  if ours:
+                      m, ns = match(ours, theirs)
+                      for k, pay in m.items():
+                          o["cards"].setdefault(k, {})["c"] = pay
+                      print(f"   matched {len(m)} cards, {ns} of {len(ours)} sets")
+              else:                                     # no card list here: by card name
+                  names = defaultdict(list)
+                  for t in theirs:
+                      if t[3][0] is not None or t[3][1] is not None:
+                          names[nm(t[1])].append(t[3])
+                  o["names"] = names
+                  print(f"   {len(names)} card names")
+
+          # 2. TCGplayer, older games
+          for cat, gid in TP_LINKS.items():
+              key = CCGT_KEYS.get(gid, f"ccgt{gid}")
+              ours = load_ours(("ccgt", gid))
+              if not ours:
+                  continue
+              try:
+                  groups = get(f"https://tcgcsv.com/tcgplayer/{cat}/groups")["results"]
+              except Exception as e:
+                  print("TCGplayer", cat, "skipped:", e); continue
+              theirs = []
+              for g in groups:
+                  try:
+                      prods = get(f"https://tcgcsv.com/tcgplayer/{cat}/{g['groupId']}/products")["results"]
+                      prices = get(f"https://tcgcsv.com/tcgplayer/{cat}/{g['groupId']}/prices")["results"]
+                  except Exception as e:
+                      continue
+                  pp = {}
+                  for p in prices:
+                      v = r2(p.get("marketPrice") or p.get("midPrice") or p.get("lowPrice"))
+                      slot = pp.setdefault(p["productId"], [None, None])
+                      if (p.get("subTypeName") or "Normal") == "Normal":
+                          slot[0] = v
+                      elif slot[1] is None:
+                          slot[1] = v
+                  for p in prods:
+                      ext = {e.get("name"): e.get("value") for e in p.get("extendedData") or []}
+                      if "Number" not in ext and "Rarity" not in ext:
+                          continue
+                      pr = pp.get(p["productId"], [None, None])
+                      theirs.append((g["groupId"], p.get("cleanName") or p.get("name") or "", ext.get("Number") or "", [pr[0], pr[1], p["productId"]]))
+                  time.sleep(0.1)
+              m, ns = match(ours, theirs)
+              o = out_for(key); o["tp"] = cat
+              for k, pay in m.items():
+                  o["cards"].setdefault(k, {})["t"] = pay
+              print(f"TCGplayer {cat} -> {key}: {len(theirs)} cards, matched {len(m)}, {ns} of {len(ours)} sets")
+
+          saved = []
+          for key, o in files.items():
+              if not o["cards"] and not o.get("names"):
+                  continue
+              with open(f"data/prices/{key}.json", "w", encoding="utf-8") as f:
+                  json.dump(o, f, separators=(",", ":"), ensure_ascii=False)
+              saved.append(key)
+          with open("data/prices/index.json", "w", encoding="utf-8") as f:
+              json.dump({"updated": TODAY, "games": sorted(saved), "cardmarket": found}, f, separators=(",", ":"))
+          print("saved:", ", ".join(sorted(saved)))
+          EOF
+
+      - name: Save the prices
+        run: |
+          git config user.name "card-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/prices
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
+          else
+            git commit -m "Update extra prices"
+            git pull --rebase -q || true
+            git push
+          fi
