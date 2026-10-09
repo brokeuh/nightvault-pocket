@@ -105,6 +105,10 @@ select{width:auto}
 #viewer .vtext{align-self:flex-start;width:100%;max-width:560px;margin:0 auto;background:var(--card);color:var(--text);border-radius:14px;padding:16px;line-height:1.5;font-size:14.5px}
 #viewer .vtext .vt{white-space:pre-wrap}#viewer .vtext .vf{font-style:italic;color:var(--mut);margin-top:10px}#viewer .vtext dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0 0 12px}#viewer .vtext dt{color:var(--dim)}#viewer .vtext dd{margin:0}
 .cname{font-size:17px;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.lnk{background:none;border:0;padding:0;color:var(--accent);font:inherit;font-size:12.5px;cursor:pointer}.lnk .price{color:inherit}
+.pxrow{display:flex;gap:10px;align-items:flex-start;padding:9px 8px;border-radius:10px;border:1px solid transparent}.pxrow.on{border-color:var(--accent);background:var(--accentbg)}
+.pxrow .btn{flex:none}.pxn{width:22px;height:22px;border-radius:50%;background:var(--chipbg);display:grid;place-items:center;font-size:12px;font-weight:600;flex:none;margin-top:1px}
+.pxin{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}.pxin label{display:flex;align-items:center;gap:4px;font-size:13px}.pxin input{width:76px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit}
 .conf{padding:2px 9px;border-radius:999px;font-size:11.5px;display:inline-block;margin:0 4px 4px 0}
 .conf.high{background:var(--greenbg);color:var(--pg)}.conf.medium{background:var(--amberbg);color:var(--pa)}.conf.low{background:color-mix(in srgb,var(--red) 18%,var(--bg));color:var(--red)}.conf.manual{background:var(--accentbg);color:var(--pb)}
 .cands{display:flex;gap:8px;overflow-x:auto;margin:12px -14px 0;padding:0 14px 4px}
@@ -1441,6 +1445,7 @@ async function lookup(q, games, tokens, manual){
 }
 function renderResult(){
   const el = $('#cres'); if(!el) return; if(O.quick){ renderQuick(el); return } const r = SC.result, m = r && r.matches[SC.sel];
+  if(m && !m._xp){ m._xp = 1; capturePx(m); addExtras(m).then(got => { if(got && pickPx(m, null) && SC.result && SC.result.matches[SC.sel] === m) renderResult() }).catch(() => {}) }
   const price = m ? (SC.foil ? m.priceFoil : m.price) : null, owned = m ? ownedQty(m) : 0;
   if(!m){ el.innerHTML = '<div id="csess"></div>'; renderSession(); return }
   el.innerHTML = `<div class="panel">
@@ -1449,7 +1454,7 @@ function renderResult(){
       <div class="sub" style="margin:2px 0 8px">${esc(m.showSet)} #${esc(m.showNum)}${m.setName ? ' · ' + esc(m.setName) : ''}${m.rarity ? ' · ' + esc(m.rarity) : ''}</div>
       <div><span class="gtag"><span class="dot" style="background:${GAMES[m.game].color}"></span>${esc(m.gameName || GAMES[m.game].label)}</span>${r.detected ? ' <span class="muted" style="font-size:11.5px">recognised from the card</span>' : ''}</div>
       <div style="margin:8px 0 4px"><span class="conf ${r.confidence}">${{high:'Sure', medium:'Probably', low:'Not sure', manual:'Picked by name'}[r.confidence]}</span>${r.ambiguous ? '<span class="conf medium">check the set</span>' : ''}${r.pinned ? '<span class="conf high">number read</span>' : ''}${r.byArt ? '<span class="conf high">picture matched</span>' : ''}${r.sameArt ? `<span class="conf medium">same artwork in ${r.sameArt.length} sets</span>` : ''}</div>
-      <div class="price" style="font-size:15px;margin-bottom:10px">${SC.foil ? 'Foil ' : ''}${fmt(price, m.currency)} <span class="muted" style="font-size:12px">${esc(m.psrc)}</span>${price == null && m.link ? ` <a href="${esc(m.link)}" target="_blank" rel="noopener" style="font-size:12.5px;color:var(--accent)">${esc(m.linkLabel || 'Look up price')} <i class="ti ti-external-link"></i></a>` : ''}${owned ? `<div class="muted" style="font-size:12px">You own ${owned}</div>` : ''}</div>
+      <div class="price" style="font-size:15px;margin-bottom:10px">${SC.foil ? 'Foil ' : ''}${fmt(price, m.currency)} <span class="muted" style="font-size:12px">${esc(m.psrc)}</span><button class="lnk" id="cpx">${price == null ? 'Check prices' : 'All prices'} <i class="ti ti-chevron-right"></i></button>${owned ? `<div class="muted" style="font-size:12px">You own ${owned}</div>` : ''}</div>
     </div></div>
       <div class="btns" style="margin-top:12px"><button class="btn primary" id="cadd" style="flex:1"><i class="ti ti-plus"></i>Add</button>
         <button class="btn ${SC.foil ? 'on' : ''}" id="cfoil"><i class="ti ti-sparkles"></i>Foil</button><button class="btn" id="cinfo" aria-label="Details"><i class="ti ti-info-circle"></i></button><button class="btn" id="cundo" ${SC.last ? '' : 'disabled'}><i class="ti ti-arrow-back-up"></i>Undo</button></div>
@@ -1460,6 +1465,7 @@ function renderResult(){
   if($('#cadd')) $('#cadd').onclick = addCurrent;
   if($('#czm')) $('#czm').onclick = () => openViewer(m);
   if($('#cinfo')) $('#cinfo').onclick = () => openViewer(m, 'info');
+  if($('#cpx')) $('#cpx').onclick = () => openPrices(m, renderResult);
   if($('#cfoil')) $('#cfoil').onclick = () => { SC.foil = !SC.foil; renderResult() };
   if($('#cundo')) $('#cundo').onclick = undoLast;
   $$('#cres .cand-t').forEach(t => t.onclick = () => { SC.sel = +t.dataset.i; renderResult() });
@@ -1474,6 +1480,7 @@ function addCard(m, foil, delta){
   if(!c){ if(delta <= 0) return 0;
     c = {uid:uid(), key:k, game:m.game, gameName:m.gameName || '', set:m.set, number:m.number, showSet:m.showSet, showNum:String(m.showNum), name:m.name, setName:m.setName || '', rarity:m.rarity || '',
          image:m.image || '', alt:m.alt || [], link:m.link || '', price:m.price ?? null, priceFoil:m.priceFoil ?? null, currency:m.currency, psrc:m.psrc || '', foil:!!foil, qty:0, added:Date.now(), info:m.info || null};
+    if(m.px) c.px = JSON.parse(JSON.stringify(m.px)); else capturePx(c); pickPx(c);
     store.cards.unshift(c) }
   c.qty += delta; if(c.qty <= 0) store.cards = store.cards.filter(x => x !== c);
   persist(); tabCount(); return Math.max(0, c.qty);
@@ -1685,7 +1692,97 @@ function openMovers(){
 const tcgSearch = c => `https://www.tcgplayer.com/search/all/product?q=${enc(c.name.split(' - ')[0])}`;
 /* look up the price of one card in my collection: the game's own card database first, then my own price sources.
    Returns 'filled' (it had no price), 'updated', 'same' or 'missed'. */
-async function priceOne(c, cache = new Map()){ const r = await priceOne0(c, cache); if((r === 'updated') && c._before != null){ c.prev = c._before; c.prevAt = Date.now() } delete c._before; return r }
+async function priceOne(c, cache = new Map()){
+  const before = priceOf(c), stamp = c.priced;
+  if(!c.px) capturePx(c);                                      // first time: keep the price the card already had
+  await priceOne0(c, cache); delete c._before;
+  if(c.priced !== stamp) capturePx(c);                         // the game's own database (or your own source) gave a price
+  await addExtras(c).catch(() => {});                          // Cardmarket and TCGplayer from the daily price job
+  pickPx(c); const now = priceOf(c);
+  const r = before == null ? (now != null ? 'filled' : 'missed') : before !== now ? 'updated' : 'same';
+  if(r === 'updated'){ c.prev = before; c.prevAt = Date.now() }
+  return r }
+/* ---------------------------------------------------------------- several price sources, in the order you choose
+   Every card remembers what each source said (c.px). The binder, the totals and "Update prices" use the first source in
+   your order that has a price for the card; no price there, then the next one, and so on. */
+const PSRC = {cardmarket:{label:'Cardmarket', cur:'EUR', desc:'Europe’s biggest card shop · daily price guide in €'},
+  tcgplayer:{label:'TCGplayer', cur:'USD', desc:'American card shop · in $, counted in € for your totals'},
+  mine:{label:'My own price', cur:'EUR', desc:'A price you type in yourself, for example from eBay sold listings'},
+  other:{label:'Other sources', cur:null, desc:'Your own price sites, Nightvault and other card databases'}};
+const porder = () => { const o = (store.porder || []).filter(k => PSRC[k]); for(const k of Object.keys(PSRC)) if(!o.includes(k)) o.push(k); return o };
+const srcKey = s => /\(normal price\)/.test(s || '') ? 'none' : /cardmarket/i.test(s || '') ? 'cardmarket' : /tcgplayer/i.test(s || '') ? 'tcgplayer' : /^my own/i.test(s || '') ? 'mine' : 'other';
+const myPx = o => (store.myPx || {})[wkey(o)];
+function capturePx(o){
+  if(!o.psrc || (o.price == null && o.priceFoil == null)) return;
+  const k = srcKey(o.psrc); if(k === 'mine' || k === 'none') return;
+  (o.px ||= {})[k] = [o.price ?? null, o.priceFoil ?? null, Date.now(), o.currency || PSRC[k].cur || 'EUR', o.psrc, (o.px[k] || [])[5] || null] }
+function pickPx(o, foil = o.foil){                             // foil null: any price (binder, search results)
+  const px = Object.assign({}, o.px || {}), mine = myPx(o); if(mine) px.mine = [mine[0], mine[1], mine[2], 'EUR', 'My own price'];
+  for(const k of porder()){ const v = px[k]; if(!v) continue;
+    if((foil == null ? (v[0] ?? v[1]) : foil ? v[1] : v[0]) == null) continue;
+    o.price = v[0] ?? null; o.priceFoil = v[1] ?? null; o.currency = v[3] || PSRC[k].cur || 'EUR'; o.psrc = k === 'other' ? (v[4] || 'Other') : PSRC[k].label; return k }
+  if(foil === true){ const k = pickPx(o, false); if(k){ o.priceFoil = o.price; o.psrc += ' (normal price)'; return k } }   // no foil price anywhere: count the normal one
+  return null }
+function repickAll(){ store.cards.forEach(c => { if(!c.px) capturePx(c); pickPx(c) }); persist() }
+const XPG = new Set();                                          // games that have a file from the daily price job
+const XPI = (async () => { for(const u of [`${BASE}data/prices/index.json`, 'https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/prices/index.json'])
+  try{ const d = await getJSON(u); (d.games || []).forEach(g => XPG.add(g)); return }catch(e){} })();
+const canPrice = c => priced(c.game) || sourcesFor(c).length > 0 || XPG.has(c.game);
+const _xp = {};
+function extraFile(g){ if(!(g in _xp)) _xp[g] = (async () => {
+  for(const u of [`${BASE}data/prices/${g}.json`, `https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/prices/${g}.json`])
+    try{ const d = await getJSON(u); if(d && (d.cards || d.names)) return d }catch(e){}
+  delete _xp[g]; return null })(); return _xp[g] }
+const pxName = t => slugOf(String(t || '').replace(/\([^)]*\)/g, ''));
+async function addExtras(o){
+  if(!o || !o.game || (XPG.size && !XPG.has(o.game))) return false;
+  const d = await extraFile(o.game); if(!d) return false;
+  const e = (d.cards || {})[`${o.set}|${o.number}`], now = Date.now(); let got = false; o.px ||= {};
+  if(e && e.c && (e.c[0] != null || e.c[1] != null)){ o.px.cardmarket = [e.c[0], e.c[1], now, 'EUR', 'Cardmarket', {low:e.c[2], avg30:e.c[3], id:e.c[4]}]; got = true }
+  if(e && e.t && (e.t[0] != null || e.t[1] != null)){ o.px.tcgplayer = [e.t[0], e.t[1], now, 'USD', 'TCGplayer', {id:e.t[2]}]; got = true }
+  if(!(e && e.c) && d.names){ const l = d.names[pxName(o.name)] || d.names[pxName(String(o.name).split(' - ')[0])] || [];
+    if(l.length === 1){ o.px.cardmarket = [l[0][0], l[0][1], now, 'EUR', 'Cardmarket', {low:l[0][2], avg30:l[0][3], id:l[0][4], byName:true}]; got = true }
+    else if(l.length > 1){ const v = l.map(x => x[0]).filter(x => x != null); if(v.length) o._cmRange = [Math.min(...v), Math.max(...v), l.length] } }
+  return got }
+const CM_SLUG = {wow:'WoW', ws:'WeissSchwarz', fab:'FleshAndBlood', digimon:'Digimon', swu:'StarWarsUnlimited', onepiece:'OnePiece', lorcana:'Lorcana', dbsm:'DragonBallSuper',
+  dbsfw:'DragonBallSuper', riftbound:'Riftbound', ccgt178:'Spoils', ccgt288:'FinalFantasy', ccgt282:'Dragoborne', ccgt213:'MyLittlePony', ccgt217:'StarWarsDestiny', ccgt260:'DragonBallSuper',
+  mtg:'Magic', pokemon:'Pokemon', ygo:'YuGiOh'};
+const gameWord = o => String((GAMES[o.game] && (GAMES[o.game].full || GAMES[o.game].label)) || o.gameName || '').split(' (')[0].replace(/\s*(TCG|CCG|Card Game)$/i, '');
+const cardWord = o => String(o.name || '').split(' (')[0];
+function srcLink(k, o, meta){
+  if(k === 'cardmarket'){ const sl = CM_SLUG[o.game]; return !sl ? '' : meta && meta.id ? `https://www.cardmarket.com/en/${sl}/Products?idProduct=${meta.id}` : `https://www.cardmarket.com/en/${sl}/Products/Search?searchString=${enc(cardWord(o))}` }
+  if(k === 'tcgplayer') return meta && meta.id ? `https://www.tcgplayer.com/product/${meta.id}` : o.pid ? `https://www.tcgplayer.com/product/${o.pid}` : tcgSearch(o);
+  return '' }
+const ebayUrl = (o, dom) => `https://www.${dom}/sch/i.html?_nkw=${enc((gameWord(o) + ' ' + cardWord(o)).trim())}&LH_Sold=1&LH_Complete=1`;
+function openPrices(o, after){
+  const owned = store.cards.includes(o), foil = owned ? !!o.foil : null, mine = myPx(o) || [];
+  const px = o.px || {}, used = (() => { const t = {px:o.px, game:o.game, set:o.set, number:o.number, foil:o.foil}; return pickPx(t, foil) })();
+  const val = (v, cur) => v == null ? '<span class="muted">–</span>' : fmt(v, cur) + (cur === 'USD' && toEur(v, cur) != null ? ` <span class="muted" style="font-size:11.5px">≈ ${fmt(toEur(v, cur), 'EUR')}</span>` : '');
+  const row = (k, i) => { const v = k === 'mine' ? (mine.length ? [mine[0], mine[1], mine[2], 'EUR'] : null) : px[k], meta = v && v[5], link = srcLink(k, o, meta);
+    const body = k === 'mine' ? `<div class="pxin"><label>€ <input id="pxm0" inputmode="decimal" placeholder="normal" value="${mine[0] ?? ''}"></label><label>€ <input id="pxm1" inputmode="decimal" placeholder="foil" value="${mine[1] ?? ''}"></label>
+          <button class="btn sm primary" id="pxsave">Save</button>${mine.length ? '<button class="btn sm" id="pxclr">Clear</button>' : ''}</div>
+        <div class="btns" style="margin-top:6px"><a class="btn sm" href="${esc(ebayUrl(o, 'ebay.com'))}" target="_blank" rel="noopener"><i class="ti ti-brand-ebay"></i>Sold on eBay.com</a><a class="btn sm" href="${esc(ebayUrl(o, 'ebay.de'))}" target="_blank" rel="noopener"><i class="ti ti-brand-ebay"></i>Sold on eBay.de (€)</a></div>`
+      : v ? `<div>${val(v[0], v[3])}${v[1] != null ? ` <span class="muted">· foil</span> ${val(v[1], v[3])}` : ''}</div>
+          <div class="muted" style="font-size:11.5px">${[k === 'other' && v[4], meta && meta.low != null && 'lowest ' + fmt(meta.low, v[3]), meta && meta.avg30 != null && '30-day average ' + fmt(meta.avg30, v[3]), meta && meta.byName && 'matched by name', v[2] && 'checked ' + new Date(v[2]).toLocaleDateString()].filter(Boolean).map(esc).join(' · ')}</div>`
+      : k === 'cardmarket' && o._cmRange ? `<div class="muted" style="font-size:12.5px">${fmt(o._cmRange[0], 'EUR')} – ${fmt(o._cmRange[1], 'EUR')} over ${o._cmRange[2]} printings with this name (not used: the printing is not clear)</div>`
+      : '<div class="muted" style="font-size:12.5px">No price from this source</div>';
+    return `<div class="pxrow ${used === k ? 'on' : ''}"><div class="pxn">${i + 1}</div><div class="grow"><div><b>${PSRC[k].label}</b>${used === k ? ' <span class="conf high">used</span>' : ''}${link ? ` <a href="${esc(link)}" target="_blank" rel="noopener" style="color:var(--accent);font-size:12.5px">open <i class="ti ti-external-link"></i></a>` : ''}</div>${body}</div></div>` };
+  modal(`<h3 style="margin-bottom:2px">Prices</h3><div class="sub" style="margin-bottom:10px">${esc(o.name)} · ${esc(o.showSet)} #${esc(o.showNum)}${owned && o.foil ? ' · foil' : ''}</div>
+    <div id="pxlist">${porder().map(row).join('')}</div>
+    <p class="hint">The first source in this order that has a price is used for your binder and totals. Change the order in Settings → Price sources.</p>
+    <div class="btns" style="justify-content:space-between;margin-top:10px"><button class="btn" id="pxchk"><i class="ti ti-world-search"></i>Check online now</button><span style="display:flex;gap:6px"><button class="btn" id="pxord"><i class="ti ti-arrows-sort"></i>Order</button><button class="btn primary" id="pxok">Done</button></span></div>`);
+  const done = () => { if(!owned) pickPx(o, null); store.cards.filter(c => wkey(c) === wkey(o)).forEach(c => pickPx(c)); persist(); if(after) after() };
+  const num = x => { const v = parseFloat(String(x).replace(',', '.')); return isFinite(v) && v > 0 ? +v.toFixed(2) : null };
+  $('#pxsave').onclick = () => { const a = num($('#pxm0').value), b = num($('#pxm1').value); store.myPx ||= {};
+    if(a == null && b == null) delete store.myPx[wkey(o)]; else store.myPx[wkey(o)] = [a, b, Date.now()]; done(); openPrices(o, after); toast('Saved your price') };
+  if($('#pxclr')) $('#pxclr').onclick = () => { delete (store.myPx || {})[wkey(o)]; done(); openPrices(o, after) };
+  $('#pxchk').onclick = async () => { $('#pxchk').disabled = true; $('#pxchk').innerHTML = '<i class="ti ti-loader-2"></i>Checking ...';
+    if(owned) await priceOne(o); else { capturePx(o); await addExtras(o).catch(() => {}) }
+    for(const c of store.cards.filter(c => c !== o && wkey(c) === wkey(o))){ c.px = Object.assign(c.px || {}, o.px) }
+    done(); openPrices(o, after) };
+  $('#pxord').onclick = () => { closeModal(); SP.page = 'prices'; show('settings') };
+  $('#pxok').onclick = () => { closeModal(); done() };
+}
 async function priceOne0(c, cache){
   const before = priceOf(c), k = c.game + '|' + c.name.toLowerCase(); c._before = before;
   if(c.game === 'pokemon'){                                    // Pokémon: ask TCGdex for this exact card (set id + card number)
@@ -1722,7 +1819,7 @@ async function priceOne0(c, cache){
 }
 async function priceCheck(onlyMissing){
   if(PC.running) return;
-  const todo = store.cards.filter(c => (priced(c.game) || sourcesFor(c).length) && (!onlyMissing || priceOf(c) == null));
+  await XPI; const todo = store.cards.filter(c => canPrice(c) && (!onlyMissing || priceOf(c) == null));
   Object.assign(PC, {running:true, stop:false, done:0, total:todo.length, filled:0, updated:0, missed:0});
   if(!todo.length){ PC.running = false; toast(onlyMissing ? 'Every card already has a price' : 'No cards to check'); drawPC(); return }
   drawPC();
@@ -2005,6 +2102,7 @@ async function binderSet(){
   const seen = new Set(cards.map(c => c.set + '|' + c.number));
   for(const c of ownedIn(g).filter(c => c.set === st.code)) if(!seen.has(c.set + '|' + c.number)){ cards.push({...c}); seen.add(c.set + '|' + c.number) }   // owned cards the list does not have
   cards.sort(byCardNumber);                                     // 1, 2, 3 ... 10, 111 - not in the order the card site sent them
+  await XPI; if(XPG.has(g) || store.myPx){ for(const m of cards){ if(!m._xp){ m._xp = 1; capturePx(m); await addExtras(m).catch(() => {}) } pickPx(m, null) } }
   const draw = () => {
     const om = ownedMap(g), own = ownedIn(g).filter(c => c.set === st.code), have = cards.filter(c => om.get(c.set + '|' + c.number));
     const cur = (cards.find(c => c.price != null) || own[0] || {}).currency || 'EUR';
@@ -2025,7 +2123,7 @@ async function binderSet(){
       if(q > 1) return binderCard(m, draw);                                          // several copies: change them in the card window
       addCard(m, false, q ? -1 : 1); if(!q && isWant(m)) toggleWant(m); draw();
       const c = !q && store.cards.find(x => x.key === ckey(m, false));
-      if(c && priceOf(c) == null && (priced(c.game) || sourcesFor(c).length)){ await priceOne(c); persist(); draw() } });
+      if(c && priceOf(c) == null && canPrice(c)){ await priceOne(c); persist(); draw() } });
   };
   draw();
 }
@@ -2094,10 +2192,11 @@ function binderCard(m, redraw){
       <div class="sub" style="margin:2px 0 8px">${esc(m.showSet)} #${esc(m.showNum)}${m.rarity ? ' · ' + esc(m.rarity) : ''}</div>
       <div class="price">${fmt(m.price, m.currency)}${m.priceFoil != null ? ` <span class="muted">· foil ${fmt(m.priceFoil, m.currency)}</span>` : ''}</div></div></div>
     ${[false, true].map(f => `<div class="row"><div class="grow">${f ? 'Foil' : 'Normal'}</div><div class="qb"><button data-f="${f ? 1 : 0}" data-d="-1">−</button><b id="bq${f ? 1 : 0}">${q(f)}</b><button data-f="${f ? 1 : 0}" data-d="1">+</button></div></div>`).join('')}
-    <div class="btns" style="margin-top:10px"><button class="btn sm" id="binfo"><i class="ti ti-info-circle"></i>Details</button><button class="btn sm ${isWant(m) ? 'on' : ''}" id="bwant"><i class="ti ti-heart${isWant(m) ? '-filled' : ''}"></i>${isWant(m) ? 'On my wishlist' : 'Want this'}</button>
+    <div class="btns" style="margin-top:10px"><button class="btn sm" id="binfo"><i class="ti ti-info-circle"></i>Details</button><button class="btn sm" id="bpx"><i class="ti ti-coin-euro"></i>Prices</button><button class="btn sm ${isWant(m) ? 'on' : ''}" id="bwant"><i class="ti ti-heart${isWant(m) ? '-filled' : ''}"></i>${isWant(m) ? 'On my wishlist' : 'Want this'}</button>
       <button class="btn sm ${mine.some(c => c.trade) ? 'on' : ''}" id="btrade" ${mine.length ? '' : 'disabled'}><i class="ti ti-arrows-exchange"></i>${mine.some(c => c.trade) ? 'For trade' : 'Offer for trade'}</button></div>
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" id="bcx">Done</button></div>`);
   $('#bzm').onclick = () => openViewer(m); $('#binfo').onclick = () => openViewer(m, 'info');
+  $('#bpx').onclick = () => { const own = store.cards.find(c => c.game === m.game && c.set === m.set && c.number === m.number); openPrices(own || m, () => binderCard(m, redraw)) };
   $('#bwant').onclick = () => { const on = toggleWant(m); $('#bwant').classList.toggle('on', on); $('#bwant').innerHTML = `<i class="ti ti-heart${on ? '-filled' : ''}"></i>${on ? 'On my wishlist' : 'Want this'}` };
   $('#btrade').onclick = () => { const own = store.cards.filter(c => c.game === m.game && c.set === m.set && c.number === m.number); if(!own.length) return;
     const on = !own.some(c => c.trade); own.forEach(c => c.trade = on); persist(); $('#btrade').classList.toggle('on', on); $('#btrade').innerHTML = `<i class="ti ti-arrows-exchange"></i>${on ? 'For trade' : 'Offer for trade'}` };
@@ -2105,7 +2204,7 @@ function binderCard(m, redraw){
     const c = store.cards.find(x => x.key === ckey(m, f)); $('#bq' + b.dataset.f).textContent = (c || {}).qty || 0;
     if(c && +b.dataset.d > 0 && isWant(m)){ toggleWant(m); $('#bwant').classList.remove('on'); $('#bwant').innerHTML = '<i class="ti ti-heart"></i>Want this'; toast('Got it - removed from your wishlist') }
     $('#btrade').disabled = !store.cards.some(x => x.game === m.game && x.set === m.set && x.number === m.number);
-    if(c && +b.dataset.d > 0 && priceOf(c) == null && (priced(c.game) || sourcesFor(c).length)){          // no price in the set list: look it up now
+    if(c && +b.dataset.d > 0 && priceOf(c) == null && canPrice(c)){          // no price in the set list: look it up now
       const el = $('.mbox .price'); if(el) el.innerHTML = '<span class="muted">Looking up the price ...</span>';
       const r = await priceOne(c); persist();
       if(c.price != null && m.price == null) m.price = c.price; if(c.priceFoil != null && m.priceFoil == null) m.priceFoil = c.priceFoil; m.currency = c.currency || m.currency;
@@ -2152,13 +2251,14 @@ function viewCards(){
     rows.sort(F.sort === 'name' ? (a, b) => a.name.localeCompare(b.name) : F.sort === 'value' ? (a, b) => pv(b) - pv(a)
             : F.sort === 'set' ? (a, b) => a.showSet.localeCompare(b.showSet) || normNum(a.number).localeCompare(normNum(b.number), undefined, {numeric:true}) : (a, b) => b.added - a.added);
     $('#mlist').innerHTML = rows.length ? rows.map(c => `<div class="srow"><span data-zoom="${c.uid}" style="display:contents">${c.image ? pic(c, 'loading="lazy"') : '<div class="ph"></div>'}</span>
-      <div class="grow"><div class="nm">${esc(c.name)}${c.check ? ' <span class="conf medium" style="margin:0 0 0 4px">check</span>' : ''}</div><div class="meta"><span class="dot" style="background:${GAMES[c.game].color};margin-right:5px"></span>${c.gameName ? esc(c.gameName) + ' · ' : ''}${esc(c.showSet)} #${esc(c.showNum)}${c.foil ? ' · foil' : ''} · ${priceOf(c) != null ? `<span class="price">${fmt(priceOf(c), c.currency)}</span>` : c.game === 'other' ? '<span>no price</span>' : `<a href="${esc(c.link || tcgSearch(c))}" target="_blank" rel="noopener" style="color:var(--accent)">no price · look up <i class="ti ti-external-link"></i></a>`}</div></div>
+      <div class="grow"><div class="nm">${esc(c.name)}${c.check ? ' <span class="conf medium" style="margin:0 0 0 4px">check</span>' : ''}</div><div class="meta"><span class="dot" style="background:${GAMES[c.game].color};margin-right:5px"></span>${c.gameName ? esc(c.gameName) + ' · ' : ''}${esc(c.showSet)} #${esc(c.showNum)}${c.foil ? ' · foil' : ''} · <button class="lnk" data-px="${c.uid}">${priceOf(c) != null ? `<span class="price">${fmt(priceOf(c), c.currency)}</span>` : 'no price · check'}</button></div></div>
       <div class="qb"><button data-u="${c.uid}" data-d="-1" aria-label="One less">−</button><b>${c.qty}</b><button data-u="${c.uid}" data-d="1" aria-label="One more">+</button></div></div>`).join('')
       : `<div class="empty">${cs.length ? 'Nothing matches that filter.' : 'No cards yet.<br>Scan a card and tap Add.'}<br><button class="btn primary" id="mgo" style="margin-top:12px"><i class="ti ti-camera"></i>Scan cards</button></div>`;
     $$('#mlist [data-u]').forEach(b => b.onclick = () => { const c = store.cards.find(x => x.uid === b.dataset.u); if(!c) return;
       c.qty += +b.dataset.d; if(c.qty <= 0){ store.cards = store.cards.filter(x => x !== c); toast('Removed ' + c.name) } persist(); tabCount(); viewCards() });
     if($('#mgo')) $('#mgo').onclick = () => show('scan');
     $$('#mlist [data-zoom]').forEach(z => z.onclick = () => { const c = store.cards.find(x => x.uid === z.dataset.zoom); if(c) openViewer(c) });
+    $$('#mlist [data-px]').forEach(z => z.onclick = () => { const c = store.cards.find(x => x.uid === z.dataset.px); if(c) openPrices(c, viewCards) });
   };
   let t; $('#mq').oninput = e => { clearTimeout(t); t = setTimeout(() => { F.q = e.target.value; draw() }, 120) };
   $('#mgame').onchange = e => { F.game = e.target.value; F.set = 'all'; viewCards() };
@@ -2251,7 +2351,7 @@ const SPAGES = [
   ['games', 'cards', 'Card games', () => store.games.length ? store.games.map(g => g.label).join(', ') : 'Add a game to the list'],
   ['templates', 'layout-board-split', 'Scan templates', () => store.templates.length ? `${store.templates.length} template${store.templates.length === 1 ? '' : 's'}` : 'For special and new card layouts'],
   ['backs', 'school', 'Card backs', () => store.backs.length ? [...new Set(store.backs.map(b => GAMES[b.game] ? GAMES[b.game].label : b.game))].join(', ') : 'Recognise a game by its back'],
-  ['prices', 'tag', 'Price sources', () => store.sources.length ? store.sources.map(x => x.label).join(', ') : 'Your own sites for prices'],
+  ['prices', 'tag', 'Price sources', () => porder().map(k => PSRC[k].label).join(' → ')],
   ['look', 'palette', 'Appearance', () => (THEMES.find(x => x[0] === O.theme) || THEMES[0])[1]],
   ['data', 'database', 'Card data', () => 'Where cards and prices come from'],
   ['dev', 'code', 'Developer', () => 'Scan details for troubleshooting'],
@@ -2359,6 +2459,9 @@ function viewSettings(){
         <button class="btn sm" data-gtpl="${x.id}">Template</button><button class="btn sm" data-gedit="${x.id}">Edit</button></div>`).join('') : `<div class="muted" style="font-size:13px;padding:4px 0 8px">Built in: ${Object.keys(GAMES).filter(k => BUILTIN.has(k) && k !== 'other').map(k => esc(GAMES[k].label)).join(', ')}.</div>`}
       <div class="btns" style="margin-top:8px"><button class="btn sm primary" id="gcat"><i class="ti ti-books"></i>Add from the catalog (295 games)</button><button class="btn sm" id="gnew"><i class="ti ti-plus"></i>Add your own</button></div>
       <p class="hint" style="margin:8px 0 0">The catalog is CCG Trader's card database: old and new games with every set, card number and picture. No prices yet.</p></div>
+    <div class="panel" data-p="prices"><h3>Order of price sources</h3><p class="hint" style="margin:0 0 6px">Your binder and totals use the first source in this list that has a price for a card. No price there? Then the next one, and so on.</p>
+      <div id="porder">${porder().map((k, i, a) => `<div class="pxrow"><div class="pxn">${i + 1}</div><div class="grow"><b>${PSRC[k].label}</b><div class="muted" style="font-size:12px">${PSRC[k].desc}</div></div>
+        <button class="btn sm" data-pmv="${i}:-1" ${i ? '' : 'disabled'} aria-label="Up"><i class="ti ti-arrow-up"></i></button><button class="btn sm" data-pmv="${i}:1" ${i < a.length - 1 ? '' : 'disabled'} aria-label="Down"><i class="ti ti-arrow-down"></i></button></div>`).join('')}</div></div>
     <div class="panel" data-p="prices"><h3>Price sources</h3><p class="hint" style="margin:0 0 6px">Add a site the app can ask for prices, for example for a game you add by hand. Used by “Update prices” when the built-in sources have no price.</p>
       ${store.sources.length ? store.sources.map(x => `<div class="row" style="padding:7px 0"><i class="ti ti-tag" style="color:var(--accent)"></i><div class="grow">${esc(x.label)} <span class="muted" style="font-size:12px">· ${esc(gameKeyLabel(x.game))}</span></div><button class="btn sm" data-sedit="${x.id}">Edit</button></div>`).join('') : '<div class="muted" style="font-size:13px;padding:4px 0 8px">No sources of your own yet.</div>'}
       <div class="btns" style="margin-top:8px"><button class="btn sm primary" id="snew"><i class="ti ti-plus"></i>Add price source</button></div></div>
@@ -2421,6 +2524,7 @@ function viewSettings(){
   $('#oprice').onchange = e => { O.dailyPrices = e.target.checked; persist() };
   $('#tnew').onclick = () => openTemplate(null, true);
   $('#snew').onclick = () => openSource(null);
+  $$('#porder [data-pmv]').forEach(b => b.onclick = () => { const [i, d] = b.dataset.pmv.split(':').map(Number), o = porder(); [o[i], o[i + d]] = [o[i + d], o[i]]; store.porder = o; repickAll(); viewSettings() });
   $('#gnew').onclick = () => openGame(null);
   $('#gcat').onclick = () => openCatalog();
   $$('[data-gedit]').forEach(b => b.onclick = () => { const g = store.games.find(x => x.id === b.dataset.gedit); g && g.ccgt ? editCatalogGame(g) : openGame(g) });
