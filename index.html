@@ -1163,7 +1163,7 @@ function grab(){
   c.getContext('2d').drawImage(SC.still || $('#cv'), g.x, g.y, g.w, g.h, 0, 0, c.width, c.height);
   return c;
 }
-function crop(card, b, invert = true){
+function crop(card, b, invert = true, mode){
   const sx = b[0] * card.width, sy = b[1] * card.height, sw = (b[2] - b[0]) * card.width, sh = (b[3] - b[1]) * card.height;
   const k = Math.min(3, Math.max(1, 1000 / sw)), c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
   const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(card, sx, sy, sw, sh, 0, 0, c.width, c.height);
@@ -1172,7 +1172,20 @@ function crop(card, b, invert = true){
   const span = Math.max(1, hi - lo); let dark = 0;
   for(let i = 0; i < p.length; i += 4){ const y = (p[i] - lo) * 255 / span; p[i] = p[i+1] = p[i+2] = y; if(y < 128) dark++ }
   if(invert && dark > p.length / 8){ for(let i = 0; i < p.length; i += 4){ p[i] = p[i+1] = p[i+2] = 255 - p[i] } }   // light text on a dark bar
+  if(mode === 'adapt') adaptive(p, c.width, c.height);
   x.putImageData(im, 0, 0); return c;
+}
+/* black text on white by comparing every pixel with its surroundings: reads grey text on a yellow or silver bar,
+   and names with a light glow or a gradient behind them */
+function adaptive(p, W, H){
+  const S = new Float64Array((W + 1) * (H + 1));
+  for(let y = 0; y < H; y++){ let row = 0; for(let x = 0; x < W; x++){ row += p[(y * W + x) * 4]; S[(y + 1) * (W + 1) + x + 1] = S[y * (W + 1) + x + 1] + row } }
+  const r = Math.max(8, Math.round(H * 0.3)), out = new Uint8Array(W * H);
+  for(let y = 0; y < H; y++){ const y0 = Math.max(0, y - r), y1 = Math.min(H, y + r + 1);
+    for(let x = 0; x < W; x++){ const x0 = Math.max(0, x - r), x1 = Math.min(W, x + r + 1);
+      const m = (S[y1 * (W + 1) + x1] - S[y0 * (W + 1) + x1] - S[y1 * (W + 1) + x0] + S[y0 * (W + 1) + x0]) / ((y1 - y0) * (x1 - x0));
+      out[y * W + x] = p[(y * W + x) * 4] < m - 12 ? 0 : 255 } }
+  for(let i = 0; i < W * H; i++) p[i * 4] = p[i * 4 + 1] = p[i * 4 + 2] = out[i];
 }
 function cleanName(text){
   const lines = text.split(/\n+/).map(l => l.replace(NOISE, ' ').replace(/[^\p{L}0-9'’,\-&:!. ]/gu, ' ').replace(/\b\d+\b/g, ' ').replace(/\s+/g, ' ').trim()
@@ -1206,15 +1219,41 @@ function nameCandidates(text){
 /* read text with the reader's own confidence (0-100); lines=true also gives each line with its confidence */
 async function readText(w, canvas, lines){
   const r = await w.recognize(canvas, {}, lines ? {text:true, blocks:true} : {text:true}), d = (r && r.data) || {}, L = [];
-  if(lines && Array.isArray(d.blocks)) for(const b of d.blocks) for(const p of (b.paragraphs || [])) for(const l of (p.lines || [])) L.push({text:l.text || '', conf:typeof l.confidence === 'number' ? l.confidence : 100});
+  if(lines && Array.isArray(d.blocks)) for(const b of d.blocks) for(const p of (b.paragraphs || [])) for(const l of (p.lines || [])) L.push({text:l.text || '', conf:typeof l.confidence === 'number' ? l.confidence : 100,
+    words:(l.words || []).map(w => ({text:w.text || '', conf:typeof w.confidence === 'number' ? w.confidence : 100}))});
   return {text:d.text || '', conf:typeof d.confidence === 'number' ? d.confidence : 100, lines:L};
 }
 const MIN_NAME_CONF = 55, MIN_LINE_CONF = 65;
+/* the name in a read: the words the reader is sure of, line by line (junk around the name - symbols, HP, a stage
+   banner - no longer makes the whole read "too unsure") */
+function bestName(R){
+  let best = null;
+  for(const l of R.lines || []){ const ws = (l.words || []).filter(w => w.conf >= 55 && /\p{L}{2}/u.test(w.text)); if(!ws.length) continue;
+    const q = cleanName(ws.map(w => w.text).join(' ')), conf = ws.reduce((a, w) => a + w.conf, 0) / ws.length;
+    if(q.replace(/[^\p{L}]/gu, '').length >= 4 && (!best || conf * Math.sqrt(q.length) > best.conf * Math.sqrt(best.q.length))) best = {q, conf} }
+  return best && best.conf >= 60 ? best : null }
+const grow = (b, k) => { const h = b[3] - b[1]; return [Math.max(0, b[0] - 0.03), Math.max(0, b[1] - h * k), Math.min(1, b[2] + 0.03), Math.min(1, b[3] + h * k)] };
+/* Pokémon: "150/217" at the bottom is enough - the set is the one with 217 cards (and the code printed next to it) */
+let _pkSets;
+async function pokemonByNumber(text, say){
+  const m = /(\d{1,3})\s*\/\s*(\d{2,3})\b/.exec(String(text || '').replace(/[oO]/g, '0')); if(!m) return [];
+  const n = String(+m[1]), total = +m[2]; if(!+n || n > total + 120) return [];
+  if(!_pkSets) _pkSets = getJSON('https://api.tcgdex.net/v2/en/sets').catch(e => { _pkSets = null; throw e });
+  const sets = (await _pkSets).filter(x => x.cardCount && x.cardCount.official === total);
+  const codes = new Set((String(text).toUpperCase().match(/\b[A-Z]{2,4}(?=EN\b|\b)/g) || []));
+  sets.sort((a, b) => (codes.has(String(b.id).toUpperCase()) - codes.has(String(a.id).toUpperCase())) || String(b.id).localeCompare(String(a.id)));
+  say && say(`Looking up card ${n}/${total} ...`);
+  const out = [];
+  for(const st of sets.slice(0, 6)){ const d = await getJSON(`https://api.tcgdex.net/v2/en/cards/${enc(st.id)}-${enc(n)}`).catch(() => getJSON(`https://api.tcgdex.net/v2/en/cards/${enc(st.id)}-${enc(n.padStart(3, '0'))}`).catch(() => null));
+    if(!d || !d.name) continue; const cm = (d.pricing || {}).cardmarket || {}, eur = cm.avg ?? cm.trend ?? null, sid = String(st.id);
+    out.push({game:'pokemon', set:sid.toLowerCase(), number:normNum(d.localId), showSet:sid.toUpperCase(), showNum:d.localId + '/' + total, name:d.name, setName:st.name || '', rarity:d.rarity || '',
+      released:'', image:d.image ? d.image + '/low.webp' : '', price:eur, priceFoil:cm['avg-holo'] ?? null, currency:'EUR', psrc:eur != null ? 'Cardmarket' : '', info:tcgdexInfo(d), idHit:true}) }
+  return out }
 /* recognise one card picture (756×1056). Used by the normal scan and by quick scan in the background.
    Returns {kind:'result', r} | {kind:'manual', name, game} | {kind:'none'} */
 async function identify(card, G, say){
   const w = await ocr(), isAuto = G === 'auto', noLookup = g => g === 'other' || (g !== 'auto' && !FIND[g]);
-  let full = '', fullSure = '', found = '', tokens = new Set(), best = null, anyName = false;
+  let full = '', fullSure = '', found = '', tokens = new Set(), best = null, anyName = false, numText = '';
   const tried = new Set();
   const readFull = async () => {
     if(full || !(O.full || isAuto)) return; say('Reading the whole card ...');
@@ -1245,9 +1284,14 @@ async function identify(card, G, say){
   const tpls = templateList(gameNow === 'other' ? '' : gameNow);
   dlog('templates to try', tpls.map(t => t.label + (t.game && !gameNow ? ' (' + GAMES[t.game].label + ')' : '')).join(', '));
   for(const t of tpls.slice(0, 8)){
-    const NR = await readText(w, crop(card, t.zones.name)), txt = NR.text, q0 = cleanName(txt), q = NR.conf >= MIN_NAME_CONF ? q0 : ''; if(q.length >= 3) anyName = true;
-    dlog(`template “${t.label}” name`, JSON.stringify(txt.trim()) + ' → ' + JSON.stringify(q0) + ` (reader ${Math.round(NR.conf)}% sure${q0 && !q ? ', too unsure - ignored' : ''})`);
-    if(t.zones.num && (O.readNum || !t.std)){ try{ const nt = (await w.recognize(crop(card, t.zones.num))).data.text; numTokens(nt).forEach(x => tokens.add(x)); dlog(`template “${t.label}” set & number`, JSON.stringify(nt.trim())) }catch(e){} }
+    let NR = await readText(w, crop(card, t.zones.name), true), pick = bestName(NR);
+    for(const [how, z, md] of [['contrast', t.zones.name, 'adapt'], ['taller box', grow(t.zones.name, 0.45), ''], ['taller box, contrast', grow(t.zones.name, 0.45), 'adapt']]){
+      if(pick || (NR.conf >= MIN_NAME_CONF && cleanName(NR.text).length >= 3)) break;
+      dlog(`template “${t.label}” name`, JSON.stringify(NR.text.trim()) + ` (reader ${Math.round(NR.conf)}% sure) - reading again (${how})`);
+      const R2 = await readText(w, crop(card, z, true, md), true), p2 = bestName(R2); if(p2 || R2.conf > NR.conf){ NR = R2; pick = p2 } }
+    const txt = NR.text, q0 = pick ? pick.q : cleanName(txt), q = pick ? pick.q : NR.conf >= MIN_NAME_CONF ? q0 : ''; if(q.length >= 3) anyName = true;
+    dlog(`template “${t.label}” name`, JSON.stringify(txt.trim()) + ' → ' + JSON.stringify(q0) + ` (reader ${Math.round(pick ? pick.conf : NR.conf)}% sure${q0 && !q ? ', too unsure - ignored' : ''})`);
+    if(t.zones.num && (O.readNum || !t.std)){ try{ const nt = (await w.recognize(crop(card, t.zones.num))).data.text; numText += '\n' + nt; numTokens(nt).forEach(x => tokens.add(x)); dlog(`template “${t.label}” set & number`, JSON.stringify(nt.trim())) }catch(e){} }
     let extra = [];
     if(t.zones.text){ try{ const xt = (await w.recognize(crop(card, t.zones.text, false))).data.text; extra = nameCandidates(xt); numTokens(xt).forEach(x => tokens.add(x)); dlog(`template “${t.label}” extra text`, JSON.stringify(xt.trim().slice(0, 300))) }catch(e){} }
     if(noLookup(G)){ if(q.length >= 3) return {kind:'manual', name:q, game:G}; continue }
@@ -1264,6 +1308,26 @@ async function identify(card, G, say){
     const cands = nameCandidates(fullSure); if(cands.length) anyName = true;
     for(const q of cands.slice(0, 4)){ await lookFor(q, games2, null); if(sure()) break }
     if(!best && games2.includes('onepiece') && tokens.size) await lookFor('', ['onepiece'], null);   // One Piece: the card number alone is enough
+  }
+  const topGame = best && best.list.length ? best.list.slice().sort((a, b) => b.sim - a.sim)[0].game : '';
+  if((G === 'pokemon' || (isAuto && (!found || found === 'pokemon'))) && (!sure() || topGame === 'pokemon')){
+    let nt = numText; if(!/\d\s*\/\s*\d/.test(nt)){ try{ const z = (G === 'pokemon' || found === 'pokemon') ? GAMES.pokemon.num : AUTO.num;
+      nt += '\n' + (await w.recognize(crop(card, z))).data.text + '\n' + (await w.recognize(crop(card, z, true, 'adapt'))).data.text; dlog('set & number', JSON.stringify(nt.trim())) }catch(e){} }
+    if(!/\d\s*\/\s*\d/.test(nt)) nt += '\n' + full;
+    try{ const list = await pokemonByNumber(nt, say);
+      if(list.length && sure()){                                   // name found: the number picks the right printing
+        const same = list.filter(m => sim(m.name.toLowerCase(), best.q.toLowerCase()) >= 0.8);
+        const tot = (same[0] || {}).showNum ? String(same[0].showNum).split('/')[1] : '', mine = best.list.filter(x => x.game === 'pokemon' && same.some(y => normNum(y.number) === normNum(x.number))
+          && sim(x.name.toLowerCase(), best.q.toLowerCase()) >= 0.8 && (!tot || !String(x.showNum).includes('/') || String(x.showNum).split('/')[1] === tot));
+        if(mine.length){ mine.forEach(m => { m.hit = 3; m.sim = Math.max(m.sim, 1) }); best.list = mine.concat(best.list.filter(x => !mine.includes(x))); best.best = 1;
+          dlog('printing found by number', mine.map(m => `${m.showSet} ${m.showNum}`).join(', ')) }
+        else if(same.length){ same.forEach(m => { m.sim = 1; m.hit = 3 }); best.list = same.concat(best.list.filter(x => !same.some(y => y.set === x.set && y.number === x.number))); best.best = 1;
+          dlog('printing found by number', same.map(m => `${m.showSet} ${m.showNum}`).join(', ')) } }
+      else if(list.length){ const names = [best && best.q, ...nameCandidates(fullSure)].filter(Boolean);
+        list.forEach(m => { m.sim = names.length ? Math.max(0.9, ...names.map(q => sim(q, m.name))) : 0.95; m.hit = 3 });
+        dlog('found by number', list.map(m => `${m.name} ${m.showSet} ${m.showNum}`).join(', '));
+        best = {q:list[0].name, list, best:Math.max(...list.map(m => m.sim)), failed:[], errors:'', tokens}; anyName = true } }
+    catch(e){ dlog('number lookup failed', e.message) }
   }
   dlog('numbers and codes seen', [...tokens].filter(x => /\d/.test(x)).slice(0, 30).join(' ') || 'none');
   if(!best){ if(!anyName) return {kind:'none'}; best = {q:'', list:[], best:0, failed:[], tokens} }
