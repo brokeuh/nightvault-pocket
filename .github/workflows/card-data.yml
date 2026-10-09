@@ -17,7 +17,7 @@ jobs:
   cards:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Build the card files
         run: |
@@ -26,7 +26,14 @@ jobs:
 
           GAMES = {"gundam": 86, "digimon": 63, "fab": 62, "sorcery": 77, "ws": 20, "dbsfw": 80, "dbsm": 27, "dbz": 23}
           SEALED = re.compile(r"\b(booster|box|case|pack|bundle|deck|display|sleeves?|playmat|binder|tin|kit|collection|set of|starter|blister|tournament|gift)\b", re.I)
-          os.makedirs("data", exist_ok=True)
+          os.makedirs("data/text", exist_ok=True)
+          TEXT_KEYS = ("description", "cardtext", "card text", "effect", "text", "rules", "ability", "abilities", "flavortext", "flavor text")
+          SKIP_KEYS = ("rarity", "number", "upc", "release")
+
+          def plain(t):
+              t = re.sub(r"<br\s*/?>", "\n", str(t or ""), flags=re.I)
+              t = re.sub(r"<[^>]+>", "", t).replace("&nbsp;", " ").replace("&amp;", "&").replace("&quot;", '"').replace("&#39;", "'")
+              return re.sub(r"[ \t]+", " ", t).strip()
 
           def get(url):
               req = urllib.request.Request(url, headers={"User-Agent": "nightvault-pocket (personal card collection app, once a day)"})
@@ -55,7 +62,7 @@ jobs:
               except Exception as e:
                   print(key, "skipped:", e); continue
               groups.sort(key=lambda g: g.get("publishedOn") or "", reverse=True)
-              sets, cards, used = [], [], set()
+              sets, cards, used, texts = [], [], set(), {}
               for g in groups:
                   try:
                       prods = get(f"https://tcgcsv.com/tcgplayer/{cat}/{g['groupId']}/products")["results"]
@@ -77,6 +84,11 @@ jobs:
                           continue
                       if (ext.get("Rarity") or "").lower() in ("sealed", "none"):
                           continue
+                      txt = "\n\n".join(plain(v) for k, v in ext.items() if k and k.lower().replace("_", " ") in TEXT_KEYS and plain(v))
+                      typ = " · ".join(f"{k} {plain(v)}" if k.lower() not in ("cardtype", "card type", "color", "colour", "class", "attribute", "trait", "type") else plain(v)
+                                       for k, v in ext.items() if k and v and k.lower() not in SKIP_KEYS and k.lower().replace("_", " ") not in TEXT_KEYS)[:300]
+                      if txt or typ:
+                          texts[str(p["productId"])] = [typ, txt[:2500]]
                       pr = px.get(p["productId"], [None, None])
                       rows.append([len(sets), str(ext.get("Number") or ""), p.get("name") or "", ext.get("Rarity") or "", p["productId"], pr[0], pr[1]])
                   if not rows:
@@ -89,6 +101,10 @@ jobs:
                   cards.extend(rows)
                   time.sleep(0.15)
               save(key, sets, cards, "TCGplayer via tcgcsv.com")
+              if texts:                                              # card text, only downloaded when someone opens "Details"
+                  with open(f"data/text/{key}.json", "w", encoding="utf-8") as f:
+                      json.dump(texts, f, separators=(",", ":"), ensure_ascii=False)
+                  print(key, len(texts), "card texts")
 
           EOF
 
