@@ -83,5 +83,6 @@ jobs:
             echo "Nothing changed."
           else
             git commit -m "Back up the CCG Trader catalog"
+            git pull --rebase -q || true
             git push
           fi

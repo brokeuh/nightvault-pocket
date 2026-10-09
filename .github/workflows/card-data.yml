@@ -124,5 +124,6 @@ jobs:
             echo "Nothing changed."
           else
             git commit -m "Update card data"
+            git pull --rebase -q || true
             git push
           fi
