@@ -1301,10 +1301,11 @@ function quickResult(job, res){
   }
   const item = {id:job.id, thumb:job.thumb, when:job.when, game:job.game, foil:job.foil, q:res.kind === 'result' ? res.r.q : (res.name || ''), cands:[], key:null};
   if(rr){
-    item.cands = rr.matches.slice(0, 10).map(candOf);
+    item.cands = (rr.sameArt ? rr.sameArt.concat(rr.matches.filter(m => !rr.sameArt.includes(m))) : rr.matches).slice(0, 10).map(candOf);
+    if(rr.sameArt) item.why = `Same artwork in ${rr.sameArt.length} sets - pick the set of your card`;
     addCard(rr.matches[0], job.foil, 1); item.key = ckey(rr.matches[0], job.foil);
     const c = store.cards.find(x => x.key === item.key); if(c) c.check = true;
-    job.status = 'check'; job.name = rr.matches[0].name; dlog('result', `not sure (${rr.confidence}${rr.ambiguous ? ', several printings' : ''}): ${job.name} - added, marked to check`);
+    job.status = 'check'; job.name = rr.matches[0].name; dlog('result', `not sure (${rr.confidence}${rr.sameArt ? ', same artwork in several sets' : rr.ambiguous ? ', several printings' : ''}): ${job.name} - added, marked to check`);
   } else {
     if(res.kind === 'manual') item.game = res.game;
     job.status = 'failed'; job.name = item.q || 'not recognised'; dlog('result', 'not recognised - put in the list to check');
@@ -1383,7 +1384,10 @@ async function artRefine(rr, card){
   dlog('picture match', scored.slice(0, 5).map(([m, x]) => `${m.showSet} ${m.showNum} ${x.toFixed(2)}`).join(' · '));
   const picked = new Set(scored.map(x => x[0])), order = scored.map(x => x[0]).concat(rr.matches.filter(m => !picked.has(m)));
   const out = Object.assign({}, rr, {matches:order, art:{best:+bs.toFixed(2), second:+second.toFixed(2)}});
-  if(bs >= 0.6 && bs - second >= 0.06){ out.ambiguous = false; if(rr.confidence === 'medium' && bs >= 0.7) out.confidence = 'high'; out.byArt = true }
+  const same = scored.filter(([, x]) => x >= 0.6 && bs - x < 0.06).map(([m]) => m);           // pictures that look alike
+  if(new Set(same.map(m => m.game + ':' + m.set)).size > 1){                                    // same artwork in several sets: you pick the set
+    out.ambiguous = true; out.sameArt = same; dlog('picture match', `same artwork in ${same.length} printings - left for you to pick`) }
+  else if(bs >= 0.6 && bs - second >= 0.06){ out.ambiguous = false; if(rr.confidence === 'medium' && bs >= 0.7) out.confidence = 'high'; out.byArt = true }
   return out }
 function showResult(r, manual, pre){
   const rr = pre || rank(r, manual);
@@ -1412,12 +1416,12 @@ function renderResult(){
       <div class="cname">${esc(m.name)}</div>
       <div class="sub" style="margin:2px 0 8px">${esc(m.showSet)} #${esc(m.showNum)}${m.setName ? ' · ' + esc(m.setName) : ''}${m.rarity ? ' · ' + esc(m.rarity) : ''}</div>
       <div><span class="gtag"><span class="dot" style="background:${GAMES[m.game].color}"></span>${esc(m.gameName || GAMES[m.game].label)}</span>${r.detected ? ' <span class="muted" style="font-size:11.5px">recognised from the card</span>' : ''}</div>
-      <div style="margin:8px 0 4px"><span class="conf ${r.confidence}">${{high:'Sure', medium:'Probably', low:'Not sure', manual:'Picked by name'}[r.confidence]}</span>${r.ambiguous ? '<span class="conf medium">check the set</span>' : ''}${r.pinned ? '<span class="conf high">number read</span>' : ''}${r.byArt ? '<span class="conf high">picture matched</span>' : ''}</div>
+      <div style="margin:8px 0 4px"><span class="conf ${r.confidence}">${{high:'Sure', medium:'Probably', low:'Not sure', manual:'Picked by name'}[r.confidence]}</span>${r.ambiguous ? '<span class="conf medium">check the set</span>' : ''}${r.pinned ? '<span class="conf high">number read</span>' : ''}${r.byArt ? '<span class="conf high">picture matched</span>' : ''}${r.sameArt ? `<span class="conf medium">same artwork in ${r.sameArt.length} sets</span>` : ''}</div>
       <div class="price" style="font-size:15px;margin-bottom:10px">${SC.foil ? 'Foil ' : ''}${fmt(price, m.currency)} <span class="muted" style="font-size:12px">${esc(m.psrc)}</span>${price == null && m.link ? ` <a href="${esc(m.link)}" target="_blank" rel="noopener" style="font-size:12.5px;color:var(--accent)">${esc(m.linkLabel || 'Look up price')} <i class="ti ti-external-link"></i></a>` : ''}${owned ? `<div class="muted" style="font-size:12px">You own ${owned}</div>` : ''}</div>
     </div></div>
       <div class="btns" style="margin-top:12px"><button class="btn primary" id="cadd" style="flex:1"><i class="ti ti-plus"></i>Add</button>
         <button class="btn ${SC.foil ? 'on' : ''}" id="cfoil"><i class="ti ti-sparkles"></i>Foil</button><button class="btn" id="cundo" ${SC.last ? '' : 'disabled'}><i class="ti ti-arrow-back-up"></i>Undo</button></div>
-      ${r.matches.length > 1 ? `<div class="hint" style="margin-top:12px">${r.matches.length} printings · tap the right one</div>
+      ${r.matches.length > 1 ? `<div class="hint" style="margin-top:12px">${r.sameArt ? `<b>Same artwork in ${r.sameArt.length} sets</b> - check the set symbol or number on your card and tap the right one` : r.matches.length + ' printings · tap the right one'}</div>
       <div class="cands">${r.matches.map((x, i) => `<button class="cand-t ${i === SC.sel ? 'on' : ''}" data-i="${i}" title="${esc(x.name)} · ${esc(x.showSet)} #${esc(x.showNum)}">${pic(x, 'loading="lazy"')}<span>${esc(x.showSet)} ${esc(x.showNum)}</span></button>`).join('')}</div>` : ''}`
     : ''}</div>
     <div id="csess"></div>`;
@@ -1813,7 +1817,7 @@ function viewReview(){
       </div>
       ${m ? `<div class="cname" style="margin-top:10px">${esc(m.name)}</div><div class="sub">${esc(m.showSet)} #${esc(m.showNum)}${m.setName ? ' · ' + esc(m.setName) : ''} · ${esc((GAMES[m.game] || {}).label || '')}${it.foil ? ' · foil' : ''} · ${fmt(it.foil ? m.priceFoil : m.price, m.currency)}</div>`
           : `<div class="sub" style="margin-top:10px">${it.q ? `Read “${esc(it.q)}” but found no card.` : 'No name could be read from this photo.'} Search by name below, or add it by hand.</div>`}
-      ${it.cands.length > 1 ? `<div class="hint" style="margin-top:10px">Other matches · tap the right one</div><div class="cands">${it.cands.map((x, i) => `<button class="cand-t ${i === RV.sel ? 'on' : ''}" data-i="${i}">${pic(x, 'loading="lazy"')}<span>${esc(x.showSet)} ${esc(x.showNum)}</span></button>`).join('')}</div>` : ''}
+      ${it.cands.length > 1 ? `<div class="hint" style="margin-top:10px">${it.why ? `<b style="color:var(--amber)">${esc(it.why)}</b> · tap the right one` : 'Other matches · tap the right one'}</div><div class="cands">${it.cands.map((x, i) => `<button class="cand-t ${i === RV.sel ? 'on' : ''}" data-i="${i}">${pic(x, 'loading="lazy"')}<span>${esc(x.showSet)} ${esc(x.showNum)}</span></button>`).join('')}</div>` : ''}
       <div class="btns" style="margin-top:14px">${m ? `<button class="btn primary" id="rvok" style="flex:1"><i class="ti ti-check"></i>${it.key ? (RV.sel === 0 ? 'Correct' : 'Use this one') : 'Add this card'}</button>` : `<button class="btn primary" id="rvman" style="flex:1"><i class="ti ti-plus"></i>Add by hand</button>`}
         <button class="btn" id="rvskip">Skip</button><button class="btn danger" id="rvdel"><i class="ti ti-trash"></i>${it.key ? 'Remove' : 'Discard'}</button></div>
       <form class="bar" id="rvf" style="margin:14px 0 0"><input class="grow" id="rvq" type="search" placeholder="Search by name" value="${esc(it.q)}" autocomplete="off"><button class="btn" type="submit">Search</button></form>
