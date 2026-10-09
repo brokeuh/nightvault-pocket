@@ -96,7 +96,7 @@ jobs:
               for s, cards in ours.items():
                   for _, n in cards:
                       in_sets[nm(n)].add(s)
-              out, sets_matched = {}, 0
+              best_of, cover = {}, {}
               for s, cards in ours.items():
                   names = {nm(n) for _, n in cards}
                   cand = defaultdict(int)
@@ -109,12 +109,19 @@ jobs:
                       if common >= min(3, len(names)) and score > bs:
                           best, bs = g, score
                   if best is not None and bs >= 0.3:
-                      sets_matched += 1
-                  else:
-                      best = None
+                      best_of[s] = best; cover[s] = cand[best] / max(1, len(gnames[best]))
+              owner = {}                                # two of our sets on one shop set (e.g. a loot set): a name goes to the set covering most of it
+              for s, g in best_of.items():
+                  for _, n in ours[s]:
+                      k = (g, nm(n))
+                      if k not in owner or cover[s] > cover[owner[k]]:
+                          owner[k] = s
+              out = {}
+              for s, cards in ours.items():
+                  best = best_of.get(s)
                   for num, name in cards:
                       key = nm(name)
-                      c = [t for t in by_group.get(best, []) if nm(t[1]) == key] if best is not None else []
+                      c = [t for t in by_group.get(best, []) if nm(t[1]) == key] if best is not None and owner.get((best, key)) == s else []
                       if len(c) > 1 and num:
                           same = [t for t in c if t[2] and norm_num(str(t[2]).split("/")[0]) == norm_num(num)]
                           c = same or c
@@ -125,6 +132,7 @@ jobs:
                       if c:
                           priced = [t for t in c if t[3][0] is not None or t[3][1] is not None] or c
                           out[f"{s}|{num}"] = priced[0][3]
+              sets_matched = len(best_of)
               return out, sets_matched
 
           # ---- which shop goes with which game of the app
