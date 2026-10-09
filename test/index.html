@@ -109,13 +109,25 @@ select{width:auto}
 .uprow{display:flex;gap:12px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--sub);background:none;color:var(--text);padding:9px 2px;text-align:left;font-size:13px}.uprow .nm{font-weight:500;overflow-wrap:anywhere}.uprow .meta{color:var(--dim);font-size:12px}
 .upd{display:flex;flex-direction:column;align-items:center;width:38px;flex:none;line-height:1.1}.upd b{font-size:17px}.upd span{font-size:10.5px;color:var(--dim);text-transform:uppercase}
 .bgh{display:flex;align-items:center;gap:6px;width:100%;border:0;background:none;padding:10px 2px 6px;text-align:left;cursor:pointer}.bgh i{font-size:15px}
+.nvi{width:100%;height:100%;display:block}
+.hic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;padding:8px;color:var(--accent);margin-bottom:8px;
+  background:radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--accent) 30%,transparent),color-mix(in srgb,var(--accent) 8%,transparent) 70%);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent)}
+.hic.big{width:52px;height:52px;margin:0;color:var(--onacc);background:color-mix(in srgb,var(--onacc) 14%,transparent);border-color:color-mix(in srgb,var(--onacc) 25%,transparent)}
+.gbadge{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:none;position:relative;overflow:hidden;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--gc) 92%,#fff),color-mix(in srgb,var(--gc) 55%,#000));box-shadow:inset 0 0 0 1px color-mix(in srgb,#fff 18%,transparent)}
+.gbadge::after{content:"";position:absolute;right:5px;top:5px;width:6px;height:6px;background:#fff;opacity:.55;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)}
+.gbadge span{font-weight:800;font-size:12.5px;letter-spacing:.04em;color:#fff;text-shadow:0 1px 2px #0006}
+.gbadge.logo{background:color-mix(in srgb,var(--text) 6%,transparent);box-shadow:none}.gbadge.logo::after{display:none}.gbadge.logo img{width:100%;height:100%;object-fit:contain;padding:3px}
+.gbadge.sm{width:30px;height:30px;border-radius:9px}.gbadge.sm span{font-size:10px}
+.bgame{grid-template-columns:auto 1fr;align-items:center;column-gap:10px}.bgame > .gbadge{grid-row:span 2}.bgame > .muted{grid-column:2}
+.bgame.art{background:linear-gradient(180deg,color-mix(in srgb,var(--card) 35%,transparent),var(--card) 92%),var(--art) center/cover;min-height:96px;align-content:end}
 .hsum{display:flex;align-items:flex-end;gap:12px;margin:2px 0 14px}.hsum > div:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}.hsum b{font-size:26px;font-variant-numeric:tabular-nums}.hsum .muted{font-size:12px}
 .hspark{flex:1;min-width:0;max-width:170px;margin-left:auto}.hspark .spark{margin:0}.hspark svg{height:38px}
 .hscan{display:flex;align-items:center;gap:14px;width:100%;border:0;border-radius:16px;padding:18px;background:var(--accent);color:var(--onacc);text-align:left;margin-bottom:12px}
-.hscan > i:first-child{font-size:30px}.hscan span{flex:1;display:flex;flex-direction:column;gap:2px}.hscan b{font-size:17px}.hscan small{opacity:.85;font-size:12.5px}.hscan > i:last-child{font-size:20px;opacity:.8}
+.hscan > i:first-child{font-size:30px}.hscan > span:not(.hic){flex:1;display:flex;flex-direction:column;gap:2px}.hscan > .hic{flex:none}.hscan b{font-size:17px}.hscan small{opacity:.85;font-size:12.5px}.hscan > i:last-child{font-size:20px;opacity:.8}
 .hgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .htile{display:flex;flex-direction:column;align-items:flex-start;gap:3px;border:1px solid var(--pan);background:var(--card);color:var(--text);border-radius:14px;padding:14px;text-align:left;min-height:104px;min-width:0}
-.htile i{font-size:24px;color:var(--accent);margin-bottom:6px}.htile b{font-size:15px;font-weight:600}.htile span{font-size:12px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:100%}
+.htile b{font-size:15px;font-weight:600}.htile span{font-size:12px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:100%}
 .htile em{font-style:normal;color:var(--amber);font-weight:600}.hbtn.on{border-color:var(--accentline);color:var(--pb)}
 .rgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 .fld{display:block;margin:10px 0 0}.fld span{display:block;font-size:12px;color:var(--dim);margin-bottom:4px}.fld select{width:100%}
@@ -747,24 +759,56 @@ function show(v){
 }
 $$('#tabs button').forEach(b => b.onclick = () => show(b.dataset.v));
 $('#setbtn').onclick = () => { SP.page = null; show('settings') };
+/* ---------------------------------------------------------------- Nightvault icons (drawn for the app) and game emblems */
+const NVI = (body) => `<svg class="nvi" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const STAR4 = (x, y, r) => `<path d="M${x} ${y - r}l${r * .28} ${r * .72} ${r * .72} ${r * .28}-${r * .72} ${r * .28}-${r * .28} ${r * .72}-${r * .28}-${r * .72}-${r * .72}-${r * .28} ${r * .72}-${r * .28}z" fill="currentColor" stroke="none"/>`;
+const NV_ICONS = {
+  scan:NVI(`<path d="M5 11V7.5A2.5 2.5 0 0 1 7.5 5H11M21 5h3.5A2.5 2.5 0 0 1 27 7.5V11M27 21v3.5a2.5 2.5 0 0 1-2.5 2.5H21M11 27H7.5A2.5 2.5 0 0 1 5 24.5V21"/><rect x="11" y="8.5" width="10" height="15" rx="1.6"/><path d="M8 16h16" opacity=".55"/>${STAR4(16, 12.4, 2.2)}`),
+  cards:NVI(`<rect x="10" y="6" width="14" height="19" rx="2.2"/><path d="M7 9.5V24a3 3 0 0 0 3 3h10.5" opacity=".6"/>${STAR4(17, 15.5, 3.4)}`),
+  binder:NVI(`<rect x="8.5" y="4.5" width="18" height="23" rx="2.4"/><path d="M8.5 10H5.5M8.5 16H5.5M8.5 22H5.5"/><rect x="12" y="8.5" width="5" height="6.5" rx="1" opacity=".7"/><rect x="18.5" y="8.5" width="4.5" height="6.5" rx="1" opacity=".7"/><rect x="12" y="17.5" width="5" height="6.5" rx="1" opacity=".7"/><rect x="18.5" y="17.5" width="4.5" height="6.5" rx="1" fill="currentColor" stroke="none" opacity=".85"/>`),
+  decks:NVI(`<rect x="9.5" y="5" width="13" height="18" rx="2" transform="rotate(-16 16 27)" opacity=".55"/><rect x="9.5" y="5" width="13" height="18" rx="2" transform="rotate(16 16 27)" opacity=".55"/><rect x="9.5" y="5" width="13" height="18" rx="2"/>${STAR4(16, 13.5, 3)}`),
+  upcoming:NVI(`<rect x="4.5" y="7" width="23" height="20.5" rx="3"/><path d="M4.5 12.5h23M11 4v5M21 4v5"/><path d="M18.2 15.6a4.6 4.6 0 1 0 2.4 7.3 3.7 3.7 0 1 1-2.4-7.3z" fill="currentColor" stroke="none"/>`),
+  vault:NVI(`<rect x="4.5" y="4.5" width="23" height="23" rx="4"/><circle cx="16" cy="16" r="7.5"/><circle cx="16" cy="16" r="2.4"/><path d="M16 8.5v3.6M16 19.9v3.6M8.5 16h3.6M19.9 16h3.6" opacity=".7"/><path d="M4.5 10.5H3M4.5 21.5H3"/>`),
+  prices:NVI(`<circle cx="16" cy="16" r="11"/><circle cx="16" cy="16" r="7.6" opacity=".4"/><path d="M19.6 12.4a4.6 4.6 0 1 0 0 7.2M10.8 15h6.4M10.8 17.4h6.4"/>`),
+};
+const GCODE = {mtg:'MTG', pokemon:'PKM', ygo:'YGO', lorcana:'LOR', swu:'SWU', onepiece:'OP', swccg:'SWC', riftbound:'RB', gundam:'GD', digimon:'DGM', fab:'FAB',
+  sorcery:'SOR', ws:'WS', dbsfw:'FW', dbsm:'DBS', dbz:'DBZ', dbzccg:'DBZ', dbgt:'GT', wow:'WOW'};
+const gameCode = g => GCODE[g] || String((GAMES[g] || {}).label || g).split(/[\s:\-]+/).filter(w => w && !/^(the|of|and|tcg|ccg)$/i.test(w)).map(w => w[0]).join('').slice(0, 3).toUpperCase() || '?';
+const gameBadge = (g, cls = '') => { const lg = (store.gameLogo || {})[g];
+  return lg ? `<span class="gbadge logo ${cls}"><img src="${lg}" alt=""></span>` : `<span class="gbadge ${cls}" style="--gc:${(GAMES[g] || GAMES.other).color}"><span>${esc(gameCode(g))}</span></span>` };
+function readPic(maxW, maxH, cover, type){ return new Promise(res => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async () => { const f = inp.files && inp.files[0]; if(!f) return res(null);
+    try{ const img = await createImageBitmap(f), c = document.createElement('canvas');
+      const sc = cover ? Math.max(maxW / img.width, maxH / img.height) : Math.min(1, maxW / img.width, maxH / img.height);
+      c.width = cover ? maxW : Math.round(img.width * sc); c.height = cover ? maxH : Math.round(img.height * sc);
+      const w = img.width * sc, h = img.height * sc; c.getContext('2d').drawImage(img, (c.width - w) / 2, (c.height - h) / 2, w, h);
+      res(c.toDataURL(type, 0.75)) }catch(e){ toast('That picture could not be read', true); res(null) } };
+  inp.click() }) }
+async function pickGameArt(g, done){                               // your own logo and background picture for a game's tile (kept on this phone)
+  const set = (k, v, msg) => { (store[k] ||= {})[g] = v; persist(); toast(msg); done && done() };
+  menuSheet((GAMES[g] || {}).label || 'Game', [
+    {icon:'badge', label:'Use my own logo', sub:'A picture of your choice instead of the letters - transparent PNG works best', run:async () => { const d = await readPic(200, 200, false, 'image/png'); if(d) set('gameLogo', d, 'Logo saved') }},
+    {icon:'photo', label:'Background picture', sub:'For the whole tile - a favourite card, a box ...', run:async () => { const d = await readPic(360, 200, true, 'image/jpeg'); if(d) set('gameArt', d, 'Background saved') }},
+    {icon:'trash', label:'Remove my logo', danger:true, disabled:!(store.gameLogo || {})[g], run:() => { delete store.gameLogo[g]; persist(); done && done() }},
+    {icon:'trash', label:'Remove the background', danger:true, disabled:!(store.gameArt || {})[g], run:() => { delete store.gameArt[g]; persist(); done && done() }}]) }
 /* ---------------------------------------------------------------- home: tiles to every part of the app, each with a bit of live info */
 function viewHome(){
   const cs = store.cards, n = cs.reduce((a, c) => a + c.qty, 0), rv = (store.review || []).length, h = store.hist || [];
   const v = valueEur(cs), wk = h.length > 1 ? h[Math.max(0, h.length - 8)] : null, dv = wk ? v - wk.v : 0;
   const games = new Set(cs.map(c => c.game)), dks = decks(), last = dks.slice().sort((a, b) => (b.at || 0) - (a.at || 0))[0];
   const bkOld = cs.length && Date.now() - (store.lastBackup || 0) > 7 * 864e5;
-  const tile = (id, icon, title, sub, extra = '') => `<button class="htile" id="${id}"${extra}><i class="ti ti-${icon}"></i><b>${title}</b><span>${sub}</span></button>`;
+  const tile = (id, icon, title, sub, extra = '') => `<button class="htile" id="${id}"${extra}><span class="hic">${NV_ICONS[icon]}</span><b>${title}</b><span>${sub}</span></button>`;
   $('#main').innerHTML = `<div class="hsum"><div><span class="muted">Your collection</span><b>${fmt(v, 'EUR')}</b>
       <span class="muted">${n.toLocaleString()} card${n === 1 ? '' : 's'}${wk && Math.abs(dv) >= 0.01 ? ` · <span style="color:var(${dv >= 0 ? '--green' : '--red'})">${dv >= 0 ? '▲' : '▼'} ${fmt(Math.abs(dv), 'EUR')} this week</span>` : ''}</span></div>
       ${h.length > 2 ? `<div class="hspark">${sparkline(h.slice(-30)).replace(/<span[^]*<\/span>/, '')}</div>` : ''}</div>
-    <button class="hscan" id="hscan"><i class="ti ti-camera"></i><span><b>Scan cards</b><small>One card, a binder page or quick scan</small></span><i class="ti ti-chevron-right"></i></button>
+    <button class="hscan" id="hscan"><span class="hic big">${NV_ICONS.scan}</span><span><b>Scan cards</b><small>One card, a binder page or quick scan</small></span><i class="ti ti-chevron-right"></i></button>
     <div class="hgrid">
-      ${tile('hcards', 'stack', 'My cards', rv ? `<em>${rv} to check</em>` : n ? `${cs.length.toLocaleString()} different` : 'Nothing yet')}
-      ${tile('hbinder', 'book-2', 'Binder', games.size ? `${games.size} game${games.size === 1 ? '' : 's'}` : 'Sets and what you miss')}
-      ${tile('hdecks', 'cards', 'Decks', dks.length ? `${dks.length} deck${dks.length === 1 ? '' : 's'} · ${esc(last.name)}` : 'Build a deck')}
-      ${tile('hup', 'calendar-event', 'Upcoming', '<span id="hupn">New sets coming out</span>')}
-      ${tile('hsync', 'shield-check', 'Backup & sync', bkOld ? `<em>${store.lastBackup ? 'Last backup ' + new Date(store.lastBackup).toLocaleDateString() : 'No backup yet'}</em>` : store.lastBackup ? 'Backed up ' + new Date(store.lastBackup).toLocaleDateString() : 'Nightvault on your PC')}
-      ${tile('hprice', 'coin-euro', 'Prices', PC.running ? 'Updating ...' : store.lastPriceCheck ? 'Updated ' + new Date(store.lastPriceCheck).toLocaleDateString() : 'Update prices')}
+      ${tile('hcards', 'cards', 'My cards', rv ? `<em>${rv} to check</em>` : n ? `${cs.length.toLocaleString()} different` : 'Nothing yet')}
+      ${tile('hbinder', 'binder', 'Binder', games.size ? `${games.size} game${games.size === 1 ? '' : 's'}` : 'Sets and what you miss')}
+      ${tile('hdecks', 'decks', 'Decks', dks.length ? `${dks.length} deck${dks.length === 1 ? '' : 's'} · ${esc(last.name)}` : 'Build a deck')}
+      ${tile('hup', 'upcoming', 'Upcoming', '<span id="hupn">New sets coming out</span>')}
+      ${tile('hsync', 'vault', 'Backup & sync', bkOld ? `<em>${store.lastBackup ? 'Last backup ' + new Date(store.lastBackup).toLocaleDateString() : 'No backup yet'}</em>` : store.lastBackup ? 'Backed up ' + new Date(store.lastBackup).toLocaleDateString() : 'Nightvault on your PC')}
+      ${tile('hprice', 'prices', 'Prices', PC.running ? 'Updating ...' : store.lastPriceCheck ? 'Updated ' + new Date(store.lastPriceCheck).toLocaleDateString() : 'Update prices')}
     </div>`;
   $('#hscan').onclick = () => show('scan');
   $('#hcards').onclick = () => rv ? (RV.i = 0, RV.sel = 0, show('review')) : show('cards');
@@ -2177,7 +2221,8 @@ function binderGames(){
   $('#main').innerHTML = `<div class="head"><h1>Binder</h1><div class="sp"></div><span class="sub">${fmt(eur, 'EUR')}${usd ? ' + ' + fmt(usd, 'USD') : ''}</span><button class="btn sm" id="bdup"><i class="ti ti-calendar-event"></i>Upcoming</button></div>
     <div class="bar"><input class="grow" id="bdgq" type="search" placeholder="Search games, also the 295 in the catalog" value="${esc(BD.gq || '')}" autocomplete="off"></div>
     <div class="bgames" id="bdgl">${games.map(g => { const cs = ownedIn(g), n = cs.reduce((a, c) => a + c.qty, 0);
-      return `<button class="bgame" data-g="${g}" data-name="${esc(lwr(GAMES[g].label + ' ' + GAMES[g].full))}" style="--gc:${GAMES[g].color}"><span class="bstar ${isFav(g) ? 'on' : ''}" data-fav="${g}" role="button" aria-label="Favourite"><i class="ti ti-star${isFav(g) ? '-filled' : ''}"></i></span><span style="padding-right:22px"><span class="dot" style="background:${GAMES[g].color};margin-right:6px"></span><b>${esc(GAMES[g].label)}</b></span>
+      const art = (store.gameArt || {})[g];
+      return `<button class="bgame ${art ? 'art' : ''}" data-g="${g}" data-name="${esc(lwr(GAMES[g].label + ' ' + GAMES[g].full))}" style="--gc:${GAMES[g].color}${art ? `;--art:url(${art})` : ''}"><span class="bstar ${isFav(g) ? 'on' : ''}" data-fav="${g}" role="button" aria-label="Favourite"><i class="ti ti-star${isFav(g) ? '-filled' : ''}"></i></span>${gameBadge(g)}<span style="padding-right:22px"><b>${esc(GAMES[g].label)}</b></span>
         <span class="muted">${n ? `${n.toLocaleString()} cards · ${fmt(valueOf(cs), cs[0] ? cs[0].currency : 'EUR')}` : 'No cards yet'}</span></button>` }).join('')}
       <button class="bgame" id="bdall" style="--gc:var(--accent)"><span><i class="ti ti-books" style="color:var(--accent);margin-right:6px"></i><b>All card games</b></span><span class="muted">295 more games from the catalog</span></button></div>
     <div id="bdcat"></div>`;
@@ -2197,10 +2242,11 @@ function binderGames(){
 async function binderSets(){
   const g = BD.game, own = ownedIn(g), om = ownedMap(g), cur = own[0] ? own[0].currency : 'EUR';
   const ownedSets = new Map(); for(const c of own){ const e = ownedSets.get(c.set) || {n:0, uniq:new Set(), name:c.setName || c.showSet, show:c.showSet}; e.n += c.qty; e.uniq.add(c.number); ownedSets.set(c.set, e) }
-  $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Games</button><h1 style="font-size:18px">${esc(GAMES[g].label)}</h1></div>
+  $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Games</button>${gameBadge(g, 'sm')}<h1 style="font-size:18px;flex:1">${esc(GAMES[g].label)}</h1><button class="btn sm" id="bdart" aria-label="Logo and picture for this game"><i class="ti ti-photo-edit"></i></button></div>
     <div class="bstats"><div><b>${own.reduce((a, c) => a + c.qty, 0).toLocaleString()}</b><span>Cards</span></div><div><b>${ownedSets.size}</b><span>Sets</span></div><div><b>${fmt(valueOf(own), cur)}</b><span>Value</span></div></div>
     <div class="bar"><input class="grow" id="bdq" type="search" placeholder="Find a set" value="${esc(BD.q)}"><button class="btn" id="bdg" hidden></button></div><div id="bdl"><div class="muted" style="padding:16px 4px">Loading the sets ...</div></div>`;
   $('#bdb').onclick = () => { BD.game = null; BD.grp = 'all'; viewBinder() };
+  $('#bdart').onclick = () => pickGameArt(g, () => binderSets());
   let sets = [];
   if(SRC(g)){ try{ sets = await bdLoad('sets', g, SRC(g).list) }catch(e){ toast(`${GAMES[g].label} sets could not be loaded: ${e.message}`, true) } }
   const known = new Set(sets.map(x => x.code)); for(const [k, e] of ownedSets) if(!known.has(k)) sets.push({code:k, name:e.name, released:'', total:0, local:true});
