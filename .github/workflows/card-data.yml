@@ -84,9 +84,10 @@ jobs:
                           continue
                       if (ext.get("Rarity") or "").lower() in ("sealed", "none"):
                           continue
-                      txt = "\n\n".join(plain(v) for k, v in ext.items() if k and k.lower().replace("_", " ") in TEXT_KEYS and plain(v))
+                      istext = lambda k: k.lower().replace("_", " ") in TEXT_KEYS or any(w in k.lower() for w in ("effect", "text", "abilit"))
+                      txt = "\n\n".join((plain(v) if k.lower().replace("_", " ") in TEXT_KEYS else f"{k}: {plain(v)}") for k, v in ext.items() if k and istext(k) and plain(v))
                       typ = " · ".join(f"{k} {plain(v)}" if k.lower() not in ("cardtype", "card type", "color", "colour", "class", "attribute", "trait", "type") else plain(v)
-                                       for k, v in ext.items() if k and v and k.lower() not in SKIP_KEYS and k.lower().replace("_", " ") not in TEXT_KEYS)[:300]
+                                       for k, v in ext.items() if k and v and k.lower() not in SKIP_KEYS and not istext(k))[:300]
                       if txt or typ:
                           texts[str(p["productId"])] = [typ, txt[:2500]]
                       pr = px.get(p["productId"], [None, None])
