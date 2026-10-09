@@ -59,10 +59,14 @@ jobs:
               except Exception:
                   return None
 
+          SETNAME = {}                                  # (list, set code) -> set name
+          SPECIAL = re.compile(r"loot|extended|oversiz|promo|alternate|alt\.? art|full art|foil|prerelease|judge|serial|signed", re.I)
           # ---- the app's own card lists: {set: [(number, name)]}, same set codes and numbers the app uses
           def ours_ccgt(gid):
               d = json.load(open(f"data/ccgt/{gid}.json", encoding="utf-8"))
               out = defaultdict(list)
+              for st in d["sets"]:
+                  SETNAME[str(st["id"])] = st.get("name") or ""
               for c in d["cards"]:
                   n = c[1]
                   num = slug(c[2]) if n in (None, "", 0) else str(n)
@@ -72,6 +76,8 @@ jobs:
           def ours_dg(key):
               d = json.load(open(f"data/{key}.json", encoding="utf-8"))
               out = defaultdict(list)
+              for st in d["sets"]:
+                  SETNAME[st["code"]] = st.get("name") or ""
               for r in d["cards"]:
                   st = d["sets"][r[0]]
                   out[st["code"]].append((norm_num(r[1]) if r[1] else slug(r[2]), r[2]))
@@ -110,22 +116,27 @@ jobs:
                           best, bs = g, score
                   if best is not None and bs >= 0.3:
                       best_of[s] = best; cover[s] = cand[best] / max(1, len(gnames[best]))
-              owner = {}                                # two of our sets on one shop set (e.g. a loot set): a name goes to the set covering most of it
-              for s, g in best_of.items():
+              owner = {}                                # a special printing set (loot, extended art, foils...) on the same shop set as the normal
+              for s, g in best_of.items():              # set: the name belongs to the normal set, the special set gets no normal price
                   for _, n in ours[s]:
                       k = (g, nm(n))
-                      if k not in owner or cover[s] > cover[owner[k]]:
+                      if k not in owner or (not SPECIAL.search(SETNAME.get(s, "")), cover[s]) > (not SPECIAL.search(SETNAME.get(owner[k], "")), cover[owner[k]]):
                           owner[k] = s
               out = {}
               for s, cards in ours.items():
                   best = best_of.get(s)
                   for num, name in cards:
                       key = nm(name)
-                      c = [t for t in by_group.get(best, []) if nm(t[1]) == key] if best is not None and owner.get((best, key)) == s else []
+                      special = bool(SPECIAL.search(SETNAME.get(s, "")))
+                      c = [t for t in by_group.get(best, []) if nm(t[1]) == key] if best is not None and (not special or owner.get((best, key)) == s) else []
+                      if special and not c and best is not None and re.search(r"foil", SETNAME.get(s, ""), re.I):
+                          f = [t for t in by_group.get(best, []) if nm(t[1]) == key and t[3][1] is not None]
+                          if f:                         # "Foils: <set>": the foil price of that card
+                              out[f"{s}|{num}"] = [f[0][3][1], f[0][3][1]] + list(f[0][3][2:]); continue
                       if len(c) > 1 and num:
                           same = [t for t in c if t[2] and norm_num(str(t[2]).split("/")[0]) == norm_num(num)]
                           c = same or c
-                      if not c and len(in_sets[key]) == 1:
+                      if not c and not special and len(in_sets[key]) == 1:
                           everywhere = by_name.get(key, [])
                           if everywhere and len({t[0] for t in everywhere}) == 1:
                               c = everywhere
