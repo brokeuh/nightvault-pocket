@@ -1,0 +1,97 @@
+# Makes data/upcoming.json once a day: card game sets that come out soon (and the last few weeks), for the
+# "Upcoming releases" list in Nightvault Pocket.
+#  - Magic: Scryfall's set list (with the kind of product: expansion, Commander, Secret Lair ...)
+#  - every other card game: TCGplayer's set list as copied daily by tcgcsv.com (pre-order sets have their release date)
+name: Update upcoming releases
+
+on:
+  schedule:
+    - cron: "29 5 * * *"      # every day around 07:29 Brussels time
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  upcoming:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Collect release dates
+        run: |
+          python3 - <<'EOF'
+          import datetime, json, os, re, time, urllib.request
+
+          def get(url):
+              req = urllib.request.Request(url, headers={"User-Agent": "nightvault-pocket (personal card collection app, once a day)", "Accept": "application/json"})
+              for a in range(3):
+                  try:
+                      with urllib.request.urlopen(req, timeout=60) as r:
+                          return json.load(r)
+                  except Exception:
+                      if a == 2:
+                          raise
+                      time.sleep(3)
+
+          today = datetime.date.today()
+          start, end = (today - datetime.timedelta(days=45)).isoformat(), (today + datetime.timedelta(days=500)).isoformat()
+          items = []
+
+          # Magic from Scryfall
+          try:
+              for s in get("https://api.scryfall.com/sets")["data"]:
+                  d = (s.get("released_at") or "")[:10]
+                  if s.get("digital") or not (start <= d <= end) or s.get("set_type") in ("token", "memorabilia", "minigame", "alchemy"):
+                      continue
+                  items.append({"date": d, "game": "mtg", "gameName": "Magic: The Gathering", "name": s["name"], "code": s["code"].upper(),
+                                "kind": s.get("set_type", ""), "cards": s.get("card_count") or 0})
+          except Exception as e:
+              print("Scryfall skipped:", e)
+
+          # Other card games from TCGplayer (via tcgcsv.com)
+          KEYS = {2: "ygo", 3: "pokemon", 71: "lorcana", 79: "swu", 68: "onepiece", 89: "riftbound", 86: "gundam", 63: "digimon", 62: "fab",
+                  77: "sorcery", 20: "ws", 80: "dbsfw", 27: "dbsm", 23: "dbz", 13: "wow"}
+          CARD_GAMES = {2, 3, 13, 16, 17, 19, 20, 23, 24, 25, 26, 27, 28, 30, 36, 37, 38, 47, 48, 53, 54, 55, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66,
+                        67, 68, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94}
+          SKIP = re.compile(r"\b(sleeves?|playmats?|deck ?box|binder|supplies|accessor)", re.I)
+          try:
+              cats = {c["categoryId"]: c.get("displayName") or c.get("name") for c in get("https://tcgcsv.com/tcgplayer/categories")["results"]}
+          except Exception as e:
+              cats = {}; print("tcgcsv categories skipped:", e)
+          for cid, cname in cats.items():
+              if cid not in CARD_GAMES:
+                  continue
+              try:
+                  groups = get(f"https://tcgcsv.com/tcgplayer/{cid}/groups")["results"]
+              except Exception as e:
+                  print(cname, "skipped:", e); continue
+              for g in groups:
+                  d = (g.get("publishedOn") or "")[:10]
+                  if not (start <= d <= end) or SKIP.search(g.get("name") or ""):
+                      continue
+                  items.append({"date": d, "game": KEYS.get(cid, ""), "gameName": cname, "name": g.get("name") or "", "code": g.get("abbreviation") or "",
+                                "kind": "supplemental" if g.get("isSupplemental") else ""})
+              time.sleep(0.1)
+
+          items.sort(key=lambda x: (x["date"], x["gameName"], x["name"]))
+          if len(items) < 10:
+              raise SystemExit("Too few releases came back - keeping the old file.")
+          os.makedirs("data", exist_ok=True)
+          with open("data/upcoming.json", "w", encoding="utf-8") as f:
+              json.dump({"updated": today.isoformat(), "items": items}, f, separators=(",", ":"), ensure_ascii=False)
+          print(len(items), "releases,", sum(1 for x in items if x["date"] >= today.isoformat()), "still to come")
+          EOF
+
+      - name: Save
+        run: |
+          git config user.name "card-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/upcoming.json
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
+          else
+            git commit -m "Update upcoming releases"
+            git pull --rebase -q || true
+            git push
+          fi
