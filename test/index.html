@@ -109,6 +109,14 @@ select{width:auto}
 .uprow{display:flex;gap:12px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--sub);background:none;color:var(--text);padding:9px 2px;text-align:left;font-size:13px}.uprow .nm{font-weight:500;overflow-wrap:anywhere}.uprow .meta{color:var(--dim);font-size:12px}
 .upd{display:flex;flex-direction:column;align-items:center;width:38px;flex:none;line-height:1.1}.upd b{font-size:17px}.upd span{font-size:10.5px;color:var(--dim);text-transform:uppercase}
 .bgh{display:flex;align-items:center;gap:6px;width:100%;border:0;background:none;padding:10px 2px 6px;text-align:left;cursor:pointer}.bgh i{font-size:15px}
+.hsum{display:flex;align-items:flex-end;gap:12px;margin:2px 0 14px}.hsum > div:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}.hsum b{font-size:26px;font-variant-numeric:tabular-nums}.hsum .muted{font-size:12px}
+.hspark{flex:1;min-width:0;max-width:170px;margin-left:auto}.hspark .spark{margin:0}.hspark svg{height:38px}
+.hscan{display:flex;align-items:center;gap:14px;width:100%;border:0;border-radius:16px;padding:18px;background:var(--accent);color:var(--onacc);text-align:left;margin-bottom:12px}
+.hscan > i:first-child{font-size:30px}.hscan span{flex:1;display:flex;flex-direction:column;gap:2px}.hscan b{font-size:17px}.hscan small{opacity:.85;font-size:12.5px}.hscan > i:last-child{font-size:20px;opacity:.8}
+.hgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.htile{display:flex;flex-direction:column;align-items:flex-start;gap:3px;border:1px solid var(--pan);background:var(--card);color:var(--text);border-radius:14px;padding:14px;text-align:left;min-height:104px;min-width:0}
+.htile i{font-size:24px;color:var(--accent);margin-bottom:6px}.htile b{font-size:15px;font-weight:600}.htile span{font-size:12px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:100%}
+.htile em{font-style:normal;color:var(--amber);font-weight:600}.hbtn.on{border-color:var(--accentline);color:var(--pb)}
 .rgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 .fld{display:block;margin:10px 0 0}.fld span{display:block;font-size:12px;color:var(--dim);margin-bottom:4px}.fld select{width:100%}
 .dsf{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px;align-items:flex-end}.fsel{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--dim);min-width:0;flex:1 1 30%}
@@ -260,14 +268,14 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 </head>
 <body>
 <div id="app">
-  <header id="top"><div class="logo"><i class="ti ti-moon-stars"></i>Nightvault <small>Pocket</small><span id="testbadge" hidden style="margin-left:8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;background:var(--amber);color:#000;border-radius:6px;padding:2px 6px">TEST</span></div><div id="scst"></div><button id="fsbtn" class="hbtn" hidden aria-label="Full screen"><i class="ti ti-maximize"></i></button></header>
+  <header id="top"><div class="logo"><i class="ti ti-moon-stars"></i>Nightvault <small>Pocket</small><span id="testbadge" hidden style="margin-left:8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;background:var(--amber);color:#000;border-radius:6px;padding:2px 6px">TEST</span></div><div id="scst"></div><button id="fsbtn" class="hbtn" hidden aria-label="Full screen"><i class="ti ti-maximize"></i></button><button id="setbtn" class="hbtn" aria-label="Settings"><i class="ti ti-settings"></i></button></header>
   <main id="main"></main>
   <nav id="tabs">
-    <button data-v="scan" class="on"><i class="ti ti-camera"></i>Scan cards</button>
+    <button data-v="home" class="on"><i class="ti ti-home"></i>Home</button>
+    <button data-v="scan"><i class="ti ti-camera"></i>Scan</button>
     <button data-v="cards" style="position:relative"><i class="ti ti-stack"></i>My cards<span class="tbadge" id="tabn" hidden></span></button>
     <button data-v="binder"><i class="ti ti-book-2"></i>Binder</button>
     <button data-v="decks"><i class="ti ti-cards"></i>Decks</button>
-    <button data-v="settings"><i class="ti ti-settings"></i>Settings</button>
   </nav>
 </div>
 <div id="toast"></div>
@@ -733,10 +741,45 @@ let VIEW = 'scan';
 function show(v){
   VIEW = v; $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === (v === 'review' ? 'cards' : v)));
   if(v !== 'scan') stopCamera();
-  ({scan:viewScan, cards:viewCards, settings:viewSettings, review:viewReview, binder:viewBinder, decks:viewDecks})[v]();
+  ({home:viewHome, scan:viewScan, cards:viewCards, settings:viewSettings, review:viewReview, binder:viewBinder, decks:viewDecks})[v]();
+  if($('#setbtn')) $('#setbtn').classList.toggle('on', v === 'settings');
   $('#main').scrollTop = 0;
 }
 $$('#tabs button').forEach(b => b.onclick = () => show(b.dataset.v));
+$('#setbtn').onclick = () => { SP.page = null; show('settings') };
+/* ---------------------------------------------------------------- home: tiles to every part of the app, each with a bit of live info */
+function viewHome(){
+  const cs = store.cards, n = cs.reduce((a, c) => a + c.qty, 0), rv = (store.review || []).length, h = store.hist || [];
+  const v = valueEur(cs), wk = h.length > 1 ? h[Math.max(0, h.length - 8)] : null, dv = wk ? v - wk.v : 0;
+  const games = new Set(cs.map(c => c.game)), dks = decks(), last = dks.slice().sort((a, b) => (b.at || 0) - (a.at || 0))[0];
+  const bkOld = cs.length && Date.now() - (store.lastBackup || 0) > 7 * 864e5;
+  const tile = (id, icon, title, sub, extra = '') => `<button class="htile" id="${id}"${extra}><i class="ti ti-${icon}"></i><b>${title}</b><span>${sub}</span></button>`;
+  $('#main').innerHTML = `<div class="hsum"><div><span class="muted">Your collection</span><b>${fmt(v, 'EUR')}</b>
+      <span class="muted">${n.toLocaleString()} card${n === 1 ? '' : 's'}${wk && Math.abs(dv) >= 0.01 ? ` · <span style="color:var(${dv >= 0 ? '--green' : '--red'})">${dv >= 0 ? '▲' : '▼'} ${fmt(Math.abs(dv), 'EUR')} this week</span>` : ''}</span></div>
+      ${h.length > 2 ? `<div class="hspark">${sparkline(h.slice(-30)).replace(/<span[^]*<\/span>/, '')}</div>` : ''}</div>
+    <button class="hscan" id="hscan"><i class="ti ti-camera"></i><span><b>Scan cards</b><small>One card, a binder page or quick scan</small></span><i class="ti ti-chevron-right"></i></button>
+    <div class="hgrid">
+      ${tile('hcards', 'stack', 'My cards', rv ? `<em>${rv} to check</em>` : n ? `${cs.length.toLocaleString()} different` : 'Nothing yet')}
+      ${tile('hbinder', 'book-2', 'Binder', games.size ? `${games.size} game${games.size === 1 ? '' : 's'}` : 'Sets and what you miss')}
+      ${tile('hdecks', 'cards', 'Decks', dks.length ? `${dks.length} deck${dks.length === 1 ? '' : 's'} · ${esc(last.name)}` : 'Build a deck')}
+      ${tile('hup', 'calendar-event', 'Upcoming', '<span id="hupn">New sets coming out</span>')}
+      ${tile('hsync', 'shield-check', 'Backup & sync', bkOld ? `<em>${store.lastBackup ? 'Last backup ' + new Date(store.lastBackup).toLocaleDateString() : 'No backup yet'}</em>` : store.lastBackup ? 'Backed up ' + new Date(store.lastBackup).toLocaleDateString() : 'Nightvault on your PC')}
+      ${tile('hprice', 'coin-euro', 'Prices', PC.running ? 'Updating ...' : store.lastPriceCheck ? 'Updated ' + new Date(store.lastPriceCheck).toLocaleDateString() : 'Update prices')}
+    </div>`;
+  $('#hscan').onclick = () => show('scan');
+  $('#hcards').onclick = () => rv ? (RV.i = 0, RV.sel = 0, show('review')) : show('cards');
+  $('#hbinder').onclick = () => { BD.up = false; show('binder') };
+  $('#hdecks').onclick = () => { DK.id = null; DK.search = false; show('decks') };
+  $('#hup').onclick = () => { BD.up = true; BD.game = null; BD.set = null; show('binder') };
+  $('#hsync').onclick = () => menuSheet('Backup & sync', [
+    {icon:'shield-check', label:'Save a backup file', sub:store.lastBackup ? 'Last one ' + new Date(store.lastBackup).toLocaleDateString() : 'To Google Drive, mail ...', run:async () => { await saveBackup(); if(VIEW === 'home') viewHome() }},
+    {icon:'device-desktop-up', label:'Send to Nightvault', sub:'Export for your PC', run:() => { SP.page = 'sync'; show('settings') }},
+    {icon:'history', label:'Backups on this phone', sub:'Go back to an earlier day', run:() => { SP.page = 'backup'; show('settings') }}]);
+  $('#hprice').onclick = () => { if(!cs.length) return toast('Add some cards first'); if(!PC.running) priceCheck(false); show('cards') };
+  upcData().then(d => { const t = new Date().toISOString().slice(0, 10), mine = new Set([...cs.map(c => c.game), ...(O.favs || []), ...dks.map(x => x.game)]);
+    const nx = (d.items || []).find(x => x.date >= t && (!mine.size || mine.has(x.game)));
+    if(nx && $('#hupn')) $('#hupn').textContent = `${nx.name} · ${new Date(nx.date + 'T12:00:00').toLocaleDateString(undefined, {day:'numeric', month:'short'})}` }).catch(() => {});
+}
 function tabCount(){ const r = (store.review || []).length; $('#tabn').textContent = r || ''; $('#tabn').hidden = !r }
 
 /* ---------------------------------------------------------------- scan */
@@ -2456,7 +2499,7 @@ const SPAGES = [
   ['templates', 'layout-board-split', 'Scan templates', () => store.templates.length ? `${store.templates.length} template${store.templates.length === 1 ? '' : 's'}` : 'For special and new card layouts'],
   ['backs', 'school', 'Card backs', () => store.backs.length ? [...new Set(store.backs.map(b => GAMES[b.game] ? GAMES[b.game].label : b.game))].join(', ') : 'Recognise a game by its back'],
   ['prices', 'tag', 'Price sources', () => porder().map(k => PSRC[k].label).join(' → ')],
-  ['look', 'palette', 'Appearance', () => (THEMES.find(x => x[0] === O.theme) || THEMES[0])[1]],
+  ['look', 'palette', 'Appearance', () => (THEMES.find(x => x[0] === O.theme) || THEMES[0])[1] + ' · opens on ' + (O.start === 'scan' ? 'scanner' : 'home')],
   ['data', 'database', 'Card data', () => 'Where cards and prices come from'],
   ['dev', 'code', 'Developer', () => 'Scan details for troubleshooting'],
   ['danger', 'trash', 'Remove all cards', () => 'Clear this phone'],
@@ -2576,7 +2619,8 @@ function viewSettings(){
     <div class="panel" data-p="backs"><h3>Card backs</h3><p class="hint" style="margin:0 0 6px">Teach the app a card back once. When you scan that back later, it switches to that game by itself.</p>
       ${Object.keys(GAMES).filter(g => g !== 'other').map(g => { const n = store.backs.filter(b => b.game === g).length; return `<div class="row" style="padding:7px 0"><span class="dot" style="background:${GAMES[g].color}"></span><div class="grow">${esc(GAMES[g].label)} <span class="muted" style="font-size:12px">${n ? '· learned' : ''}</span></div>
         ${n ? `<button class="btn sm" data-forget="${g}">Forget</button>` : ''}<button class="btn sm" data-teach="${g}"><i class="ti ti-school"></i>${n ? 'Teach again' : 'Teach'}</button></div>` }).join('')}</div>
-    <div class="panel" data-p="look"><h3>Appearance</h3><div class="thgrid">${THEMES.map(([id, nm]) => `<button class="thtile ${O.theme === id ? 'on' : ''}" data-t="${id}"><div class="pv" data-theme="${id}"><i style="background:var(--side);height:100%"></i><i style="background:var(--card);height:70%;border:1px solid var(--line2)"></i><i style="background:var(--accent);height:40%"></i></div><div class="nm">${nm}</div></button>`).join('')}</div></div>
+    <div class="panel" data-p="look"><h3>Appearance</h3>
+      <div class="row" style="margin-bottom:10px"><div class="grow">Open the app on</div><div class="oseg" id="ostart"><button data-s="home" class="${O.start === 'scan' ? '' : 'on'}">Home</button><button data-s="scan" class="${O.start === 'scan' ? 'on' : ''}">Scanner</button></div></div><div class="thgrid">${THEMES.map(([id, nm]) => `<button class="thtile ${O.theme === id ? 'on' : ''}" data-t="${id}"><div class="pv" data-theme="${id}"><i style="background:var(--side);height:100%"></i><i style="background:var(--card);height:70%;border:1px solid var(--line2)"></i><i style="background:var(--accent);height:40%"></i></div><div class="nm">${nm}</div></button>`).join('')}</div></div>
     <div class="panel" data-p="data"><h3>Card data</h3>${Object.values(GAMES).filter(g => g.src).map(g => `<div class="row" style="padding:7px 0"><span class="dot" style="background:${g.color}"></span><div class="grow">${esc(g.full)}</div><span class="muted" style="font-size:12px">${esc(g.src)}</span></div>`).join('')}
       <p class="hint">Any other game can be added by hand (My cards → By hand). Card names are read on the phone. Lookups and prices need internet. Your cards stay on this phone until you export them.</p></div>
     <div class="panel" data-p="app"><h3>Use as an app</h3>
@@ -2639,6 +2683,7 @@ function viewSettings(){
   $$('[data-forget]').forEach(b => b.onclick = () => { store.backs = store.backs.filter(x => x.game !== b.dataset.forget); persist(); viewSettings() });
   $('#ogame').onchange = e => { O.game = e.target.value; persist() };
   $$('.thtile').forEach(b => b.onclick = () => { O.theme = b.dataset.t; persist(); applyTheme(); viewSettings() });
+  $$('#ostart [data-s]').forEach(b => b.onclick = () => { O.start = b.dataset.s; persist(); viewSettings() });
   $('#sclear').onclick = () => {
     modal(`<h3>Remove all cards?</h3><p style="margin:0 0 6px">This removes ${total.toLocaleString()} cards from this phone. ${store.lastExport ? '' : '<b>You have not exported them yet.</b>'}</p>
       <div class="btns" style="justify-content:flex-end;margin-top:14px"><button class="btn" id="cx">Cancel</button><button class="btn danger" id="cy"><i class="ti ti-trash"></i>Remove all</button></div>`);
@@ -3019,7 +3064,8 @@ function deckPick(m, back){
 /* ---------------------------------------------------------------- back gesture and coming back to where you were
    The phone's back gesture steps back inside the app (close a pop-up, set -> game -> games, settings page -> settings,
    other tabs -> scan). Only on the scan screen does it leave the app. Where you were is remembered for 2 hours. */
-const atRoot = () => VIEW === 'scan' && !$('#modal').innerHTML.trim() && !$('#viewer').innerHTML.trim();
+const atRoot = () => VIEW === startView() && !$('#modal').innerHTML.trim() && !$('#viewer').innerHTML.trim();
+const startView = () => O.start === 'scan' ? 'scan' : 'home';
 function saveNav(){
   O.nav = {at:Date.now(), view:VIEW === 'review' ? 'review' : VIEW, game:BD.game, set:BD.set ? {code:BD.set.code, id:BD.set.id, name:BD.set.name, abbr:BD.set.abbr, tcgdex:BD.set.tcgdex, local:BD.set.local, released:BD.set.released} : null,
     sp:SP.page, f:Object.assign({}, F), dk:DK.id, dks:DK.search, up:!!BD.up, cam:VIEW === 'scan' && (!!SC.stream || !!O.camWasOn)};
@@ -3036,7 +3082,7 @@ function goBack(){
   if(VIEW === 'decks' && DK.search){ DK.search = false; viewDecks(); return }
   if(VIEW === 'decks' && DK.id){ DK.id = null; viewDecks(); return }
   if(VIEW === 'review'){ show('cards'); return }
-  if(VIEW !== 'scan') show('scan');
+  if(VIEW !== startView()) show(startView());
 }
 window.addEventListener('popstate', () => { goBack(); navSync() });
 new MutationObserver(navSync).observe($('#main'), {childList:true});
@@ -3044,7 +3090,8 @@ new MutationObserver(navSync).observe($('#modal'), {childList:true});
 new MutationObserver(navSync).observe($('#viewer'), {childList:true});
 function restoreNav(){
   let n = null; try{ n = JSON.parse(localStorage.getItem(NAVKEY) || 'null') }catch(e){}
-  if(!n || Date.now() - (n.at || 0) > 2 * 3600e3 || !n.view || n.view === 'scan'){ show('scan'); if(n && n.cam && Date.now() - (n.at || 0) < 2 * 3600e3) startCamera(); return }
+  if(!n || Date.now() - (n.at || 0) > 2 * 3600e3 || !n.view || n.view === 'home'){ show(startView()); if(startView() === 'scan' && n && n.cam && Date.now() - (n.at || 0) < 2 * 3600e3) startCamera(); return }
+  if(n.view === 'scan'){ show('scan'); if(n.cam) startCamera(); return }
   if(n.f) Object.assign(F, n.f);
   if(n.view === 'binder') BD.up = !!n.up && !n.game;
   if(n.view === 'binder'){ BD.game = n.game && (GAMES[n.game] || store.games.some(g => g.id === n.game)) ? n.game : null; BD.set = BD.game ? n.set : null }
