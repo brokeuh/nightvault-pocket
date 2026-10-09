@@ -26,7 +26,7 @@ jobs:
 
           GAMES = {"gundam": 86, "digimon": 63, "fab": 62, "sorcery": 77, "ws": 20, "dbsfw": 80, "dbsm": 27, "dbz": 23}
           SEALED = re.compile(r"\b(booster|box|case|pack|bundle|deck|display|sleeves?|playmat|binder|tin|kit|collection|set of|starter|blister|tournament|gift)\b", re.I)
-          os.makedirs("data/text", exist_ok=True)
+          os.makedirs("data/text", exist_ok=True); os.makedirs("data/facets", exist_ok=True)
           TEXT_KEYS = ("description", "cardtext", "card text", "effect", "text", "rules", "ability", "abilities", "flavortext", "flavor text")
           SKIP_KEYS = ("rarity", "number", "upc", "release")
 
@@ -62,7 +62,7 @@ jobs:
               except Exception as e:
                   print(key, "skipped:", e); continue
               groups.sort(key=lambda g: g.get("publishedOn") or "", reverse=True)
-              sets, cards, used, texts = [], [], set(), {}
+              sets, cards, used, texts, facets = [], [], set(), {}, {}
               for g in groups:
                   try:
                       prods = get(f"https://tcgcsv.com/tcgplayer/{cat}/{g['groupId']}/products")["results"]
@@ -90,6 +90,9 @@ jobs:
                                        for k, v in ext.items() if k and v and k.lower() not in SKIP_KEYS and not istext(k))[:300]
                       if txt or typ:
                           texts[str(p["productId"])] = [typ, txt[:2500]]
+                      fac = {k: plain(v) for k, v in ext.items() if k and v and k.lower() not in SKIP_KEYS and not istext(k) and 0 < len(plain(v)) <= 60}
+                      if fac:                                # card details for the deck builder's filters (cost, color, type ...)
+                          facets[str(p["productId"])] = fac
                       pr = px.get(p["productId"], [None, None])
                       rows.append([len(sets), str(ext.get("Number") or ""), p.get("name") or "", ext.get("Rarity") or "", p["productId"], pr[0], pr[1]])
                   if not rows:
@@ -102,6 +105,9 @@ jobs:
                   cards.extend(rows)
                   time.sleep(0.15)
               save(key, sets, cards, "TCGplayer via tcgcsv.com")
+              if facets:
+                  with open(f"data/facets/{key}.json", "w", encoding="utf-8") as f:
+                      json.dump(facets, f, separators=(",", ":"), ensure_ascii=False)
               if texts:                                              # card text, only downloaded when someone opens "Details"
                   with open(f"data/text/{key}.json", "w", encoding="utf-8") as f:
                       json.dump(texts, f, separators=(",", ":"), ensure_ascii=False)

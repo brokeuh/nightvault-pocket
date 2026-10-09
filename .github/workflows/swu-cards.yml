@@ -36,7 +36,7 @@ jobs:
 
           def add(code, name, released, order, row, count=0):
               code = code.lower()
-              cards.setdefault(code, []).append({k: v for k, v in row.items() if v})
+              cards.setdefault(code, []).append({k: v for k, v in row.items() if v or v == 0})
               s = sets.setdefault(code, {"code": code, "name": name or code.upper(), "released": released or "", "total": 0, "order": order or 0})
               s["total"] = max(s["total"], count or 0)
 
@@ -67,7 +67,13 @@ jobs:
                       nm, rel, order = exp.get(code, (code, "", 0))
                       add(code, nm, rel, order, {"Set": code.upper(), "Number": str(a.get("cardNumber") or "").zfill(3), "Name": a.get("title") or "",
                                                  "Subtitle": a.get("subtitle") or "", "VariantType": "Normal" if v == "Standard" else v,
-                                                 "Rarity": at(a.get("rarity")).get("name") or "", "FrontArt": img}, a.get("cardCount"))
+                                                 "Rarity": at(a.get("rarity")).get("name") or "", "FrontArt": img,
+                                                 "Cost": a.get("cost"), "Power": a.get("power"), "HP": a.get("hp"),
+                                                 "Type": at(a.get("type")).get("name") or "",
+                                                 "Aspects": [x.get("attributes", x).get("name") for x in ((a.get("aspects") or {}).get("data") or [])],
+                                                 "Traits": [x.get("attributes", x).get("name") for x in ((a.get("traits") or {}).get("data") or [])],
+                                                 "Arenas": [x.get("attributes", x).get("name") for x in ((a.get("arenas") or {}).get("data") or [])],
+                                                 "Text": a.get("text") or ""}, a.get("cardCount"))
                   print("page", page, "of", j["meta"]["pagination"]["pageCount"])
                   if page >= j["meta"]["pagination"]["pageCount"]:
                       break
