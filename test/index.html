@@ -10,6 +10,10 @@
 <meta name="apple-mobile-web-app-title" content="NV Pocket">
 <title>Nightvault Pocket</title>
 <link rel="manifest" href="manifest.webmanifest">
+<script>/* theme before the first paint, so the splash screen already has the right colours */
+try{var t=/\/test\/?$/.test(location.pathname.replace(/index\.html$/,'')),o=(JSON.parse(localStorage.getItem(t?'nightvault.pocket.test.v1':'nightvault.pocket.v1')||'{}').opt)||{};
+if(o.theme)document.documentElement.setAttribute('data-theme',o.theme);if(o.splash===false)document.documentElement.classList.add('nosplash')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&amp;display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230f1115'/%3E%3Cpath d='M18.6 14.2A7.6 7.6 0 1 1 9.8 5.4a6.4 6.4 0 0 0 8.8 8.8z' fill='%236ea8ff'/%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%230f1115'/%3E%3Cpath d='M18.6 14.2A7.6 7.6 0 1 1 9.8 5.4a6.4 6.4 0 0 0 8.8 8.8z' fill='%236ea8ff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
@@ -23,6 +27,23 @@
 [data-theme="ocean"]{--bg:#0b1318;--side:#0f181e;--card:#101a21;--line:#1f3039;--line2:#27404b;--text:#e3eef2;--mut:#93aab4;--dim:#65808c;--accent:#4cc9d9;--accentbg:#0f2a32;--accentline:#1f5a68;--green:#5fcf9a;--greenbg:#10261c;--amber:#e0b25a;--amberbg:#2a2110;--red:#ff7f78;--sub:#15232b;--ctl:#121e26;--ctlh:#182730;--lineh:#36505c;--pan:#1f3039;--modal:#0f181e;--track:#1f323c;--chipbg:#12282f;--logbg:#080e12;--logfg:#bcd0d8;--onacc:#04161a;--pg:#8fe6bd;--pa:#f2c27a;--pb:#a6e8f0;--pgr:#a5bac3;color-scheme:dark}
 [data-theme="graphite"]{--bg:#000000;--side:#0a0a0a;--card:#0d0d0d;--line:#1f1f1f;--line2:#2a2a2a;--text:#ececec;--mut:#9a9a9a;--dim:#6c6c6c;--accent:#e8e8e8;--accentbg:#1d1d1d;--accentline:#444444;--green:#5fcf9a;--greenbg:#10261c;--amber:#e0a85a;--amberbg:#2c200f;--red:#ff7b72;--sub:#151515;--ctl:#111111;--ctlh:#181818;--lineh:#3a3a3a;--pan:#1f1f1f;--modal:#0d0d0d;--track:#222222;--chipbg:#1a1a1a;--logbg:#050505;--logfg:#c8c8c8;--onacc:#111111;--pg:#8fe6bd;--pa:#f2c27a;--pb:#cfcfcf;--pgr:#aaaaaa;color-scheme:dark}
 
+/* splash screen: the Nightvault logo in the colours of the theme */
+#splash{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg);transition:opacity .42s ease,visibility .42s}
+#splash.out{opacity:0;visibility:hidden;pointer-events:none}.nosplash #splash{display:none}
+.spl-in{display:flex;flex-direction:column;align-items:center;gap:6px;animation:splUp .6s cubic-bezier(.2,.8,.2,1) both}
+.spl-tile{width:150px;height:150px;border-radius:36px;display:grid;place-items:center;margin-bottom:20px;box-shadow:0 20px 60px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.08);
+  background:radial-gradient(circle at 50% 18%,color-mix(in srgb,var(--accent) 32%,#20255a) 0%,color-mix(in srgb,var(--accent) 10%,#121636) 58%,#0a0d22 100%)}
+.spl-mark{width:112px;height:112px}
+.spl-line{stroke:#eef1ff;stroke-width:1;opacity:0;animation:splFade .5s .7s forwards}
+.spl-st{fill:#eef1ff;opacity:0;animation:splTw .5s forwards}.spl-acc{fill:var(--accent)}
+.spl-card{fill:color-mix(in srgb,var(--accent) 22%,#1b2150);stroke:var(--accent);stroke-width:3.2}.spl-card.back{stroke-width:2.6;opacity:.78;fill:color-mix(in srgb,var(--accent) 14%,#161b42)}
+.spl-spark{fill:#eef1ff;transform-origin:50px 52px;animation:splSpark .7s .25s both}
+.spl-word{font-family:Syne,"Segoe UI",system-ui,sans-serif;font-weight:800;font-size:44px;line-height:1;color:var(--accent);letter-spacing:-.01em}
+.spl-sub{font-size:14px;letter-spacing:.34em;padding-left:.34em;color:var(--text);opacity:.92}
+@keyframes splUp{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes splFade{to{opacity:.5}}@keyframes splTw{0%{opacity:0;transform:scale(.4)}60%{opacity:1}100%{opacity:1;transform:none}}
+@keyframes splSpark{from{opacity:0;transform:scale(.2) rotate(-45deg)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.spl-in,.spl-line,.spl-st,.spl-spark{animation:none;opacity:1}.spl-line{opacity:.5}}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
 body{overscroll-behavior:none}
@@ -280,6 +301,14 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 </head>
 <body>
 <div id="app">
+  <div id="splash" aria-hidden="true"><div class="spl-in"><div class="spl-tile"><svg class="spl-mark" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+<path class="spl-line" d="M20 24L36 13L54 19L72 10L84 25"/>
+<circle class="spl-st" cx="20" cy="24" r="2.1" style="animation-delay:.35s"/><circle class="spl-st" cx="36" cy="13" r="1.5" style="animation-delay:.5s"/>
+<circle class="spl-st spl-acc" cx="54" cy="19" r="2.7" style="animation-delay:.42s"/><circle class="spl-st" cx="72" cy="10" r="1.5" style="animation-delay:.6s"/><circle class="spl-st" cx="84" cy="25" r="2.1" style="animation-delay:.55s"/>
+<rect class="spl-card back" x="36.5" y="37" width="27" height="39" rx="4.5" transform="rotate(-20 50 93)"/><rect class="spl-card back" x="36.5" y="37" width="27" height="39" rx="4.5" transform="rotate(20 50 93)"/>
+<rect class="spl-card" x="36.5" y="35" width="27" height="39" rx="4.5"/>
+<path class="spl-spark" d="M50 45l2.1 5.1 5.1 2.1-5.1 2.1-2.1 5.1-2.1-5.1-5.1-2.1 5.1-2.1z"/>
+</svg></div><div class="spl-word">Nightvault</div><div class="spl-sub">POCKET</div></div></div>
   <header id="top"><div class="logo"><i class="ti ti-moon-stars"></i>Nightvault <small>Pocket</small><span id="testbadge" hidden style="margin-left:8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;background:var(--amber);color:#000;border-radius:6px;padding:2px 6px">TEST</span></div><div id="scst"></div><button id="fsbtn" class="hbtn" hidden aria-label="Full screen"><i class="ti ti-maximize"></i></button><button id="setbtn" class="hbtn" aria-label="Settings"><i class="ti ti-settings"></i></button></header>
   <main id="main"></main>
   <nav id="tabs">
@@ -2666,6 +2695,7 @@ function viewSettings(){
       ${Object.keys(GAMES).filter(g => g !== 'other').map(g => { const n = store.backs.filter(b => b.game === g).length; return `<div class="row" style="padding:7px 0"><span class="dot" style="background:${GAMES[g].color}"></span><div class="grow">${esc(GAMES[g].label)} <span class="muted" style="font-size:12px">${n ? '· learned' : ''}</span></div>
         ${n ? `<button class="btn sm" data-forget="${g}">Forget</button>` : ''}<button class="btn sm" data-teach="${g}"><i class="ti ti-school"></i>${n ? 'Teach again' : 'Teach'}</button></div>` }).join('')}</div>
     <div class="panel" data-p="look"><h3>Appearance</h3>
+      <label class="row"><input type="checkbox" id="osplash" ${O.splash === false ? '' : 'checked'}><div class="grow">Show the logo when the app opens</div></label>
       <div class="row" style="margin-bottom:10px"><div class="grow">Open the app on</div><div class="oseg" id="ostart"><button data-s="home" class="${O.start === 'scan' ? '' : 'on'}">Home</button><button data-s="scan" class="${O.start === 'scan' ? 'on' : ''}">Scanner</button></div></div><div class="thgrid">${THEMES.map(([id, nm]) => `<button class="thtile ${O.theme === id ? 'on' : ''}" data-t="${id}"><div class="pv" data-theme="${id}"><i style="background:var(--side);height:100%"></i><i style="background:var(--card);height:70%;border:1px solid var(--line2)"></i><i style="background:var(--accent);height:40%"></i></div><div class="nm">${nm}</div></button>`).join('')}</div></div>
     <div class="panel" data-p="data"><h3>Card data</h3>${Object.values(GAMES).filter(g => g.src).map(g => `<div class="row" style="padding:7px 0"><span class="dot" style="background:${g.color}"></span><div class="grow">${esc(g.full)}</div><span class="muted" style="font-size:12px">${esc(g.src)}</span></div>`).join('')}
       <p class="hint">Any other game can be added by hand (My cards → By hand). Card names are read on the phone. Lookups and prices need internet. Your cards stay on this phone until you export them.</p></div>
@@ -2730,6 +2760,7 @@ function viewSettings(){
   $('#ogame').onchange = e => { O.game = e.target.value; persist() };
   $$('.thtile').forEach(b => b.onclick = () => { O.theme = b.dataset.t; persist(); applyTheme(); viewSettings() });
   $$('#ostart [data-s]').forEach(b => b.onclick = () => { O.start = b.dataset.s; persist(); viewSettings() });
+  if($('#osplash')) $('#osplash').onchange = e => { O.splash = e.target.checked; persist() };
   $('#sclear').onclick = () => {
     modal(`<h3>Remove all cards?</h3><p style="margin:0 0 6px">This removes ${total.toLocaleString()} cards from this phone. ${store.lastExport ? '' : '<b>You have not exported them yet.</b>'}</p>
       <div class="btns" style="justify-content:flex-end;margin-top:14px"><button class="btn" id="cx">Cancel</button><button class="btn danger" id="cy"><i class="ti ti-trash"></i>Remove all</button></div>`);
@@ -3147,6 +3178,9 @@ function restoreNav(){
 }
 if(TEST){ $('#testbadge').hidden = false; document.title = 'Pocket TEST' }
 applyTheme(); tabCount(); restoreNav(); fsSync(); $('#fsbtn').onclick = toggleFull;
+(() => { const sp = $('#splash'); if(!sp) return; if(O.splash === false){ sp.remove(); return }     // splash: logo for a moment, then the app
+  const go = () => { if(!sp.isConnected || sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(() => sp.remove(), 450) };
+  sp.onclick = go; setTimeout(go, matchMedia('(prefers-reduced-motion: reduce)').matches ? 450 : 1350) })();
 if(O.dailyPrices && store.cards.length && Date.now() - (store.lastPriceCheck || 0) > 20 * 3600 * 1000) setTimeout(() => priceCheck(false), 4000);
 </script>
 </body>
