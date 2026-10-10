@@ -1285,13 +1285,15 @@ async function pkTcgdexId(c){                                  // TCGdex card id
 /* prices for Pokémon cards that came without one: Cardmarket prices from TCGdex, a few at a time */
 async function pokemonPrices(list, redraw){
   list = (list || []).filter(c => c.game === 'pokemon' && c.price == null && c.priceFoil == null && !c._pkp).slice(0, 400); if(!list.length) return 0;
+  const tp1 = tp => { const k = Object.keys(tp || {}).filter(x => /^1st/i.test(x)).sort((a, b) => /holo/i.test(b) - /holo/i.test(a))[0]; return k ? (tp[k].marketPrice ?? tp[k].midPrice ?? null) : null };
   let n = 0, i = 0, since = 0;
   const work = async () => { while(i < list.length){ const c = list[i++]; c._pkp = 1;
     try{ const d = await getJSON('https://api.tcgdex.net/v2/en/cards/' + enc(await pkTcgdexId(c))), cm = (d.pricing || {}).cardmarket || {}, tp = (d.pricing || {}).tcgplayer || {};
       const eur = cm.avg ?? cm.trend ?? null, holo = cm['avg-holo'] ?? cm['trend-holo'] ?? null, usd = ((tp.normal || tp.holofoil || tp.reverse || {}).marketPrice) ?? null;
-      if(eur != null || holo != null){ c.price = eur; c.priceFoil = holo; c.currency = 'EUR'; c.psrc = 'Cardmarket'; capturePx(c); pickPx(c, c.qty ? c.foil : null); n++; since++ }
+      if(c.ed1){ const p1 = tp1(tp); if(p1 != null){ c.price = p1; c.priceFoil = null; c.currency = 'USD'; c.psrc = 'TCGplayer (1st Edition)'; c.px = {tcgplayer:[p1, null, Date.now(), 'USD', 'TCGplayer (1st Edition)']}; pickPx(c); n++; since++ } }
+      else if(eur != null || holo != null){ c.price = eur; c.priceFoil = holo; c.currency = 'EUR'; c.psrc = 'Cardmarket'; capturePx(c); pickPx(c, c.qty ? c.foil : null); n++; since++ }
       else if(usd != null){ c.price = usd; c.currency = 'USD'; c.psrc = 'TCGplayer'; capturePx(c); pickPx(c, c.qty ? c.foil : null); n++; since++ }
-      for(const o of store.cards) if(o !== c && o.game === 'pokemon' && o.set === c.set && o.number === c.number && o.price == null && o.priceFoil == null && c.psrc){
+      for(const o of store.cards) if(o !== c && o.game === 'pokemon' && o.set === c.set && o.number === c.number && !!o.ed1 === !!c.ed1 && o.price == null && o.priceFoil == null && c.psrc){
         o.price = c.price; o.priceFoil = c.priceFoil; o.currency = c.currency; o.psrc = c.psrc; capturePx(o); pickPx(o) }
     }catch(e){}
     if(since >= 24 && redraw){ since = 0; redraw() } } };
@@ -2125,7 +2127,8 @@ async function priceOne0(c, cache){
   if(c.ed1){                                                   // 1st Edition: only TCGplayer knows it apart (Pokémon); otherwise your own price
     if(c.game === 'pokemon'){ try{ const d = (await getJSON(`https://api.pokemontcg.io/v2/cards/${enc(c.set)}-${enc(String(c.showNum).split('/')[0])}`)).data, tp = (d.tcgplayer || {}).prices || {};
       const p1 = ((tp['1stEditionHolofoil'] || tp['1stEditionNormal'] || tp['1stEdition'] || {}).market) ?? null;
-      if(p1 != null){ c.price = p1; c.priceFoil = null; c.currency = 'USD'; c.psrc = 'TCGplayer (1st Edition)'; c.priced = Date.now(); return before == null ? 'filled' : before !== p1 ? 'updated' : 'same' } }catch(e){} }
+      if(p1 != null){ c.price = p1; c.priceFoil = null; c.currency = 'USD'; c.psrc = 'TCGplayer (1st Edition)'; c.priced = Date.now(); return before == null ? 'filled' : before !== p1 ? 'updated' : 'same' } }catch(e){}
+      c._pkp = 0; c.price = null; c.priceFoil = null; await pokemonPrices([c]); if(c.price != null){ c.priced = Date.now(); return before == null ? 'filled' : before !== c.price ? 'updated' : 'same' } c.price = before }
     return before == null ? 'missed' : 'same' }
   if(c.game === 'pokemon'){                                    // Pokémon: ask TCGdex for this exact card (set id + card number)
     try{ const d = await getJSON('https://api.tcgdex.net/v2/en/cards/' + enc(await pkTcgdexId(c))), cm = (d.pricing || {}).cardmarket || {};
@@ -2645,7 +2648,7 @@ function binderCard(m, redraw){
   const q = f => (mine.find(c => !!c.foil === f && !c.lang && !c.grade && !c.digital) || {}).qty || 0;
   modal(`<div class="cres-top"><div class="cardbig zoom" id="bzm">${pic(m)}</div><div style="min-width:0;flex:1"><div class="cname">${esc(m.name)}</div>
       <div class="sub" style="margin:2px 0 8px">${esc(m.showSet)} #${esc(m.showNum)}${m.rarity ? ' · ' + esc(m.rarity) : ''}</div>
-      <div class="price">${fmt(m.price, m.currency)}${m.priceFoil != null ? ` <span class="muted">· foil ${fmt(m.priceFoil, m.currency)}</span>` : ''}</div></div></div>
+      <div class="price">${fmt(m.price, m.currency)}${m.priceFoil != null ? ` <span class="muted">· foil ${fmt(m.priceFoil, m.currency)}</span>` : ''}${m.p1e != null ? `<div style="font-size:13px;margin-top:2px"><span class="vbadge">1st Ed</span> ${fmt(m.p1e, 'USD')} <span class="muted" style="font-size:11.5px">TCGplayer</span></div>` : canEd1(m) && m.game === 'pokemon' ? '<div class="muted" style="font-size:12px;margin-top:2px">The price above is for the normal (unlimited) print</div>' : ''}</div></div></div>
     ${[false, true].map(f => `<div class="row"><div class="grow">${f ? 'Foil' : 'Normal'}</div><div class="qb"><button data-f="${f ? 1 : 0}" data-d="-1">−</button><b id="bq${f ? 1 : 0}">${q(f)}</b><button data-f="${f ? 1 : 0}" data-d="1">+</button></div></div>`).join('')}
     ${mine.filter(c => c.lang || c.grade).map(c => `<div class="row"><div class="grow">${c.foil ? 'Foil' : 'Normal'} ${vbadge(c)} <span class="muted" style="font-size:12px">${esc([c.lang ? langName(c.lang) : '', c.grade || ''].filter(Boolean).join(', '))}</span></div><div class="qb"><button data-vu="${c.uid}" data-d="-1">−</button><b>${c.qty}</b><button data-vu="${c.uid}" data-d="1">+</button></div></div>`).join('')}
     <button class="lnk" id="bver" style="margin-top:4px"><i class="ti ti-language"></i> Add another language or a graded copy</button>
@@ -3004,7 +3007,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610110136';
+const BUILD = '202610110152';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
@@ -3573,6 +3576,8 @@ applyTheme(); tabCount(); restoreNav(); fsSync(); $('#fsbtn').onclick = toggleFu
 (() => { const sp = $('#splash'); if(!sp) return; if(O.splash === false){ sp.remove(); return }     // splash: logo for a moment, then the app
   const go = () => { if(!sp.isConnected || sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(() => sp.remove(), 450) };
   sp.onclick = go; setTimeout(go, matchMedia('(prefers-reduced-motion: reduce)').matches ? 450 : 1350) })();
+if(!O.ed1fix){ O.ed1fix = 1; let k = 0; for(const c of store.cards) if(c.ed1 && !/1st/i.test(c.psrc || '') && !myPx(c)){ c.price = null; c.priceFoil = null; c.px = {}; c.psrc = ''; k++ }
+  if(k){ persist(); setTimeout(() => pokemonPrices(store.cards.filter(c => c.ed1), () => persist()), 3000) } }
 setTimeout(() => { if(document.querySelector('#modal > *')) return; if(!O.guideSeen && !store.cards.length){ showGuide(0); changelog().then(l => { if(l.length && O.seenLog == null){ O.seenLog = Math.max(...l.map(e => +e.id || 0)); persist() } }) } else whatsNew(false) }, 2400);   // after an update: what changed, once
 if(O.dailyPrices && store.cards.length && Date.now() - (store.lastPriceCheck || 0) > 20 * 3600 * 1000) setTimeout(() => priceCheck(false), 4000);
 </script>
