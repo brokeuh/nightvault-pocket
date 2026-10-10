@@ -3,6 +3,18 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 18,
+   "date": "2026-10-11",
+   "where": [
+    "android"
+   ],
+   "title": "Updates inside the app",
+   "items": [
+    "“Download” in the update bar now downloads the new version inside the app and opens the installer - no more copies in your Downloads folder, and the file is removed after the update.",
+    "The first time, Android asks to allow Nightvault Pocket to install apps: allow it once, come back and tap Download again."
+   ]
+  },
+  {
    "id": 17,
    "date": "2026-10-10",
    "where": [

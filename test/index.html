@@ -2955,7 +2955,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610102348';
+const BUILD = '202610102355';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
@@ -2975,7 +2975,19 @@ async function checkUpdate(force){
   const bar = document.createElement('div'); bar.id = 'updbar';
   bar.innerHTML = `<i class="ti ti-sparkles"></i><span>${n.url ? (n.mine ? `Build ${n.b} of the app is ready <small class="muted">(you have ${n.mine})</small>` : 'A new version of the app is ready') : 'A new version is ready'}</span><button class="btn sm primary" id="updgo">${n.url ? 'Download' : 'Update'}</button><button class="lnk" id="updx" aria-label="Later">Later</button>`;
   document.body.appendChild(bar);
-  $('#updgo').onclick = () => { if(n.url){ location.href = n.url; bar.remove(); toast('When the download is done, open the newest nightvault-pocket.apk (in your notifications or Downloads) and tap Install', false) } else location.reload() };
+  $('#updgo').onclick = async () => {
+    if(!n.url) return location.reload();
+    if(NATIVE){                                              // the app downloads the update itself and opens the installer (no copies in Downloads)
+      const txt = bar.querySelector('span'), go = $('#updgo'); go.disabled = true; txt.textContent = 'Downloading the update ...';
+      let lis = null; try{ const P = window.Capacitor && Capacitor.registerPlugin ? (_capP.NvUpdate ||= Capacitor.registerPlugin('NvUpdate')) : null;
+        if(P && P.addListener) lis = await P.addListener('progress', e => { txt.textContent = `Downloading the update ... ${Math.round(100 * e.done / e.total)}%` }) }catch(e){}
+      try{ await capCall('NvUpdate', 'install', {url:n.url.split('?')[0]}); txt.textContent = 'Tap Install in the window that opens - your cards stay'; go.hidden = true }
+      catch(e){ const msg = (e && e.message) || String(e);
+        if(/allow/i.test(msg)){ txt.textContent = 'Allow “Install unknown apps” for Nightvault Pocket, come back and tap Download again'; go.disabled = false }
+        else { toast(msg + ' - opening the download in the browser', true); location.href = n.url; bar.remove() } }
+      finally{ if(lis && lis.remove) lis.remove() }
+      return }
+    location.href = n.url; bar.remove(); toast('When the download is done, open the newest nightvault-pocket.apk (in your notifications or Downloads) and tap Install', false) };
   $('#updx').onclick = () => bar.remove() }
 setTimeout(() => checkUpdate(true), 6000);
 document.addEventListener('visibilitychange', () => { if(!document.hidden) checkUpdate(false) });
