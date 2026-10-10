@@ -1,56 +1,206 @@
 {
-  "format": "nightvault-changelog",
-  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
-  "entries": [
-    {"id": 14, "date": "2026-10-10", "where": ["live", "test", "android"], "title": "What's new",
-     "items": ["This list: see what changed in each update, with the older updates below it."]},
-    {"id": 13, "date": "2026-10-10", "where": ["test", "android"], "title": "Camera screen in the app's style",
-     "items": ["Before the camera starts you see a card frame in your theme colours instead of a grey box."]},
-    {"id": 12, "date": "2026-10-10", "where": ["test", "android"], "title": "Every printing, languages and graded cards",
-     "items": ["The scan result now finds all printings of a card (not just the first ten or so), with “All printings” and a search box.",
-               "Not in the list? Type the set code and number printed on the card - it is looked up, or added as you typed it.",
-               "New “EN” button next to Foil: mark the language (Japanese, German, French ...) and graded copies (PSA, BGS, CGC, SGC ... with the grade).",
-               "Each language and grade is its own entry in My cards, with a small badge, and can have its own price."]},
-    {"id": 11, "date": "2026-10-10", "where": ["android"], "title": "Android app (test)",
-     "items": ["Nightvault Pocket as an Android app, with Google's text reader on the phone: faster and much better at reading card names.",
-               "Settings → Scanning can switch back to the web reader to compare.",
-               "Files you export open the Android share menu (Drive, mail, Files)."]},
-    {"id": 10, "date": "2026-10-09", "where": ["live", "test"], "title": "Better at reading card names",
-     "items": ["Names on coloured or silver bars are read word by word, with a sharper second read and a taller box when the card is not exactly in the frame.",
-               "Pokémon cards are found by the number at the bottom (like 150/217) - also when the name cannot be read."]},
-    {"id": 9, "date": "2026-10-09", "where": ["live", "test"], "title": "World of Warcraft TCG card text",
-     "items": ["Card text for about 7,800 WoW TCG cards, read from card pictures - search it in the deck builder."]},
-    {"id": 8, "date": "2026-10-09", "where": ["test"], "title": "Two-way sync with Nightvault on the PC",
-     "items": ["Added, fewer and removed cards travel both ways, exactly once.",
-               "Decks, wishlist, your own prices and the order of price sources are shared too."]},
-    {"id": 7, "date": "2026-10-09", "where": ["test"], "title": "New icons",
-     "items": ["The icons inside the app are redrawn in the style of the new logo."]},
-    {"id": 6, "date": "2026-10-09", "where": ["live", "test"], "title": "New look",
-     "items": ["New app icon: fanned cards under a constellation.",
-               "Splash screen with the logo in the colours of your theme.",
-               "Home screen with tiles for scanning, binder, decks, upcoming releases and syncing; settings behind the gear.",
-               "Game emblems, and your own logo or picture per game."]},
-    {"id": 5, "date": "2026-10-09", "where": ["live", "test"], "title": "Decks",
-     "items": ["Deck builder for every game: search by name or card text, with filters (cost, colour, type, rarity ...), sets and “cards I have”.",
-               "Cost curve, value, what you own and what is missing; paste and copy deck lists.",
-               "Deck rules per deck (deck size, sideboard, copies of a card), with the usual rules for known games.",
-               "Add to a deck from the binder and the scanner."]},
-    {"id": 4, "date": "2026-10-09", "where": ["live", "test"], "title": "Prices from several sources",
-     "items": ["Cardmarket, TCGplayer and your own price, in the order you choose - no price at the first source, then the next.",
-               "Prices sheet per card with every source, shop links and eBay sold listings.",
-               "Daily prices for many more games, also old out-of-print ones."]},
-    {"id": 3, "date": "2026-10-09", "where": ["live", "test"], "title": "Binder and releases",
-     "items": ["Set lists grouped by product type (main sets, Commander, Secret Lair, decks, promos ...).",
-               "Upcoming releases: card game sets coming out soon, updated every day.",
-               "Star Wars CCG sets with their official names, codes and dates.",
-               "Big pictures and full card details; card text read by Nightvault on the PC."]},
-    {"id": 2, "date": "2026-10-09", "where": ["test"], "title": "Test version",
-     "items": ["A separate test version at /test/ to try new things first; your real collection is not touched."]},
-    {"id": 1, "date": "2026-10-08", "where": ["live"], "title": "Nightvault Pocket",
-     "items": ["Scan cards with the phone camera: one card, a whole binder page, or quick scanning card after card.",
-               "Magic, Pokémon, Yu-Gi-Oh!, Lorcana, Star Wars Unlimited, One Piece, Riftbound and many more games, plus any game by hand.",
-               "My cards and a binder per set, with prices, foils, a wishlist and a trade list.",
-               "Scan templates for unusual card layouts, and card backs it learns.",
-               "Backups, and export to Nightvault on the PC."]}
-  ]
+ "format": "nightvault-changelog",
+ "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
+ "entries": [
+  {
+   "id": 15,
+   "date": "2026-10-10",
+   "where": [
+    "live",
+    "test",
+    "android"
+   ],
+   "title": "Updates without reinstalling",
+   "items": [
+    "The app now checks for a newer version by itself (when you open it or come back to it) and shows “A new version is ready” - tap Update.",
+    "The Android app shows “Download” for a new version: install it over the old one, your cards stay."
+   ]
+  },
+  {
+   "id": 14,
+   "date": "2026-10-10",
+   "where": [
+    "live",
+    "test",
+    "android"
+   ],
+   "title": "What's new",
+   "items": [
+    "This list: see what changed in each update, with the older updates below it."
+   ]
+  },
+  {
+   "id": 13,
+   "date": "2026-10-10",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Camera screen in the app's style",
+   "items": [
+    "Before the camera starts you see a card frame in your theme colours instead of a grey box."
+   ]
+  },
+  {
+   "id": 12,
+   "date": "2026-10-10",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Every printing, languages and graded cards",
+   "items": [
+    "The scan result now finds all printings of a card (not just the first ten or so), with “All printings” and a search box.",
+    "Not in the list? Type the set code and number printed on the card - it is looked up, or added as you typed it.",
+    "New “EN” button next to Foil: mark the language (Japanese, German, French ...) and graded copies (PSA, BGS, CGC, SGC ... with the grade).",
+    "Each language and grade is its own entry in My cards, with a small badge, and can have its own price."
+   ]
+  },
+  {
+   "id": 11,
+   "date": "2026-10-10",
+   "where": [
+    "android"
+   ],
+   "title": "Android app (test)",
+   "items": [
+    "Nightvault Pocket as an Android app, with Google's text reader on the phone: faster and much better at reading card names.",
+    "Settings → Scanning can switch back to the web reader to compare.",
+    "Files you export open the Android share menu (Drive, mail, Files)."
+   ]
+  },
+  {
+   "id": 10,
+   "date": "2026-10-09",
+   "where": [
+    "live",
+    "test"
+   ],
+   "title": "Better at reading card names",
+   "items": [
+    "Names on coloured or silver bars are read word by word, with a sharper second read and a taller box when the card is not exactly in the frame.",
+    "Pokémon cards are found by the number at the bottom (like 150/217) - also when the name cannot be read."
+   ]
+  },
+  {
+   "id": 9,
+   "date": "2026-10-09",
+   "where": [
+    "live",
+    "test"
+   ],
+   "title": "World of Warcraft TCG card text",
+   "items": [
+    "Card text for about 7,800 WoW TCG cards, read from card pictures - search it in the deck builder."
+   ]
+  },
+  {
+   "id": 8,
+   "date": "2026-10-09",
+   "where": [
+    "test"
+   ],
+   "title": "Two-way sync with Nightvault on the PC",
+   "items": [
+    "Added, fewer and removed cards travel both ways, exactly once.",
+    "Decks, wishlist, your own prices and the order of price sources are shared too."
+   ]
+  },
+  {
+   "id": 7,
+   "date": "2026-10-09",
+   "where": [
+    "test"
+   ],
+   "title": "New icons",
+   "items": [
+    "The icons inside the app are redrawn in the style of the new logo."
+   ]
+  },
+  {
+   "id": 6,
+   "date": "2026-10-09",
+   "where": [
+    "live",
+    "test"
+   ],
+   "title": "New look",
+   "items": [
+    "New app icon: fanned cards under a constellation.",
+    "Splash screen with the logo in the colours of your theme.",
+    "Home screen with tiles for scanning, binder, decks, upcoming releases and syncing; settings behind the gear.",
+    "Game emblems, and your own logo or picture per game."
+   ]
+  },
+  {
+   "id": 5,
+   "date": "2026-10-09",
+   "where": [
+    "live",
+    "test"
+   ],
+   "title": "Decks",
+   "items": [
+    "Deck builder for every game: search by name or card text, with filters (cost, colour, type, rarity ...), sets and “cards I have”.",
+    "Cost curve, value, what you own and what is missing; paste and copy deck lists.",
+    "Deck rules per deck (deck size, sideboard, copies of a card), with the usual rules for known games.",
+    "Add to a deck from the binder and the scanner."
+   ]
+  },
+  {
+   "id": 4,
+   "date": "2026-10-09",
+   "where": [
+    "live",
+    "test"
+   ],
+   "title": "Prices from several sources",
+   "items": [
+    "Cardmarket, TCGplayer and your own price, in the order you choose - no price at the first source, then the next.",
+    "Prices sheet per card with every source, shop links and eBay sold listings.",
+    "Daily prices for many more games, also old out-of-print ones."
+   ]
+  },
+  {
+   "id": 3,
+   "date": "2026-10-09",
+   "where": [
+    "live",
+    "test"
+   ],
+   "title": "Binder and releases",
+   "items": [
+    "Set lists grouped by product type (main sets, Commander, Secret Lair, decks, promos ...).",
+    "Upcoming releases: card game sets coming out soon, updated every day.",
+    "Star Wars CCG sets with their official names, codes and dates.",
+    "Big pictures and full card details; card text read by Nightvault on the PC."
+   ]
+  },
+  {
+   "id": 2,
+   "date": "2026-10-09",
+   "where": [
+    "test"
+   ],
+   "title": "Test version",
+   "items": [
+    "A separate test version at /test/ to try new things first; your real collection is not touched."
+   ]
+  },
+  {
+   "id": 1,
+   "date": "2026-10-08",
+   "where": [
+    "live"
+   ],
+   "title": "Nightvault Pocket",
+   "items": [
+    "Scan cards with the phone camera: one card, a whole binder page, or quick scanning card after card.",
+    "Magic, Pokémon, Yu-Gi-Oh!, Lorcana, Star Wars Unlimited, One Piece, Riftbound and many more games, plus any game by hand.",
+    "My cards and a binder per set, with prices, foils, a wishlist and a trade list.",
+    "Scan templates for unusual card layouts, and card backs it learns.",
+    "Backups, and export to Nightvault on the PC."
+   ]
+  }
+ ]
 }

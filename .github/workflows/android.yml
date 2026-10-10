@@ -43,6 +43,7 @@ jobs:
           cp node_modules/@capacitor/core/dist/capacitor.js www/capacitor.js
           sed -i 's#<head>#<head><script src="capacitor.js"></script>#' www/index.html
           grep -c 'capacitor.js' www/index.html
+          echo "WEB_BUILD=$(grep -o "const BUILD = '[0-9]\{12\}'" www/index.html | grep -o '[0-9]\{12\}')" >> "$GITHUB_ENV"
           npx cap add android
           bash patch.sh
           npx cap sync android
@@ -66,7 +67,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          NOTES="Test build ${{ github.run_number }} ($(date -u +%Y-%m-%d)) - Nightvault Pocket with Google's text reader for the scanner. Open this page on your phone and tap nightvault-pocket.apk to install."
+          NOTES="Test build ${{ github.run_number }} ($(date -u +%Y-%m-%d), web ${WEB_BUILD}) - Nightvault Pocket with Google's text reader for the scanner. Open this page on your phone and tap nightvault-pocket.apk to install."
           gh release view android-test >/dev/null 2>&1 || gh release create android-test --prerelease --title "Android test app" --notes "$NOTES" --target main
           gh release edit android-test --notes "$NOTES"
           gh release upload android-test nightvault-pocket.apk --clobber

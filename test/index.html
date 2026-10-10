@@ -223,6 +223,8 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 #tabs button.on i{color:var(--accent)}
 #tabs .tbadge{position:absolute;top:4px;left:calc(50% + 6px);min-width:17px;height:17px;border-radius:9px;background:var(--amber);color:#000;font-size:10.5px;font-weight:700;display:grid;place-items:center;padding:0 4px}
 
+#updbar{position:fixed;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top,0px));z-index:60;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--card);border:1px solid var(--accentline,var(--line));box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:14px}
+#updbar span{flex:1}#updbar i{color:var(--accent);font-size:18px}
 #toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:50;display:flex;flex-direction:column;gap:8px;align-items:center;width:max-content;max-width:calc(100vw - 32px)}
 .t1{background:#1b2230;color:#e7eaf0;border:1px solid var(--accentline);padding:8px 16px;border-radius:10px;font-size:13px;text-align:center}
 .t1.err{border-color:#7d3b37;background:#2a1716;color:#ffb3ad}
@@ -2900,6 +2902,29 @@ async function whatsNew(force){
   modal(`<h3><i class="ti ti-sparkles" style="color:var(--accent)"></i> What's new</h3><div style="max-height:60vh;overflow:auto">${clogHTML(force ? fresh : fresh.slice(0, 6))}</div>
     <div class="btns" style="justify-content:space-between;margin-top:12px">${force ? '<span></span>' : '<button class="btn" id="wnall">All updates</button>'}<button class="btn primary" onclick="closeModal()">OK</button></div>`);
   if($('#wnall')) $('#wnall').onclick = () => whatsNew(true) }
+/* ---------------------------------------------------------------- new version check
+   An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
+   version is online, and offers to load it. */
+const BUILD = '202610102313';
+const UPD = {at:0, shown:false};
+const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
+async function newerBuild(){
+  if(NATIVE){                                        // Android app: the newest APK says which build of the page it carries
+    const r = await fetch('https://api.github.com/repos/brokeuh/nightvault-pocket/releases/tags/android-test', {cache:'no-store'}).then(x => x.ok ? x.json() : null).catch(() => null);
+    const b = r && (/web (\d{12})/.exec(r.body || '') || [])[1]; return b && b > BUILD ? {b, url:'https://github.com/brokeuh/nightvault-pocket/releases/download/android-test/nightvault-pocket.apk'} : null }
+  const t = await fetch(location.pathname + '?v=' + Date.now(), {cache:'no-store'}).then(x => x.ok ? x.text() : '').catch(() => '');
+  const b = buildOf(t); return b && b > BUILD ? {b} : null }
+async function checkUpdate(force){
+  if(BUILD.startsWith('__') || UPD.shown || (!force && Date.now() - UPD.at < 10 * 60e3)) return; UPD.at = Date.now();
+  const n = await newerBuild(); if(!n) return; UPD.shown = true;
+  const bar = document.createElement('div'); bar.id = 'updbar';
+  bar.innerHTML = `<i class="ti ti-sparkles"></i><span>${n.url ? 'A new version of the app is ready' : 'A new version is ready'}</span><button class="btn sm primary" id="updgo">${n.url ? 'Download' : 'Update'}</button><button class="lnk" id="updx" aria-label="Later">Later</button>`;
+  document.body.appendChild(bar);
+  $('#updgo').onclick = () => { if(n.url){ location.href = n.url; bar.remove() } else location.reload() };
+  $('#updx').onclick = () => bar.remove() }
+setTimeout(() => checkUpdate(true), 6000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) checkUpdate(false) });
+
 function viewSettings(){
   const total = store.cards.reduce((a, c) => a + c.qty, 0);
   $('#main').innerHTML = `<div class="head">${SP.page ? '<button class="btn sm" id="spback"><i class="ti ti-arrow-left"></i>Settings</button>' : '<h1>Settings</h1>'}</div>
