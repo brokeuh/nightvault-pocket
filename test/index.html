@@ -180,6 +180,8 @@ select{width:auto}
 .conf{padding:2px 9px;border-radius:999px;font-size:11.5px;display:inline-block;margin:0 4px 4px 0}
 .conf.high{background:var(--greenbg);color:var(--pg)}.conf.medium{background:var(--amberbg);color:var(--pa)}.conf.low{background:color-mix(in srgb,var(--red) 18%,var(--bg));color:var(--red)}.conf.manual{background:var(--accentbg);color:var(--pb)}
 .cands{display:flex;gap:8px;overflow-x:auto;margin:12px -14px 0;padding:0 14px 4px}
+.clog{padding:10px 0;border-bottom:1px solid var(--line)}.clog:last-child{border-bottom:0}.clh{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.clh span{font-size:12px;color:var(--mut);white-space:nowrap}
+.clog ul{margin:6px 0 0;padding-left:18px;font-size:13.5px;line-height:1.45}.clog li{margin:3px 0}.cltag{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
 .vbadge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:1px 6px;border-radius:6px;background:var(--accentbg,#1b2740);color:var(--accent);vertical-align:1px}
 .ppr{width:100%;gap:10px;padding:6px 2px;border:0;background:none;color:inherit;border-bottom:1px solid var(--line)}.ppr.on{background:var(--accentbg,#1b2740)}
 .cand-t{flex:none;width:64px;border:2px solid transparent;border-radius:7px;overflow:hidden;position:relative;aspect-ratio:63/88;background:#111;padding:0}
@@ -2785,6 +2787,7 @@ async function importBackup(e){
 /* ---------------------------------------------------------------- settings */
 const SP = {page:null};
 const SPAGES = [
+  ['news', 'sparkles', 'What\'s new', () => 'Changes in each update of the app'],
   ['backup', 'shield-check', 'Backups', () => store.lastBackup ? 'Last backup file ' + new Date(store.lastBackup).toLocaleDateString() : 'No backup file saved yet'],
   ...(TEST ? [['test', 'flask', 'Test version', () => 'Separate from your real collection']] : []),
   ['sync', 'device-desktop-up', 'Nightvault sync', t => `${t.toLocaleString()} cards on this phone${store.lastExport ? ' · last sent ' + new Date(store.lastExport).toLocaleDateString() : ''}`],
@@ -2880,10 +2883,28 @@ function settingsPages(total){
     <p class="hint" style="text-align:center">Nightvault Pocket · your cards stay on this phone until you export them</p>`;
   $$('#smenu [data-sp]').forEach(b => b.onclick = () => { SP.page = b.dataset.sp; viewSettings(); $('#main').scrollTop = 0 });
 }
+/* ---------------------------------------------------------------- what's new (data/changelog.json, newest first) */
+const CHANNEL = NATIVE ? 'android' : TEST ? 'test' : 'live', SEES = {live:['live'], test:['live', 'test'], android:['live', 'test', 'android']}[CHANNEL];
+let _clog;
+const changelog = () => _clog ||= firstJSON(['data/changelog.json?d=' + new Date().toISOString().slice(0, 13)]).then(d => ((d && d.entries) || []).filter(e => (e.where || []).some(w => SEES.includes(w)))).catch(() => []);
+const CLOG_TAG = {live:'', test:'Test version', android:'Android app'};
+const clogHTML = l => l.map(e => `<div class="clog"><div class="clh"><b>${esc(e.title)}</b><span>${esc(new Date(e.date + 'T12:00:00').toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'}))}</span></div>
+  ${(e.where || []).includes('live') || CHANNEL === 'live' ? '' : `<span class="cltag">${esc(CLOG_TAG[(e.where || []).includes('test') ? 'test' : 'android'])}</span>`}<ul>${(e.items || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('');
+async function whatsNew(force){
+  const l = await changelog(); if(!l.length){ if(force) toast('The list of updates could not be loaded', true); return }
+  const top = Math.max(...l.map(e => +e.id || 0));
+  if(!force){
+    if(O.seenLog == null){ O.seenLog = store.cards.length ? Math.max(0, top - 2) : top; persist(); if(!store.cards.length) return }   // new on this phone: no list of old news
+    if(top <= O.seenLog) return }
+  const fresh = force ? l : l.filter(e => +e.id > O.seenLog); O.seenLog = top; persist();
+  modal(`<h3><i class="ti ti-sparkles" style="color:var(--accent)"></i> What's new</h3><div style="max-height:60vh;overflow:auto">${clogHTML(force ? fresh : fresh.slice(0, 6))}</div>
+    <div class="btns" style="justify-content:space-between;margin-top:12px">${force ? '<span></span>' : '<button class="btn" id="wnall">All updates</button>'}<button class="btn primary" onclick="closeModal()">OK</button></div>`);
+  if($('#wnall')) $('#wnall').onclick = () => whatsNew(true) }
 function viewSettings(){
   const total = store.cards.reduce((a, c) => a + c.qty, 0);
   $('#main').innerHTML = `<div class="head">${SP.page ? '<button class="btn sm" id="spback"><i class="ti ti-arrow-left"></i>Settings</button>' : '<h1>Settings</h1>'}</div>
     <div id="smenu"></div>
+    <div class="panel" data-p="news"><h3>What's new</h3><div id="clogall" class="muted">Loading the list of updates ...</div></div>
     <div class="panel" data-p="sync"><h3>Send to Nightvault</h3>
       <p style="margin:0 0 10px;font-size:13.5px">${total.toLocaleString()} cards on this phone${store.lastExport ? ` · last sent ${new Date(store.lastExport).toLocaleString()}` : ''}.</p>
       <div class="btns"><button class="btn primary" id="sexp"><i class="ti ti-device-desktop-up"></i>Export for Nightvault</button><button class="btn" id="scsv"><i class="ti ti-file-spreadsheet"></i>Export CSV</button>
@@ -2944,6 +2965,7 @@ function viewSettings(){
       <pre id="dtext" style="white-space:pre-wrap;word-break:break-word;font:11.5px/1.45 ui-monospace,Menlo,Consolas,monospace;background:var(--logbg);color:var(--logfg);border-radius:8px;padding:10px;max-height:60vh;overflow:auto;margin:0;user-select:text"></pre></div>
     <div class="panel" data-p="danger"><h3>Danger zone</h3><button class="btn danger" id="sclear" ${store.cards.length ? '' : 'disabled'}><i class="ti ti-trash"></i>Remove all cards from this phone</button>
       <p class="hint">Cards already imported into Nightvault stay there.</p></div>`;
+  if($('#clogall')) changelog().then(l => { if($('#clogall')) $('#clogall').outerHTML = l.length ? `<div id="clogall">${clogHTML(l)}</div>` : '<div id="clogall" class="muted">The list of updates could not be loaded - check the internet connection.</div>' });
   if($('#sinst')) $('#sinst').onclick = installApp;
   if($('#sfull')) $('#sfull').onclick = async () => { await toggleFull(); viewSettings() };
   if($('#tcopy')) $('#tcopy').onclick = () => { let real = null; try{ real = JSON.parse(localStorage.getItem('nightvault.pocket.v1') || 'null') }catch(e){}
@@ -3403,6 +3425,7 @@ applyTheme(); tabCount(); restoreNav(); fsSync(); $('#fsbtn').onclick = toggleFu
 (() => { const sp = $('#splash'); if(!sp) return; if(O.splash === false){ sp.remove(); return }     // splash: logo for a moment, then the app
   const go = () => { if(!sp.isConnected || sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(() => sp.remove(), 450) };
   sp.onclick = go; setTimeout(go, matchMedia('(prefers-reduced-motion: reduce)').matches ? 450 : 1350) })();
+setTimeout(() => { if(!$('#modal .mbox') && !document.querySelector('#modal > *')) whatsNew(false) }, 2400);   // after an update: what changed, once
 if(O.dailyPrices && store.cards.length && Date.now() - (store.lastPriceCheck || 0) > 20 * 3600 * 1000) setTimeout(() => priceCheck(false), 4000);
 </script>
 </body>
