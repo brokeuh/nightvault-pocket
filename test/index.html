@@ -94,6 +94,10 @@ select{width:auto}
 /* camera */
 .camwrap{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:3/4;max-height:64vh;width:100%;margin-inline:auto;border:1px solid var(--line)}
 .camwrap video,.camwrap canvas,.camwrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.camwrap:not(.live){background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--accent) 14%,var(--card)) 0%,var(--card) 62%,var(--bg) 100%)}
+.camframe{width:96px;height:134px;border-radius:12px;border:2px dashed color-mix(in srgb,var(--accent) 55%,transparent);display:grid;place-items:center;color:var(--accent);font-size:30px;position:relative;margin-bottom:4px}
+.camframe::before,.camframe::after{content:'';position:absolute;width:22px;height:22px;border:3px solid var(--accent);border-radius:4px}
+.camframe::before{top:-4px;left:-4px;border-right:0;border-bottom:0}.camframe::after{bottom:-4px;right:-4px;border-left:0;border-top:0}
 .camnote{position:absolute;inset:0;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--mut)}
 .camnote i.big{font-size:40px;color:var(--dim)}
 .camtools{position:absolute;right:6px;top:5px;display:flex;flex-direction:row;gap:6px;z-index:2}
@@ -882,8 +886,8 @@ function viewScan(){
   const g = O.game, nrv = (store.review || []).length;
   $('#main').innerHTML = `
     <div id="teachb"></div>
-    <div class="camwrap" id="cw"><video id="cv" playsinline muted></video><img id="cstill" alt="" hidden><canvas id="cg"></canvas>
-      <div class="camnote" id="camnote"><i class="ti ti-camera big"></i><div>Fill the frame with the card, upright, with even light and no glare.</div>
+    <div class="camwrap" id="cw"><video id="cv" playsinline muted hidden poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video><img id="cstill" alt="" hidden><canvas id="cg"></canvas>
+      <div class="camnote" id="camnote"><div class="camframe"><i class="ti ti-camera"></i></div><div>Fill the frame with the card, upright, with even light and no glare.</div>
         <button class="btn primary" id="cstart"><i class="ti ti-camera"></i>Start camera</button></div>
       <div class="focusring" id="cfr" hidden></div><div class="camtools" id="ctools" hidden><button id="czoom" hidden aria-label="Zoom" style="font-size:12px;font-weight:700">1×</button><button id="ctorch" hidden aria-label="Flashlight"><i class="ti ti-bolt"></i></button><button id="cflip" hidden aria-label="Switch camera"><i class="ti ti-camera-rotate"></i></button><button id="cstop" aria-label="Stop camera"><i class="ti ti-x"></i></button></div>
     </div>
@@ -995,7 +999,7 @@ async function startCamera(deviceId){
     SC.stream = await navigator.mediaDevices.getUserMedia({audio:false, video: saved ? {deviceId:{ideal:saved}, width:{ideal:1920}, height:{ideal:1440}}
                                                                           : {facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1440}}});
     const v = $('#cv'); v.srcObject = SC.stream; await v.play().catch(() => {});
-    $('#camnote').hidden = true; $('#cstill').hidden = true; v.hidden = false; $('#ctools').hidden = false;
+    $('#camnote').hidden = true; $('#cstill').hidden = true; v.hidden = false; $('#ctools').hidden = false; $('#cw').classList.add('live');
     const track = SC.stream.getVideoTracks()[0], caps = track.getCapabilities ? track.getCapabilities() : {};
     $('#ctorch').hidden = !caps.torch; SC.torch = false; $('#ctorch').classList.remove('on');
     SC.caps = caps; loadTesseract().catch(() => {});
@@ -1038,7 +1042,7 @@ function stopCamera(keepUi){
   clearInterval(SC.timer); SC.timer = null; SC.prev = null; SC.stable = 0;
   if(SC.stream){ SC.stream.getTracks().forEach(t => t.stop()); SC.stream = null }
   if(keepUi || VIEW !== 'scan' || !$('#cv')) return;
-  $('#cv').hidden = true; $('#ctools').hidden = true;
+  $('#cv').hidden = true; $('#ctools').hidden = true; if(!SC.still) $('#cw').classList.remove('live');
   if(!SC.still){ $('#cstill').hidden = true; $('#camnote').hidden = false; drawGuide(null) }
   setSt('');
 }
@@ -1161,7 +1165,7 @@ async function onPhoto(e){
   const img = new Image(); img.src = URL.createObjectURL(f); try{ await img.decode() }catch(err){ toast('Could not open that picture', true); return }
   const c = document.createElement('canvas'), k = Math.min(1, 2200 / Math.max(img.naturalWidth, img.naturalHeight));
   c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-  SC.still = c; $('#cstill').src = img.src; $('#cstill').hidden = false; $('#cv').hidden = true; $('#camnote').hidden = true; $('#ctools').hidden = true;
+  SC.still = c; $('#cstill').src = img.src; $('#cstill').hidden = false; $('#cv').hidden = true; $('#camnote').hidden = true; $('#ctools').hidden = true; $('#cw').classList.add('live');
   drawGuide('idle'); scanNow();
 }
 
