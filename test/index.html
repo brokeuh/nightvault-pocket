@@ -2905,13 +2905,16 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610102313';
+const BUILD = '202610102324';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function newerBuild(){
   if(NATIVE){                                        // Android app: the newest APK says which build of the page it carries
     const r = await fetch('https://api.github.com/repos/brokeuh/nightvault-pocket/releases/tags/android-test', {cache:'no-store'}).then(x => x.ok ? x.json() : null).catch(() => null);
-    const b = r && (/web (\d{12})/.exec(r.body || '') || [])[1]; return b && b > BUILD ? {b, url:'https://github.com/brokeuh/nightvault-pocket/releases/download/android-test/nightvault-pocket.apk'} : null }
+    if(!r) return null; const url = 'https://github.com/brokeuh/nightvault-pocket/releases/download/android-test/nightvault-pocket.apk';
+    const apk = +((/Test build (\d+)/.exec(r.body || '') || [])[1] || 0), mine = +((await capCall('App', 'getInfo').catch(() => ({}))).build || 0);
+    if(apk && mine) return apk > mine ? {b:apk, url} : null;                // the build number of the installed app against the newest one
+    const b = (/web (\d{12})/.exec(r.body || '') || [])[1]; return b && b > BUILD ? {b, url} : null }
   const t = await fetch(location.pathname + '?v=' + Date.now(), {cache:'no-store'}).then(x => x.ok ? x.text() : '').catch(() => '');
   const b = buildOf(t); return b && b > BUILD ? {b} : null }
 async function checkUpdate(force){
