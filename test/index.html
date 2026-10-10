@@ -288,6 +288,7 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 .bcard img{width:100%;height:100%;object-fit:cover;display:block}
 .bcard.miss img{filter:grayscale(1);opacity:.28}
 .bcard .no{position:absolute;left:4px;top:4px;font-size:10.5px;background:#000a;color:#fff;border-radius:4px;padding:0 5px}
+.bcard .eq{position:absolute;bottom:22px;left:4px;z-index:2;font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:5px;background:#5a4410;color:#ffd77a;letter-spacing:.02em}
 .bcard .dq{position:absolute;top:4px;left:4px;z-index:2;font-size:10px;font-weight:800;padding:1px 5px;border-radius:5px;background:#3b2a6b;color:#d9ccff;letter-spacing:.03em}
 .bcard .q{position:absolute;right:4px;top:4px;font-size:11px;font-weight:700;background:var(--accent);color:var(--onacc);border-radius:999px;padding:1px 7px}
 .bcard .nm{position:absolute;inset:auto 0 0 0;padding:18px 6px 6px;font-size:10.5px;color:#fff;background:linear-gradient(transparent,#000c);text-align:left;line-height:1.2}
@@ -525,7 +526,8 @@ const pkmMap = c => { const cm = (c.cardmarket || {}).prices || {}, tp = (c.tcgp
     return {game:'pokemon', set:c.set.id.toLowerCase(), number:normNum(c.number), showSet:(c.set.ptcgoCode || c.set.id).toUpperCase(), showNum:c.number + (c.set.printedTotal ? '/' + c.set.printedTotal : ''),
       name:c.name, setName:c.set.name, rarity:c.rarity || '', released:(c.set.releaseDate || '').replace(/\//g, '-'), image:(c.images || {}).small || '',
       price:eur ?? tpv.market ?? null, priceFoil:cm.reverseHoloTrend ?? (tp.holofoil || tp.reverseHolofoil || {}).market ?? null,
-      currency:eur != null ? 'EUR' : 'USD', psrc:eur != null ? 'Cardmarket' : 'TCGplayer', info:pkmInfo(c)} };
+      currency:eur != null ? 'EUR' : 'USD', psrc:eur != null ? 'Cardmarket' : 'TCGplayer', info:pkmInfo(c),
+      p1e:((tp['1stEditionHolofoil'] || tp['1stEditionNormal'] || tp['1stEdition'] || {}).market) ?? undefined, ed1Ok:Object.keys(tp).some(k => /^1stEdition/.test(k)) || undefined} };
 const lorMap = c => { const im = (c.image_uris || {}).digital || c.image_uris || {}, p = c.prices || {};
     return {game:'lorcana', set:pad(String(c.set.code).toLowerCase(), 2), number:normNum(c.collector_number), showSet:String(c.set.code), showNum:c.collector_number,
       name:c.name + (c.version ? ' - ' + c.version : ''), setName:c.set.name, rarity:c.rarity || '', released:c.released_at || '',
@@ -1765,7 +1767,7 @@ function renderResult(){
   if($('#cpx')) $('#cpx').onclick = () => openPrices(m, renderResult);
   if($('#cdeck')) $('#cdeck').onclick = () => deckPick(m);
   if($('#cfoil')) $('#cfoil').onclick = () => { SC.foil = !SC.foil; renderResult() };
-  if($('#cver')) $('#cver').onclick = () => versionModal(SC.ver, v => { SC.ver = vtag(v) ? v : null; renderResult(); if(SC.ver) toast('Next cards are added as ' + [v.lang ? langName(v.lang) : '', v.grade || ''].filter(Boolean).join(', ') + ' - tap it again to change') }, 'Version of the cards you add');
+  if($('#cver')) $('#cver').onclick = () => versionModal(SC.ver, v => { SC.ver = vtag(v) ? v : null; renderResult(); if(SC.ver) toast('Next cards are added as ' + [v.lang ? langName(v.lang) : '', v.grade || ''].filter(Boolean).join(', ') + ' - tap it again to change') }, 'Version of the cards you add', m);
   if($('#callv')) $('#callv').onclick = () => pickPrinting(r.matches, m, i => { SC.sel = i; renderResult() }, () => typedPrinting(m, x => { r.matches.unshift(x); SC.sel = 0; renderResult() }));
   if($('#cother')) $('#cother').onclick = () => typedPrinting(m, x => { r.matches.unshift(x); SC.sel = 0; renderResult() });
   if($('#cundo')) $('#cundo').onclick = undoLast;
@@ -1777,15 +1779,19 @@ function renderResult(){
 /* the version of a copy: language (empty = English / the normal print) and grading ("PSA 10") - each is its own entry, with its own value */
 const LANGS = [['', 'English'], ['ja', 'Japanese'], ['de', 'German'], ['fr', 'French'], ['it', 'Italian'], ['es', 'Spanish'], ['pt', 'Portuguese'], ['nl', 'Dutch'], ['ko', 'Korean'],
   ['zhs', 'Chinese (simplified)'], ['zht', 'Chinese (traditional)'], ['ru', 'Russian'], ['pl', 'Polish'], ['th', 'Thai'], ['id', 'Indonesian']];
+/* 1st Edition prints: Pokémon's first sets (Wizards of the Coast, 1999-2002) and Yu-Gi-Oh! */
+const ED1_SETS = new Set(['base1', 'base2', 'base3', 'base5', 'gym1', 'gym2', 'neo1', 'neo2', 'neo3', 'neo4']);
+const canEd1 = m => !!m && (m.game === 'ygo' || (m.game === 'pokemon' && (ED1_SETS.has(String(m.set).toLowerCase()) || !!m.ed1Ok)));
 const GRADERS = ['PSA', 'BGS', 'CGC', 'SGC', 'TAG', 'Ace', 'Other'];
 const langName = l => (LANGS.find(x => x[0] === (l || '')) || [l, String(l).toUpperCase()])[1];
-const vsuf = v => (v && v.lang ? '|L:' + v.lang : '') + (v && v.grade ? '|G:' + v.grade : '') + (v && v.digital ? '|D' : '');
-const vtag = v => [v && v.lang ? String(v.lang).slice(0, 2).toUpperCase() : '', v && v.grade ? v.grade : '', v && v.digital ? 'Digital' : ''].filter(Boolean).join(' · ');
+const vsuf = v => (v && v.ed1 ? '|1E' : '') + (v && v.lang ? '|L:' + v.lang : '') + (v && v.grade ? '|G:' + v.grade : '') + (v && v.digital ? '|D' : '');
+const vtag = v => [v && v.ed1 ? '1st Ed' : '', v && v.lang ? String(v.lang).slice(0, 2).toUpperCase() : '', v && v.grade ? v.grade : '', v && v.digital ? 'Digital' : ''].filter(Boolean).join(' · ');
 const vbadge = v => vtag(v) ? `<span class="vbadge">${esc(vtag(v))}</span>` : '';
 const ckey = (m, foil, v) => (m.game === 'other' ? ['other:' + String(m.gameName || '').toLowerCase()] : [m.game]).concat([m.set, m.number, foil ? 1 : 0]).join('|') + vsuf(v);
-function versionModal(v, done, title){
+function versionModal(v, done, title, m){
   const g = String((v && v.grade) || ''), co = GRADERS.find(x => g.startsWith(x + ' ')) || (g ? 'Other' : ''), val = co && co !== 'Other' ? g.slice(co.length + 1) : g;
   modal(`<h3>${esc(title || 'Version of the card')}</h3>
+    ${m && canEd1(m) || v && v.ed1 ? `<label class="row" style="margin-bottom:8px"><input type="checkbox" id="ved1" ${v && v.ed1 ? 'checked' : ''}><div class="grow"><b>1st Edition</b><div class="hint" style="margin:2px 0 0">The “Edition 1” stamp on the card - its own price${m && m.p1e != null ? ' (TCGplayer ' + fmt(m.p1e, 'USD') + ')' : ''}.</div></div></label>` : ''}
     <label class="fld"><span>Language</span><select id="vlang">${LANGS.map(([k, l]) => `<option value="${k}" ${(v && v.lang || '') === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
     <label class="row" style="margin-top:10px"><input type="checkbox" id="vgr" ${g ? 'checked' : ''}><div class="grow">Graded (in a slab)</div></label>
     <div id="vgbox" style="display:${g ? 'flex' : 'none'};gap:8px;margin-top:6px"><select id="vco" style="flex:1">${GRADERS.map(x => `<option ${x === (co || 'PSA') ? 'selected' : ''}>${x}</option>`).join('')}</select>
@@ -1796,7 +1802,7 @@ function versionModal(v, done, title){
   $('#vgr').onchange = e => { $('#vgbox').style.display = e.target.checked ? 'flex' : 'none' };
   $('#vok').onclick = () => { const out = {}; const l = $('#vlang').value; if(l) out.lang = l;
     if($('#vgr').checked){ const x = $('#vval').value.trim().replace(',', '.'); if(!x){ toast('Type the grade', true); return } out.grade = ($('#vco').value === 'Other' ? x : $('#vco').value + ' ' + x).slice(0, 24) }
-    if($('#vdig').checked) out.digital = true;
+    if($('#vdig').checked) out.digital = true; if($('#ved1') && $('#ved1').checked) out.ed1 = true;
     closeModal(); done(out) } }
 const ownedQty = m => store.cards.filter(c => c.game === m.game && c.set === m.set && c.number === m.number).reduce((a, c) => a + c.qty, 0);
 let BULK = false;                                              // adding many cards at once: save once at the end
@@ -1806,6 +1812,8 @@ function addCard(m, foil, delta, v){
     c = {uid:uid(), key:k, game:m.game, gameName:m.gameName || '', set:m.set, number:m.number, showSet:m.showSet, showNum:String(m.showNum), name:m.name, setName:m.setName || '', rarity:m.rarity || '',
          image:m.image || '', alt:m.alt || [], link:m.link || '', price:m.price ?? null, priceFoil:m.priceFoil ?? null, currency:m.currency, psrc:m.psrc || '', foil:!!foil, qty:0, added:Date.now(), info:m.info || null};
     if(v && v.lang) c.lang = v.lang; if(v && v.grade) c.grade = v.grade; if(v && v.digital) c.digital = true; if(m.custom) c.custom = true;
+    if(v && v.ed1){ c.ed1 = true; c.priceFoil = null; c.px = {}; c.price = m.p1e ?? null; c.currency = 'USD'; c.psrc = m.p1e != null ? 'TCGplayer (1st Edition)' : '';     // never the price of the normal print
+      if(m.p1e != null) c.px.tcgplayer = [m.p1e, null, Date.now(), 'USD', 'TCGplayer (1st Edition)'] }
     if(m.px) c.px = JSON.parse(JSON.stringify(m.px)); else capturePx(c); pickPx(c);
     store.cards.unshift(c) }
   c.qty += delta; if(c.qty <= 0) store.cards = store.cards.filter(x => x !== c);
@@ -2041,10 +2049,12 @@ const pxKey = o => wkey(o) + vsuf(o);                          // own prices: pe
 const myPx = o => { const v = (store.myPx || {})[pxKey(o)]; return v && (v[0] != null || v[1] != null) ? v : null };
 function capturePx(o){
   if(!o.psrc || (o.price == null && o.priceFoil == null)) return;
+  if(o.ed1 && !/1st/i.test(o.psrc)) return;
   const k = srcKey(o.psrc); if(k === 'mine' || k === 'none') return;
   (o.px ||= {})[k] = [o.price ?? null, o.priceFoil ?? null, Date.now(), o.currency || PSRC[k].cur || 'EUR', o.psrc, (o.px[k] || [])[5] || null] }
 function pickPx(o, foil = o.foil){                             // foil null: any price (binder, search results)
   const px = Object.assign({}, o.px || {}), mine = myPx(o); if(mine) px.mine = [mine[0], mine[1], mine[2], 'EUR', 'My own price'];
+  if(o.ed1) for(const k of Object.keys(px)) if(k !== 'mine' && !/1st/i.test((px[k] || [])[4] || '')) delete px[k];
   for(const k of porder()){ const v = px[k]; if(!v) continue;
     if((foil == null ? (v[0] ?? v[1]) : foil ? v[1] : v[0]) == null) continue;
     o.price = v[0] ?? null; o.priceFoil = v[1] ?? null; o.currency = v[3] || PSRC[k].cur || 'EUR'; o.psrc = k === 'other' ? (v[4] || 'Other') : PSRC[k].label; return k }
@@ -2062,7 +2072,7 @@ function extraFile(g){ if(!(g in _xp)) _xp[g] = (async () => {
   delete _xp[g]; return null })(); return _xp[g] }
 const pxName = t => slugOf(String(t || '').replace(/\([^)]*\)/g, ''));
 async function addExtras(o){
-  if(!o || !o.game || (XPG.size && !XPG.has(o.game))) return false;
+  if(!o || !o.game || o.ed1 || (XPG.size && !XPG.has(o.game))) return false;
   const d = await extraFile(o.game); if(!d) return false;
   const e = (d.cards || {})[`${o.set}|${o.number}`], now = Date.now(); let got = false; o.px ||= {};
   if(e && e.c && (e.c[0] != null || e.c[1] != null)){ o.px.cardmarket = [e.c[0], e.c[1], now, 'EUR', 'Cardmarket', {low:e.c[2], avg30:e.c[3], id:e.c[4]}]; got = true }
@@ -2112,6 +2122,11 @@ function openPrices(o, after){
 }
 async function priceOne0(c, cache){
   const before = priceOf(c), k = c.game + '|' + c.name.toLowerCase(); c._before = before;
+  if(c.ed1){                                                   // 1st Edition: only TCGplayer knows it apart (Pokémon); otherwise your own price
+    if(c.game === 'pokemon'){ try{ const d = (await getJSON(`https://api.pokemontcg.io/v2/cards/${enc(c.set)}-${enc(String(c.showNum).split('/')[0])}`)).data, tp = (d.tcgplayer || {}).prices || {};
+      const p1 = ((tp['1stEditionHolofoil'] || tp['1stEditionNormal'] || tp['1stEdition'] || {}).market) ?? null;
+      if(p1 != null){ c.price = p1; c.priceFoil = null; c.currency = 'USD'; c.psrc = 'TCGplayer (1st Edition)'; c.priced = Date.now(); return before == null ? 'filled' : before !== p1 ? 'updated' : 'same' } }catch(e){} }
+    return before == null ? 'missed' : 'same' }
   if(c.game === 'pokemon'){                                    // Pokémon: ask TCGdex for this exact card (set id + card number)
     try{ const d = await getJSON('https://api.tcgdex.net/v2/en/cards/' + enc(await pkTcgdexId(c))), cm = (d.pricing || {}).cardmarket || {};
       const eur = cm.avg ?? cm.trend ?? null, holo = cm['avg-holo'] ?? cm['trend-holo'] ?? null;
@@ -2398,6 +2413,7 @@ SETSRC.swccg.cards = async st => { const all = await swdb(); return all.filter(c
 
 const ownedIn = g => store.cards.filter(c => c.game === g);
 const ownedMap = g => { const m = new Map(); for(const c of ownedIn(g)){ if(c.digital) continue; const k = c.set + '|' + c.number; m.set(k, (m.get(k) || 0) + c.qty) } return m };   // physical copies
+const ed1Map = g => { const m = new Map(); for(const c of ownedIn(g)){ if(!c.ed1 || c.digital) continue; const k = c.set + '|' + c.number; m.set(k, (m.get(k) || 0) + c.qty) } return m };
 const digitalMap = g => { const m = new Map(); for(const c of ownedIn(g)){ if(!c.digital) continue; const k = c.set + '|' + c.number; m.set(k, (m.get(k) || 0) + c.qty) } return m };
 const valueOf = cs => cs.reduce((a, c) => a + (c.digital ? 0 : ((c.foil ? c.priceFoil : c.price) || 0) * c.qty), 0);
 function bdLoad(kind, key, fn){ if(!BD[kind][key]) BD[kind][key] = fn().catch(e => { delete BD[kind][key]; throw e }); return BD[kind][key] }
@@ -2476,7 +2492,7 @@ async function binderSets(){
   if(!groups.includes(BD.grp)) BD.grp = 'all';
   if(BD.openFor !== g){ BD.open = {[groups[0]]:true}; BD.openFor = g }
   const row = x => { const e = ownedSets.get(x.code), u = e ? e.uniq.size : 0, t = x.total || 0;
-      return `<button class="bset" data-s="${esc(x.code)}"><span><b>${esc(x.name)}</b> <span class="muted">${esc(String(x.abbr || x.code).toUpperCase())}${x.released ? ' · ' + esc(String(x.released).slice(0, 4)) : ''}</span></span>
+      return `<button class="bset" data-s="${esc(x.code)}"><span><b>${esc(x.name)}</b> <span class="muted">${esc(String(x.abbr || x.code).toUpperCase())}${x.released ? ' · ' + esc(String(x.released).slice(0, 4)) : ''}</span>${BD.game === 'pokemon' && ED1_SETS.has(String(x.code).toLowerCase()) ? ' <span class="vbadge" title="Has 1st Edition prints">1st Ed</span>' : ''}</span>
         <span class="muted">${u ? `<b style="color:var(--text)">${u}</b>${t ? ' / ' + t : ''}` : (t ? t + ' cards' : '')}</span>${u && t ? `<div class="bar2" style="--gc:${GAMES[g].color}"><i style="width:${Math.min(100, Math.round(100 * u / t))}%"></i></div>` : ''}</button>` };
   const draw = () => { const q = BD.q.toLowerCase(), many = groups.length > 1;
     const rows = sets.filter(x => (!q || (x.name + ' ' + x.code).toLowerCase().includes(q)) && (BD.grp === 'all' || x.grp === BD.grp))
@@ -2509,15 +2525,17 @@ function wholeSet(g, st, cards, done){
   modal(`<h3>I have the whole set</h3><p class="hint" style="margin-top:0" id="wscount">${esc(st.name)}: ${cards.length} cards, you miss ${missP.length} as physical card${missP.length === 1 ? '' : 's'}.</p>
     <div class="oseg" id="wsk" style="margin:8px 0"><button data-k="phys" class="on">Physical</button><button data-k="dig">Digital</button></div>
     <div class="oseg" id="wsf" style="margin:0 0 8px"><button data-f="0" class="on">Normal</button><button data-f="1">Foil</button></div>
+    ${cards.some(canEd1) ? '<label class="row"><input type="checkbox" id="wsed1"><div class="grow">1st Edition</div></label>' : ''}
     <label class="row"><input type="checkbox" id="wsonly" checked><div class="grow">Only the cards I do not have yet (of this kind)<div class="hint" style="margin:2px 0 0">Physical and digital copies are counted apart. Off: one more of every card.</div></div></label>
     <p class="hint" id="wsnote">Physical cards count in the value of your collection.</p>
     <div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="wsok"><i class="ti ti-checks"></i>Add</button></div>`);
   let dig = false, foil = false;
   $$('#wsk button').forEach(b => b.onclick = () => { dig = b.dataset.k === 'dig'; miss = dig ? missD : missP; $('#wscount').textContent = `${st.name}: ${cards.length} cards, you miss ${miss.length} as ${dig ? 'digital' : 'physical'} card${miss.length === 1 ? '' : 's'}.`; $$('#wsk button').forEach(x => x.classList.toggle('on', x === b)); $('#wsnote').textContent = dig ? 'Digital cards are counted in your collection and the binder, not in its value.' : 'Physical cards count in the value of your collection.' });
   $$('#wsf button').forEach(b => b.onclick = () => { foil = b.dataset.f === '1'; $$('#wsf button').forEach(x => x.classList.toggle('on', x === b)) });
-  $('#wsok').onclick = () => { const list = $('#wsonly').checked ? miss : cards; if(!list.length){ closeModal(); toast('You already have every card of this set'); return }
+  if($('#wsed1')) $('#wsed1').onchange = e => { const on = e.target.checked, e1 = ed1Map(g); miss = on ? cards.filter(c => !e1.get(c.set + '|' + c.number)) : dig ? missD : missP; $('#wscount').textContent = `${st.name}: ${cards.length} cards, you miss ${miss.length} as ${on ? '1st Edition' : dig ? 'digital' : 'physical'} card${miss.length === 1 ? '' : 's'}.` };
+  $('#wsok').onclick = () => { const e1on = $('#wsed1') && $('#wsed1').checked, list = $('#wsonly').checked ? miss : cards; if(!list.length){ closeModal(); toast('You already have every card of this set'); return }
     snapshot('before adding a whole set'); BULK = true;
-    try{ for(const m of list){ addCard(m, foil, 1, dig ? {digital:true} : null); if(isWant(m)) toggleWant(m) } } finally { BULK = false }
+    try{ for(const m of list){ const v = {}; if(dig) v.digital = true; if(e1on && canEd1(m)) v.ed1 = true; addCard(m, foil, 1, vtag(v) ? v : null); if(isWant(m)) toggleWant(m) } } finally { BULK = false }
     persist(); tabCount(); closeModal(); toast(`${list.length} card${list.length === 1 ? '' : 's'} of ${st.name} added${dig ? ' as digital' : ''}`); done(); pokemonPrices(store.cards.filter(c => c.game === g && c.set === st.code && priceOf(c) == null && !c.digital), () => { persist(); done() }) } }
 async function binderSet(){
   const g = BD.game, st = BD.set;
@@ -2537,22 +2555,25 @@ async function binderSet(){
       {icon:'trash', label:'Remove all my cards of this set', sub:own.length ? `${own.reduce((a, c) => a + c.qty, 0)} cards` : 'You have none', danger:true, disabled:!own.length, run:() => {
         if(!confirm(`Remove all your cards of ${st.name}?`)) return; snapshot('before removing a set'); store.cards = store.cards.filter(c => !(c.game === g && c.set === st.code)); persist(); tabCount(); draw(); toast('Removed') }}]) };
   const draw = () => {
-    const om = ownedMap(g), dm = digitalMap(g), own = ownedIn(g).filter(c => c.set === st.code), has = c => om.get(c.set + '|' + c.number) || dm.get(c.set + '|' + c.number), have = cards.filter(has);
+    const om = ownedMap(g), dm = digitalMap(g), e1 = ed1Map(g), own = ownedIn(g).filter(c => c.set === st.code), has = c => om.get(c.set + '|' + c.number) || dm.get(c.set + '|' + c.number), have = cards.filter(has), ed1Set = cards.some(canEd1);
     const cur = (cards.find(c => c.price != null) || own[0] || {}).currency || 'EUR';
     const missVal = cards.filter(c => !om.get(c.set + '|' + c.number)).reduce((a, c) => a + (c.price || 0), 0);      // what the physical cards you miss cost
     $('#bds').innerHTML = `<div class="bstats"><div><b>${have.length} / ${cards.length || st.total || '?'}</b><span>Collected</span></div><div><b>${fmt(valueOf(own), own[0] ? own[0].currency : cur)}</b><span>Your value</span></div><div><b>${missVal ? fmt(missVal, cur) : '–'}</b><span>Missing</span></div></div>
       <div class="bar2" style="--gc:${GAMES[g].color};margin:-4px 0 12px"><i style="width:${cards.length ? Math.round(100 * have.length / cards.length) : 0}%"></i></div>`;
     $('#bdf').innerHTML = [['all', 'All'], ['have', 'I have'], ['miss', 'Missing'], ['want', 'Wanted']].map(([k, l]) => `<button class="chip ${BD.filter === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')
+      + (ed1Set ? `<button class="chip ${BD.ed1 ? 'on' : ''}" id="bded1" title="Tick off and add as 1st Edition">1st Ed</button>` : '')
       + `<button class="chip ${BD.tick ? 'on' : ''}" id="bdtick" style="margin-left:auto"><i class="ti ti-checkbox"></i> Tick off</button>`;
     const list = cards.filter(c => BD.filter === 'all' || (BD.filter === 'want' ? isWant(c) : (BD.filter === 'have') === !!has(c)));
     $('#bdc').innerHTML = list.length ? `<div class="bcards">${list.map((c, i) => { const q = om.get(c.set + '|' + c.number) || 0;
-      const dq = dm.get(c.set + '|' + c.number) || 0;
-      return `<button class="bcard ${q || dq ? '' : 'miss'}" data-i="${cards.indexOf(c)}" title="${esc(c.name)}">${c.image ? pic(c, 'loading="lazy"') : ''}${q ? `<span class="q">${q}</span>` : ''}${dq ? `<span class="dq" title="Digital: ${dq}">D${dq > 1 ? dq : ''}</span>` : ''}${isWant(c) ? '<span class="bflag"><i class="ti ti-heart-filled"></i></span>' : own.some(o => o.number === c.number && o.trade) ? '<span class="bflag"><i class="ti ti-arrows-exchange"></i></span>' : ''}<span class="nm">${esc(c.name)}</span><span class="no">${esc(c.showNum)}</span></button>` }).join('')}</div>`
+      const dq = dm.get(c.set + '|' + c.number) || 0, eq = e1.get(c.set + '|' + c.number) || 0;
+      return `<button class="bcard ${q || dq ? '' : 'miss'}" data-i="${cards.indexOf(c)}" title="${esc(c.name)}">${c.image ? pic(c, 'loading="lazy"') : ''}${q ? `<span class="q">${q}</span>` : ''}${dq ? `<span class="dq" title="Digital: ${dq}">D${dq > 1 ? dq : ''}</span>` : ''}${eq ? `<span class="eq" title="1st Edition: ${eq}">1st${eq > 1 ? ' ×' + eq : ''}</span>` : ''}${isWant(c) ? '<span class="bflag"><i class="ti ti-heart-filled"></i></span>' : own.some(o => o.number === c.number && o.trade) ? '<span class="bflag"><i class="ti ti-arrows-exchange"></i></span>' : ''}<span class="nm">${esc(c.name)}</span><span class="no">${esc(c.showNum)}</span></button>` }).join('')}</div>`
       : `<div class="empty">${BD.filter === 'want' ? 'No cards from this set on your wishlist. Tap a card and choose “Want this”.' : BD.filter === 'have' ? 'You have no cards from this set yet.' : BD.filter === 'miss' ? 'Complete! You have every card in this set.' : 'No cards in this set.'}</div>`;
     $$('#bdf .chip').forEach(b => b.onclick = () => { BD.filter = b.dataset.f; draw() });
+    if($('#bded1')) $('#bded1').onclick = () => { BD.ed1 = !BD.ed1; toast(BD.ed1 ? 'Tick off adds 1st Edition copies now' : 'Tick off adds normal copies'); draw() };
     $('#bdtick').onclick = () => { BD.tick = !BD.tick; if(BD.tick) toast('Tick off: tap a card you have to add it, tap again to take it off'); draw() };
     $$('#bdc .bcard').forEach(b => b.onclick = async () => { const m = cards[+b.dataset.i];
       if(!BD.tick) return binderCard(m, draw);
+      if(BD.ed1 && canEd1(m)){ const q1 = e1.get(m.set + '|' + m.number) || 0; if(q1 > 1) return binderCard(m, draw); addCard(m, false, q1 ? -1 : 1, {ed1:true}); if(!q1 && isWant(m)) toggleWant(m); draw(); return }
       const q = om.get(m.set + '|' + m.number) || 0;
       if(q > 1) return binderCard(m, draw);                                          // several copies: change them in the card window
       addCard(m, false, q ? -1 : 1); if(!q && isWant(m)) toggleWant(m); draw();
@@ -2634,7 +2655,7 @@ function binderCard(m, redraw){
   $('#bzm').onclick = () => openViewer(m); $('#binfo').onclick = () => openViewer(m, 'info');
   $$('.mbox [data-vu]').forEach(b => b.onclick = () => { const c = store.cards.find(x => x.uid === b.dataset.vu); if(!c) return; c.qty += +b.dataset.d; if(c.qty <= 0) store.cards = store.cards.filter(x => x !== c); persist(); tabCount(); binderCard(m, redraw); if(redraw) redraw() });
   $('#bver').onclick = () => versionModal(null, v => { if(!vtag(v)){ binderCard(m, redraw); return } modal('<h3>Foil?</h3><div class="btns" style="justify-content:flex-end"><button class="btn" id="bvn">Normal</button><button class="btn" id="bvf"><i class="ti ti-sparkles"></i>Foil</button></div>');
-    const go = f => { addCard(m, f, 1, v); binderCard(m, redraw); if(redraw) redraw() }; $('#bvn').onclick = () => go(false); $('#bvf').onclick = () => go(true) }, 'Other version');
+    const go = f => { addCard(m, f, 1, v); binderCard(m, redraw); if(redraw) redraw() }; $('#bvn').onclick = () => go(false); $('#bvf').onclick = () => go(true) }, 'Other version', m);
   $('#bdeck').onclick = () => deckPick(m, () => binderCard(m, redraw));
   $('#bprices').onclick = () => { const own = store.cards.find(c => c.game === m.game && c.set === m.set && c.number === m.number); openPrices(own || m, () => binderCard(m, redraw)) };
   $('#bwant').onclick = () => { const on = toggleWant(m); $('#bwant').classList.toggle('on', on); $('#bwant').innerHTML = `<i class="ti ti-heart${on ? '-filled' : ''}"></i>${on ? 'On my wishlist' : 'Want this'}` };
@@ -2700,9 +2721,9 @@ function viewCards(){
     $$('#mlist [data-zoom]').forEach(z => z.onclick = () => { const c = store.cards.find(x => x.uid === z.dataset.zoom); if(c) openViewer(c) });
     $$('#mlist [data-px]').forEach(z => z.onclick = () => { const c = store.cards.find(x => x.uid === z.dataset.px); if(c) openPrices(c, viewCards) });
     $$('#mlist [data-ver]').forEach(z => z.onclick = () => { const c = store.cards.find(x => x.uid === z.dataset.ver); if(!c) return;
-      versionModal(c, v => { const k = ckey(c, c.foil, v), other = store.cards.find(x => x.key === k && x !== c);
-        if(other){ other.qty += c.qty; store.cards = store.cards.filter(x => x !== c) } else { c.key = k; delete c.lang; delete c.grade; delete c.digital; if(v.lang) c.lang = v.lang; if(v.grade) c.grade = v.grade; if(v.digital) c.digital = true }
-        persist(); viewCards() }) });
+      versionModal(c, v => { const k = ckey(c, c.foil, v), other = store.cards.find(x => x.key === k && x !== c), was1 = !!c.ed1;
+        if(other){ other.qty += c.qty; store.cards = store.cards.filter(x => x !== c) } else { c.key = k; delete c.lang; delete c.grade; delete c.digital; delete c.ed1; if(v.lang) c.lang = v.lang; if(v.grade) c.grade = v.grade; if(v.digital) c.digital = true; if(v.ed1){ c.ed1 = true; c.price = null; c.priceFoil = null; c.px = {}; c.psrc = '' } }
+        persist(); viewCards(); if(v.ed1 && !was1 && c.qty) priceOne(c).then(() => { persist(); viewCards() }).catch(() => {}) }, 'Version of this copy', c) });
   };
   let t; $('#mq').oninput = e => { clearTimeout(t); t = setTimeout(() => { F.q = e.target.value; draw() }, 120) };
   $('#mgame').onchange = e => { F.game = e.target.value; F.set = 'all'; viewCards() };
@@ -2983,7 +3004,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610110019';
+const BUILD = '202610110136';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }

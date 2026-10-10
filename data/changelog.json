@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 20,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "1st Edition",
+   "items": [
+    "Mark copies as 1st Edition (Pokémon's first Wizards sets - Base Set, Jungle, Fossil, Team Rocket, Gym, Neo - and Yu-Gi-Oh!): with the EN button when scanning, in the binder card window, or in My cards.",
+    "A 1st Edition copy is its own entry with its own price: TCGplayer's 1st Edition price for Pokémon (never the price of the normal print), or your own price.",
+    "Sets with 1st Edition prints get a “1st Ed” tag in the set list; inside such a set a “1st Ed” switch makes Tick off add 1st Edition copies, and cards show a small gold “1st” mark.",
+    "“I have the whole set” can add the set as 1st Edition."
+   ]
+  },
+  {
    "id": 19,
    "date": "2026-10-11",
    "where": [
