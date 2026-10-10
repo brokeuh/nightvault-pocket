@@ -3,6 +3,17 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 16,
+   "date": "2026-10-10",
+   "where": [
+    "android"
+   ],
+   "title": "Back button",
+   "items": [
+    "The phone's back button now steps back inside the app (close a pop-up, leave a settings page, back to the set list ...) instead of closing the app. Only on the start screen does it leave the app."
+   ]
+  },
+  {
    "id": 15,
    "date": "2026-10-10",
    "where": [
