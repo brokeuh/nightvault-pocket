@@ -288,6 +288,7 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 .bcard img{width:100%;height:100%;object-fit:cover;display:block}
 .bcard.miss img{filter:grayscale(1);opacity:.28}
 .bcard .no{position:absolute;left:4px;top:4px;font-size:10.5px;background:#000a;color:#fff;border-radius:4px;padding:0 5px}
+.bcard .dq{position:absolute;top:4px;left:4px;z-index:2;font-size:10px;font-weight:800;padding:1px 5px;border-radius:5px;background:#3b2a6b;color:#d9ccff;letter-spacing:.03em}
 .bcard .q{position:absolute;right:4px;top:4px;font-size:11px;font-weight:700;background:var(--accent);color:var(--onacc);border-radius:999px;padding:1px 7px}
 .bcard .nm{position:absolute;inset:auto 0 0 0;padding:18px 6px 6px;font-size:10.5px;color:#fff;background:linear-gradient(transparent,#000c);text-align:left;line-height:1.2}
 .bstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
@@ -1271,6 +1272,29 @@ function bestName(R){
 const grow = (b, k) => { const h = b[3] - b[1]; return [Math.max(0, b[0] - 0.03), Math.max(0, b[1] - h * k), Math.min(1, b[2] + 0.03), Math.min(1, b[3] + h * k)] };
 /* Pokémon: "150/217" at the bottom is enough - the set is the one with 217 cards (and the code printed next to it) */
 let _pkSets;
+const pkSets = () => _pkSets ||= getJSON('https://api.tcgdex.net/v2/en/sets').catch(e => { _pkSets = null; throw e });
+const pkNorm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '');
+async function pkTcgdexId(c){                                  // TCGdex card id for a card from pokemontcg.io (other set ids) or from TCGdex itself
+  const n = String(c.showNum || c.number).split('/')[0];
+  if(/\./.test(c.set) || /^[a-z]+\d*[a-z]?\d*$/.test(c.set) && c.tcgdex) return `${c.set}-${n}`;
+  try{ const sets = await pkSets(), want = pkNorm(c.setName), hit = sets.find(x => pkNorm(x.name) === want) || sets.find(x => String(x.id).toLowerCase() === String(c.set).toLowerCase());
+    if(hit) return `${hit.id}-${n}` }catch(e){}
+  return `${c.set}-${n}` }
+/* prices for Pokémon cards that came without one: Cardmarket prices from TCGdex, a few at a time */
+async function pokemonPrices(list, redraw){
+  list = (list || []).filter(c => c.game === 'pokemon' && c.price == null && c.priceFoil == null && !c._pkp).slice(0, 400); if(!list.length) return 0;
+  let n = 0, i = 0, since = 0;
+  const work = async () => { while(i < list.length){ const c = list[i++]; c._pkp = 1;
+    try{ const d = await getJSON('https://api.tcgdex.net/v2/en/cards/' + enc(await pkTcgdexId(c))), cm = (d.pricing || {}).cardmarket || {}, tp = (d.pricing || {}).tcgplayer || {};
+      const eur = cm.avg ?? cm.trend ?? null, holo = cm['avg-holo'] ?? cm['trend-holo'] ?? null, usd = ((tp.normal || tp.holofoil || tp.reverse || {}).marketPrice) ?? null;
+      if(eur != null || holo != null){ c.price = eur; c.priceFoil = holo; c.currency = 'EUR'; c.psrc = 'Cardmarket'; capturePx(c); pickPx(c, c.qty ? c.foil : null); n++; since++ }
+      else if(usd != null){ c.price = usd; c.currency = 'USD'; c.psrc = 'TCGplayer'; capturePx(c); pickPx(c, c.qty ? c.foil : null); n++; since++ }
+      for(const o of store.cards) if(o !== c && o.game === 'pokemon' && o.set === c.set && o.number === c.number && o.price == null && o.priceFoil == null && c.psrc){
+        o.price = c.price; o.priceFoil = c.priceFoil; o.currency = c.currency; o.psrc = c.psrc; capturePx(o); pickPx(o) }
+    }catch(e){}
+    if(since >= 24 && redraw){ since = 0; redraw() } } };
+  await Promise.all([work(), work(), work(), work()]);
+  if(n && redraw) redraw(); return n }
 async function pokemonByNumber(text, say){
   const m = /(\d{1,3})\s*\/\s*(\d{2,3})\b/.exec(String(text || '').replace(/[oO]/g, '0')); if(!m) return [];
   const n = String(+m[1]), total = +m[2]; if(!+n || n > total + 120) return [];
@@ -2089,7 +2113,7 @@ function openPrices(o, after){
 async function priceOne0(c, cache){
   const before = priceOf(c), k = c.game + '|' + c.name.toLowerCase(); c._before = before;
   if(c.game === 'pokemon'){                                    // Pokémon: ask TCGdex for this exact card (set id + card number)
-    try{ const d = await getJSON(`https://api.tcgdex.net/v2/en/cards/${enc(c.set)}-${enc(String(c.showNum).split('/')[0])}`), cm = (d.pricing || {}).cardmarket || {};
+    try{ const d = await getJSON('https://api.tcgdex.net/v2/en/cards/' + enc(await pkTcgdexId(c))), cm = (d.pricing || {}).cardmarket || {};
       const eur = cm.avg ?? cm.trend ?? null, holo = cm['avg-holo'] ?? cm['trend-holo'] ?? null;
       if(eur != null || holo != null){ c.price = eur; c.priceFoil = holo; c.currency = 'EUR'; c.psrc = 'Cardmarket'; c.priced = Date.now();
         if(!c.image && d.image) c.image = d.image + '/low.webp';
@@ -2373,7 +2397,8 @@ SETSRC.swccg.cards = async st => { const all = await swdb(); return all.filter(c
   name:String((c.front || {}).title || '').replace(/[•<>]/g, '').trim(), setName:st.name, rarity:c.rarity || '', released:'', image:(c.front || {}).imageUrl || '', price:null, priceFoil:null, currency:'USD', psrc:''})) };
 
 const ownedIn = g => store.cards.filter(c => c.game === g);
-const ownedMap = g => { const m = new Map(); for(const c of ownedIn(g)){ const k = c.set + '|' + c.number; m.set(k, (m.get(k) || 0) + c.qty) } return m };
+const ownedMap = g => { const m = new Map(); for(const c of ownedIn(g)){ if(c.digital) continue; const k = c.set + '|' + c.number; m.set(k, (m.get(k) || 0) + c.qty) } return m };   // physical copies
+const digitalMap = g => { const m = new Map(); for(const c of ownedIn(g)){ if(!c.digital) continue; const k = c.set + '|' + c.number; m.set(k, (m.get(k) || 0) + c.qty) } return m };
 const valueOf = cs => cs.reduce((a, c) => a + (c.digital ? 0 : ((c.foil ? c.priceFoil : c.price) || 0) * c.qty), 0);
 function bdLoad(kind, key, fn){ if(!BD[kind][key]) BD[kind][key] = fn().catch(e => { delete BD[kind][key]; throw e }); return BD[kind][key] }
 
@@ -2479,20 +2504,21 @@ function numKey(c){ const t = String(c.showNum || c.number || '').trim(), m = /^
 function byCardNumber(a, b){ const x = numKey(a), y = numKey(b);
   return (x[0] === y[0] ? 0 : x[0] === '' ? -1 : y[0] === '' ? 1 : x[0].localeCompare(y[0])) || (x[1] - y[1]) || x[2].localeCompare(y[2], undefined, {numeric:true}) || String(a.name).localeCompare(String(b.name)) }
 function wholeSet(g, st, cards, done){
-  const om = ownedMap(g), miss = cards.filter(c => !om.get(c.set + '|' + c.number));
-  modal(`<h3>I have the whole set</h3><p class="hint" style="margin-top:0">${esc(st.name)}: ${cards.length} cards, ${miss.length} of them not in your collection yet.</p>
+  const om = ownedMap(g), dm = digitalMap(g), missP = cards.filter(c => !om.get(c.set + '|' + c.number)), missD = cards.filter(c => !dm.get(c.set + '|' + c.number));
+  let miss = missP;
+  modal(`<h3>I have the whole set</h3><p class="hint" style="margin-top:0" id="wscount">${esc(st.name)}: ${cards.length} cards, you miss ${missP.length} as physical card${missP.length === 1 ? '' : 's'}.</p>
     <div class="oseg" id="wsk" style="margin:8px 0"><button data-k="phys" class="on">Physical</button><button data-k="dig">Digital</button></div>
     <div class="oseg" id="wsf" style="margin:0 0 8px"><button data-f="0" class="on">Normal</button><button data-f="1">Foil</button></div>
-    <label class="row"><input type="checkbox" id="wsonly" checked><div class="grow">Only the cards I do not have yet<div class="hint" style="margin:2px 0 0">Off: one more of every card, also the ones you have.</div></div></label>
+    <label class="row"><input type="checkbox" id="wsonly" checked><div class="grow">Only the cards I do not have yet (of this kind)<div class="hint" style="margin:2px 0 0">Physical and digital copies are counted apart. Off: one more of every card.</div></div></label>
     <p class="hint" id="wsnote">Physical cards count in the value of your collection.</p>
     <div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="wsok"><i class="ti ti-checks"></i>Add</button></div>`);
   let dig = false, foil = false;
-  $$('#wsk button').forEach(b => b.onclick = () => { dig = b.dataset.k === 'dig'; $$('#wsk button').forEach(x => x.classList.toggle('on', x === b)); $('#wsnote').textContent = dig ? 'Digital cards are counted in your collection and the binder, not in its value.' : 'Physical cards count in the value of your collection.' });
+  $$('#wsk button').forEach(b => b.onclick = () => { dig = b.dataset.k === 'dig'; miss = dig ? missD : missP; $('#wscount').textContent = `${st.name}: ${cards.length} cards, you miss ${miss.length} as ${dig ? 'digital' : 'physical'} card${miss.length === 1 ? '' : 's'}.`; $$('#wsk button').forEach(x => x.classList.toggle('on', x === b)); $('#wsnote').textContent = dig ? 'Digital cards are counted in your collection and the binder, not in its value.' : 'Physical cards count in the value of your collection.' });
   $$('#wsf button').forEach(b => b.onclick = () => { foil = b.dataset.f === '1'; $$('#wsf button').forEach(x => x.classList.toggle('on', x === b)) });
   $('#wsok').onclick = () => { const list = $('#wsonly').checked ? miss : cards; if(!list.length){ closeModal(); toast('You already have every card of this set'); return }
     snapshot('before adding a whole set'); BULK = true;
     try{ for(const m of list){ addCard(m, foil, 1, dig ? {digital:true} : null); if(isWant(m)) toggleWant(m) } } finally { BULK = false }
-    persist(); tabCount(); closeModal(); toast(`${list.length} card${list.length === 1 ? '' : 's'} of ${st.name} added${dig ? ' as digital' : ''}`); done() } }
+    persist(); tabCount(); closeModal(); toast(`${list.length} card${list.length === 1 ? '' : 's'} of ${st.name} added${dig ? ' as digital' : ''}`); done(); pokemonPrices(store.cards.filter(c => c.game === g && c.set === st.code && priceOf(c) == null && !c.digital), () => { persist(); done() }) } }
 async function binderSet(){
   const g = BD.game, st = BD.set;
   $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Sets</button><h1 style="font-size:17px;min-width:0;flex:1">${esc(st.name)}</h1><button class="btn sm" id="bdset" aria-label="More"><i class="ti ti-dots"></i></button></div>
@@ -2503,6 +2529,7 @@ async function binderSet(){
   const seen = new Set(cards.map(c => c.set + '|' + c.number));
   for(const c of ownedIn(g).filter(c => c.set === st.code)) if(!seen.has(c.set + '|' + c.number)){ cards.push({...c}); seen.add(c.set + '|' + c.number) }   // owned cards the list does not have
   cards.sort(byCardNumber);                                     // 1, 2, 3 ... 10, 111 - not in the order the card site sent them
+  if(g === 'pokemon') setTimeout(() => pokemonPrices(cards, () => { persist(); if(VIEW === 'binder' && BD.set === st) try{ draw() }catch(e){} }), 50);
   await XPI; if(XPG.has(g) || store.myPx){ for(const m of cards){ if(!m._xp){ m._xp = 1; capturePx(m); await addExtras(m).catch(() => {}) } pickPx(m, null) } }
   $('#bdset').onclick = () => { const own = ownedIn(g).filter(c => c.set === st.code);
     menuSheet(st.name, [
@@ -2510,16 +2537,17 @@ async function binderSet(){
       {icon:'trash', label:'Remove all my cards of this set', sub:own.length ? `${own.reduce((a, c) => a + c.qty, 0)} cards` : 'You have none', danger:true, disabled:!own.length, run:() => {
         if(!confirm(`Remove all your cards of ${st.name}?`)) return; snapshot('before removing a set'); store.cards = store.cards.filter(c => !(c.game === g && c.set === st.code)); persist(); tabCount(); draw(); toast('Removed') }}]) };
   const draw = () => {
-    const om = ownedMap(g), own = ownedIn(g).filter(c => c.set === st.code), have = cards.filter(c => om.get(c.set + '|' + c.number));
+    const om = ownedMap(g), dm = digitalMap(g), own = ownedIn(g).filter(c => c.set === st.code), has = c => om.get(c.set + '|' + c.number) || dm.get(c.set + '|' + c.number), have = cards.filter(has);
     const cur = (cards.find(c => c.price != null) || own[0] || {}).currency || 'EUR';
-    const missVal = cards.filter(c => !om.get(c.set + '|' + c.number)).reduce((a, c) => a + (c.price || 0), 0);
+    const missVal = cards.filter(c => !om.get(c.set + '|' + c.number)).reduce((a, c) => a + (c.price || 0), 0);      // what the physical cards you miss cost
     $('#bds').innerHTML = `<div class="bstats"><div><b>${have.length} / ${cards.length || st.total || '?'}</b><span>Collected</span></div><div><b>${fmt(valueOf(own), own[0] ? own[0].currency : cur)}</b><span>Your value</span></div><div><b>${missVal ? fmt(missVal, cur) : '–'}</b><span>Missing</span></div></div>
       <div class="bar2" style="--gc:${GAMES[g].color};margin:-4px 0 12px"><i style="width:${cards.length ? Math.round(100 * have.length / cards.length) : 0}%"></i></div>`;
     $('#bdf').innerHTML = [['all', 'All'], ['have', 'I have'], ['miss', 'Missing'], ['want', 'Wanted']].map(([k, l]) => `<button class="chip ${BD.filter === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')
       + `<button class="chip ${BD.tick ? 'on' : ''}" id="bdtick" style="margin-left:auto"><i class="ti ti-checkbox"></i> Tick off</button>`;
-    const list = cards.filter(c => BD.filter === 'all' || (BD.filter === 'want' ? isWant(c) : (BD.filter === 'have') === !!om.get(c.set + '|' + c.number)));
+    const list = cards.filter(c => BD.filter === 'all' || (BD.filter === 'want' ? isWant(c) : (BD.filter === 'have') === !!has(c)));
     $('#bdc').innerHTML = list.length ? `<div class="bcards">${list.map((c, i) => { const q = om.get(c.set + '|' + c.number) || 0;
-      return `<button class="bcard ${q ? '' : 'miss'}" data-i="${cards.indexOf(c)}" title="${esc(c.name)}">${c.image ? pic(c, 'loading="lazy"') : ''}${q ? `<span class="q">${q}</span>` : ''}${isWant(c) ? '<span class="bflag"><i class="ti ti-heart-filled"></i></span>' : own.some(o => o.number === c.number && o.trade) ? '<span class="bflag"><i class="ti ti-arrows-exchange"></i></span>' : ''}<span class="nm">${esc(c.name)}</span><span class="no">${esc(c.showNum)}</span></button>` }).join('')}</div>`
+      const dq = dm.get(c.set + '|' + c.number) || 0;
+      return `<button class="bcard ${q || dq ? '' : 'miss'}" data-i="${cards.indexOf(c)}" title="${esc(c.name)}">${c.image ? pic(c, 'loading="lazy"') : ''}${q ? `<span class="q">${q}</span>` : ''}${dq ? `<span class="dq" title="Digital: ${dq}">D${dq > 1 ? dq : ''}</span>` : ''}${isWant(c) ? '<span class="bflag"><i class="ti ti-heart-filled"></i></span>' : own.some(o => o.number === c.number && o.trade) ? '<span class="bflag"><i class="ti ti-arrows-exchange"></i></span>' : ''}<span class="nm">${esc(c.name)}</span><span class="no">${esc(c.showNum)}</span></button>` }).join('')}</div>`
       : `<div class="empty">${BD.filter === 'want' ? 'No cards from this set on your wishlist. Tap a card and choose “Want this”.' : BD.filter === 'have' ? 'You have no cards from this set yet.' : BD.filter === 'miss' ? 'Complete! You have every card in this set.' : 'No cards in this set.'}</div>`;
     $$('#bdf .chip').forEach(b => b.onclick = () => { BD.filter = b.dataset.f; draw() });
     $('#bdtick').onclick = () => { BD.tick = !BD.tick; if(BD.tick) toast('Tick off: tap a card you have to add it, tap again to take it off'); draw() };
@@ -2593,7 +2621,7 @@ function shareLists(){
   else navigator.clipboard.writeText(text).then(() => toast('Lists copied - paste them in a message')).catch(() => toast('Could not copy', true)) }
 function binderCard(m, redraw){
   const mine = store.cards.filter(c => c.game === m.game && c.set === m.set && c.number === m.number);
-  const q = f => (mine.find(c => !!c.foil === f) || {}).qty || 0;
+  const q = f => (mine.find(c => !!c.foil === f && !c.lang && !c.grade && !c.digital) || {}).qty || 0;
   modal(`<div class="cres-top"><div class="cardbig zoom" id="bzm">${pic(m)}</div><div style="min-width:0;flex:1"><div class="cname">${esc(m.name)}</div>
       <div class="sub" style="margin:2px 0 8px">${esc(m.showSet)} #${esc(m.showNum)}${m.rarity ? ' · ' + esc(m.rarity) : ''}</div>
       <div class="price">${fmt(m.price, m.currency)}${m.priceFoil != null ? ` <span class="muted">· foil ${fmt(m.priceFoil, m.currency)}</span>` : ''}</div></div></div>
@@ -2629,14 +2657,14 @@ function binderCard(m, redraw){
 const F = {q:'', game:'all', set:'all', sort:'new'};
 function viewCards(){
   refreshFx(); if(store.cards.length){ const d = new Date().toISOString().slice(0, 10); if(!(store.hist || []).some(x => x.d === d)){ recordValue(); persist() } }
-  const cs = store.cards, total = cs.reduce((a, c) => a + c.qty, 0);
+  const cs = store.cards, total = cs.reduce((a, c) => a + (c.digital ? 0 : c.qty), 0), ndig = cs.reduce((a, c) => a + (c.digital ? c.qty : 0), 0);
   const val = cur => cs.filter(c => c.currency === cur && !c.digital).reduce((a, c) => a + ((c.foil ? c.priceFoil : c.price) || 0) * c.qty, 0);
-  const unpriced = cs.filter(c => (c.foil ? c.priceFoil : c.price) == null).reduce((a, c) => a + c.qty, 0);
+  const unpriced = cs.filter(c => !c.digital && (c.foil ? c.priceFoil : c.price) == null).reduce((a, c) => a + c.qty, 0);
   const games = [...new Set(cs.map(c => c.game))], sets = [...new Set(cs.filter(c => F.game === 'all' || c.game === F.game).map(c => c.showSet))].sort();
   const eur = val('EUR'), usd = val('USD');
   const nrv = (store.review || []).length;
   $('#main').innerHTML = `<div class="head"><h1>My cards</h1><div class="sp"></div><button class="iconbtn" id="mmenu" aria-label="More">${nrv ? `<span class="dotn">${nrv}</span>` : ''}<i class="ti ti-dots"></i></button></div>
-    <div class="valuehead"><b>${fmt(eur + usd * usdEur(), 'EUR')}</b><span class="sub">${total.toLocaleString()} cards · ${cs.length.toLocaleString()} different${unpriced ? ` · ${unpriced} without a price` : ''}${usd ? `<br>${fmt(eur, 'EUR')} + ${fmt(usd, 'USD')} (1 $ = € ${usdEur().toFixed(3)})` : ''}</span></div>
+    <div class="valuehead"><b>${fmt(eur + usd * usdEur(), 'EUR')}</b><span class="sub">${total.toLocaleString()} cards${ndig ? ` + ${ndig.toLocaleString()} digital` : ''} · ${cs.length.toLocaleString()} different${unpriced ? ` · ${unpriced} without a price` : ''}${usd ? `<br>${fmt(eur, 'EUR')} + ${fmt(usd, 'USD')} (1 $ = € ${usdEur().toFixed(3)})` : ''}</span></div>
     ${sparkline(store.hist)}
     ${nrv ? `<button class="panel" id="mrv" style="display:flex;gap:10px;align-items:center;padding:10px 12px;width:100%;text-align:left;color:var(--text);border-color:color-mix(in srgb,var(--amber) 45%,var(--pan))"><i class="ti ti-alert-triangle" style="color:var(--amber);font-size:20px"></i>
       <span style="flex:1;min-width:0;font-size:13.5px"><b>${nrv} card${nrv === 1 ? '' : 's'} to check</b><span class="muted" style="display:block;font-size:12px">Quick scan was not sure about these</span></span><i class="ti ti-chevron-right muted"></i></button>` : ''}
@@ -2955,7 +2983,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610102355';
+const BUILD = '202610110010';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }

@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 19,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Digital copies apart, Pokémon prices",
+   "items": [
+    "Digital copies no longer add to the counter on a card: the number shows your physical copies, a small purple “D” shows you have it digitally.",
+    "“I have the whole set” counts physical and digital apart, so you can add a set digitally and later physically (or the other way round).",
+    "My cards shows physical cards and digital ones separately; only physical cards count in the value.",
+    "Pokémon cards without a price (new sets, or when the Pokémon card site is slow) now get their Cardmarket price from TCGdex."
+   ]
+  },
+  {
    "id": 18,
    "date": "2026-10-11",
    "where": [
