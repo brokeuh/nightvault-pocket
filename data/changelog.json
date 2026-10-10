@@ -3,6 +3,18 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 21,
+   "date": "2026-10-11",
+   "where": [
+    "android"
+   ],
+   "title": "Fixed: updates refused (“signatures do not match”)",
+   "items": [
+    "Every Android build was signed with a different key, so Android refused to install a new build over the old one. From build 14 every build has the same signature.",
+    "One last time: back up your cards (Settings → Backups), uninstall the app, install build 14, and restore the backup. After that, updates install over each other."
+   ]
+  },
+  {
    "id": 20,
    "date": "2026-10-11",
    "where": [

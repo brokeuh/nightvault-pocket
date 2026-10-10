@@ -17,3 +17,20 @@ rm -rf "$R/mipmap-anydpi-v26"
 for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do cp res/mipmap-$d/*.png "$R/mipmap-$d/"; done
 grep -n "mlkit\|versionCode" android/app/build.gradle
 grep -n "CAMERA" "$M"
+# Always sign with the key in this folder, so every new build installs over the previous one
+cat >> android/app/build.gradle <<'GRADLE'
+
+android {
+    signingConfigs {
+        nightvault {
+            storeFile file("$rootDir/../debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }
+    buildTypes {
+        debug { signingConfig signingConfigs.nightvault }
+    }
+}
+GRADLE

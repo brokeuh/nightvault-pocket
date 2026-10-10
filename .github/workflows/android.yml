@@ -56,6 +56,8 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon -q
           cp app/build/outputs/apk/debug/app-debug.apk ../../nightvault-pocket.apk
+          # the signature must be the same every time, or phones refuse to update
+          keytool -printcert -jarfile ../../nightvault-pocket.apk | grep -q "EE:43:1E:19:C4:EC:7E:D8:C7:C3:75:E0:AE:DA:43:87:1C:65:91:68:D8:67:E3:BB:9D:06:C9:E8:49:9F:DD:A4" || { echo "APK is not signed with the Nightvault key"; keytool -printcert -jarfile ../../nightvault-pocket.apk | grep SHA256; exit 1; }
           ls -la ../../nightvault-pocket.apk
 
       - uses: actions/upload-artifact@v4
