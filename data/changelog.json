@@ -26,7 +26,8 @@
    "title": "Updates inside the app",
    "items": [
     "“Download” in the update bar now downloads the new version inside the app and opens the installer - no more copies in your Downloads folder, and the file is removed after the update.",
-    "The first time, Android asks to allow Nightvault Pocket to install apps: allow it once, come back and tap Download again."
+    "The first time, Android asks to allow Nightvault Pocket to install apps: allow it once, come back and tap Download again.",
+    "Fixed: updating from inside the app could end with “App not installed” - the app now hands the whole update to Android's installer first, and says why if an update fails."
    ]
   },
   {
