@@ -3,6 +3,19 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 22,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "1st Edition as its own set",
+   "items": [
+    "Pokémon sets with 1st Edition prints (Base Set, Jungle, Fossil, Team Rocket, Gym, Neo) now appear twice in the binder: the normal set and “… · 1st Edition”, each with its own progress, value and missing cards.",
+    "In the 1st Edition set, Tick off and “I have the whole set” add 1st Edition copies, and its value uses the 1st Edition prices."
+   ]
+  },
+  {
    "id": 21,
    "date": "2026-10-11",
    "where": [

@@ -2416,6 +2416,7 @@ SETSRC.swccg.cards = async st => { const all = await swdb(); return all.filter(c
 
 const ownedIn = g => store.cards.filter(c => c.game === g);
 const ownedMap = g => { const m = new Map(); for(const c of ownedIn(g)){ if(c.digital) continue; const k = c.set + '|' + c.number; m.set(k, (m.get(k) || 0) + c.qty) } return m };   // physical copies
+const normalMap = g => { const m = new Map(); for(const c of ownedIn(g)){ if(c.ed1 || c.digital) continue; const k = c.set + '|' + c.number; m.set(k, (m.get(k) || 0) + c.qty) } return m };   // physical, not 1st Edition
 const ed1Map = g => { const m = new Map(); for(const c of ownedIn(g)){ if(!c.ed1 || c.digital) continue; const k = c.set + '|' + c.number; m.set(k, (m.get(k) || 0) + c.qty) } return m };
 const digitalMap = g => { const m = new Map(); for(const c of ownedIn(g)){ if(!c.digital) continue; const k = c.set + '|' + c.number; m.set(k, (m.get(k) || 0) + c.qty) } return m };
 const valueOf = cs => cs.reduce((a, c) => a + (c.digital ? 0 : ((c.foil ? c.priceFoil : c.price) || 0) * c.qty), 0);
@@ -2479,7 +2480,7 @@ function binderGames(){
 }
 async function binderSets(){
   const g = BD.game, own = ownedIn(g), om = ownedMap(g), cur = own[0] ? own[0].currency : 'EUR';
-  const ownedSets = new Map(); for(const c of own){ const e = ownedSets.get(c.set) || {n:0, uniq:new Set(), name:c.setName || c.showSet, show:c.showSet}; e.n += c.qty; e.uniq.add(c.number); ownedSets.set(c.set, e) }
+  const ownedSets = new Map(); for(const c of own){ const k = c.ed1 && g === 'pokemon' && ED1_SETS.has(String(c.set).toLowerCase()) ? c.set + '~1e' : c.set; const e = ownedSets.get(k) || {n:0, uniq:new Set(), name:c.setName || c.showSet, show:c.showSet}; e.n += c.qty; e.uniq.add(c.number); ownedSets.set(k, e) }
   $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Games</button>${gameBadge(g, 'sm')}<h1 style="font-size:18px;flex:1">${esc(GAMES[g].label)}</h1><button class="btn sm" id="bdart" aria-label="Logo and picture for this game"><i class="ti ti-photo-edit"></i></button></div>
     <div class="bstats"><div><b>${own.reduce((a, c) => a + c.qty, 0).toLocaleString()}</b><span>Cards</span></div><div><b>${ownedSets.size}</b><span>Sets</span></div><div><b>${fmt(valueOf(own), cur)}</b><span>Value</span></div></div>
     <div class="bar"><input class="grow" id="bdq" type="search" placeholder="Find a set" value="${esc(BD.q)}"><button class="btn" id="bdg" hidden></button></div><div id="bdl"><div class="muted" style="padding:16px 4px">Loading the sets ...</div></div>`;
@@ -2487,34 +2488,36 @@ async function binderSets(){
   $('#bdart').onclick = () => pickGameArt(g, () => binderSets());
   let sets = [];
   if(SRC(g)){ try{ sets = await bdLoad('sets', g, SRC(g).list) }catch(e){ toast(`${GAMES[g].label} sets could not be loaded: ${e.message}`, true) } }
-  const known = new Set(sets.map(x => x.code)); for(const [k, e] of ownedSets) if(!known.has(k)) sets.push({code:k, name:e.name, released:'', total:0, local:true});
+  const known = new Set(sets.map(x => x.code)); for(const [k, e] of ownedSets) if(!known.has(k) && !k.endsWith('~1e')) sets.push({code:k, name:e.name, released:'', total:0, local:true});
+  if(g === 'pokemon'){ const ex = []; for(const x of sets){ ex.push(x); if(ED1_SETS.has(String(x.code).toLowerCase())) ex.push(Object.assign({}, x, {key:x.code + '~1e', name:x.name + ' · 1st Edition', ed1:true})) } sets = ex }
   for(const x of sets) x.grp = setGroup(g, x);
   const newest = {}; for(const x of sets) if(String(x.released) > (newest[x.grp] || '')) newest[x.grp] = String(x.released);
   const groups = [...new Set(sets.map(x => x.grp))].sort((a, b) => g === 'pokemon' ? String(newest[b] || '').localeCompare(String(newest[a] || '')) || a.localeCompare(b)
     : ((GROUP_ORDER.indexOf(a) + 1 || 99) - (GROUP_ORDER.indexOf(b) + 1 || 99)) || a.localeCompare(b));
   if(!groups.includes(BD.grp)) BD.grp = 'all';
   if(BD.openFor !== g){ BD.open = {[groups[0]]:true}; BD.openFor = g }
-  const row = x => { const e = ownedSets.get(x.code), u = e ? e.uniq.size : 0, t = x.total || 0;
-      return `<button class="bset" data-s="${esc(x.code)}"><span><b>${esc(x.name)}</b> <span class="muted">${esc(String(x.abbr || x.code).toUpperCase())}${x.released ? ' · ' + esc(String(x.released).slice(0, 4)) : ''}</span>${BD.game === 'pokemon' && ED1_SETS.has(String(x.code).toLowerCase()) ? ' <span class="vbadge" title="Has 1st Edition prints">1st Ed</span>' : ''}</span>
+  const row = x => { const e = ownedSets.get(x.key || x.code), u = e ? e.uniq.size : 0, t = x.total || 0;
+      return `<button class="bset ${x.ed1 ? 'ed1' : ''}" data-s="${esc(x.key || x.code)}"><span><b>${esc(x.name)}</b> <span class="muted">${esc(String(x.abbr || x.code).toUpperCase())}${x.released ? ' · ' + esc(String(x.released).slice(0, 4)) : ''}</span>${x.ed1 ? ' <span class="vbadge" title="The 1st Edition prints of this set">1st Ed</span>' : ''}</span>
         <span class="muted">${u ? `<b style="color:var(--text)">${u}</b>${t ? ' / ' + t : ''}` : (t ? t + ' cards' : '')}</span>${u && t ? `<div class="bar2" style="--gc:${GAMES[g].color}"><i style="width:${Math.min(100, Math.round(100 * u / t))}%"></i></div>` : ''}</button>` };
   const draw = () => { const q = BD.q.toLowerCase(), many = groups.length > 1;
+    const own1 = x => ownedSets.has(x.key || x.code);
     const rows = sets.filter(x => (!q || (x.name + ' ' + x.code).toLowerCase().includes(q)) && (BD.grp === 'all' || x.grp === BD.grp))
-      .sort((a, b) => (ownedSets.has(b.code) - ownedSets.has(a.code)) || String(b.released).localeCompare(String(a.released)));
+      .sort((a, b) => (own1(b) - own1(a)) || String(b.released).localeCompare(String(a.released)) || (!!a.ed1 - !!b.ed1));
     const cnt = k => sets.filter(x => x.grp === k).length;
     const gb = $('#bdg'); gb.hidden = !many; gb.classList.toggle('on', BD.grp !== 'all');
     gb.innerHTML = `<i class="ti ti-filter"></i><span class="bdgl">${esc(BD.grp === 'all' ? 'All types' : BD.grp)}</span><i class="ti ti-chevron-down"></i>`;
     gb.onclick = () => menuSheet('Product type', [{icon:'layout-list', label:'All types', sub:`${sets.length} sets`, on:BD.grp === 'all', run:() => { BD.grp = 'all'; draw(); $('#main').scrollTop = 0 }}]
       .concat(groups.map(k => ({icon:'folder', label:k, sub:`${cnt(k)} set${cnt(k) === 1 ? '' : 's'}`, on:BD.grp === k, run:() => { BD.grp = k; draw(); $('#main').scrollTop = 0 }}))));
     let html = '';
-    if(many && BD.grp === 'all' && !q){ const mine = rows.filter(x => ownedSets.has(x.code));
+    if(many && BD.grp === 'all' && !q){ const mine = rows.filter(own1);
       if(mine.length && mine.length < rows.length) html += `<div class="dgh">Sets you collect <span class="muted">${mine.length}</span></div>` + mine.slice(0, 60).map(row).join('');
-      for(const k of groups){ const l = rows.filter(x => x.grp === k && !(mine.length < rows.length && ownedSets.has(x.code))); if(!l.length) continue;
+      for(const k of groups){ const l = rows.filter(x => x.grp === k && !(mine.length < rows.length && own1(x))); if(!l.length) continue;
         const open = BD.open && BD.open[k];
         html += `<button class="dgh bgh" data-o="${esc(k)}"><i class="ti ti-chevron-${open ? 'down' : 'right'}"></i>${esc(k)} <span class="muted">${l.length}</span></button>` + (open ? l.slice(0, 400).map(row).join('') : '') } }
     else html = rows.slice(0, 400).map(row).join('');
     $('#bdl').innerHTML = html || '<div class="empty">No sets found.</div>';
     $$('#bdl [data-o]').forEach(b => b.onclick = () => { BD.open ||= {}; BD.open[b.dataset.o] = !BD.open[b.dataset.o]; draw() });
-    $$('.bset').forEach(b => b.onclick = () => { BD.set = sets.find(x => x.code === b.dataset.s); BD.filter = 'all'; viewBinder(); $('#main').scrollTop = 0 }) };
+    $$('.bset').forEach(b => b.onclick = () => { BD.set = sets.find(x => (x.key || x.code) === b.dataset.s); BD.filter = 'all'; viewBinder(); $('#main').scrollTop = 0 }) };
   draw(); let t; $('#bdq').oninput = e => { clearTimeout(t); t = setTimeout(() => { BD.q = e.target.value; draw() }, 150) };
 }
 /* card number order: the number part counts as a number (2 before 10), letters and suffixes after it (TG01, 001 H, EX12-048 UR) */
@@ -2523,12 +2526,12 @@ function numKey(c){ const t = String(c.showNum || c.number || '').trim(), m = /^
 function byCardNumber(a, b){ const x = numKey(a), y = numKey(b);
   return (x[0] === y[0] ? 0 : x[0] === '' ? -1 : y[0] === '' ? 1 : x[0].localeCompare(y[0])) || (x[1] - y[1]) || x[2].localeCompare(y[2], undefined, {numeric:true}) || String(a.name).localeCompare(String(b.name)) }
 function wholeSet(g, st, cards, done){
-  const om = ownedMap(g), dm = digitalMap(g), missP = cards.filter(c => !om.get(c.set + '|' + c.number)), missD = cards.filter(c => !dm.get(c.set + '|' + c.number));
+  const sep = g === 'pokemon' && ED1_SETS.has(String(st.code).toLowerCase()), om = st.ed1 ? ed1Map(g) : sep ? normalMap(g) : ownedMap(g), dm = digitalMap(g), missP = cards.filter(c => !om.get(c.set + '|' + c.number)), missD = cards.filter(c => !dm.get(c.set + '|' + c.number));
   let miss = missP;
   modal(`<h3>I have the whole set</h3><p class="hint" style="margin-top:0" id="wscount">${esc(st.name)}: ${cards.length} cards, you miss ${missP.length} as physical card${missP.length === 1 ? '' : 's'}.</p>
     <div class="oseg" id="wsk" style="margin:8px 0"><button data-k="phys" class="on">Physical</button><button data-k="dig">Digital</button></div>
     <div class="oseg" id="wsf" style="margin:0 0 8px"><button data-f="0" class="on">Normal</button><button data-f="1">Foil</button></div>
-    ${cards.some(canEd1) ? '<label class="row"><input type="checkbox" id="wsed1"><div class="grow">1st Edition</div></label>' : ''}
+    ${!sep && cards.some(canEd1) ? '<label class="row"><input type="checkbox" id="wsed1"><div class="grow">1st Edition</div></label>' : ''}
     <label class="row"><input type="checkbox" id="wsonly" checked><div class="grow">Only the cards I do not have yet (of this kind)<div class="hint" style="margin:2px 0 0">Physical and digital copies are counted apart. Off: one more of every card.</div></div></label>
     <p class="hint" id="wsnote">Physical cards count in the value of your collection.</p>
     <div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="wsok"><i class="ti ti-checks"></i>Add</button></div>`);
@@ -2536,7 +2539,8 @@ function wholeSet(g, st, cards, done){
   $$('#wsk button').forEach(b => b.onclick = () => { dig = b.dataset.k === 'dig'; miss = dig ? missD : missP; $('#wscount').textContent = `${st.name}: ${cards.length} cards, you miss ${miss.length} as ${dig ? 'digital' : 'physical'} card${miss.length === 1 ? '' : 's'}.`; $$('#wsk button').forEach(x => x.classList.toggle('on', x === b)); $('#wsnote').textContent = dig ? 'Digital cards are counted in your collection and the binder, not in its value.' : 'Physical cards count in the value of your collection.' });
   $$('#wsf button').forEach(b => b.onclick = () => { foil = b.dataset.f === '1'; $$('#wsf button').forEach(x => x.classList.toggle('on', x === b)) });
   if($('#wsed1')) $('#wsed1').onchange = e => { const on = e.target.checked, e1 = ed1Map(g); miss = on ? cards.filter(c => !e1.get(c.set + '|' + c.number)) : dig ? missD : missP; $('#wscount').textContent = `${st.name}: ${cards.length} cards, you miss ${miss.length} as ${on ? '1st Edition' : dig ? 'digital' : 'physical'} card${miss.length === 1 ? '' : 's'}.` };
-  $('#wsok').onclick = () => { const e1on = $('#wsed1') && $('#wsed1').checked, list = $('#wsonly').checked ? miss : cards; if(!list.length){ closeModal(); toast('You already have every card of this set'); return }
+  if(st.ed1){ $('#wsk').hidden = true; $('#wsf').hidden = true }
+  $('#wsok').onclick = () => { const e1on = !!st.ed1 || ($('#wsed1') && $('#wsed1').checked), list = $('#wsonly').checked ? miss : cards; if(!list.length){ closeModal(); toast('You already have every card of this set'); return }
     snapshot('before adding a whole set'); BULK = true;
     try{ for(const m of list){ const v = {}; if(dig) v.digital = true; if(e1on && canEd1(m)) v.ed1 = true; addCard(m, foil, 1, vtag(v) ? v : null); if(isWant(m)) toggleWant(m) } } finally { BULK = false }
     persist(); tabCount(); closeModal(); toast(`${list.length} card${list.length === 1 ? '' : 's'} of ${st.name} added${dig ? ' as digital' : ''}`); done(); pokemonPrices(store.cards.filter(c => c.game === g && c.set === st.code && priceOf(c) == null && !c.digital), () => { persist(); done() }) } }
@@ -2552,15 +2556,18 @@ async function binderSet(){
   cards.sort(byCardNumber);                                     // 1, 2, 3 ... 10, 111 - not in the order the card site sent them
   if(g === 'pokemon') setTimeout(() => pokemonPrices(cards, () => { persist(); if(VIEW === 'binder' && BD.set === st) try{ draw() }catch(e){} }), 50);
   await XPI; if(XPG.has(g) || store.myPx){ for(const m of cards){ if(!m._xp){ m._xp = 1; capturePx(m); await addExtras(m).catch(() => {}) } pickPx(m, null) } }
-  $('#bdset').onclick = () => { const own = ownedIn(g).filter(c => c.set === st.code);
+  $('#bdset').onclick = () => { const own = ownedIn(g).filter(c => c.set === st.code && (!(g === 'pokemon' && ED1_SETS.has(String(st.code).toLowerCase())) || !!c.ed1 === !!st.ed1));
     menuSheet(st.name, [
-      {icon:'checks', label:'I have the whole set', sub:'Add every card at once - physical or digital, normal or foil', disabled:!cards.length, run:() => wholeSet(g, st, cards, draw)},
+      {icon:'checks', label:'I have the whole set', sub:st.ed1 ? 'Add every card as 1st Edition' : 'Add every card at once - physical or digital, normal or foil', disabled:!cards.length, run:() => wholeSet(g, st, cards, draw)},
       {icon:'trash', label:'Remove all my cards of this set', sub:own.length ? `${own.reduce((a, c) => a + c.qty, 0)} cards` : 'You have none', danger:true, disabled:!own.length, run:() => {
-        if(!confirm(`Remove all your cards of ${st.name}?`)) return; snapshot('before removing a set'); store.cards = store.cards.filter(c => !(c.game === g && c.set === st.code)); persist(); tabCount(); draw(); toast('Removed') }}]) };
+        if(!confirm(`Remove all your cards of ${st.name}?`)) return; snapshot('before removing a set'); const sep = g === 'pokemon' && ED1_SETS.has(String(st.code).toLowerCase());
+        store.cards = store.cards.filter(c => !(c.game === g && c.set === st.code && (!sep || !!c.ed1 === !!st.ed1))); persist(); tabCount(); draw(); toast('Removed') }}]) };
   const draw = () => {
-    const om = ownedMap(g), dm = digitalMap(g), e1 = ed1Map(g), own = ownedIn(g).filter(c => c.set === st.code), has = c => om.get(c.set + '|' + c.number) || dm.get(c.set + '|' + c.number), have = cards.filter(has), ed1Set = cards.some(canEd1);
+    const E = !!st.ed1, sep = g === 'pokemon' && ED1_SETS.has(String(st.code).toLowerCase());          // Pokémon 1st Edition: its own set in the binder
+    const e1 = ed1Map(g), om = E ? e1 : sep ? normalMap(g) : ownedMap(g), dm = E ? new Map() : digitalMap(g);
+    const own = ownedIn(g).filter(c => c.set === st.code && (!sep || !!c.ed1 === E)), has = c => om.get(c.set + '|' + c.number) || dm.get(c.set + '|' + c.number), have = cards.filter(has), ed1Set = !sep && cards.some(canEd1);
     const cur = (cards.find(c => c.price != null) || own[0] || {}).currency || 'EUR';
-    const missVal = cards.filter(c => !om.get(c.set + '|' + c.number)).reduce((a, c) => a + (c.price || 0), 0);      // what the physical cards you miss cost
+    const missVal = cards.filter(c => !om.get(c.set + '|' + c.number)).reduce((a, c) => a + ((E ? toEur(c.p1e, 'USD') : c.price) || 0), 0);      // what the physical cards you miss cost
     $('#bds').innerHTML = `<div class="bstats"><div><b>${have.length} / ${cards.length || st.total || '?'}</b><span>Collected</span></div><div><b>${fmt(valueOf(own), own[0] ? own[0].currency : cur)}</b><span>Your value</span></div><div><b>${missVal ? fmt(missVal, cur) : '–'}</b><span>Missing</span></div></div>
       <div class="bar2" style="--gc:${GAMES[g].color};margin:-4px 0 12px"><i style="width:${cards.length ? Math.round(100 * have.length / cards.length) : 0}%"></i></div>`;
     $('#bdf').innerHTML = [['all', 'All'], ['have', 'I have'], ['miss', 'Missing'], ['want', 'Wanted']].map(([k, l]) => `<button class="chip ${BD.filter === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')
@@ -2568,14 +2575,16 @@ async function binderSet(){
       + `<button class="chip ${BD.tick ? 'on' : ''}" id="bdtick" style="margin-left:auto"><i class="ti ti-checkbox"></i> Tick off</button>`;
     const list = cards.filter(c => BD.filter === 'all' || (BD.filter === 'want' ? isWant(c) : (BD.filter === 'have') === !!has(c)));
     $('#bdc').innerHTML = list.length ? `<div class="bcards">${list.map((c, i) => { const q = om.get(c.set + '|' + c.number) || 0;
-      const dq = dm.get(c.set + '|' + c.number) || 0, eq = e1.get(c.set + '|' + c.number) || 0;
+      const dq = dm.get(c.set + '|' + c.number) || 0, eq = E || sep ? 0 : e1.get(c.set + '|' + c.number) || 0;
       return `<button class="bcard ${q || dq ? '' : 'miss'}" data-i="${cards.indexOf(c)}" title="${esc(c.name)}">${c.image ? pic(c, 'loading="lazy"') : ''}${q ? `<span class="q">${q}</span>` : ''}${dq ? `<span class="dq" title="Digital: ${dq}">D${dq > 1 ? dq : ''}</span>` : ''}${eq ? `<span class="eq" title="1st Edition: ${eq}">1st${eq > 1 ? ' ×' + eq : ''}</span>` : ''}${isWant(c) ? '<span class="bflag"><i class="ti ti-heart-filled"></i></span>' : own.some(o => o.number === c.number && o.trade) ? '<span class="bflag"><i class="ti ti-arrows-exchange"></i></span>' : ''}<span class="nm">${esc(c.name)}</span><span class="no">${esc(c.showNum)}</span></button>` }).join('')}</div>`
       : `<div class="empty">${BD.filter === 'want' ? 'No cards from this set on your wishlist. Tap a card and choose “Want this”.' : BD.filter === 'have' ? 'You have no cards from this set yet.' : BD.filter === 'miss' ? 'Complete! You have every card in this set.' : 'No cards in this set.'}</div>`;
     $$('#bdf .chip').forEach(b => b.onclick = () => { BD.filter = b.dataset.f; draw() });
     if($('#bded1')) $('#bded1').onclick = () => { BD.ed1 = !BD.ed1; toast(BD.ed1 ? 'Tick off adds 1st Edition copies now' : 'Tick off adds normal copies'); draw() };
     $('#bdtick').onclick = () => { BD.tick = !BD.tick; if(BD.tick) toast('Tick off: tap a card you have to add it, tap again to take it off'); draw() };
     $$('#bdc .bcard').forEach(b => b.onclick = async () => { const m = cards[+b.dataset.i];
-      if(!BD.tick) return binderCard(m, draw);
+      if(!BD.tick) return binderCard(m, draw, E);
+      if(E){ const q1 = e1.get(m.set + '|' + m.number) || 0; if(q1 > 1) return binderCard(m, draw, true); addCard(m, false, q1 ? -1 : 1, {ed1:true}); if(!q1 && isWant(m)) toggleWant(m); draw();
+        const c = !q1 && store.cards.find(x => x.key === ckey(m, false, {ed1:true})); if(c && priceOf(c) == null){ await priceOne(c); persist(); draw() } return }
       if(BD.ed1 && canEd1(m)){ const q1 = e1.get(m.set + '|' + m.number) || 0; if(q1 > 1) return binderCard(m, draw); addCard(m, false, q1 ? -1 : 1, {ed1:true}); if(!q1 && isWant(m)) toggleWant(m); draw(); return }
       const q = om.get(m.set + '|' + m.number) || 0;
       if(q > 1) return binderCard(m, draw);                                          // several copies: change them in the card window
@@ -2643,29 +2652,29 @@ function shareLists(){
   const text = [part('FOR TRADE', trade), part('LOOKING FOR', want)].filter(Boolean).join('\n\n') + '\n\n(from Nightvault Pocket)';
   if(navigator.share) navigator.share({title:'My card lists', text}).catch(() => {});
   else navigator.clipboard.writeText(text).then(() => toast('Lists copied - paste them in a message')).catch(() => toast('Could not copy', true)) }
-function binderCard(m, redraw){
+function binderCard(m, redraw, e1){
   const mine = store.cards.filter(c => c.game === m.game && c.set === m.set && c.number === m.number);
-  const q = f => (mine.find(c => !!c.foil === f && !c.lang && !c.grade && !c.digital) || {}).qty || 0;
+  const q = f => (mine.find(c => !!c.foil === f && !c.lang && !c.grade && !c.digital && !!c.ed1 === !!e1) || {}).qty || 0;
   modal(`<div class="cres-top"><div class="cardbig zoom" id="bzm">${pic(m)}</div><div style="min-width:0;flex:1"><div class="cname">${esc(m.name)}</div>
       <div class="sub" style="margin:2px 0 8px">${esc(m.showSet)} #${esc(m.showNum)}${m.rarity ? ' · ' + esc(m.rarity) : ''}</div>
       <div class="price">${fmt(m.price, m.currency)}${m.priceFoil != null ? ` <span class="muted">· foil ${fmt(m.priceFoil, m.currency)}</span>` : ''}${m.p1e != null ? `<div style="font-size:13px;margin-top:2px"><span class="vbadge">1st Ed</span> ${fmt(m.p1e, 'USD')} <span class="muted" style="font-size:11.5px">TCGplayer</span></div>` : canEd1(m) && m.game === 'pokemon' ? '<div class="muted" style="font-size:12px;margin-top:2px">The price above is for the normal (unlimited) print</div>' : ''}</div></div></div>
-    ${[false, true].map(f => `<div class="row"><div class="grow">${f ? 'Foil' : 'Normal'}</div><div class="qb"><button data-f="${f ? 1 : 0}" data-d="-1">−</button><b id="bq${f ? 1 : 0}">${q(f)}</b><button data-f="${f ? 1 : 0}" data-d="1">+</button></div></div>`).join('')}
-    ${mine.filter(c => c.lang || c.grade).map(c => `<div class="row"><div class="grow">${c.foil ? 'Foil' : 'Normal'} ${vbadge(c)} <span class="muted" style="font-size:12px">${esc([c.lang ? langName(c.lang) : '', c.grade || ''].filter(Boolean).join(', '))}</span></div><div class="qb"><button data-vu="${c.uid}" data-d="-1">−</button><b>${c.qty}</b><button data-vu="${c.uid}" data-d="1">+</button></div></div>`).join('')}
+    ${[false, true].map(f => `<div class="row"><div class="grow">${e1 ? '1st Edition' + (f ? ' foil' : '') : f ? 'Foil' : 'Normal'}</div><div class="qb"><button data-f="${f ? 1 : 0}" data-d="-1">−</button><b id="bq${f ? 1 : 0}">${q(f)}</b><button data-f="${f ? 1 : 0}" data-d="1">+</button></div></div>`).join('')}
+    ${mine.filter(c => c.lang || c.grade || (c.ed1 && !e1) || c.digital).map(c => `<div class="row"><div class="grow">${c.foil ? 'Foil' : 'Normal'} ${vbadge(c)} <span class="muted" style="font-size:12px">${esc([c.lang ? langName(c.lang) : '', c.grade || ''].filter(Boolean).join(', '))}</span></div><div class="qb"><button data-vu="${c.uid}" data-d="-1">−</button><b>${c.qty}</b><button data-vu="${c.uid}" data-d="1">+</button></div></div>`).join('')}
     <button class="lnk" id="bver" style="margin-top:4px"><i class="ti ti-language"></i> Add another language or a graded copy</button>
     <div class="btns" style="margin-top:10px"><button class="btn sm" id="binfo"><i class="ti ti-info-circle"></i>Details</button><button class="btn sm" id="bprices"><i class="ti ti-coin-euro"></i>Prices</button><button class="btn sm" id="bdeck"><i class="ti ti-cards"></i>Add to deck</button><button class="btn sm ${isWant(m) ? 'on' : ''}" id="bwant"><i class="ti ti-heart${isWant(m) ? '-filled' : ''}"></i>${isWant(m) ? 'On my wishlist' : 'Want this'}</button>
       <button class="btn sm ${mine.some(c => c.trade) ? 'on' : ''}" id="btrade" ${mine.length ? '' : 'disabled'}><i class="ti ti-arrows-exchange"></i>${mine.some(c => c.trade) ? 'For trade' : 'Offer for trade'}</button></div>
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" id="bcx">Done</button></div>`);
   $('#bzm').onclick = () => openViewer(m); $('#binfo').onclick = () => openViewer(m, 'info');
-  $$('.mbox [data-vu]').forEach(b => b.onclick = () => { const c = store.cards.find(x => x.uid === b.dataset.vu); if(!c) return; c.qty += +b.dataset.d; if(c.qty <= 0) store.cards = store.cards.filter(x => x !== c); persist(); tabCount(); binderCard(m, redraw); if(redraw) redraw() });
-  $('#bver').onclick = () => versionModal(null, v => { if(!vtag(v)){ binderCard(m, redraw); return } modal('<h3>Foil?</h3><div class="btns" style="justify-content:flex-end"><button class="btn" id="bvn">Normal</button><button class="btn" id="bvf"><i class="ti ti-sparkles"></i>Foil</button></div>');
-    const go = f => { addCard(m, f, 1, v); binderCard(m, redraw); if(redraw) redraw() }; $('#bvn').onclick = () => go(false); $('#bvf').onclick = () => go(true) }, 'Other version', m);
-  $('#bdeck').onclick = () => deckPick(m, () => binderCard(m, redraw));
-  $('#bprices').onclick = () => { const own = store.cards.find(c => c.game === m.game && c.set === m.set && c.number === m.number); openPrices(own || m, () => binderCard(m, redraw)) };
+  $$('.mbox [data-vu]').forEach(b => b.onclick = () => { const c = store.cards.find(x => x.uid === b.dataset.vu); if(!c) return; c.qty += +b.dataset.d; if(c.qty <= 0) store.cards = store.cards.filter(x => x !== c); persist(); tabCount(); binderCard(m, redraw, e1); if(redraw) redraw() });
+  $('#bver').onclick = () => versionModal(null, v => { if(!vtag(v)){ binderCard(m, redraw, e1); return } modal('<h3>Foil?</h3><div class="btns" style="justify-content:flex-end"><button class="btn" id="bvn">Normal</button><button class="btn" id="bvf"><i class="ti ti-sparkles"></i>Foil</button></div>');
+    const go = f => { addCard(m, f, 1, v); binderCard(m, redraw, e1); if(redraw) redraw() }; $('#bvn').onclick = () => go(false); $('#bvf').onclick = () => go(true) }, 'Other version', m);
+  $('#bdeck').onclick = () => deckPick(m, () => binderCard(m, redraw, e1));
+  $('#bprices').onclick = () => { const own = store.cards.find(c => c.game === m.game && c.set === m.set && c.number === m.number); openPrices(own || m, () => binderCard(m, redraw, e1)) };
   $('#bwant').onclick = () => { const on = toggleWant(m); $('#bwant').classList.toggle('on', on); $('#bwant').innerHTML = `<i class="ti ti-heart${on ? '-filled' : ''}"></i>${on ? 'On my wishlist' : 'Want this'}` };
   $('#btrade').onclick = () => { const own = store.cards.filter(c => c.game === m.game && c.set === m.set && c.number === m.number); if(!own.length) return;
     const on = !own.some(c => c.trade); own.forEach(c => c.trade = on); persist(); $('#btrade').classList.toggle('on', on); $('#btrade').innerHTML = `<i class="ti ti-arrows-exchange"></i>${on ? 'For trade' : 'Offer for trade'}` };
-  $$('.mbox [data-d]').forEach(b => b.onclick = async () => { const f = b.dataset.f === '1'; addCard(m, f, +b.dataset.d);
-    const c = store.cards.find(x => x.key === ckey(m, f)); $('#bq' + b.dataset.f).textContent = (c || {}).qty || 0;
+  $$('.mbox [data-d]').forEach(b => b.onclick = async () => { const f = b.dataset.f === '1', vv = e1 ? {ed1:true} : null; addCard(m, f, +b.dataset.d, vv);
+    const c = store.cards.find(x => x.key === ckey(m, f, vv)); $('#bq' + b.dataset.f).textContent = (c || {}).qty || 0;
     if(c && +b.dataset.d > 0 && isWant(m)){ toggleWant(m); $('#bwant').classList.remove('on'); $('#bwant').innerHTML = '<i class="ti ti-heart"></i>Want this'; toast('Got it - removed from your wishlist') }
     $('#btrade').disabled = !store.cards.some(x => x.game === m.game && x.set === m.set && x.number === m.number);
     if(c && +b.dataset.d > 0 && priceOf(c) == null && canPrice(c)){          // no price in the set list: look it up now
@@ -3007,7 +3016,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610110152';
+const BUILD = '202610110154';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
