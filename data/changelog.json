@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 17,
+   "date": "2026-10-10",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Tour, whole sets and digital cards",
+   "items": [
+    "New “How to use the app” tour: opens the first time, and is always in Settings and at the bottom of Home.",
+    "Binder → a set → ⋯ → “I have the whole set”: add every card at once (or only the ones you miss), physical or digital, normal or foil. “Remove all my cards of this set” undoes it.",
+    "Digital copies (with the EN button, or a whole set): counted in your collection and binder, not in its value, and not sent to Nightvault on the PC."
+   ]
+  },
+  {
    "id": 16,
    "date": "2026-10-10",
    "where": [

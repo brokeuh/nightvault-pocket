@@ -180,6 +180,8 @@ select{width:auto}
 .conf{padding:2px 9px;border-radius:999px;font-size:11.5px;display:inline-block;margin:0 4px 4px 0}
 .conf.high{background:var(--greenbg);color:var(--pg)}.conf.medium{background:var(--amberbg);color:var(--pa)}.conf.low{background:color-mix(in srgb,var(--red) 18%,var(--bg));color:var(--red)}.conf.manual{background:var(--accentbg);color:var(--pb)}
 .cands{display:flex;gap:8px;overflow-x:auto;margin:12px -14px 0;padding:0 14px 4px}
+.guide{text-align:center}.guide h3{margin:6px 0 8px}.guide p{margin:0;font-size:14px;line-height:1.55;color:var(--text);text-align:left}.gic{width:64px;height:64px;margin:4px auto 6px;border-radius:18px;display:grid;place-items:center;font-size:32px;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--card))}
+.gstep{font-size:11.5px;color:var(--mut);letter-spacing:.06em}.gdots{display:flex;gap:6px;justify-content:center;margin-top:14px}.gdots i{width:7px;height:7px;border-radius:50%;background:var(--line)}.gdots i.on{background:var(--accent);width:18px;border-radius:4px}
 .clog{padding:10px 0;border-bottom:1px solid var(--line)}.clog:last-child{border-bottom:0}.clh{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.clh span{font-size:12px;color:var(--mut);white-space:nowrap}
 .clog ul{margin:6px 0 0;padding-left:18px;font-size:13.5px;line-height:1.45}.clog li{margin:3px 0}.cltag{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
 .vbadge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:1px 6px;border-radius:6px;background:var(--accentbg,#1b2740);color:var(--accent);vertical-align:1px}
@@ -852,6 +854,7 @@ async function pickGameArt(g, done){                               // your own l
     {icon:'trash', label:'Remove the background', danger:true, disabled:!(store.gameArt || {})[g], run:() => { delete store.gameArt[g]; persist(); done && done() }}]) }
 /* ---------------------------------------------------------------- home: tiles to every part of the app, each with a bit of live info */
 function viewHome(){
+  setTimeout(() => { if(VIEW === 'home' && $('#main') && !$('#hguide')){ $('#main').insertAdjacentHTML('beforeend', '<div style="text-align:center;margin:18px 0 8px"><button class="lnk" id="hguide"><i class="ti ti-help-circle"></i> How to use the app</button></div>'); $('#hguide').onclick = () => showGuide(0) } }, 0);
   const cs = store.cards, n = cs.reduce((a, c) => a + c.qty, 0), rv = (store.review || []).length, h = store.hist || [];
   const v = valueEur(cs), wk = h.length > 1 ? h[Math.max(0, h.length - 8)] : null, dv = wk ? v - wk.v : 0;
   const games = new Set(cs.map(c => c.game)), dks = decks(), last = dks.slice().sort((a, b) => (b.at || 0) - (a.at || 0))[0];
@@ -1752,8 +1755,8 @@ const LANGS = [['', 'English'], ['ja', 'Japanese'], ['de', 'German'], ['fr', 'Fr
   ['zhs', 'Chinese (simplified)'], ['zht', 'Chinese (traditional)'], ['ru', 'Russian'], ['pl', 'Polish'], ['th', 'Thai'], ['id', 'Indonesian']];
 const GRADERS = ['PSA', 'BGS', 'CGC', 'SGC', 'TAG', 'Ace', 'Other'];
 const langName = l => (LANGS.find(x => x[0] === (l || '')) || [l, String(l).toUpperCase()])[1];
-const vsuf = v => (v && v.lang ? '|L:' + v.lang : '') + (v && v.grade ? '|G:' + v.grade : '');
-const vtag = v => [v && v.lang ? String(v.lang).slice(0, 2).toUpperCase() : '', v && v.grade ? v.grade : ''].filter(Boolean).join(' · ');
+const vsuf = v => (v && v.lang ? '|L:' + v.lang : '') + (v && v.grade ? '|G:' + v.grade : '') + (v && v.digital ? '|D' : '');
+const vtag = v => [v && v.lang ? String(v.lang).slice(0, 2).toUpperCase() : '', v && v.grade ? v.grade : '', v && v.digital ? 'Digital' : ''].filter(Boolean).join(' · ');
 const vbadge = v => vtag(v) ? `<span class="vbadge">${esc(vtag(v))}</span>` : '';
 const ckey = (m, foil, v) => (m.game === 'other' ? ['other:' + String(m.gameName || '').toLowerCase()] : [m.game]).concat([m.set, m.number, foil ? 1 : 0]).join('|') + vsuf(v);
 function versionModal(v, done, title){
@@ -1763,23 +1766,26 @@ function versionModal(v, done, title){
     <label class="row" style="margin-top:10px"><input type="checkbox" id="vgr" ${g ? 'checked' : ''}><div class="grow">Graded (in a slab)</div></label>
     <div id="vgbox" style="display:${g ? 'flex' : 'none'};gap:8px;margin-top:6px"><select id="vco" style="flex:1">${GRADERS.map(x => `<option ${x === (co || 'PSA') ? 'selected' : ''}>${x}</option>`).join('')}</select>
       <input id="vval" type="text" inputmode="decimal" placeholder="Grade, e.g. 10 or 9.5" value="${esc(val)}" style="flex:1"></div>
+    <label class="row" style="margin-top:6px"><input type="checkbox" id="vdig" ${v && v.digital ? 'checked' : ''}><div class="grow">Digital copy<div class="hint" style="margin:2px 0 0">Not a physical card (an online game, a code) - counted in your collection, not in its value.</div></div></label>
     <p class="hint">Other languages and graded cards are worth something else than the normal card: tap the price of the card in My cards to put in your own price.</p>
     <div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="vok">OK</button></div>`);
   $('#vgr').onchange = e => { $('#vgbox').style.display = e.target.checked ? 'flex' : 'none' };
   $('#vok').onclick = () => { const out = {}; const l = $('#vlang').value; if(l) out.lang = l;
     if($('#vgr').checked){ const x = $('#vval').value.trim().replace(',', '.'); if(!x){ toast('Type the grade', true); return } out.grade = ($('#vco').value === 'Other' ? x : $('#vco').value + ' ' + x).slice(0, 24) }
+    if($('#vdig').checked) out.digital = true;
     closeModal(); done(out) } }
 const ownedQty = m => store.cards.filter(c => c.game === m.game && c.set === m.set && c.number === m.number).reduce((a, c) => a + c.qty, 0);
+let BULK = false;                                              // adding many cards at once: save once at the end
 function addCard(m, foil, delta, v){
   const k = ckey(m, foil, v); let c = store.cards.find(x => x.key === k);
   if(!c){ if(delta <= 0) return 0;
     c = {uid:uid(), key:k, game:m.game, gameName:m.gameName || '', set:m.set, number:m.number, showSet:m.showSet, showNum:String(m.showNum), name:m.name, setName:m.setName || '', rarity:m.rarity || '',
          image:m.image || '', alt:m.alt || [], link:m.link || '', price:m.price ?? null, priceFoil:m.priceFoil ?? null, currency:m.currency, psrc:m.psrc || '', foil:!!foil, qty:0, added:Date.now(), info:m.info || null};
-    if(v && v.lang) c.lang = v.lang; if(v && v.grade) c.grade = v.grade; if(m.custom) c.custom = true;
+    if(v && v.lang) c.lang = v.lang; if(v && v.grade) c.grade = v.grade; if(v && v.digital) c.digital = true; if(m.custom) c.custom = true;
     if(m.px) c.px = JSON.parse(JSON.stringify(m.px)); else capturePx(c); pickPx(c);
     store.cards.unshift(c) }
   c.qty += delta; if(c.qty <= 0) store.cards = store.cards.filter(x => x !== c);
-  persist(); tabCount(); return Math.max(0, c.qty);
+  if(!BULK){ persist(); tabCount() } return Math.max(0, c.qty);
 }
 function addCurrent(){
   const m = SC.result && SC.result.matches[SC.sel]; if(!m) return;
@@ -1964,7 +1970,7 @@ function refreshFx(){ if(O.fx && Date.now() - O.fx.at < 20 * 3600e3) return;
   const got = (rate, day) => { if(rate > 0.3 && rate < 3){ O.fx = {rate, at:Date.now(), day}; persist(); if(VIEW === 'cards') viewCards() } };
   getJSON('https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR').then(j => got(j.rates.EUR, j.date))
     .catch(() => getJSON('https://open.er-api.com/v6/latest/USD').then(j => got(j.rates.EUR, (j.time_last_update_utc || '').slice(5, 16)))).catch(() => {}) }
-const valueEur = cs => cs.reduce((a, c) => a + (toEur(priceOf(c), c.currency) || 0) * c.qty, 0);
+const valueEur = cs => cs.reduce((a, c) => a + (c.digital ? 0 : (toEur(priceOf(c), c.currency) || 0) * c.qty), 0);      // digital copies have no value
 /* the value of the collection, once a day, for the graph in My cards */
 function recordValue(){ const d = new Date().toISOString().slice(0, 10), v = +valueEur(store.cards).toFixed(2), n = store.cards.reduce((a, c) => a + c.qty, 0);
   store.hist = (store.hist || []).filter(x => x.d !== d).concat([{d, v, n}]).slice(-400) }
@@ -2368,7 +2374,7 @@ SETSRC.swccg.cards = async st => { const all = await swdb(); return all.filter(c
 
 const ownedIn = g => store.cards.filter(c => c.game === g);
 const ownedMap = g => { const m = new Map(); for(const c of ownedIn(g)){ const k = c.set + '|' + c.number; m.set(k, (m.get(k) || 0) + c.qty) } return m };
-const valueOf = cs => cs.reduce((a, c) => a + ((c.foil ? c.priceFoil : c.price) || 0) * c.qty, 0);
+const valueOf = cs => cs.reduce((a, c) => a + (c.digital ? 0 : ((c.foil ? c.priceFoil : c.price) || 0) * c.qty), 0);
 function bdLoad(kind, key, fn){ if(!BD[kind][key]) BD[kind][key] = fn().catch(e => { delete BD[kind][key]; throw e }); return BD[kind][key] }
 
 function viewBinder(){ setSt(''); if(BD.up) return viewUpcoming(); if(!BD.game) return binderGames(); if(!BD.set) return binderSets(); return binderSet() }
@@ -2472,9 +2478,24 @@ function numKey(c){ const t = String(c.showNum || c.number || '').trim(), m = /^
   return m ? [m[1].replace(/[-\s]+$/, '').toUpperCase(), +m[2], m[3].trim().toUpperCase()] : ['~', Infinity, t.toUpperCase()] }
 function byCardNumber(a, b){ const x = numKey(a), y = numKey(b);
   return (x[0] === y[0] ? 0 : x[0] === '' ? -1 : y[0] === '' ? 1 : x[0].localeCompare(y[0])) || (x[1] - y[1]) || x[2].localeCompare(y[2], undefined, {numeric:true}) || String(a.name).localeCompare(String(b.name)) }
+function wholeSet(g, st, cards, done){
+  const om = ownedMap(g), miss = cards.filter(c => !om.get(c.set + '|' + c.number));
+  modal(`<h3>I have the whole set</h3><p class="hint" style="margin-top:0">${esc(st.name)}: ${cards.length} cards, ${miss.length} of them not in your collection yet.</p>
+    <div class="oseg" id="wsk" style="margin:8px 0"><button data-k="phys" class="on">Physical</button><button data-k="dig">Digital</button></div>
+    <div class="oseg" id="wsf" style="margin:0 0 8px"><button data-f="0" class="on">Normal</button><button data-f="1">Foil</button></div>
+    <label class="row"><input type="checkbox" id="wsonly" checked><div class="grow">Only the cards I do not have yet<div class="hint" style="margin:2px 0 0">Off: one more of every card, also the ones you have.</div></div></label>
+    <p class="hint" id="wsnote">Physical cards count in the value of your collection.</p>
+    <div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="wsok"><i class="ti ti-checks"></i>Add</button></div>`);
+  let dig = false, foil = false;
+  $$('#wsk button').forEach(b => b.onclick = () => { dig = b.dataset.k === 'dig'; $$('#wsk button').forEach(x => x.classList.toggle('on', x === b)); $('#wsnote').textContent = dig ? 'Digital cards are counted in your collection and the binder, not in its value.' : 'Physical cards count in the value of your collection.' });
+  $$('#wsf button').forEach(b => b.onclick = () => { foil = b.dataset.f === '1'; $$('#wsf button').forEach(x => x.classList.toggle('on', x === b)) });
+  $('#wsok').onclick = () => { const list = $('#wsonly').checked ? miss : cards; if(!list.length){ closeModal(); toast('You already have every card of this set'); return }
+    snapshot('before adding a whole set'); BULK = true;
+    try{ for(const m of list){ addCard(m, foil, 1, dig ? {digital:true} : null); if(isWant(m)) toggleWant(m) } } finally { BULK = false }
+    persist(); tabCount(); closeModal(); toast(`${list.length} card${list.length === 1 ? '' : 's'} of ${st.name} added${dig ? ' as digital' : ''}`); done() } }
 async function binderSet(){
   const g = BD.game, st = BD.set;
-  $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Sets</button><h1 style="font-size:17px;min-width:0;flex:1">${esc(st.name)}</h1></div>
+  $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Sets</button><h1 style="font-size:17px;min-width:0;flex:1">${esc(st.name)}</h1><button class="btn sm" id="bdset" aria-label="More"><i class="ti ti-dots"></i></button></div>
     <div id="bds"></div><div class="chips" id="bdf"></div><div id="bdc"><div class="muted" style="padding:16px 4px">Loading the cards ...</div></div>`;
   $('#bdb').onclick = () => { BD.set = null; viewBinder() };
   let cards = [];
@@ -2483,6 +2504,11 @@ async function binderSet(){
   for(const c of ownedIn(g).filter(c => c.set === st.code)) if(!seen.has(c.set + '|' + c.number)){ cards.push({...c}); seen.add(c.set + '|' + c.number) }   // owned cards the list does not have
   cards.sort(byCardNumber);                                     // 1, 2, 3 ... 10, 111 - not in the order the card site sent them
   await XPI; if(XPG.has(g) || store.myPx){ for(const m of cards){ if(!m._xp){ m._xp = 1; capturePx(m); await addExtras(m).catch(() => {}) } pickPx(m, null) } }
+  $('#bdset').onclick = () => { const own = ownedIn(g).filter(c => c.set === st.code);
+    menuSheet(st.name, [
+      {icon:'checks', label:'I have the whole set', sub:'Add every card at once - physical or digital, normal or foil', disabled:!cards.length, run:() => wholeSet(g, st, cards, draw)},
+      {icon:'trash', label:'Remove all my cards of this set', sub:own.length ? `${own.reduce((a, c) => a + c.qty, 0)} cards` : 'You have none', danger:true, disabled:!own.length, run:() => {
+        if(!confirm(`Remove all your cards of ${st.name}?`)) return; snapshot('before removing a set'); store.cards = store.cards.filter(c => !(c.game === g && c.set === st.code)); persist(); tabCount(); draw(); toast('Removed') }}]) };
   const draw = () => {
     const om = ownedMap(g), own = ownedIn(g).filter(c => c.set === st.code), have = cards.filter(c => om.get(c.set + '|' + c.number));
     const cur = (cards.find(c => c.price != null) || own[0] || {}).currency || 'EUR';
@@ -2604,7 +2630,7 @@ const F = {q:'', game:'all', set:'all', sort:'new'};
 function viewCards(){
   refreshFx(); if(store.cards.length){ const d = new Date().toISOString().slice(0, 10); if(!(store.hist || []).some(x => x.d === d)){ recordValue(); persist() } }
   const cs = store.cards, total = cs.reduce((a, c) => a + c.qty, 0);
-  const val = cur => cs.filter(c => c.currency === cur).reduce((a, c) => a + ((c.foil ? c.priceFoil : c.price) || 0) * c.qty, 0);
+  const val = cur => cs.filter(c => c.currency === cur && !c.digital).reduce((a, c) => a + ((c.foil ? c.priceFoil : c.price) || 0) * c.qty, 0);
   const unpriced = cs.filter(c => (c.foil ? c.priceFoil : c.price) == null).reduce((a, c) => a + c.qty, 0);
   const games = [...new Set(cs.map(c => c.game))], sets = [...new Set(cs.filter(c => F.game === 'all' || c.game === F.game).map(c => c.showSet))].sort();
   const eur = val('EUR'), usd = val('USD');
@@ -2633,7 +2659,7 @@ function viewCards(){
         : '<div class="empty">Your wishlist is empty.<br>In the Binder, tap a card you are missing and choose “Want this”.</div>';
       $$('#mlist [data-wk]').forEach(b => b.onclick = () => { delete store.want[b.dataset.wk]; (store.wantRemoved ||= {})[b.dataset.wk] = Date.now(); persist(); viewCards() }); return }
     let rows = cs.filter(c => (F.list !== 'trade' || c.trade) && (F.game === 'all' || c.game === F.game) && (F.set === 'all' || c.showSet === F.set) && (!q || (c.name + ' ' + c.setName).toLowerCase().includes(q)));
-    const pv = c => ((c.foil ? c.priceFoil : c.price) || 0) * c.qty;
+    const pv = c => c.digital ? 0 : ((c.foil ? c.priceFoil : c.price) || 0) * c.qty;
     rows.sort(F.sort === 'name' ? (a, b) => a.name.localeCompare(b.name) : F.sort === 'value' ? (a, b) => pv(b) - pv(a)
             : F.sort === 'set' ? (a, b) => a.showSet.localeCompare(b.showSet) || normNum(a.number).localeCompare(normNum(b.number), undefined, {numeric:true}) : (a, b) => b.added - a.added);
     $('#mlist').innerHTML = rows.length ? rows.map(c => `<div class="srow"><span data-zoom="${c.uid}" style="display:contents">${c.image ? pic(c, 'loading="lazy"') : '<div class="ph"></div>'}</span>
@@ -2647,7 +2673,7 @@ function viewCards(){
     $$('#mlist [data-px]').forEach(z => z.onclick = () => { const c = store.cards.find(x => x.uid === z.dataset.px); if(c) openPrices(c, viewCards) });
     $$('#mlist [data-ver]').forEach(z => z.onclick = () => { const c = store.cards.find(x => x.uid === z.dataset.ver); if(!c) return;
       versionModal(c, v => { const k = ckey(c, c.foil, v), other = store.cards.find(x => x.key === k && x !== c);
-        if(other){ other.qty += c.qty; store.cards = store.cards.filter(x => x !== c) } else { c.key = k; delete c.lang; delete c.grade; if(v.lang) c.lang = v.lang; if(v.grade) c.grade = v.grade }
+        if(other){ other.qty += c.qty; store.cards = store.cards.filter(x => x !== c) } else { c.key = k; delete c.lang; delete c.grade; delete c.digital; if(v.lang) c.lang = v.lang; if(v.grade) c.grade = v.grade; if(v.digital) c.digital = true }
         persist(); viewCards() }) });
   };
   let t; $('#mq').oninput = e => { clearTimeout(t); t = setTimeout(() => { F.q = e.target.value; draw() }, 120) };
@@ -2678,7 +2704,7 @@ const stamp = () => new Date().toISOString().slice(0, 16).replace('T', '_').repl
 const syncKey = c => [c.game === 'other' ? (String(c.gameName || 'other').toLowerCase().replace(/[^a-z0-9]+/g, '') || 'other') : c.game, String(c.set).toLowerCase(), c.number, c.foil ? 1 : 0].join('|') + vsuf(c);
 function syncState(){ const S = store.sync ||= {}; S.seen ||= {}; S.contrib ||= {}; return S }
 function syncOwn(){ const S = syncState(), own = {};
-  for(const c of store.cards){ const k = syncKey(c); own[k] = (own[k] || 0) + c.qty }
+  for(const c of store.cards){ if(c.digital) continue; const k = syncKey(c); own[k] = (own[k] || 0) + c.qty }
   for(const k of Object.keys(own)) own[k] -= (S.contrib[k] || 0);
   for(const k of new Set([...Object.keys(S.contrib), ...Object.keys(S.sent || {})])) if(!(k in own)) own[k] = -(S.contrib[k] || 0);   // gone here: tell the PC
   S.sent = Object.fromEntries(Object.entries(own).filter(([k, v]) => v || S.contrib[k]).map(([k]) => [k, 1]));
@@ -2789,6 +2815,7 @@ async function importBackup(e){
 /* ---------------------------------------------------------------- settings */
 const SP = {page:null};
 const SPAGES = [
+  ['help', 'help-circle', 'How to use the app', () => 'A short tour of what it can do'],
   ['news', 'sparkles', 'What\'s new', () => 'Changes in each update of the app'],
   ['backup', 'shield-check', 'Backups', () => store.lastBackup ? 'Last backup file ' + new Date(store.lastBackup).toLocaleDateString() : 'No backup file saved yet'],
   ...(TEST ? [['test', 'flask', 'Test version', () => 'Separate from your real collection']] : []),
@@ -2885,6 +2912,29 @@ function settingsPages(total){
     <p class="hint" style="text-align:center">Nightvault Pocket · your cards stay on this phone until you export them</p>`;
   $$('#smenu [data-sp]').forEach(b => b.onclick = () => { SP.page = b.dataset.sp; viewSettings(); $('#main').scrollTop = 0 });
 }
+
+/* ---------------------------------------------------------------- how to use the app: a short tour for new people, also in Settings */
+const GUIDE = [
+  ['sparkles', 'Welcome to Nightvault Pocket', 'Keep track of your trading cards: scan them, see every set with what you have and what you miss, follow their value, and build decks. Your cards stay on this phone.'],
+  ['camera', 'Scan a card', 'Open <b>Scan</b> and tap <b>Start camera</b>. Hold the card upright in the frame, with even light and no glare. Pick the game with the <b>Any game</b> button for faster results, then tap the round button - or let it scan by itself when the card is held still.'],
+  ['circle-check', 'Check and add', 'Not the right printing? Tap another picture, <b>All printings</b>, or type the set code and number printed on the card. Set <b>Foil</b>, and with <b>EN</b> the language, a graded copy or a digital one. Then tap <b>Add</b>.'],
+  ['layout-grid', 'Faster ways to add', '<b>Binder</b> mode reads a whole binder page, <b>Quick</b> scans card after card. Use <b>Photos</b> for pictures you took, or <b>Search</b> by name. In the Binder you can tick off cards, or mark a whole set as complete with <b>⋯ → I have the whole set</b>.'],
+  ['books', 'My cards and the Binder', '<b>My cards</b> lists everything with its value - tap a price to see all sources. The <b>Binder</b> shows every set of a game with what you have, what you miss and what is wanted; mark cards for trade and share your lists.'],
+  ['cards', 'Decks', 'Build decks for any game in <b>Decks</b>: search with filters, see the cost curve and which cards you still need, and add cards straight from the binder or the scanner.'],
+  ['shield-check', 'Keep your cards safe', 'Make a backup now and then: <b>Settings → Backups</b> (Google Drive or mail). With Nightvault on a PC, send your cards back and forth in <b>Settings → Nightvault sync</b>.'],
+  ['bell', 'Staying up to date', 'When there is a new version, a bar at the top says so - tap <b>Update</b>. <b>Settings → What\'s new</b> lists every change, and this tour is in <b>Settings → How to use the app</b>.'],
+];
+function showGuide(i = 0){
+  O.guideSeen = true; persist();
+  const [icon, title, body] = GUIDE[i], last = i === GUIDE.length - 1;
+  modal(`<div class="guide"><div class="gic"><i class="ti ti-${icon}"></i></div><div class="gstep">${i + 1} / ${GUIDE.length}</div><h3>${esc(title)}</h3><p>${body}</p>
+    <div class="gdots">${GUIDE.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="btns" style="justify-content:space-between;margin-top:14px">${i ? '<button class="btn" id="gprev"><i class="ti ti-arrow-left"></i>Back</button>' : '<button class="btn" id="gskip">Skip</button>'}
+      <button class="btn primary" id="gnext">${last ? 'Start' : 'Next'}${last ? '' : ' <i class="ti ti-arrow-right"></i>'}</button></div></div>`);
+  if($('#gprev')) $('#gprev').onclick = () => showGuide(i - 1);
+  if($('#gskip')) $('#gskip').onclick = closeModal;
+  $('#gnext').onclick = () => last ? closeModal() : showGuide(i + 1) }
+const guideHTML = () => GUIDE.map(([icon, title, body]) => `<div class="clog"><div class="clh"><b><i class="ti ti-${icon}" style="color:var(--accent)"></i> ${esc(title)}</b></div><p style="margin:6px 0 0;font-size:13.5px;line-height:1.5">${body}</p></div>`).join('');
 /* ---------------------------------------------------------------- what's new (data/changelog.json, newest first) */
 const CHANNEL = NATIVE ? 'android' : TEST ? 'test' : 'live', SEES = {live:['live'], test:['live', 'test'], android:['live', 'test', 'android']}[CHANNEL];
 let _clog;
@@ -2905,7 +2955,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610102324';
+const BUILD = '202610102339';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function newerBuild(){
@@ -2932,6 +2982,7 @@ function viewSettings(){
   const total = store.cards.reduce((a, c) => a + c.qty, 0);
   $('#main').innerHTML = `<div class="head">${SP.page ? '<button class="btn sm" id="spback"><i class="ti ti-arrow-left"></i>Settings</button>' : '<h1>Settings</h1>'}</div>
     <div id="smenu"></div>
+    <div class="panel" data-p="help"><h3>How to use the app</h3><button class="btn primary" id="gtour" style="margin-bottom:6px"><i class="ti ti-player-play"></i>Show the tour</button>${guideHTML()}</div>
     <div class="panel" data-p="news"><h3>What's new</h3><div id="clogall" class="muted">Loading the list of updates ...</div></div>
     <div class="panel" data-p="sync"><h3>Send to Nightvault</h3>
       <p style="margin:0 0 10px;font-size:13.5px">${total.toLocaleString()} cards on this phone${store.lastExport ? ` · last sent ${new Date(store.lastExport).toLocaleString()}` : ''}.</p>
@@ -2994,6 +3045,7 @@ function viewSettings(){
     <div class="panel" data-p="danger"><h3>Danger zone</h3><button class="btn danger" id="sclear" ${store.cards.length ? '' : 'disabled'}><i class="ti ti-trash"></i>Remove all cards from this phone</button>
       <p class="hint">Cards already imported into Nightvault stay there.</p></div>`;
   if($('#clogall')) changelog().then(l => { if($('#clogall')) $('#clogall').outerHTML = l.length ? `<div id="clogall">${clogHTML(l)}</div>` : '<div id="clogall" class="muted">The list of updates could not be loaded - check the internet connection.</div>' });
+  if($('#gtour')) $('#gtour').onclick = () => showGuide(0);
   if($('#sinst')) $('#sinst').onclick = installApp;
   if($('#sfull')) $('#sfull').onclick = async () => { await toggleFull(); viewSettings() };
   if($('#tcopy')) $('#tcopy').onclick = () => { let real = null; try{ real = JSON.parse(localStorage.getItem('nightvault.pocket.v1') || 'null') }catch(e){}
@@ -3453,7 +3505,7 @@ applyTheme(); tabCount(); restoreNav(); fsSync(); $('#fsbtn').onclick = toggleFu
 (() => { const sp = $('#splash'); if(!sp) return; if(O.splash === false){ sp.remove(); return }     // splash: logo for a moment, then the app
   const go = () => { if(!sp.isConnected || sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(() => sp.remove(), 450) };
   sp.onclick = go; setTimeout(go, matchMedia('(prefers-reduced-motion: reduce)').matches ? 450 : 1350) })();
-setTimeout(() => { if(!$('#modal .mbox') && !document.querySelector('#modal > *')) whatsNew(false) }, 2400);   // after an update: what changed, once
+setTimeout(() => { if(document.querySelector('#modal > *')) return; if(!O.guideSeen && !store.cards.length){ showGuide(0); changelog().then(l => { if(l.length && O.seenLog == null){ O.seenLog = Math.max(...l.map(e => +e.id || 0)); persist() } }) } else whatsNew(false) }, 2400);   // after an update: what changed, once
 if(O.dailyPrices && store.cards.length && Date.now() - (store.lastPriceCheck || 0) > 20 * 3600 * 1000) setTimeout(() => priceCheck(false), 4000);
 </script>
 </body>
