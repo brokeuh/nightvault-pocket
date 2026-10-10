@@ -1,0 +1,7 @@
+{
+  "appId": "be.brokeuh.nightvault",
+  "appName": "Nightvault Pocket",
+  "webDir": "www",
+  "android": { "allowMixedContent": false },
+  "server": { "androidScheme": "https" }
+}

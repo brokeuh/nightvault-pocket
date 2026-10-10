@@ -1,0 +1,13 @@
+{
+  "name": "nightvault-pocket-android",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nightvault Pocket as an Android app (test): the web app with Google's on-device text reader",
+  "dependencies": {
+    "@capacitor/android": "6.2.0",
+    "@capacitor/cli": "6.2.0",
+    "@capacitor/core": "6.2.0",
+    "@capacitor/filesystem": "^6.0.0",
+    "@capacitor/share": "^6.0.0"
+  }
+}

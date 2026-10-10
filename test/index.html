@@ -382,7 +382,13 @@ const PHONE_FORMAT = 'nightvault-phone-cards';
 
 /* ================================================================ storage */
 /* the test version lives at /test/: it keeps its own cards (your real collection is never touched) and reads the data files of the main site */
-const TEST = /\/test\/?$/.test(location.pathname.replace(/index\.html$/, '')), BASE = TEST ? '../' : '';
+/* NATIVE: running inside the Android app (a small shell around this page that adds Google's text reader) */
+const NATIVE = !!(window.Capacitor && (typeof Capacitor.isNativePlatform === 'function' ? Capacitor.isNativePlatform() : typeof Capacitor.nativePromise === 'function'));
+const _capP = {};
+const capCall = (plugin, method, opts) => { let P = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins[plugin];
+  if(!P && window.Capacitor && typeof Capacitor.registerPlugin === 'function') P = _capP[plugin] ||= Capacitor.registerPlugin(plugin);
+  return P && typeof P[method] === 'function' ? P[method](opts || {}) : Capacitor.nativePromise(plugin, method, opts || {}) };
+const TEST = !NATIVE && /\/test\/?$/.test(location.pathname.replace(/index\.html$/, '')), BASE = NATIVE ? 'https://brokeuh.github.io/nightvault-pocket/' : TEST ? '../' : '';
 const KEY = TEST ? 'nightvault.pocket.test.v1' : 'nightvault.pocket.v1', NAVKEY = TEST ? 'nightvault.pocket.test.nav' : 'nightvault.pocket.nav';
 const store = (() => { try{ return JSON.parse(localStorage.getItem(KEY) || '{}') }catch(e){ return {} } })();
 let RESTORING = false;
@@ -447,7 +453,7 @@ function dreport(){
   return head.concat(SITECHECK ? [SITECHECK] : [], DLOG.notes || [], scans.length ? scans : ['(no scans yet)']).join('\n');
 }
 /* full screen and installing as an app (no browser bars) */
-const APPMODE = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone;
+const APPMODE = () => NATIVE || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone;
 let INSTALL = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); INSTALL = e; if(VIEW === 'settings' && !SP.page) viewSettings() });
 window.addEventListener('appinstalled', () => { INSTALL = null; toast('Installed - open Nightvault Pocket from your home screen') });
@@ -456,7 +462,7 @@ function fsSync(){ const b = $('#fsbtn'); if(!b) return; const can = document.fu
 async function toggleFull(){ try{ if(document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({navigationUI:'hide'}) }catch(e){ toast('Full screen is not allowed here', true) } }
 async function installApp(){ if(INSTALL){ INSTALL.prompt(); const r = await INSTALL.userChoice.catch(() => ({})); if(r.outcome === 'accepted') INSTALL = null; viewSettings(); return } SP.page = 'app'; viewSettings() }
 document.addEventListener('fullscreenchange', fsSync);
-if('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if(!NATIVE && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 function setSt(t){ $('#scst').textContent = t || '' }
 function toast(msg, err){
   $$('#toast .t1').forEach(e => { if(e.textContent === msg) e.remove() });
@@ -1166,6 +1172,10 @@ function loadTesseract(){ if(window.Tesseract) return Promise.resolve();
   return _tess }
 async function ocr(){
   if(SC.worker) return SC.worker;
+  if(NATIVE && O.nativeOcr !== false){                       // Android app: Google's text reader on the phone (fast, made for photos)
+    try{ await capCall('NvOcr', 'available');
+      SC.worker = {native:true, recognize:async canvas => { const r = await capCall('NvOcr', 'recognize', {image:canvas.toDataURL('image/jpeg', 0.92)}); dlog('Google text reader', `${r.ms} ms`); return {data:r} }};
+      return SC.worker }catch(e){ dlog('Google text reader not available', e.message || String(e)) } }
   await loadTesseract();
   setSt('Loading the text reader (first time only) ...');
   SC.worker = await Tesseract.createWorker('eng');
@@ -2618,6 +2628,10 @@ function payload(){
       rarity:c.rarity, foil:c.foil, qty:c.qty, price:c.foil ? c.priceFoil : c.price, currency:c.currency, image:c.image, added:c.added, trade:!!c.trade}))};
 }
 async function saveFile(name, text, type){
+  if(NATIVE){                                                 // Android app: write the file, then the share menu (Drive, mail, Files ...)
+    try{ const r = await capCall('Filesystem', 'writeFile', {path:name, data:text, directory:'CACHE', encoding:'utf8'});
+      await capCall('Share', 'share', {title:name, files:[r.uri], dialogTitle:'Save or send ' + name}); return 'shared' }
+    catch(e){ if(/cancel/i.test((e && e.message) || '')) return 'cancelled'; toast('Could not share the file: ' + ((e && e.message) || e), true); return 'cancelled' } }
   const blob = new Blob([text], {type});
   try{
     const file = new File([blob], name, {type});
@@ -2802,6 +2816,7 @@ function viewSettings(){
     <div class="panel" data-p="scan"><h3>Scanning</h3>
       <label class="row"><input type="checkbox" id="oauto" ${O.auto ? 'checked' : ''}><div class="grow">Scan automatically when the card is held still</div></label>
       <label class="row"><input type="checkbox" id="oadd" ${O.autoAdd ? 'checked' : ''}><div class="grow">Add automatically when sure<div class="hint" style="margin:2px 0 0">Only when the name matched and the printing is clear.</div></div></label>
+      ${NATIVE ? `<label class="row"><input type="checkbox" id="onat" ${O.nativeOcr !== false ? 'checked' : ''}><div class="grow">Google's text reader (Android app)<div class="hint" style="margin:2px 0 0">Reads names on the phone itself - faster and better with photos. Switch off to compare with the reader of the web version.</div></div></label>` : ''}
       <label class="row"><input type="checkbox" id="onum" ${O.readNum ? 'checked' : ''}><div class="grow">Also read the collector number<div class="hint" style="margin:2px 0 0">Picks the right printing more often. Takes a moment longer.</div></div></label>
       <label class="row"><input type="checkbox" id="ofull" ${O.full ? 'checked' : ''}><div class="grow">Also read the whole card<div class="hint" style="margin:2px 0 0">Finds the name on full-art and special versions, and recognises the game by itself. Takes a second longer.</div></div></label>
       <label class="row"><input type="checkbox" id="oprice" ${O.dailyPrices ? 'checked' : ''}><div class="grow">Update prices once a day when I open the app<div class="hint" style="margin:2px 0 0">Runs in the background. Cards you still need to price get a link to look them up.</div></div></label>
@@ -2874,6 +2889,7 @@ function viewSettings(){
   $('#oauto').onchange = e => { O.auto = e.target.checked; persist() };
   $('#oadd').onchange = e => { O.autoAdd = e.target.checked; persist() };
   $('#onum').onchange = e => { O.readNum = e.target.checked; persist() };
+  if($('#onat')) $('#onat').onchange = e => { O.nativeOcr = e.target.checked; persist(); if(SC.worker && SC.worker.terminate) SC.worker.terminate(); SC.worker = null; toast(e.target.checked ? 'Using Google\'s text reader' : 'Using the web text reader') };
   $('#ofull').onchange = e => { O.full = e.target.checked; persist() };
   $('#oprice').onchange = e => { O.dailyPrices = e.target.checked; persist() };
   $('#tnew').onclick = () => openTemplate(null, true);
