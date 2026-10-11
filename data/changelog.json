@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 26,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Hearthstone",
+   "items": [
+    "New game: Hearthstone. Every expansion is a binder set, with Normal and Golden copies. The card list updates every week.",
+    "Hearthstone cards are digital: they count in your collection and binders, not in its value. Instead of a price you see what a card costs to craft in dust, and how much dust the rest of a set or deck needs.",
+    "Build Hearthstone decks: 30 cards, 2 copies of a card (1 of a Legendary), one class plus Neutral cards.",
+    "Deck menu: “Copy Hearthstone deck code” to make the deck in the game, and “Paste a Hearthstone deck code” from the game or a deck website."
+   ]
+  },
+  {
    "id": 25,
    "date": "2026-10-11",
    "where": [

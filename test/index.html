@@ -364,6 +364,7 @@ const GAMES = {
   dbz:      {label:'Dragon Ball Z TCG',  full:'Dragon Ball Z TCG (Panini)', color:'#d9482b', name:[0.10,0.035,0.90,0.10], num:[0.02,0.93,0.40,0.99], src:'TCGplayer (daily copy) · $', heavy:true},
   dbzccg:   {label:'DBZ CCG (Score)',    full:'Dragon Ball Z CCG (Score, 2000-2006)', color:'#c4502e', name:[0.10,0.035,0.90,0.10], num:[0.02,0.93,0.40,0.99], src:'CCG Trader · no prices', heavy:true},
   dbgt:     {label:'Dragon Ball GT',     full:'Dragon Ball GT TCG (Score)', color:'#b8562a', name:[0.10,0.035,0.90,0.10], num:[0.02,0.93,0.40,0.99], src:'CCG Trader · no prices', heavy:true},
+  hearthstone:{label:'Hearthstone',     full:'Hearthstone (digital)', color:'#3dbf8f', name:[0.10,0.53,0.90,0.60], num:[0.02,0.93,0.98,0.99], src:'HearthstoneJSON · digital, dust instead of prices', heavy:true, digital:true, foil:'Golden'},
   wow:      {label:'WoW TCG',            full:'World of Warcraft TCG (2006-2013)', color:'#5c7bb0', name:[0.10,0.035,0.90,0.10], num:[0.60,0.93,0.98,0.99], src:'CCG Trader · no prices', heavy:true},
   other:    {label:'Other game',         full:'Any other game (added by hand)', color:'#8a8f9c', name:[0.05,0.025,0.95,0.12], num:[0.02,0.88,0.98,0.99], src:''},
 };
@@ -696,6 +697,68 @@ function DGSRC(){ const o = {};
     cards:async st => { const d = await dgData(g), i = d.sets.findIndex(x => x.code === st.code);
       return d.cards.filter(r => r[0] === i).map(r => dgMap(g, d, r)).sort((a, b) => String(a.showNum).localeCompare(String(b.showNum), undefined, {numeric:true}) || a.name.localeCompare(b.name)) }};
   return o }
+/* Hearthstone: digital only. Card file data/hearthstone.json, made every week by .github/workflows/hearthstone.yml from HearthstoneJSON.
+   Row: [set, order, name, rarity, dbfId, cardId, classes, cost, type, attack, health, tribe]. No prices: what a card costs to craft in dust instead. */
+let _hs = null;
+function hsData(){ if(!_hs) _hs = (async () => {
+    for(const u of [`${BASE}data/hearthstone.json`, 'https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/hearthstone.json']) try{ const d = await getJSON(u); if(d && d.cards) return d }catch(e){}
+    _hs = null; throw new Error('No Hearthstone card list yet - run “Update Hearthstone cards” once on GitHub (Actions tab)') })();
+  return _hs }
+const HS_DUST = {Common:[40, 400], Rare:[100, 800], Epic:[400, 1600], Legendary:[1600, 3200]};
+const HS_HEROES = {Warrior:7, Shaman:1066, Rogue:930, Paladin:671, Hunter:31, Druid:274, Warlock:893, Mage:637, Priest:813, 'Demon Hunter':56550, 'Death Knight':78065};
+const isHS = g => g === 'hearthstone';
+const hsDust = (m, foil) => m.nocraft ? 0 : ((HS_DUST[m.rarity] || [])[foil ? 1 : 0] || 0);       // what crafting this card costs
+const dustFmt = n => `${Math.round(n || 0).toLocaleString()} dust`;
+function hsMap(d, r){ const st = d.sets[r[0]] || {};
+  return {game:'hearthstone', set:st.code, number:String(r[4]), showSet:st.name || String(st.code || '').toUpperCase(), showNum:'', name:r[2], setName:st.name || '', rarity:r[3] || '',
+    released:st.released || '', image:(d.imgBase || '').replace('{}', r[5]), price:null, priceFoil:null, currency:'EUR', psrc:'', pid:r[4], hsid:r[5], ord:r[1], nocraft:!!st.nocraft,
+    hsClass:r[6] || ['Neutral'], link:`https://hearthstone.wiki.gg/wiki/${enc(String(r[2]).replace(/ /g, '_'))}`, linkLabel:'Hearthstone wiki',
+    f:{Class:r[6] || ['Neutral'], Type:r[8] || undefined, Cost:r[7] ?? undefined, Rarity:r[3] || undefined, Attack:r[9] ?? undefined, Health:r[10] ?? undefined, Tribe:r[11] || undefined, Set:st.name || undefined}} }
+async function hsFind(q){ const d = await hsData(), b = lwr(q), hits = []; if(!b) return [];
+  for(const r of d.cards){ const n = lwr(r[2]); let sc = n === b ? 1 : n.includes(b) ? 0.9 : 0;
+    if(!sc && n[0] === b[0] && Math.abs(n.length - b.length) < 8){ const x = sim(q, r[2]); if(x >= 0.6) sc = x } if(sc) hits.push([sc, r]) }
+  hits.sort((a, c) => c[0] - a[0]); return hits.slice(0, 40).map(([, r]) => hsMap(d, r)) }
+const HSSRC = {list:async () => (await hsData()).sets.map(x => Object.assign({}, x)),
+  cards:async st => { const d = await hsData(), i = d.sets.findIndex(x => x.code === st.code); return d.cards.filter(r => r[0] === i).map(r => hsMap(d, r)).sort((a, b) => a.ord - b.ord) }};
+/* Hearthstone deck codes (the text the game copies and pastes): base64 of numbers - 0, version 1, format, heroes, then the cards with 1, 2 and more copies */
+function hsVarints(bytes){ const out = []; let i = 0; while(i < bytes.length){ let v = 0, s = 0, b; do{ b = bytes[i++]; v += (b & 127) * 2 ** s; s += 7 }while(b & 128 && i < bytes.length); out.push(v) } return out }
+function hsEncode(heroId, cards, format){ const b = [], vi = n => { do{ let x = n & 127; n = Math.floor(n / 128); if(n) x |= 128; b.push(x) }while(n) };
+  vi(0); vi(1); vi(format || 1); vi(1); vi(heroId);
+  const one = cards.filter(x => x[1] === 1).map(x => x[0]).sort((a, c) => a - c), two = cards.filter(x => x[1] === 2).map(x => x[0]).sort((a, c) => a - c), more = cards.filter(x => x[1] > 2).sort((a, c) => a[0] - c[0]);
+  vi(one.length); one.forEach(vi); vi(two.length); two.forEach(vi); vi(more.length); more.forEach(([id, n]) => { vi(id); vi(n) }); vi(0);
+  return btoa(String.fromCharCode(...b)) }
+function hsDecode(code){ const s = String(code).split(/\r?\n/).map(x => x.trim()).find(x => x && !x.startsWith('#') && /^[A-Za-z0-9+/=]{12,}$/.test(x)); if(!s) return null;
+  const v = hsVarints([...atob(s)].map(c => c.charCodeAt(0))); let p = 3; const nh = v[p++], heroes = v.slice(p, p + nh); p += nh; const cards = [];
+  for(const per of [1, 2]){ const n = v[p++] || 0; for(let i = 0; i < n; i++) cards.push([v[p++], per]) }
+  const n = v[p++] || 0; for(let i = 0; i < n; i++){ const id = v[p++], c = v[p++]; cards.push([id, c]) }
+  return {format:v[2], heroes, cards} }
+const hsClasses = m => (m.f && m.f.Class) || m.hsClass || ['Neutral'];
+function hsDeckClass(d){ let cl = null; for(const x of d.cards){ const c = hsClasses(x.m).filter(k => k !== 'Neutral'); if(!c.length) continue; cl = cl ? cl.filter(k => c.includes(k)) : c.slice() } return cl && cl.length ? cl : d.hsClass ? [d.hsClass] : null }
+const hsDeckDust = (d, missingOnly, own) => { let t = 0; const left = new Map(own || []);
+  for(const x of d.cards){ const k = nameKey(x.m.name), h = left.get(k) || 0, use = missingOnly ? Math.min(h, x.n) : 0; if(missingOnly) left.set(k, h - use); t += hsDust(x.m, false) * (x.n - use) } return t };
+async function hsDeckCode(d){
+  let cl = hsDeckClass(d); const go = c => { const id = (_hsData && _hsData.heroes || {})[c] || HS_HEROES[c]; const ids = [];
+      for(const x of d.cards.filter(y => !y.side)){ const pid = +(x.m.pid || x.m.number); if(pid){ const e = ids.find(y => y[0] === pid); if(e) e[1] += x.n; else ids.push([pid, x.n]) } }
+      const code = hsEncode(id, ids, 1), rows = d.cards.filter(y => !y.side).sort((a, b) => (costOf(a.m) ?? 0) - (costOf(b.m) ?? 0) || a.m.name.localeCompare(b.m.name)).map(x => `# ${x.n}x (${costOf(x.m) ?? '?'}) ${x.m.name}`);
+      const text = `### ${d.name}\n# Class: ${c}\n# Format: Wild\n#\n${rows.join('\n')}\n#\n${code}\n#\n# To use this deck, copy it to your clipboard and create a new deck in Hearthstone\n`;
+      (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Deck code copied - in Hearthstone, make a new deck and it offers to paste it'))
+        .catch(() => navigator.share ? navigator.share({title:d.name, text}).catch(() => {}) : toast('Copying is not allowed here', true)) };
+  try{ _hsData = await hsData() }catch(e){}
+  if(cl && cl.length === 1) return go(cl[0]);
+  menuSheet('Which class is this deck?', (cl || Object.keys(HS_HEROES)).map(c => ({icon:'shield', label:c, run:() => { d.hsClass = c; persist(); go(c) }}))) }
+let _hsData = null;
+async function hsDeckPaste(d, then){
+  modal(`<h3>Paste a Hearthstone deck code</h3><p class="hint" style="margin-top:0">In Hearthstone, open a deck and choose <b>Copy deck code</b>. Deck sites have a “Copy deck code” button too.</p>
+    <textarea id="hsdi" rows="6" style="width:100%;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);padding:10px;font:inherit;font-size:13px" placeholder="AAECAf0E..."></textarea>
+    <label class="row"><input type="checkbox" id="hsdr" ${d.cards.length ? '' : 'checked'}><div class="grow">Replace the cards in this deck</div></label>
+    <div class="btns" style="justify-content:flex-end;margin-top:10px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="hsdok">Add to deck</button></div>`);
+  $('#hsdok').onclick = async () => { let dc; try{ dc = hsDecode($('#hsdi').value) }catch(e){} if(!dc || !dc.cards.length) return toast('That is not a Hearthstone deck code', true);
+    $('#hsdok').disabled = true; let pool; try{ pool = await deckPool('hearthstone'); _hsData = await hsData() }catch(e){ $('#hsdok').disabled = false; return toast(e.message, true) }
+    const by = new Map(pool.map(m => [+m.pid, m])); let ok = 0, miss = 0;
+    if($('#hsdr').checked) d.cards = [];
+    const hero = dc.heroes[0], hc = Object.entries(Object.assign({}, HS_HEROES, _hsData.heroes || {})).find(([, id]) => id === hero); if(hc) d.hsClass = hc[0];
+    for(const [id, n] of dc.cards){ const m = by.get(id); if(m){ deckAdd(d, m, n, false); ok += n } else miss += n }
+    closeModal(); then(); toast(`${ok} card${ok === 1 ? '' : 's'} added${miss ? ` · ${miss} not found (the card list may be a few days old)` : ''}`, !!miss) } }
 /* CCG Trader (ccgtrader.net): 295 card games, old and new - sets, numbers, rarity and pictures, no prices.
    Its data service lets other websites read it, so the phone asks it directly. Set keys are CCG Trader's set ids (they never change). */
 const CCGT = 'https://api.ccgtrader.co.uk/_/items/', CCGT_BUILTIN = {wow:22, dbzccg:128, dbgt:127};
@@ -746,9 +809,10 @@ function ccgtSrc(key, gid){ return {list:() => ccgtSets(gid).then(l => l.map(x =
   cards:async st => { const rar = await ccgtRar(), sid = st.id || +st.code;
     try{ const j = await getJSON(CCGT + `card?${CCGT_F}&filter[set][eq]=${sid}&sort=number,name&limit=-1`); return (j.data || []).map(c => ccgtMap(key, st, c, rar)) }
     catch(e){ const d = await ccgtCopy(gid); return d.cards.filter(r => r[0] === sid).map(r => ccgtMap(key, st, ccgtRow(r), rar)) } }} }
-const EXTRA_SRC = {};                                          // binders of the games you add from CCG Trader
+const EXTRA_SRC = {}; EXTRA_SRC.hearthstone = HSSRC;                                          // binders of the games you add from CCG Trader
 const SRC = g => (typeof SETSRC === 'object' && SETSRC[g]) || EXTRA_SRC[g];
 const FIND = {...Object.fromEntries(Object.entries(CCGT_BUILTIN).map(([k, gid]) => [k, q => ccgtFind(k, gid, q)])), ...Object.fromEntries(DGAMES.map(g => [g, (q, t) => dgFind(g, q, t)])), mtg:findMTG, pokemon:findPokemon, ygo:findYGO, lorcana:findLorcana, swu:findSWU, riftbound:findRiftbound, onepiece:findOnePiece, swccg:findSWCCG};
+FIND.hearthstone = hsFind;
 
 /* ---------------------------------------------------------------- card games you add yourself */
 const BUILTIN = new Set(Object.keys(GAMES));
@@ -837,7 +901,7 @@ const NV_ICONS = {
     <path class="w" stroke-width="5.5" d="M58 40a14.5 14.5 0 1 0 0 26M33 49h20M33 57h20"/>${SPK(82, 18, 8)}<circle class="s" cx="88" cy="36" r="2.8"/>`),
 };
 const GCODE = {mtg:'MTG', pokemon:'PKM', ygo:'YGO', lorcana:'LOR', swu:'SWU', onepiece:'OP', swccg:'SWC', riftbound:'RB', gundam:'GD', digimon:'DGM', fab:'FAB',
-  sorcery:'SOR', ws:'WS', dbsfw:'FW', dbsm:'DBS', dbz:'DBZ', dbzccg:'DBZ', dbgt:'GT', wow:'WOW'};
+  sorcery:'SOR', ws:'WS', dbsfw:'FW', dbsm:'DBS', dbz:'DBZ', dbzccg:'DBZ', dbgt:'GT', wow:'WOW', hearthstone:'HS'};
 const gameCode = g => GCODE[g] || String((GAMES[g] || {}).label || g).split(/[\s:\-]+/).filter(w => w && !/^(the|of|and|tcg|ccg)$/i.test(w)).map(w => w[0]).join('').slice(0, 3).toUpperCase() || '?';
 const gameBadge = (g, cls = '') => { const lg = (store.gameLogo || {})[g];
   return lg ? `<span class="gbadge logo ${cls}"><img src="${lg}" alt=""></span>` : `<span class="gbadge ${cls}" style="--gc:${(GAMES[g] || GAMES.other).color}"><span>${esc(gameCode(g))}</span></span>` };
@@ -1824,7 +1888,7 @@ function addCard(m, foil, delta, v){
   if(!c){ if(delta <= 0) return 0;
     c = {uid:uid(), key:k, game:m.game, gameName:m.gameName || '', set:m.set, number:m.number, showSet:m.showSet, showNum:String(m.showNum), name:m.name, setName:m.setName || '', rarity:m.rarity || '',
          image:m.image || '', alt:m.alt || [], link:m.link || '', price:m.price ?? null, priceFoil:m.priceFoil ?? null, currency:m.currency, psrc:m.psrc || '', foil:!!foil, qty:0, added:Date.now(), info:m.info || null};
-    if(v && v.lang) c.lang = v.lang; if(v && v.grade) c.grade = v.grade; if(v && v.digital) c.digital = true; if(m.custom) c.custom = true;
+    if(v && v.lang) c.lang = v.lang; if(v && v.grade) c.grade = v.grade; if(v && v.digital) c.digital = true; if(m.custom) c.custom = true; if(m.nocraft) c.nocraft = true;
     if(v && v.ed1){ c.ed1 = true; c.priceFoil = null; c.px = {}; c.price = m.p1e ?? null; c.currency = 'USD'; c.psrc = m.p1e != null ? 'TCGplayer (1st Edition)' : '';     // never the price of the normal print
       if(m.p1e != null) c.px.tcgplayer = [m.p1e, null, Date.now(), 'USD', 'TCGplayer (1st Edition)']; if(m.img1e) c.image = m.img1e }
     if(v && v.sh){ c.sh = true; c.priceFoil = null; c.px = {}; c.price = m.psh ?? null; c.currency = 'USD'; c.psrc = m.psh != null ? 'TCGplayer (Shadowless)' : '';
@@ -2034,7 +2098,7 @@ function openMovers(){
     .sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 40);
   modal(`<h3>Price changes</h3><p class="hint" style="margin-top:0">Cards whose price changed at the last price update, biggest change first.</p>
     ${ch.length ? ch.map(({c, d}) => { const p0 = c.prev, p1 = priceOf(c), pct = p0 ? (p1 - p0) / p0 * 100 : 0;
-      return `<div class="row" style="padding:7px 0"><div class="grow"><b style="font-weight:500">${esc(c.name)}</b>${c.qty > 1 ? ` <span class="muted">×${c.qty}</span>` : ''}<div class="muted" style="font-size:12px">${esc(c.showSet)} #${esc(c.showNum)} · ${fmt(p0, c.currency)} → ${fmt(p1, c.currency)}</div></div>
+      return `<div class="row" style="padding:7px 0"><div class="grow"><b style="font-weight:500">${esc(c.name)}</b>${c.qty > 1 ? ` <span class="muted">×${c.qty}</span>` : ''}<div class="muted" style="font-size:12px">${esc(c.showSet)}${c.showNum ? ' #' + esc(c.showNum) : ''} · ${fmt(p0, c.currency)} → ${fmt(p1, c.currency)}</div></div>
         <span style="color:${d >= 0 ? 'var(--green)' : 'var(--red)'};font-weight:600;font-size:13px">${d >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(0)}%</span></div>` }).join('')
       : '<div class="muted" style="padding:10px 0">No price changes yet. They show up after the next “Update prices”.</div>'}
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" onclick="closeModal()">Close</button></div>`) }
@@ -2341,7 +2405,7 @@ const MTG_GROUP = {core:'Main sets', expansion:'Main sets', masters:'Masters & d
   starter:'Decks & special products', duel_deck:'Decks & special products', planechase:'Decks & special products', archenemy:'Decks & special products', premium_deck:'Decks & special products',
   from_the_vault:'Decks & special products', spellbook:'Decks & special products', arsenal:'Decks & special products', treasure_chest:'Decks & special products', vanguard:'Decks & special products',
   masterpiece:'Masterpieces', promo:'Promos', token:'Tokens & extras', memorabilia:'Tokens & extras', minigame:'Tokens & extras', funny:'Un-sets & playtest'};
-const GROUP_ORDER = ['Decipher expansions', 'Decipher special products', 'Virtual sets (Players Committee)', 'Main sets', 'Booster sets', 'Extra boosters', 'Masters & draft specials', 'Commander decks', 'Secret Lair', 'Decks', 'Decks & special products', 'Collections & boxes',
+const GROUP_ORDER = ['Expansions', 'Core, Classic & Legacy', 'Events', 'Decipher expansions', 'Decipher special products', 'Virtual sets (Players Committee)', 'Main sets', 'Booster sets', 'Extra boosters', 'Masters & draft specials', 'Commander decks', 'Secret Lair', 'Decks', 'Decks & special products', 'Collections & boxes',
   'Boxed sets & collections', 'Masterpieces', 'Promos', 'Extras & special printings', 'Tokens & extras', 'Un-sets & playtest', 'Other'];
 const PKM_SERIES = [[/^sv/, 'Scarlet & Violet'], [/^swsh/, 'Sword & Shield'], [/^sm/, 'Sun & Moon'], [/^xy/, 'XY'], [/^bw/, 'Black & White'], [/^(hgss|col)/, 'HeartGold & SoulSilver'],
   [/^(pl|dp)/, 'Diamond & Pearl / Platinum'], [/^ex/, 'EX'], [/^(ecard|neo|gym|base|si|lc)/, 'Original series'], [/^(cel|pgo|mcd|me)/, 'Specials']];
@@ -2353,6 +2417,7 @@ function setGroup(g, st){
     if(n < 100) return st.cycle === 'premium' || n === 10 || n === 13 ? 'Decipher special products' : 'Decipher expansions';
     if(n < 200) return 'Decipher special products';
     return 'Other' }
+  if(g === 'hearthstone'){ const k = String(st.code || '').toLowerCase(); return /^(core|legacy|vanilla|expert1|basic|hof|demon_hunter_initiate)$/.test(k) ? 'Core, Classic & Legacy' : k === 'event' ? 'Events' : 'Expansions' }
   if(g === 'pokemon'){ if(st.series) return st.series; const id = String(st.code || '').toLowerCase(); return (PKM_SERIES.find(([re]) => re.test(id)) || [0, 'Other'])[1] }
   if(/secret lair/i.test(n)) return 'Secret Lair';
   if(/^loot\b|^foils?\b|extended art|oversiz|\btokens?\b|^alternate|alt\.? art|full art|^art series/i.test(n)) return 'Extras & special printings';
@@ -2504,7 +2569,7 @@ async function binderSets(){
   const g = BD.game, own = ownedIn(g), om = ownedMap(g), cur = own[0] ? own[0].currency : 'EUR';
   const ownedSets = new Map(); for(const c of own){ const k = c.ed1 && g === 'pokemon' && ED1_SETS.has(String(c.set).toLowerCase()) ? c.set + '~1e' : c.sh && g === 'pokemon' && SH_SETS.has(String(c.set).toLowerCase()) ? c.set + '~sh' : c.set; const e = ownedSets.get(k) || {n:0, uniq:new Set(), name:c.setName || c.showSet, show:c.showSet}; e.n += c.qty; e.uniq.add(c.number); ownedSets.set(k, e) }
   $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Games</button>${gameBadge(g, 'sm')}<h1 style="font-size:18px;flex:1">${esc(GAMES[g].label)}</h1><button class="btn sm" id="bdart" aria-label="Logo and picture for this game"><i class="ti ti-photo-edit"></i></button></div>
-    <div class="bstats"><div><b>${own.reduce((a, c) => a + c.qty, 0).toLocaleString()}</b><span>Cards</span></div><div><b>${ownedSets.size}</b><span>Sets</span></div><div><b>${fmt(valueOf(own), cur)}</b><span>Value</span></div></div>
+    <div class="bstats"><div><b>${own.reduce((a, c) => a + c.qty, 0).toLocaleString()}</b><span>Cards</span></div><div><b>${ownedSets.size}</b><span>Sets</span></div><div><b>${isHS(g) ? dustFmt(own.reduce((a, c) => a + hsDust(c, c.foil) * c.qty, 0)) : fmt(valueOf(own), cur)}</b><span>${isHS(g) ? 'Crafting value' : 'Value'}</span></div></div>
     <div class="bar"><input class="grow" id="bdq" type="search" placeholder="Find a set" value="${esc(BD.q)}"><button class="btn" id="bdg" hidden></button></div><div id="bdl"><div class="muted" style="padding:16px 4px">Loading the sets ...</div></div>`;
   $('#bdb').onclick = () => { BD.game = null; BD.grp = 'all'; viewBinder() };
   $('#bdart').onclick = () => pickGameArt(g, () => binderSets());
@@ -2562,6 +2627,7 @@ function wholeSet(g, st, cards, done){
   $$('#wsf button').forEach(b => b.onclick = () => { foil = b.dataset.f === '1'; $$('#wsf button').forEach(x => x.classList.toggle('on', x === b)) });
   if($('#wsed1')) $('#wsed1').onchange = e => { const on = e.target.checked, e1 = ed1Map(g); miss = on ? cards.filter(c => !e1.get(c.set + '|' + c.number)) : dig ? missD : missP; $('#wscount').textContent = `${st.name}: ${cards.length} cards, you miss ${miss.length} as ${on ? '1st Edition' : dig ? 'digital' : 'physical'} card${miss.length === 1 ? '' : 's'}.` };
   if(st.ed1 || st.sh){ $('#wsk').hidden = true; $('#wsf').hidden = true }
+  if(isHS(g)){ $('#wsk').hidden = true; $('#wsf [data-f="1"]').textContent = 'Golden'; $('#wsnote').textContent = 'Hearthstone cards are digital: they count in your collection and binder, not in its value.'; $('#wscount').textContent = `${st.name}: ${cards.length} cards, you miss ${missP.length}.` }
   $('#wsok').onclick = () => { const e1on = !!st.ed1 || ($('#wsed1') && $('#wsed1').checked), list = $('#wsonly').checked ? miss : cards; if(!list.length){ closeModal(); toast('You already have every card of this set'); return }
     snapshot('before adding a whole set'); BULK = true;
     try{ for(const m of list){ const v = {}; if(dig) v.digital = true; if(e1on && canEd1(m)) v.ed1 = true; if(st.sh) v.sh = true; addCard(m, foil, 1, vtag(v) ? v : null); if(isWant(m)) toggleWant(m) } } finally { BULK = false }
@@ -2575,7 +2641,7 @@ async function binderSet(){
   if(SRC(g) && !st.local){ try{ cards = await bdLoad('cards', g + '|' + st.code, () => SRC(g).cards(st)) }catch(e){ toast(`Could not load the cards of ${st.name}: ${e.message}`, true) } }
   const seen = new Set(cards.map(c => c.set + '|' + c.number));
   for(const c of ownedIn(g).filter(c => c.set === st.code)) if(!seen.has(c.set + '|' + c.number)){ cards.push({...c}); seen.add(c.set + '|' + c.number) }   // owned cards the list does not have
-  cards.sort(byCardNumber);                                     // 1, 2, 3 ... 10, 111 - not in the order the card site sent them
+  cards.sort(isHS(g) ? (a, b) => (a.ord ?? 1e9) - (b.ord ?? 1e9) || a.name.localeCompare(b.name) : byCardNumber);                                     // 1, 2, 3 ... 10, 111 - not in the order the card site sent them
   if(g === 'pokemon' && (ED1_SETS.has(String(st.code).toLowerCase()) || SH_SETS.has(String(st.code).toLowerCase()))){ const d = await p1eData(), ds = await shData();
     for(const m of cards){ const e = d[pkKey(m)], f = ds[pkKey(m)]; if(e && (e.h ?? e.n) != null) m.p1e = e.h ?? e.n; if(e && e.img) m.img1e = e.img; if(f && (f.h ?? f.n) != null) m.psh = f.h ?? f.n; if(f && f.img) m.imgsh = f.img }
     for(const c of store.cards) if(c.sh && c.game === 'pokemon' && c.set === st.code && c.price == null){ const ps = await shFor(c); if(ps != null){ c.price = ps; c.currency = 'USD'; c.psrc = 'TCGplayer (Shadowless)'; c.px = {tcgplayer:[ps, null, Date.now(), 'USD', 'TCGplayer (Shadowless)']} } }
@@ -2594,7 +2660,8 @@ async function binderSet(){
     const own = ownedIn(g).filter(c => c.set === st.code && (!sep || (!!c.ed1 === E && !!c.sh === S))), has = c => om.get(c.set + '|' + c.number) || dm.get(c.set + '|' + c.number), have = cards.filter(has), ed1Set = !sep && cards.some(canEd1);
     const cur = (cards.find(c => c.price != null) || own[0] || {}).currency || 'EUR';
     const missVal = cards.filter(c => !om.get(c.set + '|' + c.number)).reduce((a, c) => a + ((E ? toEur(c.p1e, 'USD') : S ? toEur(c.psh, 'USD') : c.price) || 0), 0);      // what the physical cards you miss cost
-    $('#bds').innerHTML = `<div class="bstats"><div><b>${have.length} / ${cards.length || st.total || '?'}</b><span>Collected</span></div><div><b>${fmt(valueOf(own), own[0] ? own[0].currency : cur)}</b><span>Your value</span></div><div><b>${missVal ? fmt(missVal, cur) : '–'}</b><span>Missing</span></div></div>
+    const hsOwn = isHS(g) && own.reduce((a, c) => a + hsDust(c, c.foil) * c.qty, 0), hsMiss = isHS(g) && cards.filter(c => !om.get(c.set + '|' + c.number)).reduce((a, c) => a + hsDust(c, false), 0);
+    $('#bds').innerHTML = `<div class="bstats"><div><b>${have.length} / ${cards.length || st.total || '?'}</b><span>Collected</span></div><div><b>${isHS(g) ? dustFmt(hsOwn) : fmt(valueOf(own), own[0] ? own[0].currency : cur)}</b><span>${isHS(g) ? 'Crafting value' : 'Your value'}</span></div><div><b>${isHS(g) ? (hsMiss ? dustFmt(hsMiss) : '–') : missVal ? fmt(missVal, cur) : '–'}</b><span>${isHS(g) ? 'To craft the rest' : 'Missing'}</span></div></div>
       <div class="bar2" style="--gc:${GAMES[g].color};margin:-4px 0 12px"><i style="width:${cards.length ? Math.round(100 * have.length / cards.length) : 0}%"></i></div>`;
     $('#bdf').innerHTML = [['all', 'All'], ['have', 'I have'], ['miss', 'Missing'], ['want', 'Wanted']].map(([k, l]) => `<button class="chip ${BD.filter === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')
       + (ed1Set ? `<button class="chip ${BD.ed1 ? 'on' : ''}" id="bded1" title="Tick off and add as 1st Edition">1st Ed</button>` : '')
@@ -2622,7 +2689,7 @@ async function binderSet(){
 }
 /* ---------------------------------------------------------------- big picture and card details
    Tap a card picture: it opens full screen in high quality. "Details" shows the card's text (saved with the card, so it works offline). */
-function hq(u){ u = String(u || ''); return u.replace('/normal/', '/large/').replace(/\/low\.webp$/, '/high.webp').replace(/_200w\.jpg$/, '_in_1000x1000.jpg')
+function hq(u){ u = String(u || ''); return u.replace('/render/latest/enUS/256x/', '/render/latest/enUS/512x/').replace('/normal/', '/large/').replace(/\/low\.webp$/, '/high.webp').replace(/_200w\.jpg$/, '_in_1000x1000.jpg')
   .replace('key=card-medium', 'key=directus-large-contain').replace('/cards_small/', '/cards/').replace(/(images\.pokemontcg\.io\/[^/]+\/[^/.]+)\.png$/, '$1_hires.png')
   .replace(/(cards\.lorcast\.io\/card\/digital)\/small\//, '$1/large/').replace('/xxsmall_', '/').replace('/thumbnail_', '/') }
 const _vw = {m:null, mode:'pic'};
@@ -2634,6 +2701,8 @@ function infoHtml(m){ const i = m.info || {};
 const _dgText = {};
 async function lookupInfo(m){                                    // card text for cards added before, or from lists without text
   try{
+    if(isHS(m.game)){ if(!_dgText.hearthstone) _dgText.hearthstone = firstJSON(['data/text/hearthstone.json']).then(x => x || {});
+      const t = (await _dgText.hearthstone)[String(m.pid || m.number)]; return t ? {type:t[0], text:t[1], flavor:t[2] || '', artist:t[3] || ''} : null }
     if(DGAMES.includes(m.game)){                                 // TCGplayer games: the text file next to the app (made by the daily job)
       const pid = m.pid || ((String(m.link || '').match(/product\/(\d+)/) || [])[1]);
       if(!_dgText[m.game]) _dgText[m.game] = getJSON(`${BASE}data/text/${m.game}.json`).catch(() => getJSON(`https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/text/${m.game}.json`)).catch(() => ({}));
@@ -2684,12 +2753,12 @@ function binderCard(m, redraw, vk){
   const q = f => (mine.find(c => !!c.foil === f && !c.lang && !c.grade && !c.digital && !!c.ed1 === !!e1 && !!c.sh === !!s1) || {}).qty || 0;
   const mp = e1 && m.img1e ? Object.assign({}, m, {image:m.img1e}) : s1 && m.imgsh ? Object.assign({}, m, {image:m.imgsh}) : m;
   modal(`<div class="cres-top"><div class="cardbig zoom" id="bzm">${pic(mp)}</div><div style="min-width:0;flex:1"><div class="cname">${esc(m.name)}</div>
-      <div class="sub" style="margin:2px 0 8px">${esc(m.showSet)} #${esc(m.showNum)}${m.rarity ? ' · ' + esc(m.rarity) : ''}</div>
-      <div class="price">${fmt(m.price, m.currency)}${m.priceFoil != null ? ` <span class="muted">· foil ${fmt(m.priceFoil, m.currency)}</span>` : ''}${m.p1e != null ? `<div style="font-size:13px;margin-top:2px"><span class="vbadge">1st Ed</span> ${fmt(m.p1e, 'USD')} <span class="muted" style="font-size:11.5px">TCGplayer</span></div>` : ''}${m.psh != null ? `<div style="font-size:13px;margin-top:2px"><span class="vbadge">Shadowless</span> ${fmt(m.psh, 'USD')} <span class="muted" style="font-size:11.5px">TCGplayer</span></div>` : ''}${(m.p1e != null || m.psh != null || canEd1(m)) && m.game === 'pokemon' ? '<div class="muted" style="font-size:12px;margin-top:2px">The first price is for the normal (unlimited) print</div>' : ''}</div></div></div>
-    ${[false, true].map(f => `<div class="row"><div class="grow">${e1 ? '1st Edition' + (f ? ' foil' : '') : s1 ? 'Shadowless' + (f ? ' foil' : '') : f ? 'Foil' : 'Normal'}</div><div class="qb"><button data-f="${f ? 1 : 0}" data-d="-1">−</button><b id="bq${f ? 1 : 0}">${q(f)}</b><button data-f="${f ? 1 : 0}" data-d="1">+</button></div></div>`).join('')}
+      <div class="sub" style="margin:2px 0 8px">${esc(isHS(m.game) ? m.setName || m.showSet : m.showSet)}${m.showNum ? ' #' + esc(m.showNum) : ''}${m.rarity ? ' · ' + esc(m.rarity) : ''}</div>
+      ${isHS(m.game) ? `<div class="price">${m.nocraft || !HS_DUST[m.rarity] ? '<span class="muted" style="font-size:13px">Free card - cannot be crafted</span>' : `${dustFmt(hsDust(m, false))} <span class="muted">· golden ${dustFmt(hsDust(m, true))}</span><div class="muted" style="font-size:12px;margin-top:2px">What crafting it costs - Hearthstone cards have no market price</div>`}</div>` : ''}<div class="price" ${isHS(m.game) ? 'hidden' : ''}>${fmt(m.price, m.currency)}${m.priceFoil != null ? ` <span class="muted">· foil ${fmt(m.priceFoil, m.currency)}</span>` : ''}${m.p1e != null ? `<div style="font-size:13px;margin-top:2px"><span class="vbadge">1st Ed</span> ${fmt(m.p1e, 'USD')} <span class="muted" style="font-size:11.5px">TCGplayer</span></div>` : ''}${m.psh != null ? `<div style="font-size:13px;margin-top:2px"><span class="vbadge">Shadowless</span> ${fmt(m.psh, 'USD')} <span class="muted" style="font-size:11.5px">TCGplayer</span></div>` : ''}${(m.p1e != null || m.psh != null || canEd1(m)) && m.game === 'pokemon' ? '<div class="muted" style="font-size:12px;margin-top:2px">The first price is for the normal (unlimited) print</div>' : ''}</div></div></div>
+    ${[false, true].map(f => `<div class="row"><div class="grow">${e1 ? '1st Edition' + (f ? ' foil' : '') : s1 ? 'Shadowless' + (f ? ' foil' : '') : f ? (GAMES[m.game] || {}).foil || 'Foil' : 'Normal'}</div><div class="qb"><button data-f="${f ? 1 : 0}" data-d="-1">−</button><b id="bq${f ? 1 : 0}">${q(f)}</b><button data-f="${f ? 1 : 0}" data-d="1">+</button></div></div>`).join('')}
     ${mine.filter(c => c.lang || c.grade || (c.ed1 && !e1) || (c.sh && !s1) || (!c.ed1 && !c.sh && (e1 || s1)) || c.digital).map(c => `<div class="row"><div class="grow">${c.foil ? 'Foil' : 'Normal'} ${vbadge(c)} <span class="muted" style="font-size:12px">${esc([c.lang ? langName(c.lang) : '', c.grade || ''].filter(Boolean).join(', '))}</span></div><div class="qb"><button data-vu="${c.uid}" data-d="-1">−</button><b>${c.qty}</b><button data-vu="${c.uid}" data-d="1">+</button></div></div>`).join('')}
-    <button class="lnk" id="bver" style="margin-top:4px"><i class="ti ti-language"></i> Add another language or a graded copy</button>
-    <div class="btns" style="margin-top:10px"><button class="btn sm" id="binfo"><i class="ti ti-info-circle"></i>Details</button><button class="btn sm" id="bprices"><i class="ti ti-coin-euro"></i>Prices</button><button class="btn sm" id="bdeck"><i class="ti ti-cards"></i>Add to deck</button><button class="btn sm ${isWant(m) ? 'on' : ''}" id="bwant"><i class="ti ti-heart${isWant(m) ? '-filled' : ''}"></i>${isWant(m) ? 'On my wishlist' : 'Want this'}</button>
+    <button class="lnk" id="bver" style="margin-top:4px" ${isHS(m.game) ? 'hidden' : ''}><i class="ti ti-language"></i> Add another language or a graded copy</button>
+    <div class="btns" style="margin-top:10px"><button class="btn sm" id="binfo"><i class="ti ti-info-circle"></i>Details</button><button class="btn sm" id="bprices" ${isHS(m.game) ? 'hidden' : ''}><i class="ti ti-coin-euro"></i>Prices</button><button class="btn sm" id="bdeck"><i class="ti ti-cards"></i>Add to deck</button><button class="btn sm ${isWant(m) ? 'on' : ''}" id="bwant"><i class="ti ti-heart${isWant(m) ? '-filled' : ''}"></i>${isWant(m) ? 'On my wishlist' : 'Want this'}</button>
       <button class="btn sm ${mine.some(c => c.trade) ? 'on' : ''}" id="btrade" ${mine.length ? '' : 'disabled'}><i class="ti ti-arrows-exchange"></i>${mine.some(c => c.trade) ? 'For trade' : 'Offer for trade'}</button></div>
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" id="bcx">Done</button></div>`);
   $('#bzm').onclick = () => openViewer(mp); $('#binfo').onclick = () => openViewer(mp, 'info');
@@ -2718,9 +2787,9 @@ function binderCard(m, redraw, vk){
 const F = {q:'', game:'all', set:'all', sort:'new'};
 function viewCards(){
   refreshFx(); if(store.cards.length){ const d = new Date().toISOString().slice(0, 10); if(!(store.hist || []).some(x => x.d === d)){ recordValue(); persist() } }
-  const cs = store.cards, total = cs.reduce((a, c) => a + (c.digital ? 0 : c.qty), 0), ndig = cs.reduce((a, c) => a + (c.digital ? c.qty : 0), 0);
+  const cs = store.cards, isD = c => c.digital || (GAMES[c.game] || {}).digital, total = cs.reduce((a, c) => a + (isD(c) ? 0 : c.qty), 0), ndig = cs.reduce((a, c) => a + (isD(c) ? c.qty : 0), 0);
   const val = cur => cs.filter(c => c.currency === cur && !c.digital).reduce((a, c) => a + ((c.foil ? c.priceFoil : c.price) || 0) * c.qty, 0);
-  const unpriced = cs.filter(c => !c.digital && (c.foil ? c.priceFoil : c.price) == null).reduce((a, c) => a + c.qty, 0);
+  const unpriced = cs.filter(c => !isD(c) && (c.foil ? c.priceFoil : c.price) == null).reduce((a, c) => a + c.qty, 0);
   const games = [...new Set(cs.map(c => c.game))], sets = [...new Set(cs.filter(c => F.game === 'all' || c.game === F.game).map(c => c.showSet))].sort();
   const eur = val('EUR'), usd = val('USD');
   const nrv = (store.review || []).length;
@@ -2743,7 +2812,7 @@ function viewCards(){
     const q = F.q.toLowerCase();
     if(F.list === 'want'){                                     // the wishlist: cards you do not have yet
       const ws = Object.values(store.want || {}).filter(w => (F.game === 'all' || w.game === F.game) && (!q || w.name.toLowerCase().includes(q))).sort((a, b) => b.added - a.added);
-      $('#mlist').innerHTML = ws.length ? ws.map(w => `<div class="srow">${w.image ? pic(w, 'loading="lazy"') : '<div class="ph"></div>'}<div class="grow"><div class="nm">${esc(w.name)}</div><div class="meta"><span class="dot" style="background:${(GAMES[w.game] || GAMES.other).color};margin-right:5px"></span>${esc(w.showSet)} #${esc(w.showNum)} · ${fmt(w.price, w.currency)}</div></div>
+      $('#mlist').innerHTML = ws.length ? ws.map(w => `<div class="srow">${w.image ? pic(w, 'loading="lazy"') : '<div class="ph"></div>'}<div class="grow"><div class="nm">${esc(w.name)}</div><div class="meta"><span class="dot" style="background:${(GAMES[w.game] || GAMES.other).color};margin-right:5px"></span>${esc(w.showSet)}${w.showNum ? ' #' + esc(w.showNum) : ''} · ${fmt(w.price, w.currency)}</div></div>
         <button class="btn sm" data-wk="${esc(wkey(w))}" aria-label="Remove from wishlist"><i class="ti ti-heart-off"></i></button></div>`).join('')
         : '<div class="empty">Your wishlist is empty.<br>In the Binder, tap a card you are missing and choose “Want this”.</div>';
       $$('#mlist [data-wk]').forEach(b => b.onclick = () => { delete store.want[b.dataset.wk]; (store.wantRemoved ||= {})[b.dataset.wk] = Date.now(); persist(); viewCards() }); return }
@@ -2752,7 +2821,7 @@ function viewCards(){
     rows.sort(F.sort === 'name' ? (a, b) => a.name.localeCompare(b.name) : F.sort === 'value' ? (a, b) => pv(b) - pv(a)
             : F.sort === 'set' ? (a, b) => a.showSet.localeCompare(b.showSet) || normNum(a.number).localeCompare(normNum(b.number), undefined, {numeric:true}) : (a, b) => b.added - a.added);
     $('#mlist').innerHTML = rows.length ? rows.map(c => `<div class="srow"><span data-zoom="${c.uid}" style="display:contents">${c.image ? pic(c, 'loading="lazy"') : '<div class="ph"></div>'}</span>
-      <div class="grow"><div class="nm">${esc(c.name)}${vtag(c) ? ` <button class="lnk" data-ver="${c.uid}" title="Language and grading">${vbadge(c)}</button>` : ''}${c.check ? ' <span class="conf medium" style="margin:0 0 0 4px">check</span>' : ''}</div><div class="meta"><span class="dot" style="background:${GAMES[c.game].color};margin-right:5px"></span>${c.gameName ? esc(c.gameName) + ' · ' : ''}${esc(c.showSet)} #${esc(c.showNum)}${c.foil ? ' · foil' : ''}${vtag(c) ? '' : ` <button class="lnk" data-ver="${c.uid}" title="Language and grading"><i class="ti ti-language" style="opacity:.55"></i></button>`} · <button class="lnk" data-px="${c.uid}">${priceOf(c) != null ? `<span class="price">${fmt(priceOf(c), c.currency)}</span>` : 'no price · check'}</button></div></div>
+      <div class="grow"><div class="nm">${esc(c.name)}${vtag(c) ? ` <button class="lnk" data-ver="${c.uid}" title="Language and grading">${vbadge(c)}</button>` : ''}${c.check ? ' <span class="conf medium" style="margin:0 0 0 4px">check</span>' : ''}</div><div class="meta"><span class="dot" style="background:${GAMES[c.game].color};margin-right:5px"></span>${c.gameName ? esc(c.gameName) + ' · ' : ''}${esc(c.showSet)}${c.showNum ? ' #' + esc(c.showNum) : ''}${c.foil ? ' · ' + ((GAMES[c.game] || {}).foil || 'foil').toLowerCase() : ''}${vtag(c) || isHS(c.game) ? '' : ` <button class="lnk" data-ver="${c.uid}" title="Language and grading"><i class="ti ti-language" style="opacity:.55"></i></button>`} · ${isHS(c.game) ? `<span class="muted">${hsDust(c, c.foil) ? dustFmt(hsDust(c, c.foil)) : 'free card'}</span>` : `<button class="lnk" data-px="${c.uid}">${priceOf(c) != null ? `<span class="price">${fmt(priceOf(c), c.currency)}</span>` : 'no price · check'}</button>`}</div></div>
       <div class="qb"><button data-u="${c.uid}" data-d="-1" aria-label="One less">−</button><b>${c.qty}</b><button data-u="${c.uid}" data-d="1" aria-label="One more">+</button></div></div>`).join('')
       : `<div class="empty">${cs.length ? 'Nothing matches that filter.' : 'No cards yet.<br>Scan a card and tap Add.'}<br><button class="btn primary" id="mgo" style="margin-top:12px"><i class="ti ti-camera"></i>Scan cards</button></div>`;
     $$('#mlist [data-u]').forEach(b => b.onclick = () => { const c = store.cards.find(x => x.uid === b.dataset.u); if(!c) return;
@@ -2793,7 +2862,7 @@ const stamp = () => new Date().toISOString().slice(0, 16).replace('T', '_').repl
 const syncKey = c => [c.game === 'other' ? (String(c.gameName || 'other').toLowerCase().replace(/[^a-z0-9]+/g, '') || 'other') : c.game, String(c.set).toLowerCase(), c.number, c.foil ? 1 : 0].join('|') + vsuf(c);
 function syncState(){ const S = store.sync ||= {}; S.seen ||= {}; S.contrib ||= {}; return S }
 function syncOwn(){ const S = syncState(), own = {};
-  for(const c of store.cards){ if(c.digital) continue; const k = syncKey(c); own[k] = (own[k] || 0) + c.qty }
+  for(const c of store.cards){ if(c.digital || (GAMES[c.game] || {}).digital) continue; const k = syncKey(c); own[k] = (own[k] || 0) + c.qty }
   for(const k of Object.keys(own)) own[k] -= (S.contrib[k] || 0);
   for(const k of new Set([...Object.keys(S.contrib), ...Object.keys(S.sent || {})])) if(!(k in own)) own[k] = -(S.contrib[k] || 0);   // gone here: tell the PC
   S.sent = Object.fromEntries(Object.entries(own).filter(([k, v]) => v || S.contrib[k]).map(([k]) => [k, 1]));
@@ -3048,7 +3117,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610110226';
+const BUILD = '202610111045';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
@@ -3225,7 +3294,7 @@ const decks = () => (store.decks ||= []);
 const deckOf = id => decks().find(d => d.id === id);
 const dkey = m => `${m.set}|${m.number}`;
 const deckCount = (d, side) => d.cards.filter(x => side == null || !!x.side === side).reduce((a, x) => a + x.n, 0);
-const deckSlim = m => { const o = {}; for(const k of ['game', 'set', 'number', 'showSet', 'showNum', 'name', 'setName', 'rarity', 'image', 'alt', 'link', 'info', 'f', 'px', 'price', 'priceFoil', 'currency', 'psrc', 'pid']) if(m[k] != null) o[k] = m[k]; return o };
+const deckSlim = m => { const o = {}; for(const k of ['game', 'set', 'number', 'showSet', 'showNum', 'name', 'setName', 'rarity', 'image', 'alt', 'link', 'info', 'f', 'px', 'price', 'priceFoil', 'currency', 'psrc', 'pid', 'nocraft']) if(m[k] != null) o[k] = m[k]; return o };
 const inDeck = (d, m, side) => (d.cards.find(y => y.k === dkey(m) && !!y.side === !!side) || {}).n || 0;
 const nameKey = s => String(s || '').split(' (')[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 function ownByName(g){ const m = new Map(); for(const c of ownedIn(g)){ const k = nameKey(c.name); m.set(k, (m.get(k) || 0) + c.qty) } return m }
@@ -3234,7 +3303,7 @@ const deckValue = (d, side) => d.cards.filter(x => side == null || !!x.side === 
 /* deck rules: smallest and biggest deck, sideboard size, most copies of one card. Known games start with their usual rules;
    every deck can have its own (blank = no limit), and the last rules you set for a game are used for its next new deck. */
 const RULES0 = {mtg:{min:60, side:15, copies:4}, pokemon:{min:60, max:60, copies:4}, ygo:{min:40, max:60, side:15, copies:3}, lorcana:{min:60, copies:4},
-  swu:{min:50, side:10, copies:3}, onepiece:{min:50, max:50, copies:4}, digimon:{min:50, max:50, copies:4}, gundam:{min:50, max:50, copies:4}, dbsfw:{min:50, max:60, copies:4}};
+  swu:{min:50, side:10, copies:3}, onepiece:{min:50, max:50, copies:4}, digimon:{min:50, max:50, copies:4}, gundam:{min:50, max:50, copies:4}, dbsfw:{min:50, max:60, copies:4}, hearthstone:{min:30, max:30, side:0, copies:2}};
 const rulesFor = g => Object.assign({}, (store.deckRules || {})[g] || RULES0[g] || {});
 const deckRules = d => d.rules || rulesFor(d.game);
 const unlimited = m => (m.game === 'mtg' && (/^(snow-covered )?(plains|island|swamp|mountain|forest|wastes)$/i.test(m.name) || /relentless rats|persistent petitioners|shadowborn apostle|rat colony|dragon's approach|seven dwarves/i.test(m.name)))
@@ -3245,6 +3314,8 @@ function deckRoom(d, m, side){                                   // why one more
   if(side && r.side != null && r.side !== '' && deckCount(d, true) >= +r.side) return `The sideboard is full (${r.side} cards)`;
   if(!side && r.max && deckCount(d, false) >= +r.max) return `The deck is full (${r.max} cards)`;
   if(r.copies && !unlimited(m) && copiesIn(d, m) >= +r.copies) return `At most ${r.copies} copies of one card`;
+  if(isHS(d.game) && m.rarity === 'Legendary' && copiesIn(d, m) >= 1) return 'Only 1 copy of a Legendary card';
+  if(isHS(d.game)){ const mc = hsClasses(m).filter(k => k !== 'Neutral'), dc = hsDeckClass(d); if(mc.length && dc && !mc.some(k => dc.includes(k))) return `This is a ${dc.join(' / ')} deck: only ${dc.join(' / ')} and Neutral cards fit` }
   return '' }
 function deckAddChecked(d, m, delta, side){
   if(delta > 0){ const why = deckRoom(d, m, side); if(why){ toast(why + ' - change this in Deck rules', true); return false } }
@@ -3318,6 +3389,7 @@ async function loadPool(g){
           out.push(Object.assign(rbMap(c, pr), {f:{Domain:cl.domain, Type:cl.type, Supertype:cl.supertype, Rarity:cl.rarity, Energy:at.energy, Might:at.might, Power:at.power}, txt:clean((c.text || {}).plain || '')})) }
         if(!j.pages || page >= j.pages) break; page++ } }
     return out }
+  if(isHS(g)){ const d = await hsData(); return d.cards.map(r => hsMap(d, r)) }
   if(DGAMES.includes(g)){ const d = await dgData(g), fac = (await firstJSON([`data/facets/${g}.json`])) || {};
     return d.cards.map(r => { const m = dgMap(g, d, r); return Object.assign(m, {f:Object.assign({Rarity:r[3] || undefined}, fac[String(r[4])] || {})}) }) }
   const gid = gidOf(g);
@@ -3334,7 +3406,7 @@ async function loadPool(g){
   return ownedIn(g).map(c => Object.assign({}, c, {f:{Rarity:c.rarity || undefined}}));                // games added by hand: the cards you have
 }
 async function poolText(g, list){                                // card text for "search in card text" (TCGplayer games keep it in a separate file)
-  if(!DGAMES.includes(g) || list._txt) return; list._txt = true;
+  if(!(DGAMES.includes(g) || isHS(g)) || list._txt) return; list._txt = true;
   if(!_dgText[g]) _dgText[g] = getJSON(`${BASE}data/text/${g}.json`).catch(() => getJSON(`https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/text/${g}.json`)).catch(() => ({}));
   const t = await _dgText[g]; for(const m of list){ const x = m.pid && t[m.pid]; if(x){ m.txt = x[1] || ''; m.info ||= {type:x[0], text:x[1]} } } }
 
@@ -3397,7 +3469,7 @@ function decksList(){
   const l = decks().slice().sort((a, b) => (b.at || 0) - (a.at || 0));
   $('#main').innerHTML = `<div class="head"><h1 style="flex:1">Decks</h1><button class="btn sm primary" id="dknew"><i class="ti ti-plus"></i>New deck</button></div>
     ${l.length ? `<div class="slist">${l.map(d => { const g = GAMES[d.game] || GAMES.other, sd = deckCount(d, true);
-      return `<button class="mitem" data-dk="${d.id}"><i class="mdot"><span style="background:${g.color}"></span></i><span><b>${esc(d.name)}</b><small>${esc(g.label)} · ${deckCount(d, false)} cards${sd ? ` + ${sd} side` : ''} · ${fmt(deckValue(d), 'EUR')}</small></span><i class="ti ti-chevron-right chev"></i></button>` }).join('')}</div>`
+      return `<button class="mitem" data-dk="${d.id}"><i class="mdot"><span style="background:${g.color}"></span></i><span><b>${esc(d.name)}</b><small>${esc(g.label)} · ${deckCount(d, false)} cards${sd ? ` + ${sd} side` : ''} · ${isHS(d.game) ? dustFmt(hsDeckDust(d)) : fmt(deckValue(d), 'EUR')}</small></span><i class="ti ti-chevron-right chev"></i></button>` }).join('')}</div>`
       : `<div class="empty">No decks yet.<br>Make one, then search the cards of its game by name, cost, color, type and more.<br>You can also add cards to a deck from the binder.</div>`}`;
   $('#dknew').onclick = () => newDeck(null, d => { DK.id = d.id; DK.search = false; viewDecks() });
   $$('#main [data-dk]').forEach(b => b.onclick = () => { DK.id = b.dataset.dk; DK.search = false; DK.zone = 'main'; viewDecks() });
@@ -3424,19 +3496,19 @@ function deckView(d){
   const order = [...groups.keys()].sort((a, b) => { const ia = MTG_TYPES.indexOf(a), ib = MTG_TYPES.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b) });
   const curve = {}; for(const x of d.cards.filter(y => !y.side)){ const c = costOf(x.m); if(c != null && !(g === 'mtg' && typeOf(x.m) === 'Land')){ const b = Math.min(7, c); curve[b] = (curve[b] || 0) + x.n } }
   const cmax = Math.max(1, ...Object.values(curve));
-  const R = deckRules(d), mainN = deckCount(d, false), sideN = deckCount(d, true);
+  const R = deckRules(d), mainN = deckCount(d, false), sideN = deckCount(d, true), HS = isHS(g), hcl = HS && hsDeckClass(d);
   const cntCol = (R.max && mainN > R.max) || (R.side != null && sideN > R.side) ? 'var(--red)' : R.min && mainN < R.min ? 'var(--amber)' : (R.min || R.max) ? 'var(--green)' : '';
   const goal = R.min && R.max && R.min !== R.max ? `${R.min}-${R.max}` : R.max || R.min || '';
   const over = x => R.copies && !unlimited(x.m) && copiesIn(d, x.m) > R.copies ? ` · <span style="color:var(--red)">more than ${R.copies}</span>` : '';
   const ownTag = x => { const k = nameKey(x.m.name), h = own.get(k) || 0, n = need.get(k) || 0; return h >= n ? '<span style="color:var(--green)">✓ you have it</span>' : h ? `<span style="color:var(--amber)">you have ${h} of ${n}</span>` : '<span class="muted">missing</span>' };
   $('#main').innerHTML = `<div class="head"><button class="btn sm" id="dkb"><i class="ti ti-arrow-left"></i>Decks</button><h1 style="font-size:17px;min-width:0;flex:1;overflow-wrap:anywhere">${esc(d.name)}</h1><button class="btn sm" id="dkm" aria-label="More"><i class="ti ti-dots"></i></button></div>
-    <div class="bstats four"><div><b style="${cntCol ? 'color:' + cntCol : ''}">${mainN}${goal ? `<small style="font-weight:400">/${goal}</small>` : ''}${sideN ? ` <small style="font-weight:400">+${sideN}</small>` : ''}</b><span>Cards</span></div><div><b>${fmt(deckValue(d), 'EUR')}</b><span>Value</span></div><div><b>${allN ? `${haveN}/${allN}` : '–'}</b><span>You have</span></div><div><b>${missV ? fmt(missV, 'EUR') : '–'}</b><span>Missing</span></div></div>
-    <button class="lnk" id="dkr" style="margin:-4px 0 10px;color:var(--dim)"><i class="ti ti-ruler-2"></i> ${esc(rulesLine(d))}${R.min && mainN < R.min ? ` · <span style="color:var(--amber)">${R.min - mainN} to go</span>` : ''} <span style="color:var(--accent)">change</span></button>
+    <div class="bstats four"><div><b style="${cntCol ? 'color:' + cntCol : ''}">${mainN}${goal ? `<small style="font-weight:400">/${goal}</small>` : ''}${sideN ? ` <small style="font-weight:400">+${sideN}</small>` : ''}</b><span>Cards</span></div><div><b>${HS ? dustFmt(hsDeckDust(d)) : fmt(deckValue(d), 'EUR')}</b><span>${HS ? 'Dust' : 'Value'}</span></div><div><b>${allN ? `${haveN}/${allN}` : '–'}</b><span>You have</span></div><div><b>${HS ? (hsDeckDust(d, true, own) ? dustFmt(hsDeckDust(d, true, own)) : '–') : missV ? fmt(missV, 'EUR') : '–'}</b><span>${HS ? 'To craft' : 'Missing'}</span></div></div>
+    <button class="lnk" id="dkr" style="margin:-4px 0 10px;color:var(--dim)"><i class="ti ti-ruler-2"></i> ${HS && hcl ? esc(hcl.join(' / ')) + ' · ' : ''}${esc(rulesLine(d))}${R.min && mainN < R.min ? ` · <span style="color:var(--amber)">${R.min - mainN} to go</span>` : ''} <span style="color:var(--accent)">change</span></button>
     ${Object.keys(curve).length > 1 ? `<div class="curve">${[0, 1, 2, 3, 4, 5, 6, 7].map(i => `<div><i style="height:${Math.round(100 * (curve[i] || 0) / cmax)}%"></i><span>${i === 7 ? '7+' : i}</span><b>${curve[i] || ''}</b></div>`).join('')}</div>` : ''}
-    <div class="bar"><button class="btn primary" id="dkadd" style="flex:1"><i class="ti ti-search"></i>Add cards</button><div class="oseg" id="dkz"><button data-z="main" class="${side ? '' : 'on'}">Main ${deckCount(d, false)}</button><button data-z="side" class="${side ? 'on' : ''}">Side ${deckCount(d, true)}</button></div></div>
+    <div class="bar"><button class="btn primary" id="dkadd" style="flex:1"><i class="ti ti-search"></i>Add cards</button><div class="oseg" id="dkz" ${HS ? 'hidden' : ''}><button data-z="main" class="${side ? '' : 'on'}">Main ${deckCount(d, false)}</button><button data-z="side" class="${side ? 'on' : ''}">Side ${deckCount(d, true)}</button></div></div>
     <div id="dkl">${rows.length ? order.map(t => { const l = groups.get(t).sort((a, b) => (costOf(a.m) ?? 99) - (costOf(b.m) ?? 99) || a.m.name.localeCompare(b.m.name));
       return `<div class="dgh">${esc(t)} <span class="muted">${l.reduce((a, x) => a + x.n, 0)}</span></div>` + l.map(x => `<div class="srow"><span data-dz="${d.cards.indexOf(x)}" style="display:contents">${x.m.image ? pic(x.m, 'loading="lazy"') : '<div class="ph"></div>'}</span>
-        <div class="grow"><div class="nm">${esc(x.m.name)}</div><div class="meta">${esc(x.m.showSet)}${x.m.showNum ? ' #' + esc(x.m.showNum) : ''} · ${x.m.price != null || x.m.priceFoil != null ? fmt(x.m.price ?? x.m.priceFoil, x.m.currency) : 'no price'} · ${ownTag(x)}${over(x)}</div></div>
+        <div class="grow"><div class="nm">${esc(x.m.name)}</div><div class="meta">${esc(x.m.showSet)}${x.m.showNum ? ' #' + esc(x.m.showNum) : ''} · ${HS ? (hsDust(x.m, false) ? dustFmt(hsDust(x.m, false)) : 'free') : x.m.price != null || x.m.priceFoil != null ? fmt(x.m.price ?? x.m.priceFoil, x.m.currency) : 'no price'} · ${ownTag(x)}${over(x)}</div></div>
         <div class="qb"><button data-dq="${d.cards.indexOf(x)}" data-d="-1" aria-label="One less">−</button><b>${x.n}</b><button data-dq="${d.cards.indexOf(x)}" data-d="1" aria-label="One more">+</button></div></div>`).join('') }).join('')
       : `<div class="empty">${side ? 'No sideboard cards yet.' : 'This deck is empty.'}<br>Tap <b>Add cards</b> to search, or add cards from the binder.</div>`}</div>`;
   $('#dkb').onclick = () => { DK.id = null; viewDecks() };
@@ -3450,10 +3522,12 @@ function deckView(d){
     {icon:'pencil', label:'Rename', run:() => { modal(`<h3>Rename deck</h3><label class="fld"><span>Name</span><input type="text" id="drn" value="${esc(d.name)}" maxlength="60"></label><div class="btns" style="justify-content:flex-end;margin-top:14px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="drok">Save</button></div>`);
       $('#drok').onclick = () => { d.name = $('#drn').value.trim() || d.name; d.at = Date.now(); persist(); closeModal(); deckView(d) } }},
     {icon:'ruler-2', label:'Deck rules', sub:rulesLine(d), run:() => editRules(d, () => deckView(d))},
+    ...(HS ? [{icon:'code', label:'Copy Hearthstone deck code', sub:'Paste it in Hearthstone to make this deck in the game', disabled:!mainN, run:() => hsDeckCode(d)},
+      {icon:'clipboard-text', label:'Paste a Hearthstone deck code', sub:'From the game or a deck website', run:() => hsDeckPaste(d, () => deckView(d))}] : []),
     {icon:'clipboard-text', label:'Paste a deck list', sub:'Lines like “4 Lightning Bolt” - from a website or another app', run:() => deckImport(d)},
     {icon:'copy', label:'Copy deck list', sub:'As text, to paste or share', run:() => deckExport(d)},
     {icon:'heart', label:'Put missing cards on my wishlist', disabled:!missV && haveN >= allN, run:() => { let n = 0; for(const x of d.cards){ const k = nameKey(x.m.name); if((own.get(k) || 0) < (need.get(k) || 0) && !isWant(x.m)){ toggleWant(x.m); n++ } } toast(n ? `${n} card${n === 1 ? '' : 's'} put on your wishlist` : 'They are already on your wishlist') }},
-    {icon:'coin-euro', label:'Look up prices', sub:'For the cards in this deck without a price', run:() => deckPrices(d)},
+    ...(HS ? [] : [{icon:'coin-euro', label:'Look up prices', sub:'For the cards in this deck without a price', run:() => deckPrices(d)}]),
     {icon:'trash', label:'Delete deck', danger:true, run:() => { if(confirm(`Delete “${d.name}”? Your cards stay in your collection.`)){ snapshot('before deleting a deck'); store.decks = decks().filter(x => x !== d); (store.decksRemoved ||= {})[d.id] = Date.now(); persist(); DK.id = null; viewDecks() } }},
   ]);
 }
