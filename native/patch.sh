@@ -20,6 +20,18 @@ grep -n "mlkit\|versionCode" android/app/build.gradle
 grep -q 'SYSTEM_ALERT_WINDOW' "$M" || sed -i 's#<uses-permission android:name="android.permission.CAMERA" />#<uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' "$M"
 grep -q 'NvCaptureService' "$M" || sed -i 's#</application>#    <service android:name=".NvCaptureService" android:exported="false" android:foregroundServiceType="mediaProjection" />\n    </application>#' "$M"
 grep -n "CAMERA\|SYSTEM_ALERT\|MEDIA_PROJECTION\|NvCaptureService" "$M"
+# start-up screen (Android 12+): the app's dark colour behind the icon instead of a white circle
+python3 - <<'PY'
+import re
+p = "android/app/src/main/res/values/styles.xml"
+s = open(p).read()
+items = ('<item name="windowSplashScreenBackground">#0C0F12</item>'
+         '<item name="windowSplashScreenIconBackgroundColor">#0C0F12</item>')
+if "windowSplashScreenIconBackgroundColor" not in s:
+    s = re.sub(r'(<style name="AppTheme.NoActionBarLaunch"[^>]*>)', r'\1' + items, s)
+open(p, "w").write(s)
+print(s)
+PY
 # Always sign with the key in this folder, so every new build installs over the previous one
 cat >> android/app/build.gradle <<'GRADLE'
 

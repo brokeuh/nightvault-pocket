@@ -3,6 +3,17 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 30,
+   "date": "2026-10-11",
+   "where": [
+    "android"
+   ],
+   "title": "Start-up screen",
+   "items": [
+    "The app icon on the start-up screen no longer sits on a white circle: the background now has the app's dark colour."
+   ]
+  },
+  {
    "id": 29,
    "date": "2026-10-11",
    "where": [
