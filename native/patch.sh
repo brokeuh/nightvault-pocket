@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 J=android/app/src/main/java/be/brokeuh/nightvault
 mkdir -p "$J"
-cp plugin/MainActivity.java plugin/NvOcrPlugin.java plugin/NvUpdatePlugin.java "$J/"
+cp plugin/MainActivity.java plugin/NvOcrPlugin.java plugin/NvUpdatePlugin.java plugin/NvCapturePlugin.java plugin/NvCaptureService.java "$J/"
 # Google ML Kit text recognition (the model is inside the app, works without internet)
 sed -i "s#^dependencies {#dependencies {\n    implementation 'com.google.mlkit:text-recognition:16.0.1'#" android/app/build.gradle
 # version shown in Android settings: the build number
@@ -16,7 +16,10 @@ R=android/app/src/main/res
 rm -rf "$R/mipmap-anydpi-v26"
 for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do cp res/mipmap-$d/*.png "$R/mipmap-$d/"; done
 grep -n "mlkit\|versionCode" android/app/build.gradle
-grep -n "CAMERA" "$M"
+# screen capture (alpha): floating button over other apps, and the capture service
+grep -q 'SYSTEM_ALERT_WINDOW' "$M" || sed -i 's#<uses-permission android:name="android.permission.CAMERA" />#<uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' "$M"
+grep -q 'NvCaptureService' "$M" || sed -i 's#</application>#    <service android:name=".NvCaptureService" android:exported="false" android:foregroundServiceType="mediaProjection" />\n    </application>#' "$M"
+grep -n "CAMERA\|SYSTEM_ALERT\|MEDIA_PROJECTION\|NvCaptureService" "$M"
 # Always sign with the key in this folder, so every new build installs over the previous one
 cat >> android/app/build.gradle <<'GRADLE'
 

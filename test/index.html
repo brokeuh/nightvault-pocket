@@ -837,8 +837,28 @@ async function hsReadShot(file, F, hint){
   const Hs = cards.map(c => c.H).sort((a, b) => a - b), med = Hs[Hs.length >> 1];
   return {cards:cards.filter(c => Math.abs(c.H - med) / med < 0.12).sort((a, b) => (a.box[1] - b.box[1]) > med * h * 0.5 ? 1 : (b.box[1] - a.box[1]) > med * h * 0.5 ? -1 : a.box[0] - b.box[0]), scale:med} }
 function hsShots(done){
+  if(NATIVE && O.hsCap) return menuSheet('Hearthstone collection', [
+    {icon:'photo', label:'Pick screenshots', sub:'Screenshots of your collection from the gallery', run:() => hsPick(done)},
+    {icon:'screenshot', label:'Capture from Hearthstone (alpha)', sub:'Floating button over the game: tap it on every page, ✕ when done', run:() => hsCapture()}]);
+  hsPick(done) }
+async function hsCapture(){
+  try{ await capCall('NvCapture', 'clear'); const r = await capCall('NvCapture', 'start', {open:'com.blizzard.wtcg.hearthstone'}); O.hsCapPending = Date.now(); persist();
+    toast(r && r.opened ? 'Hearthstone is opening - tap 📷 on every page, ✕ when you are done' : 'Open Hearthstone, go to your collection and tap 📷 on every page - ✕ when you are done') }
+  catch(e){ toast(e.message || String(e), true) } }
+async function hsCaptured(){                                   // back from capturing: read the pages
+  if(!NATIVE || !O.hsCapPending) return; let st; try{ st = await capCall('NvCapture', 'status') }catch(e){ return }
+  if(st.running){ toast('Screen capture is still on - tap ✕ on the floating button when you are done'); return }
+  O.hsCapPending = 0; persist(); if(!st.count) return toast('No pages were captured');
+  try{ const l = (await capCall('NvCapture', 'list')).files || [], blobs = [];
+    for(const n of l){ const r = await capCall('NvCapture', 'get', {name:n}); blobs.push(await (await fetch(r.data)).blob()) }
+    await capCall('NvCapture', 'clear').catch(() => {});
+    show('binder'); BD.game = 'hearthstone'; BD.set = null; viewBinder();
+    hsReadFiles(blobs, () => { if(VIEW === 'binder' && BD.game === 'hearthstone') viewBinder() }) }catch(e){ toast('Could not read the captured pages: ' + (e.message || e), true) } }
+function hsPick(done){
   const inp = Object.assign(document.createElement('input'), {type:'file', accept:'image/*', multiple:true});
-  inp.onchange = async () => { const files = [...inp.files]; if(!files.length) return;
+  inp.onchange = () => { const files = [...inp.files]; if(files.length) hsReadFiles(files, done) };
+  inp.click() }
+async function hsReadFiles(files, done){ {
     modal(`<h3>Reading screenshots</h3><p class="hint" id="hsst" style="margin-top:0">Loading the card fingerprints ...</p>`);
     let F, d; try{ [F, d] = await Promise.all([hsFpData(), hsData()]) }catch(e){ closeModal(); return toast(e.message, true) }
     const by = new Map(d.cards.map(r => [r[4], r])), hits = new Map(); let hint = null, i = 0, none = 0;
@@ -850,8 +870,7 @@ function hsShots(done){
       for(const c of r.cards){ const opts = [c.dbf, ...c.alts].map(x => by.get(x)).filter(Boolean), ok = x => !(d.sets[x[0]] || {}).nocraft && x[3] !== 'Free';
         let row = opts.filter(ok).sort((a, b) => a[0] - b[0])[0] || opts.sort((a, b) => a[0] - b[0])[0]; if(row) c.dbf = row[4]; if(!row) continue; const k = c.dbf + (c.gold ? 'g' : ''), e = hits.get(k);
         const n = row[3] === 'Legendary' ? 1 : c.n; if(e){ e.seen++; e.n = Math.max(e.n, n) } else hits.set(k, {m:hsMap(d, row), gold:c.gold, n, seen:1}) } }
-    hsReview([...hits.values()], files.length, none, done) };
-  inp.click() }
+    hsReview([...hits.values()], files.length, none, done) } }
 function hsReview(list, nf, none, done){
   if(!list.length){ modal(`<h3>No cards found</h3><p>${nf === 1 ? 'The screenshot' : 'The screenshots'} did not show cards the app recognises.</p><p class="hint">Take screenshots of the <b>Collection</b> in Hearthstone, with the whole page of cards on screen and no card zoomed in.</p><div class="btns" style="justify-content:flex-end"><button class="btn primary" onclick="closeModal()">OK</button></div>`); return }
   const owned = m => { const c = store.cards.find(x => x.key === ckey(m, false)), g = store.cards.find(x => x.key === ckey(m, true)); return [(c || {}).qty || 0, (g || {}).qty || 0] };
@@ -3227,7 +3246,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610111117';
+const BUILD = '202610111236';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
@@ -3289,6 +3308,7 @@ function viewSettings(){
       <label class="row"><input type="checkbox" id="oauto" ${O.auto ? 'checked' : ''}><div class="grow">Scan automatically when the card is held still</div></label>
       <label class="row"><input type="checkbox" id="oadd" ${O.autoAdd ? 'checked' : ''}><div class="grow">Add automatically when sure<div class="hint" style="margin:2px 0 0">Only when the name matched and the printing is clear.</div></div></label>
       ${NATIVE ? `<label class="row"><input type="checkbox" id="onat" ${O.nativeOcr !== false ? 'checked' : ''}><div class="grow">Google's text reader (Android app)<div class="hint" style="margin:2px 0 0">Reads names on the phone itself - faster and better with photos. Switch off to compare with the reader of the web version.</div></div></label>` : ''}
+      ${NATIVE ? `<label class="row"><input type="checkbox" id="ohscap" ${O.hsCap ? 'checked' : ''}><div class="grow">Hearthstone screen capture (alpha)<div class="hint" style="margin:2px 0 0">A floating button over the Hearthstone app: tap it on every page of your collection, then ✕ to come back and read the cards. Needs “Display over other apps” and asks to record the screen each time.</div></div></label>` : ''}
       <label class="row"><input type="checkbox" id="onum" ${O.readNum ? 'checked' : ''}><div class="grow">Also read the collector number<div class="hint" style="margin:2px 0 0">Picks the right printing more often. Takes a moment longer.</div></div></label>
       <label class="row"><input type="checkbox" id="ofull" ${O.full ? 'checked' : ''}><div class="grow">Also read the whole card<div class="hint" style="margin:2px 0 0">Finds the name on full-art and special versions, and recognises the game by itself. Takes a second longer.</div></div></label>
       <label class="row"><input type="checkbox" id="oprice" ${O.dailyPrices ? 'checked' : ''}><div class="grow">Update prices once a day when I open the app<div class="hint" style="margin:2px 0 0">Runs in the background. Cards you still need to price get a link to look them up.</div></div></label>
@@ -3368,6 +3388,7 @@ function viewSettings(){
   $('#oauto').onchange = e => { O.auto = e.target.checked; persist() };
   $('#oadd').onchange = e => { O.autoAdd = e.target.checked; persist() };
   $('#onum').onchange = e => { O.readNum = e.target.checked; persist() };
+  if($('#ohscap')) $('#ohscap').onchange = e => { O.hsCap = e.target.checked; persist(); toast(e.target.checked ? 'Binder → Hearthstone → Screenshots now also offers screen capture' : 'Screen capture off') };
   if($('#onat')) $('#onat').onchange = e => { O.nativeOcr = e.target.checked; persist(); if(SC.worker && SC.worker.terminate) SC.worker.terminate(); SC.worker = null; toast(e.target.checked ? 'Using Google\'s text reader' : 'Using the web text reader') };
   $('#ofull').onchange = e => { O.full = e.target.checked; persist() };
   $('#oprice').onchange = e => { O.dailyPrices = e.target.checked; persist() };
@@ -3795,7 +3816,8 @@ window.addEventListener('popstate', () => { goBack(); navSync() });
 /* Android app: the back button steps back inside the app itself, without the browser history (that could lose track after
    the big card picture closed, so back stopped closing the card window and the set) */
 if(NATIVE) try{ const A = _capP.App ||= Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(atRoot()) capCall('App', 'minimizeApp').catch(() => {}); else goBack() }) }catch(e){}
+  A.addListener('backButton', () => { if(atRoot()) capCall('App', 'minimizeApp').catch(() => {}); else goBack() });
+  A.addListener('resume', () => setTimeout(hsCaptured, 400)); setTimeout(hsCaptured, 2500) }catch(e){}
 new MutationObserver(navSync).observe($('#main'), {childList:true});
 new MutationObserver(navSync).observe($('#modal'), {childList:true});
 new MutationObserver(navSync).observe($('#viewer'), {childList:true});

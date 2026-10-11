@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(NvOcrPlugin.class);
         registerPlugin(NvUpdatePlugin.class);
+        registerPlugin(NvCapturePlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
