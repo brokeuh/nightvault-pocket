@@ -3017,18 +3017,21 @@ const clogHTML = l => l.map(e => `<div class="clog"><div class="clh"><b>${esc(e.
   ${(e.where || []).includes('live') || CHANNEL === 'live' ? '' : `<span class="cltag">${esc(CLOG_TAG[(e.where || []).includes('test') ? 'test' : 'android'])}</span>`}<ul>${(e.items || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('');
 async function whatsNew(force){
   const l = await changelog(); if(!l.length){ if(force) toast('The list of updates could not be loaded', true); return }
-  const top = Math.max(...l.map(e => +e.id || 0));
+  const top = Math.max(...l.map(e => +e.id || 0)), cnt = e => (e.items || []).length;
   if(!force){
-    if(O.seenLog == null){ O.seenLog = store.cards.length ? Math.max(0, top - 2) : top; persist(); if(!store.cards.length) return }   // new on this phone: no list of old news
-    if(top <= O.seenLog) return }
-  const fresh = force ? l : l.filter(e => +e.id > O.seenLog); O.seenLog = top; persist();
+    if(O.seenLog == null){ O.seenLog = store.cards.length ? Math.max(0, top - 2) : top; if(!store.cards.length){ O.seenCnt = Object.fromEntries(l.map(e => [e.id, cnt(e)])); persist(); return } }   // new on this phone: no list of old news
+    if(!O.seenCnt) O.seenCnt = Object.fromEntries(l.filter(e => +e.id <= O.seenLog).map(e => [e.id, cnt(e)])) }
+  // new updates, and updates that got more lines since you last looked
+  const fresh = force ? l : l.filter(e => +e.id > O.seenLog || (e.id in O.seenCnt ? cnt(e) > O.seenCnt[e.id] : true));
+  O.seenLog = Math.max(O.seenLog || 0, top); O.seenCnt = Object.fromEntries(l.map(e => [e.id, cnt(e)])); persist();
+  if(!fresh.length) return;
   modal(`<h3><i class="ti ti-sparkles" style="color:var(--accent)"></i> What's new</h3><div style="max-height:60vh;overflow:auto">${clogHTML(force ? fresh : fresh.slice(0, 6))}</div>
     <div class="btns" style="justify-content:space-between;margin-top:12px">${force ? '<span></span>' : '<button class="btn" id="wnall">All updates</button>'}<button class="btn primary" onclick="closeModal()">OK</button></div>`);
   if($('#wnall')) $('#wnall').onclick = () => whatsNew(true) }
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610110204';
+const BUILD = '202610110212';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
