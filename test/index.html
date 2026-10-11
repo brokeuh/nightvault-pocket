@@ -2698,7 +2698,7 @@ async function binderSets(){
   const ownedSets = new Map(); for(const c of own){ const k = c.ed1 && g === 'pokemon' && ED1_SETS.has(String(c.set).toLowerCase()) ? c.set + '~1e' : c.sh && g === 'pokemon' && SH_SETS.has(String(c.set).toLowerCase()) ? c.set + '~sh' : c.set; const e = ownedSets.get(k) || {n:0, uniq:new Set(), name:c.setName || c.showSet, show:c.showSet}; e.n += c.qty; e.uniq.add(c.number); ownedSets.set(k, e) }
   $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Games</button>${gameBadge(g, 'sm')}<h1 style="font-size:18px;flex:1">${esc(GAMES[g].label)}</h1>${isHS(g) ? '<button class="btn sm" id="bdshot" title="Read Hearthstone screenshots"><i class="ti ti-screenshot"></i>Screenshots</button>' : ''}<button class="btn sm" id="bdart" aria-label="Logo and picture for this game"><i class="ti ti-photo-edit"></i></button></div>
     <div class="bstats"><div><b>${own.reduce((a, c) => a + c.qty, 0).toLocaleString()}</b><span>Cards</span></div><div><b>${ownedSets.size}</b><span>Sets</span></div><div><b>${isHS(g) ? dustFmt(own.reduce((a, c) => a + hsDust(c, c.foil) * c.qty, 0)) : fmt(valueOf(own), cur)}</b><span>${isHS(g) ? 'Crafting value' : 'Value'}</span></div></div>
-    <div class="bar"><input class="grow" id="bdq" type="search" placeholder="Find a set" value="${esc(BD.q)}"><button class="btn" id="bdg" hidden></button></div><div id="bdl"><div class="muted" style="padding:16px 4px">Loading the sets ...</div></div>`;
+    <div class="bar"><input class="grow" id="bdq" type="search" placeholder="Find a set, or one of your cards" value="${esc(BD.q)}"><button class="btn" id="bdg" hidden></button></div><div id="bdl"><div class="muted" style="padding:16px 4px">Loading the sets ...</div></div>`;
   $('#bdb').onclick = () => { BD.game = null; BD.grp = 'all'; viewBinder() };
   $('#bdart').onclick = () => pickGameArt(g, () => binderSets());
   if($('#bdshot')) $('#bdshot').onclick = () => hsShots(() => binderSets());
@@ -2731,9 +2731,12 @@ async function binderSets(){
         const open = BD.open && BD.open[k];
         html += `<button class="dgh bgh" data-o="${esc(k)}"><i class="ti ti-chevron-${open ? 'down' : 'right'}"></i>${esc(k)} <span class="muted">${l.length}</span></button>` + (open ? l.slice(0, 400).map(row).join('') : '') } }
     else html = rows.slice(0, 400).map(row).join('');
-    $('#bdl').innerHTML = html || '<div class="empty">No sets found.</div>';
+    const mineC = q.trim().length >= 2 ? own.filter(c => cardMatch(c, q)).sort((a, b) => a.name.localeCompare(b.name)) : [];
+    if(mineC.length) html = `<div class="dgh">Your cards <span class="muted">${mineC.length}</span></div><div class="slist">${mineC.slice(0, 60).map((c, i) => `<button class="srow" data-oc="${i}" style="width:100%;text-align:left;color:var(--text)">${c.image ? pic(c, 'loading="lazy"') : '<div class="ph"></div>'}<div class="grow"><div class="nm">${esc(c.name)}${vtag(c) ? ' ' + vbadge(c) : ''}</div><div class="meta">${esc(c.setName || c.showSet)}${c.showNum ? ' #' + esc(c.showNum) : ''}${c.foil ? ' · ' + ((GAMES[c.game] || {}).foil || 'foil').toLowerCase() : ''} · ×${c.qty}</div></div></button>`).join('')}</div>${mineC.length > 60 ? '<div class="hint">First 60 - type more to narrow it down</div>' : ''}` + (html ? '<div class="dgh">Sets</div>' + html : '');
+    $('#bdl').innerHTML = html || `<div class="empty">No sets${q.trim().length >= 2 ? ' or cards of yours' : ''} found.</div>`;
+    $$('#bdl [data-oc]').forEach(b => b.onclick = () => binderCard(mineC[+b.dataset.oc], () => binderSets(), mineC[+b.dataset.oc].ed1 ? {ed1:true} : mineC[+b.dataset.oc].sh ? {sh:true} : null));
     $$('#bdl [data-o]').forEach(b => b.onclick = () => { BD.open ||= {}; BD.open[b.dataset.o] = !BD.open[b.dataset.o]; draw() });
-    $$('.bset').forEach(b => b.onclick = () => { BD.set = sets.find(x => (x.key || x.code) === b.dataset.s); BD.filter = 'all'; viewBinder(); $('#main').scrollTop = 0 }) };
+    $$('.bset').forEach(b => b.onclick = () => { BD.set = sets.find(x => (x.key || x.code) === b.dataset.s); BD.filter = 'all'; BD.cq = ''; viewBinder(); $('#main').scrollTop = 0 }) };
   draw(); let t; $('#bdq').oninput = e => { clearTimeout(t); t = setTimeout(() => { BD.q = e.target.value; draw() }, 150) };
 }
 /* card number order: the number part counts as a number (2 before 10), letters and suffixes after it (TG01, 001 H, EX12-048 UR) */
@@ -2761,10 +2764,13 @@ function wholeSet(g, st, cards, done){
     snapshot('before adding a whole set'); BULK = true;
     try{ for(const m of list){ const v = {}; if(dig) v.digital = true; if(e1on && canEd1(m)) v.ed1 = true; if(st.sh) v.sh = true; addCard(m, foil, 1, vtag(v) ? v : null); if(isWant(m)) toggleWant(m) } } finally { BULK = false }
     persist(); tabCount(); closeModal(); toast(`${list.length} card${list.length === 1 ? '' : 's'} of ${st.name} added${dig ? ' as digital' : ''}`); done(); pokemonPrices(store.cards.filter(c => c.game === g && c.set === st.code && priceOf(c) == null && !c.digital), () => { persist(); done() }) } }
+/* binder search: every word must appear in the name, type, rarity, number, set or card details */
+const cardWords = c => lwr([c.name, c.rarity, c.showNum, c.setName, c.showSet, (c.info || {}).type, (c.info || {}).text, ...Object.values(c.f || {}).flat(), c.foil ? (GAMES[c.game] || {}).foil || 'foil' : ''].filter(x => x != null && x !== '').join(' '));
+const cardMatch = (c, q) => { const w = lwr(q).split(' ').filter(Boolean); if(!w.length) return true; const t = cardWords(c); return w.every(x => t.includes(x)) };
 async function binderSet(){
   const g = BD.game, st = BD.set;
   $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Sets</button><h1 style="font-size:17px;min-width:0;flex:1">${esc(st.name)}</h1><button class="btn sm" id="bdset" aria-label="More"><i class="ti ti-dots"></i></button></div>
-    <div id="bds"></div><div class="chips" id="bdf"></div><div id="bdc"><div class="muted" style="padding:16px 4px">Loading the cards ...</div></div>`;
+    <div id="bds"></div><div class="bar" style="margin-bottom:8px"><input class="grow" id="bdcq" type="search" placeholder="Search this set: name, type, rarity, number" value="${esc(BD.cq || '')}"></div><div class="chips" id="bdf"></div><div id="bdc"><div class="muted" style="padding:16px 4px">Loading the cards ...</div></div>`;
   $('#bdb').onclick = () => { BD.set = null; viewBinder() };
   let cards = [];
   if(SRC(g) && !st.local){ try{ cards = await bdLoad('cards', g + '|' + st.code, () => SRC(g).cards(st)) }catch(e){ toast(`Could not load the cards of ${st.name}: ${e.message}`, true) } }
@@ -2795,11 +2801,11 @@ async function binderSet(){
     $('#bdf').innerHTML = [['all', 'All'], ['have', 'I have'], ['miss', 'Missing'], ['want', 'Wanted']].map(([k, l]) => `<button class="chip ${BD.filter === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')
       + (ed1Set ? `<button class="chip ${BD.ed1 ? 'on' : ''}" id="bded1" title="Tick off and add as 1st Edition">1st Ed</button>` : '')
       + `<button class="chip ${BD.tick ? 'on' : ''}" id="bdtick" style="margin-left:auto"><i class="ti ti-checkbox"></i> Tick off</button>`;
-    const list = cards.filter(c => BD.filter === 'all' || (BD.filter === 'want' ? isWant(c) : (BD.filter === 'have') === !!has(c)));
+    const list = cards.filter(c => (BD.filter === 'all' || (BD.filter === 'want' ? isWant(c) : (BD.filter === 'have') === !!has(c))) && cardMatch(c, BD.cq || ''));
     $('#bdc').innerHTML = list.length ? `<div class="bcards">${list.map((c, i) => { const q = om.get(c.set + '|' + c.number) || 0;
       const dq = dm.get(c.set + '|' + c.number) || 0, eq = E || sep ? 0 : e1.get(c.set + '|' + c.number) || 0, im = E && c.img1e ? Object.assign({}, c, {image:c.img1e}) : S && c.imgsh ? Object.assign({}, c, {image:c.imgsh}) : c;
       return `<button class="bcard ${q || dq ? '' : 'miss'}" data-i="${cards.indexOf(c)}" title="${esc(c.name)}">${im.image ? pic(im, 'loading="lazy"') : ''}${q ? `<span class="q">${q}</span>` : ''}${dq ? `<span class="dq" title="Digital: ${dq}">D${dq > 1 ? dq : ''}</span>` : ''}${eq ? `<span class="eq" title="1st Edition: ${eq}">1st${eq > 1 ? ' ×' + eq : ''}</span>` : ''}${isWant(c) ? '<span class="bflag"><i class="ti ti-heart-filled"></i></span>' : own.some(o => o.number === c.number && o.trade) ? '<span class="bflag"><i class="ti ti-arrows-exchange"></i></span>' : ''}<span class="nm">${esc(c.name)}</span><span class="no">${esc(c.showNum)}</span></button>` }).join('')}</div>`
-      : `<div class="empty">${BD.filter === 'want' ? 'No cards from this set on your wishlist. Tap a card and choose “Want this”.' : BD.filter === 'have' ? 'You have no cards from this set yet.' : BD.filter === 'miss' ? 'Complete! You have every card in this set.' : 'No cards in this set.'}</div>`;
+      : `<div class="empty">${BD.cq ? `No cards in this set match “${esc(BD.cq)}”.` : BD.filter === 'want' ? 'No cards from this set on your wishlist. Tap a card and choose “Want this”.' : BD.filter === 'have' ? 'You have no cards from this set yet.' : BD.filter === 'miss' ? 'Complete! You have every card in this set.' : 'No cards in this set.'}</div>`;
     $$('#bdf .chip').forEach(b => b.onclick = () => { BD.filter = b.dataset.f; draw() });
     if($('#bded1')) $('#bded1').onclick = () => { BD.ed1 = !BD.ed1; toast(BD.ed1 ? 'Tick off adds 1st Edition copies now' : 'Tick off adds normal copies'); draw() };
     $('#bdtick').onclick = () => { BD.tick = !BD.tick; if(BD.tick) toast('Tick off: tap a card you have to add it, tap again to take it off'); draw() };
@@ -2814,7 +2820,7 @@ async function binderSet(){
       const c = !q && store.cards.find(x => x.key === ckey(m, false));
       if(c && priceOf(c) == null && canPrice(c)){ await priceOne(c); persist(); draw() } });
   };
-  draw();
+  draw(); let tq; $('#bdcq').oninput = e => { clearTimeout(tq); tq = setTimeout(() => { BD.cq = e.target.value; draw() }, 150) };
 }
 /* ---------------------------------------------------------------- big picture and card details
    Tap a card picture: it opens full screen in high quality. "Details" shows the card's text (saved with the card, so it works offline). */
@@ -3246,7 +3252,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610111236';
+const BUILD = '202610111556';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }

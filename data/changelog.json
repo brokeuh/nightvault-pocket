@@ -3,6 +3,19 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 31,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Search in your binders",
+   "items": [
+    "Inside a binder set: a search box for name, type, rarity or number. Several words narrow it down, like “mage spell” or “fire rare”.",
+    "On a game's set list the search box now also finds your own cards by name or type - tap one to open it."
+   ]
+  },
+  {
    "id": 30,
    "date": "2026-10-11",
    "where": [
