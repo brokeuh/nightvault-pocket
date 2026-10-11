@@ -790,6 +790,16 @@ function hsBest(F, hi, lo, maxD){ const seen = new Set(); let best = [];
     for(const i of F.B[c][v]){ if(seen.has(i)) continue; seen.add(i); const d = pop32((F.hi[i] ^ hi) >>> 0) + pop32((F.lo[i] ^ lo) >>> 0); if(d <= maxD) best.push([d, i]) } }
   return best.sort((a, b) => a[0] - b[0]).slice(0, 12) }
 function hsColDist(F, i, col){ let s = 0; for(let k = 0; k < 48; k++) s += Math.abs(F.col[i * 48 + k] - col[k]); return s / 48 }
+/* the "x2" badge under a card you have twice: compared with a 24x14 picture of the badge from a real screenshot */
+const HS_BADGE = (() => { const t = [46,46,49,56,68,66,67,67,66,65,65,64,64,65,65,65,64,66,68,67,49,48,49,46,71,72,71,70,107,109,108,108,109,109,108,107,107,108,105,106,110,110,111,111,73,70,71,68,86,86,85,82,125,130,129,129,129,128,127,127,128,90,64,59,96,133,133,132,87,84,85,81,99,97,96,94,144,150,150,106,85,91,117,96,126,77,140,72,72,148,154,153,102,97,98,94,107,105,104,103,158,163,161,150,77,80,102,146,132,72,123,82,91,167,168,167,111,106,106,100,112,111,110,109,167,171,168,170,105,78,104,175,174,133,128,89,161,179,179,177,117,112,111,104,118,117,115,114,175,180,180,152,127,101,83,163,183,140,91,136,117,188,188,185,123,117,118,114,121,120,118,113,178,188,180,96,159,117,84,102,182,86,84,84,100,195,193,190,128,122,122,118,124,121,120,115,178,193,193,187,192,189,187,188,195,191,191,192,182,200,200,193,126,125,125,122,127,122,123,119,135,175,196,198,198,198,199,199,201,201,201,201,203,203,198,151,124,128,127,124,148,119,124,124,124,124,143,168,190,199,201,202,202,202,203,203,199,174,137,126,128,130,129,137,192,163,126,124,125,127,127,124,126,144,170,186,186,180,171,154,134,126,129,129,129,129,138,186,194,195,185,157,134,127,127,126,125,124,125,126,127,126,127,128,132,131,130,130,143,166,192,200,195,198,198,198,193,171,154,137,129,128,128,128,128,128,130,131,134,140,155,178,197,199,199,198], m = t.reduce((a, b) => a + b, 0) / t.length, sd = Math.sqrt(t.reduce((a, b) => a + (b - m) ** 2, 0)); return t.map(v => (v - m) / sd) })();
+function hsBadge(S, x, y, H){ let best = -1; const cx = x + H * 128 / 388;
+  for(const s of [0.9, 1, 1.1]){ const tw = 0.2 * H * s, th = 0.116 * H * s, st = Math.max(1, th / 10);
+    for(let ty = y + 0.85 * H; ty <= y + 0.99 * H; ty += st) for(let tx = cx - tw / 2 - 0.05 * H; tx <= cx - tw / 2 + 0.05 * H; tx += st){
+      if(tx < 0 || ty < 0 || tx + tw > S.w || ty + th > S.h) continue; const v = [];
+      for(let r = 0; r < 14; r++) for(let c = 0; c < 24; c++) v.push(hsMean(S, 0, tx + c * tw / 24, ty + r * th / 14, tx + (c + 1) * tw / 24, ty + (r + 1) * th / 14));
+      const m = v.reduce((a, b) => a + b, 0) / v.length, sd = Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0)) || 1; let ncc = 0; for(let i = 0; i < v.length; i++) ncc += HS_BADGE[i] * (v[i] - m) / sd;
+      if(ncc > best) best = ncc } }
+  return best }
 async function hsReadShot(file, F, hint){
   const bmp = await createImageBitmap(file), k = Math.min(1, 900 / bmp.height), w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);
   const cv = Object.assign(document.createElement('canvas'), {width:w, height:h}), cx = cv.getContext('2d', {willReadFrequently:true}); cx.drawImage(bmp, 0, 0, w, h);
@@ -820,9 +830,10 @@ async function hsReadShot(file, F, hint){
     for(const [d, i] of best.b.filter(z => z[0] <= best.d + 3)){ const cd = hsColDist(F, i, col), sc = d * 4 + cd; if(!pick || sc < pick.sc) pick = {i, d, cd, sc} }
     if(!pick || !(pick.d <= 5 || (pick.d <= 9 && pick.cd <= 22))) continue;          // sure enough: close pattern, or a fairly close pattern with the same colours
     const W = best.H * 256 / 388, fx = F.frame, fr = [1, 2, 3].map(ch => hsMean(S, ch, best.x + fx[0] * W, best.y + fx[1] * best.H, best.x + fx[2] * W, best.y + fx[3] * best.H));
-    const n0 = [0, 1, 2].map(c => F.fr[pick.i * 3 + c]), gold = (fr[0] + fr[1]) / 2 - fr[2] > 55 && (fr[0] + fr[1]) / 2 > (n0[0] + n0[1]) / 2 + 35;
+    const n0 = [0, 1, 2].map(c => F.fr[pick.i * 3 + c]), gold = fr[2] < fr[0] * 0.75 && fr[1] > fr[0] * 0.78 && fr[1] > n0[1] + 20;   // golden frame: yellow, clearly more than the normal frame
     const alts = []; for(const [, i] of best.b) if(F.hi[i] === F.hi[pick.i] && F.lo[i] === F.lo[pick.i] && i !== pick.i) alts.push(F.ids[i]);   // the same art (reprints)
-    cards.push({alts, dbf:F.ids[pick.i], d:pick.d, cd:Math.round(pick.cd), gold, box:box(best.x, best.y, best.H), H:best.H / h}) }
+    const badge = hsBadge(S, best.x, best.y, best.H);
+    cards.push({alts, badge:Math.round(badge * 100) / 100, n:badge > 0.55 ? 2 : 1, dbf:F.ids[pick.i], d:pick.d, cd:Math.round(pick.cd), gold, box:box(best.x, best.y, best.H), H:best.H / h}) }
   const Hs = cards.map(c => c.H).sort((a, b) => a - b), med = Hs[Hs.length >> 1];
   return {cards:cards.filter(c => Math.abs(c.H - med) / med < 0.12).sort((a, b) => (a.box[1] - b.box[1]) > med * h * 0.5 ? 1 : (b.box[1] - a.box[1]) > med * h * 0.5 ? -1 : a.box[0] - b.box[0]), scale:med} }
 function hsShots(done){
@@ -835,16 +846,17 @@ function hsShots(done){
       let r; try{ r = await hsReadShot(f, F, hint) }catch(e){ none++; continue }
       if(!r.cards.length && hint){ try{ r = await hsReadShot(f, F, null) }catch(e){} }
       if(!r.cards.length){ none++; continue } hint = r.scale;
-      // reprints with the same art: the craftable print, not the free Core one
-      for(const c of r.cards){ let row = by.get(c.dbf); if(row && (d.sets[row[0]] || {}).nocraft){ const alt = c.alts.map(x => by.get(x)).find(x => x && !(d.sets[x[0]] || {}).nocraft); if(alt){ row = alt; c.dbf = alt[4] } } if(!row) continue; const k = c.dbf + (c.gold ? 'g' : ''), e = hits.get(k);
-        if(e) e.seen++; else hits.set(k, {m:hsMap(d, row), gold:c.gold, n:1, seen:1}) } }
+      // reprints with the same art: always the same print - the newest set where it can be crafted
+      for(const c of r.cards){ const opts = [c.dbf, ...c.alts].map(x => by.get(x)).filter(Boolean), ok = x => !(d.sets[x[0]] || {}).nocraft && x[3] !== 'Free';
+        let row = opts.filter(ok).sort((a, b) => a[0] - b[0])[0] || opts.sort((a, b) => a[0] - b[0])[0]; if(row) c.dbf = row[4]; if(!row) continue; const k = c.dbf + (c.gold ? 'g' : ''), e = hits.get(k);
+        const n = row[3] === 'Legendary' ? 1 : c.n; if(e){ e.seen++; e.n = Math.max(e.n, n) } else hits.set(k, {m:hsMap(d, row), gold:c.gold, n, seen:1}) } }
     hsReview([...hits.values()], files.length, none, done) };
   inp.click() }
 function hsReview(list, nf, none, done){
   if(!list.length){ modal(`<h3>No cards found</h3><p>${nf === 1 ? 'The screenshot' : 'The screenshots'} did not show cards the app recognises.</p><p class="hint">Take screenshots of the <b>Collection</b> in Hearthstone, with the whole page of cards on screen and no card zoomed in.</p><div class="btns" style="justify-content:flex-end"><button class="btn primary" onclick="closeModal()">OK</button></div>`); return }
   const owned = m => { const c = store.cards.find(x => x.key === ckey(m, false)), g = store.cards.find(x => x.key === ckey(m, true)); return [(c || {}).qty || 0, (g || {}).qty || 0] };
   const draw = () => {
-    modal(`<h3>${list.length} card${list.length === 1 ? '' : 's'} found</h3><p class="hint" style="margin-top:0">${nf} screenshot${nf === 1 ? '' : 's'}${none ? `, ${none} without cards` : ''}. Check the list: set ×2 for cards you have twice and tap the star for golden copies. Cards you already have are only raised to this number, never doubled.</p>
+    modal(`<h3>${list.length} card${list.length === 1 ? '' : 's'} found</h3><p class="hint" style="margin-top:0">${nf} screenshot${nf === 1 ? '' : 's'}${none ? `, ${none} without cards` : ''}. Check the list: the number and the star (golden) can be changed. Cards you already have are only raised to this number, never doubled.</p>
       <div class="slist" style="max-height:52vh;overflow:auto">${list.map((x, i) => { const [q, qg] = owned(x.m);
         return `<div class="srow">${pic(x.m, 'loading="lazy"')}<div class="grow"><div class="nm">${esc(x.m.name)}</div><div class="meta">${esc(x.m.setName)}${x.m.rarity ? ' · ' + esc(x.m.rarity) : ''}${q || qg ? ` · <span style="color:var(--green)">you have ${q}${qg ? ' + ' + qg + ' golden' : ''}</span>` : ''}</div></div>
           <button class="btn sm ${x.gold ? 'on' : ''}" data-hg="${i}" aria-label="Golden" title="Golden"><i class="ti ti-star${x.gold ? '-filled' : ''}"></i></button>
@@ -3215,7 +3227,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610111108';
+const BUILD = '202610111117';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
