@@ -1,0 +1,95 @@
+# Makes data/hearthstone.json (and data/text/hearthstone.json) once a week from HearthstoneJSON (hearthstonejson.com),
+# the free card database of every collectible Hearthstone card. Hearthstone is digital only: no prices, dust instead.
+name: Update Hearthstone cards
+
+on:
+  schedule:
+    - cron: "17 6 * * 3"       # Wednesdays (new cards usually arrive on a Tuesday)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hearthstone:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build the card file
+        run: |
+          python3 - <<'PYEOF'
+          import datetime, json, os, re, time, urllib.request
+          def get(url, tries=3):
+              req = urllib.request.Request(url, headers={"User-Agent": "nightvault-pocket (personal card collection app, once a week)"})
+              for a in range(tries):
+                  try:
+                      with urllib.request.urlopen(req, timeout=180) as r:
+                          return json.load(r)
+                  except Exception as e:
+                      if a == tries - 1: raise
+                      time.sleep(5 * (a + 1))
+          NAMES = {"CORE": ("Core", ""), "LEGACY": ("Legacy", "2014"), "BASIC": ("Basic", "2014"), "EXPERT1": ("Classic (Legacy)", "2014"), "HOF": ("Hall of Fame", "2014"),
+            "VANILLA": ("Classic", "2021"), "NAXX": ("Curse of Naxxramas", "2014"), "GVG": ("Goblins vs Gnomes", "2014"), "BRM": ("Blackrock Mountain", "2015"),
+            "TGT": ("The Grand Tournament", "2015"), "LOE": ("League of Explorers", "2015"), "OG": ("Whispers of the Old Gods", "2016"), "KARA": ("One Night in Karazhan", "2016"),
+            "GANGS": ("Mean Streets of Gadgetzan", "2016"), "UNGORO": ("Journey to Un'Goro", "2017"), "ICECROWN": ("Knights of the Frozen Throne", "2017"),
+            "LOOTAPALOOZA": ("Kobolds & Catacombs", "2017"), "GILNEAS": ("The Witchwood", "2018"), "BOOMSDAY": ("The Boomsday Project", "2018"),
+            "TROLL": ("Rastakhan's Rumble", "2018"), "DALARAN": ("Rise of Shadows", "2019"), "ULDUM": ("Saviors of Uldum", "2019"), "DRAGONS": ("Descent of Dragons", "2019"),
+            "YEAR_OF_THE_DRAGON": ("Galakrond's Awakening", "2020"), "DEMON_HUNTER_INITIATE": ("Demon Hunter Initiate", "2020"), "BLACK_TEMPLE": ("Ashes of Outland", "2020"),
+            "SCHOLOMANCE": ("Scholomance Academy", "2020"), "DARKMOON_FAIRE": ("Madness at the Darkmoon Faire", "2020"), "THE_BARRENS": ("Forged in the Barrens", "2021"),
+            "STORMWIND": ("United in Stormwind", "2021"), "ALTERAC_VALLEY": ("Fractured in Alterac Valley", "2021"), "THE_SUNKEN_CITY": ("Voyage to the Sunken City", "2022"),
+            "REVENDRETH": ("Murder at Castle Nathria", "2022"), "PATH_OF_ARTHAS": ("Path of Arthas", "2022"), "RETURN_OF_THE_LICH_KING": ("March of the Lich King", "2022"),
+            "WONDERS": ("Caverns of Time", "2023"), "BATTLE_OF_THE_BANDS": ("Festival of Legends", "2023"), "TITANS": ("TITANS", "2023"), "WILD_WEST": ("Showdown in the Badlands", "2023"),
+            "EVENT": ("Event", ""), "WHIZBANGS_WORKSHOP": ("Whizbang's Workshop", "2024"), "ISLAND_VACATION": ("Perils in Paradise", "2024"), "SPACE": ("The Great Dark Beyond", "2024"),
+            "EMERALD_DREAM": ("Into the Emerald Dream", "2025"), "THE_LOST_CITY": ("The Lost City of Un'Goro", "2025"), "TIME_TRAVEL": ("Across the Timeways", "2025")}
+          SKIP_SETS = {"HERO_SKINS", "LETTUCE", "BATTLEGROUNDS", "TB", "CREDITS", "MISSIONS", "CHEAT", "PLACEHOLDER_202204"}
+          TYPES = {"MINION": "Minion", "SPELL": "Spell", "WEAPON": "Weapon", "HERO": "Hero", "LOCATION": "Location"}
+          NOCRAFT = {"CORE", "BASIC", "DEMON_HUNTER_INITIATE"}            # free cards: cannot be crafted or disenchanted
+          CLASSES = {"DEATHKNIGHT": "Death Knight", "DEMONHUNTER": "Demon Hunter", "DRUID": "Druid", "HUNTER": "Hunter", "MAGE": "Mage", "PALADIN": "Paladin",
+                     "PRIEST": "Priest", "ROGUE": "Rogue", "SHAMAN": "Shaman", "WARLOCK": "Warlock", "WARRIOR": "Warrior", "NEUTRAL": "Neutral"}
+          ORDER = list(CLASSES)
+          def plain(t):
+              t = re.sub(r"<[^>]+>", "", str(t or "")).replace("[x]", "").replace("$", "").replace("#", "").replace("\\n", "\n")
+              return re.sub(r"_", " ", re.sub(r"[ \t]+", " ", t)).strip()
+          cards = get("https://api.hearthstonejson.com/v1/latest/enUS/cards.collectible.json")
+          allc = get("https://api.hearthstonejson.com/v1/latest/enUS/cards.json")
+          heroes = {}
+          for c in allc:                                                 # the basic heroes, for Hearthstone deck codes
+              m = re.fullmatch(r"HERO_(\d\d)", c.get("id") or "")
+              if m and c.get("cardClass") in CLASSES and c["cardClass"] not in heroes:
+                  heroes[CLASSES[c["cardClass"]]] = c["dbfId"]
+          print("heroes", heroes)
+          keep = [c for c in cards if c.get("set") not in SKIP_SETS and c.get("type") in TYPES and c.get("name")]
+          bys = {}
+          for c in keep: bys.setdefault(c["set"], []).append(c)
+          order = sorted(bys, key=lambda s: min(c["dbfId"] for c in bys[s]), reverse=True)    # newest set first
+          sets, rows, texts = [], [], {}
+          for s in order:
+              nm, yr = NAMES.get(s, (s.replace("_", " ").title(), ""))
+              lst = sorted(bys[s], key=lambda c: (ORDER.index(c.get("cardClass", "NEUTRAL")) if c.get("cardClass") in ORDER else 99, c.get("cost", 0), c["name"]))
+              i = len(sets)
+              sets.append({"code": s.lower(), "name": nm, "released": yr, "total": len(lst), **({"nocraft": True} if s in NOCRAFT else {})})
+              for k, c in enumerate(lst):
+                  cls = [CLASSES.get(x, x.title()) for x in (c.get("classes") or [c.get("cardClass", "NEUTRAL")])]
+                  rar = (c.get("rarity") or "").title()
+                  rows.append([i, k, c["name"], rar, c["dbfId"], c["id"], cls, c.get("cost"), TYPES[c["type"]], c.get("attack"), c.get("health", c.get("durability")),
+                               (c.get("race") or (c.get("races") or [""])[0] or c.get("spellSchool") or "").title().replace("_", " ")])
+                  t = plain(c.get("text"))
+                  typ = " · ".join(x for x in [" / ".join(cls), TYPES[c["type"]], rows[-1][11]] if x)
+                  if t or c.get("flavor"):
+                      texts[str(c["dbfId"])] = [typ, t, plain(c.get("flavor")), c.get("artist") or ""]
+          print(len(sets), "sets,", len(rows), "cards")
+          if len(rows) < 1000:
+              raise SystemExit("Too few cards - keeping the old file")
+          os.makedirs("data/text", exist_ok=True)
+          with open("data/hearthstone.json", "w", encoding="utf-8") as f:
+              json.dump({"updated": datetime.date.today().isoformat(), "game": "hearthstone", "source": "HearthstoneJSON", "heroes": heroes,
+                         "imgBase": "https://art.hearthstonejson.com/v1/render/latest/enUS/256x/{}.png", "sets": sets, "cards": rows}, f, separators=(",", ":"), ensure_ascii=False)
+          with open("data/text/hearthstone.json", "w", encoding="utf-8") as f:
+              json.dump(texts, f, separators=(",", ":"), ensure_ascii=False)
+          PYEOF
+      - name: Save
+        run: |
+          git config user.name "card-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/hearthstone.json data/text/hearthstone.json
+          if git diff --cached --quiet; then echo "Nothing changed."; else git commit -m "Update Hearthstone cards"; git pull --rebase -q || true; git push; fi
