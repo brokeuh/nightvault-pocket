@@ -759,6 +759,103 @@ async function hsDeckPaste(d, then){
     const hero = dc.heroes[0], hc = Object.entries(Object.assign({}, HS_HEROES, _hsData.heroes || {})).find(([, id]) => id === hero); if(hc) d.hsClass = hc[0];
     for(const [id, n] of dc.cards){ const m = by.get(id); if(m){ deckAdd(d, m, n, false); ok += n } else miss += n }
     closeModal(); then(); toast(`${ok} card${ok === 1 ? '' : 's'} added${miss ? ` · ${miss} not found (the card list may be a few days old)` : ''}`, !!miss) } }
+/* Reading Hearthstone collection screenshots: every card picture is the same everywhere, so each card on a screenshot is found by
+   comparing a fingerprint of its art (a 64-bit brightness pattern + a 4x4 colour grid) with data/hs-fp.json (made by .github/workflows/hs-fingerprints.yml). */
+let _hsfp = null;
+function hsFpData(){ if(!_hsfp) _hsfp = (async () => { const j = await firstJSON(['data/hs-fp.json']); if(!j || !j.cards) { _hsfp = null; throw new Error('The Hearthstone card fingerprints are not ready yet - try again later') }
+    const ids = Object.keys(j.cards), n = ids.length, hi = new Uint32Array(n), lo = new Uint32Array(n), col = new Uint8Array(n * 48), fr = new Uint8Array(n * 3), B = [...Array(8)].map(() => [...Array(256)].map(() => []));
+    ids.forEach((id, i) => { const s = j.cards[id]; hi[i] = parseInt(s.slice(0, 8), 16) >>> 0; lo[i] = parseInt(s.slice(8, 16), 16) >>> 0;
+      const b = atob(s.slice(16)); for(let k = 0; k < 48; k++) col[i * 48 + k] = b.charCodeAt(k); for(let k = 0; k < 3; k++) fr[i * 3 + k] = b.charCodeAt(48 + k);
+      for(let c = 0; c < 4; c++){ B[c][(hi[i] >>> (24 - 8 * c)) & 255].push(i); B[4 + c][(lo[i] >>> (24 - 8 * c)) & 255].push(i) } });
+    return {ids:ids.map(Number), hi, lo, col, fr, B, art:j.art, frame:j.frame} })();
+  return _hsfp }
+const pop32 = x => { x -= (x >>> 1) & 0x55555555; x = (x & 0x33333333) + ((x >>> 2) & 0x33333333); return (((x + (x >>> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24 };
+function hsIntegral(img){ const {width:w, height:h, data:p} = img, W = w + 1, I = [0, 1, 2, 3].map(() => new Float64Array(W * (h + 1)));
+  for(let y = 0; y < h; y++){ let s0 = 0, s1 = 0, s2 = 0, s3 = 0; const o = (y + 1) * W, u = y * W;
+    for(let x = 0; x < w; x++){ const i = (y * w + x) * 4, r = p[i], g = p[i + 1], b = p[i + 2]; s0 += 0.299 * r + 0.587 * g + 0.114 * b; s1 += r; s2 += g; s3 += b;
+      I[0][o + x + 1] = I[0][u + x + 1] + s0; I[1][o + x + 1] = I[1][u + x + 1] + s1; I[2][o + x + 1] = I[2][u + x + 1] + s2; I[3][o + x + 1] = I[3][u + x + 1] + s3 } }
+  return {w, h, W, I} }
+function hsMean(S, c, x0, y0, x1, y1){ x0 = Math.max(0, Math.round(x0)); y0 = Math.max(0, Math.round(y0)); x1 = Math.min(S.w, Math.max(x0 + 1, Math.round(x1))); y1 = Math.min(S.h, Math.max(y0 + 1, Math.round(y1)));
+  const I = S.I[c], W = S.W; return (I[y1 * W + x1] - I[y0 * W + x1] - I[y1 * W + x0] + I[y0 * W + x0]) / ((x1 - x0) * (y1 - y0)) }
+function hsFeat(S, F, x, y, H){ const W = H * 256 / 388, a = F.art, ax = x + a[0] * W, ay = y + a[1] * H, aw = (a[2] - a[0]) * W, ah = (a[3] - a[1]) * H;
+  if(ax < 0 || ay < 0 || ax + aw > S.w || ay + ah > S.h) return null;
+  const g = []; for(let r = 0; r < 8; r++) for(let c = 0; c < 9; c++) g.push(hsMean(S, 0, ax + c * aw / 9, ay + r * ah / 8, ax + (c + 1) * aw / 9, ay + (r + 1) * ah / 8));
+  let hi = 0, lo = 0; for(let r = 0; r < 8; r++) for(let c = 0; c < 8; c++){ const bit = g[r * 9 + c] > g[r * 9 + c + 1] ? 1 : 0; if(r < 4) hi = ((hi << 1) | bit) >>> 0; else lo = ((lo << 1) | bit) >>> 0 }
+  return {hi, lo, ax, ay, aw, ah} }
+function hsColor(S, f){ const o = new Float64Array(48); let k = 0;
+  for(let r = 0; r < 4; r++) for(let c = 0; c < 4; c++) for(let ch = 1; ch <= 3; ch++) o[k++] = hsMean(S, ch, f.ax + c * f.aw / 4, f.ay + r * f.ah / 4, f.ax + (c + 1) * f.aw / 4, f.ay + (r + 1) * f.ah / 4);
+  return o }
+function hsBest(F, hi, lo, maxD){ const seen = new Set(); let best = [];
+  for(let c = 0; c < 8; c++){ const v = c < 4 ? (hi >>> (24 - 8 * c)) & 255 : (lo >>> (24 - 8 * (c - 4))) & 255;
+    for(const i of F.B[c][v]){ if(seen.has(i)) continue; seen.add(i); const d = pop32((F.hi[i] ^ hi) >>> 0) + pop32((F.lo[i] ^ lo) >>> 0); if(d <= maxD) best.push([d, i]) } }
+  return best.sort((a, b) => a[0] - b[0]).slice(0, 12) }
+function hsColDist(F, i, col){ let s = 0; for(let k = 0; k < 48; k++) s += Math.abs(F.col[i * 48 + k] - col[k]); return s / 48 }
+async function hsReadShot(file, F, hint){
+  const bmp = await createImageBitmap(file), k = Math.min(1, 900 / bmp.height), w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);
+  const cv = Object.assign(document.createElement('canvas'), {width:w, height:h}), cx = cv.getContext('2d', {willReadFrequently:true}); cx.drawImage(bmp, 0, 0, w, h);
+  const img = cx.getImageData(0, 0, w, h), S = hsIntegral(img), found = [], px = img.data;
+  /* 1. every card has a blue mana gem at the top left (x 5.5-13.5 %, y 13-24 % of the card picture): find blue blobs */
+  const blue = new Uint8Array(w * h); for(let i = 0, n = w * h; i < n; i++){ const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2]; blue[i] = b > 110 && b > r + 40 && b > g + 5 ? 1 : 0 }
+  const lab = new Int32Array(w * h), blobs = []; let L = 0;
+  for(let i0 = 0; i0 < w * h; i0++){ if(!blue[i0] || lab[i0]) continue; L++; const st = [i0]; lab[i0] = L; let x0 = w, x1 = 0, y0 = h, y1 = 0, n = 0;
+    while(st.length){ const i = st.pop(), x = i % w, y = (i / w) | 0; n++; if(x < x0) x0 = x; if(x > x1) x1 = x; if(y < y0) y0 = y; if(y > y1) y1 = y;
+      for(const j of [i - 1, i + 1, i - w, i + w]) if(j >= 0 && j < w * h && blue[j] && !lab[j] && Math.abs((j % w) - x) <= 1){ lab[j] = L; st.push(j) } }
+    const bh = y1 - y0 + 1; if(bh >= h * 0.02 && bh <= h * 0.14 && n >= 12) blobs.push([x0, y0, bh]) }
+  /* 2. around each gem: the card size and spot whose art fingerprint matches a card best */
+  for(const [bx, by, bh] of blobs){ const H0 = bh / 0.106; if(hint && Math.abs(H0 / h - hint) / hint > 0.3) continue;
+    for(const s of hint ? [0.97, 1, 1.03].map(k => k * hint * h / H0) : [0.86, 0.9, 0.94, 0.98, 1.02, 1.06, 1.1, 1.15]){ const H = H0 * s, W = H * 256 / 388, st = Math.max(1, H * 0.008);
+      const cx0 = bx - 0.055 * W, cy0 = by - 0.131 * H;
+      for(let dy = -6; dy <= 6; dy++) for(let dx = -6; dx <= 6; dx++){ const x = cx0 + dx * st, y = cy0 + dy * st, f = hsFeat(S, F, x, y, H); if(!f) continue;
+        const b = hsBest(F, f.hi, f.lo, 12); if(b.length) found.push([b[0][0], x, y, H]) } }
+    await sleep(0) }
+  found.sort((a, b) => a[0] - b[0]);
+  const box = (x, y, H) => [x + 0.08 * H * 0.66, y + 0.05 * H, x + 0.92 * H * 0.66, y + 0.95 * H], iou = (a, b) => { const ix = Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])), iy = Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1])), I = ix * iy; return I / ((a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - I) };
+  const cards = [];
+  for(const [d0, x0, y0, H0] of found){ if(cards.some(c => iou(c.box, box(x0, y0, H0)) > 0.2)) continue;
+    let best = null; const st = Math.max(1, H0 * 0.015);                       // fine search around the rough spot
+    for(const s of [0.97, 1, 1.03]) for(let dy = -3; dy <= 3; dy++) for(let dx = -3; dx <= 3; dx++){ const H = H0 * s, x = x0 + dx * st, y = y0 + dy * st, f = hsFeat(S, F, x, y, H); if(!f) continue;
+      const b = hsBest(F, f.hi, f.lo, 12); if(b.length && (!best || b[0][0] < best.d)) best = {d:b[0][0], b, f, x, y, H} }
+    if(!best || best.d > 9) continue;
+    const col = hsColor(S, best.f); let pick = null;
+    for(const [d, i] of best.b.filter(z => z[0] <= best.d + 3)){ const cd = hsColDist(F, i, col), sc = d * 4 + cd; if(!pick || sc < pick.sc) pick = {i, d, cd, sc} }
+    if(!pick || !(pick.d <= 5 || (pick.d <= 9 && pick.cd <= 22))) continue;          // sure enough: close pattern, or a fairly close pattern with the same colours
+    const W = best.H * 256 / 388, fx = F.frame, fr = [1, 2, 3].map(ch => hsMean(S, ch, best.x + fx[0] * W, best.y + fx[1] * best.H, best.x + fx[2] * W, best.y + fx[3] * best.H));
+    const n0 = [0, 1, 2].map(c => F.fr[pick.i * 3 + c]), gold = (fr[0] + fr[1]) / 2 - fr[2] > 55 && (fr[0] + fr[1]) / 2 > (n0[0] + n0[1]) / 2 + 35;
+    const alts = []; for(const [, i] of best.b) if(F.hi[i] === F.hi[pick.i] && F.lo[i] === F.lo[pick.i] && i !== pick.i) alts.push(F.ids[i]);   // the same art (reprints)
+    cards.push({alts, dbf:F.ids[pick.i], d:pick.d, cd:Math.round(pick.cd), gold, box:box(best.x, best.y, best.H), H:best.H / h}) }
+  const Hs = cards.map(c => c.H).sort((a, b) => a - b), med = Hs[Hs.length >> 1];
+  return {cards:cards.filter(c => Math.abs(c.H - med) / med < 0.12).sort((a, b) => (a.box[1] - b.box[1]) > med * h * 0.5 ? 1 : (b.box[1] - a.box[1]) > med * h * 0.5 ? -1 : a.box[0] - b.box[0]), scale:med} }
+function hsShots(done){
+  const inp = Object.assign(document.createElement('input'), {type:'file', accept:'image/*', multiple:true});
+  inp.onchange = async () => { const files = [...inp.files]; if(!files.length) return;
+    modal(`<h3>Reading screenshots</h3><p class="hint" id="hsst" style="margin-top:0">Loading the card fingerprints ...</p>`);
+    let F, d; try{ [F, d] = await Promise.all([hsFpData(), hsData()]) }catch(e){ closeModal(); return toast(e.message, true) }
+    const by = new Map(d.cards.map(r => [r[4], r])), hits = new Map(); let hint = null, i = 0, none = 0;
+    for(const f of files){ i++; if($('#hsst')) $('#hsst').textContent = `Screenshot ${i} of ${files.length} ...`;
+      let r; try{ r = await hsReadShot(f, F, hint) }catch(e){ none++; continue }
+      if(!r.cards.length && hint){ try{ r = await hsReadShot(f, F, null) }catch(e){} }
+      if(!r.cards.length){ none++; continue } hint = r.scale;
+      // reprints with the same art: the craftable print, not the free Core one
+      for(const c of r.cards){ let row = by.get(c.dbf); if(row && (d.sets[row[0]] || {}).nocraft){ const alt = c.alts.map(x => by.get(x)).find(x => x && !(d.sets[x[0]] || {}).nocraft); if(alt){ row = alt; c.dbf = alt[4] } } if(!row) continue; const k = c.dbf + (c.gold ? 'g' : ''), e = hits.get(k);
+        if(e) e.seen++; else hits.set(k, {m:hsMap(d, row), gold:c.gold, n:1, seen:1}) } }
+    hsReview([...hits.values()], files.length, none, done) };
+  inp.click() }
+function hsReview(list, nf, none, done){
+  if(!list.length){ modal(`<h3>No cards found</h3><p>${nf === 1 ? 'The screenshot' : 'The screenshots'} did not show cards the app recognises.</p><p class="hint">Take screenshots of the <b>Collection</b> in Hearthstone, with the whole page of cards on screen and no card zoomed in.</p><div class="btns" style="justify-content:flex-end"><button class="btn primary" onclick="closeModal()">OK</button></div>`); return }
+  const owned = m => { const c = store.cards.find(x => x.key === ckey(m, false)), g = store.cards.find(x => x.key === ckey(m, true)); return [(c || {}).qty || 0, (g || {}).qty || 0] };
+  const draw = () => {
+    modal(`<h3>${list.length} card${list.length === 1 ? '' : 's'} found</h3><p class="hint" style="margin-top:0">${nf} screenshot${nf === 1 ? '' : 's'}${none ? `, ${none} without cards` : ''}. Check the list: set ×2 for cards you have twice and tap the star for golden copies. Cards you already have are only raised to this number, never doubled.</p>
+      <div class="slist" style="max-height:52vh;overflow:auto">${list.map((x, i) => { const [q, qg] = owned(x.m);
+        return `<div class="srow">${pic(x.m, 'loading="lazy"')}<div class="grow"><div class="nm">${esc(x.m.name)}</div><div class="meta">${esc(x.m.setName)}${x.m.rarity ? ' · ' + esc(x.m.rarity) : ''}${q || qg ? ` · <span style="color:var(--green)">you have ${q}${qg ? ' + ' + qg + ' golden' : ''}</span>` : ''}</div></div>
+          <button class="btn sm ${x.gold ? 'on' : ''}" data-hg="${i}" aria-label="Golden" title="Golden"><i class="ti ti-star${x.gold ? '-filled' : ''}"></i></button>
+          <div class="qb"><button data-hn="${i}" data-d="-1">−</button><b>${x.n}</b><button data-hn="${i}" data-d="1">+</button></div></div>` }).join('')}</div>
+      <div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="hsok"><i class="ti ti-check"></i>Add to my collection</button></div>`);
+    $$('.mbox [data-hg]').forEach(b => b.onclick = () => { const x = list[+b.dataset.hg]; x.gold = !x.gold; draw() });
+    $$('.mbox [data-hn]').forEach(b => b.onclick = () => { const x = list[+b.dataset.hn]; x.n = Math.max(0, Math.min(x.m.rarity === 'Legendary' ? 1 : 3, x.n + +b.dataset.d)); draw() });
+    $('#hsok').onclick = () => { snapshot('before reading Hearthstone screenshots'); BULK = true; let add = 0;
+      try{ for(const x of list){ if(!x.n) continue; const c = store.cards.find(y => y.key === ckey(x.m, x.gold)), have = (c || {}).qty || 0; if(x.n > have){ addCard(x.m, x.gold, x.n - have); add += x.n - have } if(isWant(x.m)) toggleWant(x.m) } } finally { BULK = false }
+      persist(); tabCount(); closeModal(); toast(add ? `${add} card${add === 1 ? '' : 's'} added` : 'You already had all of these'); done && done() } };
+  draw() }
 /* CCG Trader (ccgtrader.net): 295 card games, old and new - sets, numbers, rarity and pictures, no prices.
    Its data service lets other websites read it, so the phone asks it directly. Set keys are CCG Trader's set ids (they never change). */
 const CCGT = 'https://api.ccgtrader.co.uk/_/items/', CCGT_BUILTIN = {wow:22, dbzccg:128, dbgt:127};
@@ -2568,11 +2665,12 @@ function binderGames(){
 async function binderSets(){
   const g = BD.game, own = ownedIn(g), om = ownedMap(g), cur = own[0] ? own[0].currency : 'EUR';
   const ownedSets = new Map(); for(const c of own){ const k = c.ed1 && g === 'pokemon' && ED1_SETS.has(String(c.set).toLowerCase()) ? c.set + '~1e' : c.sh && g === 'pokemon' && SH_SETS.has(String(c.set).toLowerCase()) ? c.set + '~sh' : c.set; const e = ownedSets.get(k) || {n:0, uniq:new Set(), name:c.setName || c.showSet, show:c.showSet}; e.n += c.qty; e.uniq.add(c.number); ownedSets.set(k, e) }
-  $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Games</button>${gameBadge(g, 'sm')}<h1 style="font-size:18px;flex:1">${esc(GAMES[g].label)}</h1><button class="btn sm" id="bdart" aria-label="Logo and picture for this game"><i class="ti ti-photo-edit"></i></button></div>
+  $('#main').innerHTML = `<div class="head"><button class="btn sm" id="bdb"><i class="ti ti-arrow-left"></i>Games</button>${gameBadge(g, 'sm')}<h1 style="font-size:18px;flex:1">${esc(GAMES[g].label)}</h1>${isHS(g) ? '<button class="btn sm" id="bdshot" title="Read Hearthstone screenshots"><i class="ti ti-screenshot"></i>Screenshots</button>' : ''}<button class="btn sm" id="bdart" aria-label="Logo and picture for this game"><i class="ti ti-photo-edit"></i></button></div>
     <div class="bstats"><div><b>${own.reduce((a, c) => a + c.qty, 0).toLocaleString()}</b><span>Cards</span></div><div><b>${ownedSets.size}</b><span>Sets</span></div><div><b>${isHS(g) ? dustFmt(own.reduce((a, c) => a + hsDust(c, c.foil) * c.qty, 0)) : fmt(valueOf(own), cur)}</b><span>${isHS(g) ? 'Crafting value' : 'Value'}</span></div></div>
     <div class="bar"><input class="grow" id="bdq" type="search" placeholder="Find a set" value="${esc(BD.q)}"><button class="btn" id="bdg" hidden></button></div><div id="bdl"><div class="muted" style="padding:16px 4px">Loading the sets ...</div></div>`;
   $('#bdb').onclick = () => { BD.game = null; BD.grp = 'all'; viewBinder() };
   $('#bdart').onclick = () => pickGameArt(g, () => binderSets());
+  if($('#bdshot')) $('#bdshot').onclick = () => hsShots(() => binderSets());
   let sets = [];
   if(SRC(g)){ try{ sets = await bdLoad('sets', g, SRC(g).list) }catch(e){ toast(`${GAMES[g].label} sets could not be loaded: ${e.message}`, true) } }
   const known = new Set(sets.map(x => x.code)); for(const [k, e] of ownedSets) if(!known.has(k) && !k.endsWith('~1e') && !k.endsWith('~sh')) sets.push({code:k, name:e.name, released:'', total:0, local:true});
@@ -3117,7 +3215,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610111045';
+const BUILD = '202610111108';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
@@ -3682,6 +3780,10 @@ function goBack(){
   if(VIEW !== startView()) show(startView());
 }
 window.addEventListener('popstate', () => { goBack(); navSync() });
+/* Android app: the back button steps back inside the app itself, without the browser history (that could lose track after
+   the big card picture closed, so back stopped closing the card window and the set) */
+if(NATIVE) try{ const A = _capP.App ||= Capacitor.registerPlugin('App');
+  A.addListener('backButton', () => { if(atRoot()) capCall('App', 'minimizeApp').catch(() => {}); else goBack() }) }catch(e){}
 new MutationObserver(navSync).observe($('#main'), {childList:true});
 new MutationObserver(navSync).observe($('#modal'), {childList:true});
 new MutationObserver(navSync).observe($('#viewer'), {childList:true});

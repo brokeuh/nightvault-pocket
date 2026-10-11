@@ -3,6 +3,19 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 27,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Read Hearthstone screenshots, back button fix",
+   "items": [
+    "Binder → Hearthstone → Screenshots: pick screenshots of your Collection in the Hearthstone app and the app recognises the cards on them (golden copies too). Check the list, set ×2 where needed, and add them. Reading the same page twice never doubles your cards.",
+    "Android: the back button now always steps back inside the app - big picture, then the card window, then the set list - also after you opened the big picture of a card."
+   ]
+  },
+  {
    "id": 26,
    "date": "2026-10-11",
    "where": [
