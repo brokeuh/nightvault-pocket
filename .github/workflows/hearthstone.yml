@@ -40,8 +40,9 @@ jobs:
             "REVENDRETH": ("Murder at Castle Nathria", "2022"), "PATH_OF_ARTHAS": ("Path of Arthas", "2022"), "RETURN_OF_THE_LICH_KING": ("March of the Lich King", "2022"),
             "WONDERS": ("Caverns of Time", "2023"), "BATTLE_OF_THE_BANDS": ("Festival of Legends", "2023"), "TITANS": ("TITANS", "2023"), "WILD_WEST": ("Showdown in the Badlands", "2023"),
             "EVENT": ("Event", ""), "WHIZBANGS_WORKSHOP": ("Whizbang's Workshop", "2024"), "ISLAND_VACATION": ("Perils in Paradise", "2024"), "SPACE": ("The Great Dark Beyond", "2024"),
-            "EMERALD_DREAM": ("Into the Emerald Dream", "2025"), "THE_LOST_CITY": ("The Lost City of Un'Goro", "2025"), "TIME_TRAVEL": ("Across the Timeways", "2025")}
-          SKIP_SETS = {"HERO_SKINS", "LETTUCE", "BATTLEGROUNDS", "TB", "CREDITS", "MISSIONS", "CHEAT", "PLACEHOLDER_202204"}
+            "EMERALD_DREAM": ("Into the Emerald Dream", "2025"), "THE_LOST_CITY": ("The Lost City of Un'Goro", "2025"), "TIME_TRAVEL": ("Across the Timeways", "2025"),
+            "CATACLYSM": ("Cataclysm", "2026"), "ESCAPEFROM_VIOLET_HOLD": ("Escape from Violet Hold", "2026"), "BE": ("Reign of the Black Empire", "2026")}
+          SKIP_SETS = {"HERO_SKINS", "LETTUCE", "BATTLEGROUNDS", "TB", "CREDITS", "MISSIONS", "CHEAT", "PLACEHOLDER_202204", "CORE_HIDDEN"}
           TYPES = {"MINION": "Minion", "SPELL": "Spell", "WEAPON": "Weapon", "HERO": "Hero", "LOCATION": "Location"}
           NOCRAFT = {"CORE", "BASIC", "DEMON_HUNTER_INITIATE"}            # free cards: cannot be crafted or disenchanted
           CLASSES = {"DEATHKNIGHT": "Death Knight", "DEMONHUNTER": "Demon Hunter", "DRUID": "Druid", "HUNTER": "Hunter", "MAGE": "Mage", "PALADIN": "Paladin",
