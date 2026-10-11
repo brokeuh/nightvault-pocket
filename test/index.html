@@ -125,7 +125,7 @@ select{width:auto}
 #viewer .vhead b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #viewer .vbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:4px 0;touch-action:pinch-zoom;position:relative}
 #viewer .vnav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:34px;height:52px;border:0;border-radius:10px;background:#0007;color:#fff;font-size:26px;line-height:1;padding:0;opacity:.75}#viewer .vnav[disabled]{opacity:.15}#viewer .vnav.l{left:4px}#viewer .vnav.r{right:4px}
-#viewer .vbody img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 10px 40px #000}
+#viewer .vbody img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 10px 40px #000;object-fit:contain}
 #viewer .vtabs{display:flex;gap:8px;justify-content:center;padding:10px 12px calc(14px + env(safe-area-inset-bottom,0px))}
 #viewer .vtabs button,#viewer .vhead button{border:1px solid #fff4;background:#fff1;color:#fff;border-radius:999px;padding:8px 16px;font-size:14px}
 #viewer .vtabs button.on{background:#fff;color:#000}
@@ -2895,6 +2895,9 @@ function drawViewer(){
     vb.addEventListener('touchstart', e => { if(e.touches.length === 1){ x0 = e.touches[0].clientX; y0 = e.touches[0].clientY } else x0 = null }, {passive:true});
     vb.addEventListener('touchend', e => { if(x0 == null) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
       if(Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) viewStep(dx < 0 ? 1 : -1) }, {passive:true}) }
+  const fit = () => { const im = $('#vimg'), vb = $('#vbody'); if(!im || !vb || !im.naturalWidth) return;     // small pictures too: as big as the screen allows
+    const k = Math.min(vb.clientWidth / im.naturalWidth, (vb.clientHeight - 8) / im.naturalHeight); im.style.width = Math.floor(im.naturalWidth * k) + 'px'; im.style.height = Math.floor(im.naturalHeight * k) + 'px' };
+  if($('#vimg')){ $('#vimg').addEventListener('load', fit); if($('#vimg').complete) fit() }
   if($('#vimg')) $('#vimg').onerror = () => { if(_vw.m === m){ _vw.noPic = true; drawViewer(); toast('Picture not available - showing the card text') } };
   $$('#viewer [data-vm]').forEach(b => b.onclick = () => { _vw.mode = b.dataset.vm; drawViewer() });
   $('#vbody').onclick = e => { if(e.target.id === 'vbody') closeViewer() };
@@ -3298,7 +3301,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610111814';
+const BUILD = '202610111821';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }

@@ -3,6 +3,18 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 37,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Bigger card pictures",
+   "items": [
+    "Cards whose picture on the card site is small are now enlarged to fill the screen in the big picture too."
+   ]
+  },
+  {
    "id": 36,
    "date": "2026-10-11",
    "where": [
