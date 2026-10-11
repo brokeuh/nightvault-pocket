@@ -2693,6 +2693,21 @@ function binderGames(){
   $('#bdgq').oninput = () => { clearTimeout(t); t = setTimeout(filter, 120) }; if(BD.gq) filter();
   $('#bdall').onclick = () => openCatalog(id => { BD.game = id; BD.set = null; BD.q = ''; viewBinder(); $('#main').scrollTop = 0 });
 }
+/* card search over every set of a game (binder set list): the game's own card search, only cards whose name has every word */
+const _bfind = {};
+async function binderFind(g, q){ const k = g + '|' + lwr(q); if(_bfind[k]) return _bfind[k];
+  let l = [];
+  if(g === 'pokemon'){ const base = 'https://api.pokemontcg.io/v2/cards?pageSize=250&orderBy=-set.releaseDate&select=id,name,set,number,images,rarity,cardmarket,tcgplayer,supertype,subtypes,hp,types,abilities,attacks,weaknesses,rules,artist,flavorText&q=';
+    for(const pat of [`name:"*${q.trim()}*"`, `name:"${q.trim()}*"`]){ l = [];        // anywhere in the name ("Ash's Pikachu"), else names starting with it
+      try{ for(let page = 1; page <= 3; page++){ const j = await getJSON(base + enc(pat) + '&page=' + page); l.push(...(j.data || []).map(pkmMap)); if((j.data || []).length < 250) break } }catch(e){ l = [] }
+      if(l.length) break }
+    if(!l.length) l = await findPokemon(q).catch(() => []) }
+  else if(isHS(g)){ const d = await hsData(), b = lwr(q); l = d.cards.filter(r => lwr(r[2]).includes(b)).map(r => hsMap(d, r)) }
+  else if(FIND[g]) l = await FIND[g](q, new Set());
+  const w = lwr(q).split(' ').filter(Boolean);
+  l = l.filter(m => { const n = lwr(m.name); return w.every(x => n.includes(x)) });
+  const seen = new Set(); l = l.filter(m => { const k2 = m.set + '|' + m.number; if(seen.has(k2)) return false; seen.add(k2); return true });
+  return (_bfind[k] = l) }
 async function binderSets(){
   const g = BD.game, own = ownedIn(g), om = ownedMap(g), cur = own[0] ? own[0].currency : 'EUR';
   const ownedSets = new Map(); for(const c of own){ const k = c.ed1 && g === 'pokemon' && ED1_SETS.has(String(c.set).toLowerCase()) ? c.set + '~1e' : c.sh && g === 'pokemon' && SH_SETS.has(String(c.set).toLowerCase()) ? c.set + '~sh' : c.set; const e = ownedSets.get(k) || {n:0, uniq:new Set(), name:c.setName || c.showSet, show:c.showSet}; e.n += c.qty; e.uniq.add(c.number); ownedSets.set(k, e) }
@@ -2731,13 +2746,22 @@ async function binderSets(){
         const open = BD.open && BD.open[k];
         html += `<button class="dgh bgh" data-o="${esc(k)}"><i class="ti ti-chevron-${open ? 'down' : 'right'}"></i>${esc(k)} <span class="muted">${l.length}</span></button>` + (open ? l.slice(0, 400).map(row).join('') : '') } }
     else html = rows.slice(0, 400).map(row).join('');
-    const mineC = q.trim().length >= 2 ? own.filter(c => cardMatch(c, q)).sort((a, b) => a.name.localeCompare(b.name)) : [];
+    const qq = q.trim(), canAll = qq.length >= 3 && (FIND[g] || isHS(g) || g === 'pokemon'), mineC = qq.length >= 2 && !canAll ? own.filter(c => cardMatch(c, q)).sort((a, b) => a.name.localeCompare(b.name)) : [];
+    if(canAll) html = `<div id="bdall"><div class="dgh">Cards named “${esc(qq)}” in every set</div><div class="muted" style="padding:6px 4px 12px">Searching ...</div></div>` + (html ? '<div class="dgh">Sets</div>' + html : '');
     if(mineC.length) html = `<div class="dgh">Your cards <span class="muted">${mineC.length}</span></div><div class="slist">${mineC.slice(0, 60).map((c, i) => `<button class="srow" data-oc="${i}" style="width:100%;text-align:left;color:var(--text)">${c.image ? pic(c, 'loading="lazy"') : '<div class="ph"></div>'}<div class="grow"><div class="nm">${esc(c.name)}${vtag(c) ? ' ' + vbadge(c) : ''}</div><div class="meta">${esc(c.setName || c.showSet)}${c.showNum ? ' #' + esc(c.showNum) : ''}${c.foil ? ' · ' + ((GAMES[c.game] || {}).foil || 'foil').toLowerCase() : ''} · ×${c.qty}</div></div></button>`).join('')}</div>${mineC.length > 60 ? '<div class="hint">First 60 - type more to narrow it down</div>' : ''}` + (html ? '<div class="dgh">Sets</div>' + html : '');
     $('#bdl').innerHTML = html || `<div class="empty">No sets${q.trim().length >= 2 ? ' or cards of yours' : ''} found.</div>`;
     $$('#bdl [data-oc]').forEach(b => b.onclick = () => binderCard(mineC[+b.dataset.oc], () => binderSets(), mineC[+b.dataset.oc].ed1 ? {ed1:true} : mineC[+b.dataset.oc].sh ? {sh:true} : null));
+    if(canAll){ const tok = (BD._st = (BD._st || 0) + 1);
+      binderFind(g, qq).then(l => { if(BD._st !== tok || !$('#bdall')) return; const om2 = ownedMap(g), dm2 = digitalMap(g);
+        const tiles = l.slice(0, 200).map((m, i) => { const n = (om2.get(m.set + '|' + m.number) || 0) + (dm2.get(m.set + '|' + m.number) || 0);
+          return `<button class="bcard ${n ? '' : 'miss'}" data-ac="${i}" title="${esc(m.name)}">${m.image ? pic(m, 'loading="lazy"') : ''}${n ? `<span class="q">${n}</span>` : ''}${isWant(m) ? '<span class="bflag"><i class="ti ti-heart-filled"></i></span>' : ''}<span class="nm">${esc(m.name)}</span><span class="no">${esc(m.setName || m.showSet)}${m.showNum ? ' #' + esc(m.showNum) : ''}</span></button>` }).join('');
+        const have = l.filter(m => om2.get(m.set + '|' + m.number) || dm2.get(m.set + '|' + m.number)).length;
+        $('#bdall').innerHTML = `<div class="dgh">Cards named “${esc(qq)}” in every set <span class="muted">${l.length}${l.length ? ` · you have ${have}` : ''}</span></div>` + (l.length ? `<div class="bcards">${tiles}</div>${l.length > 200 ? '<div class="hint">First 200 - type more to narrow it down</div>' : ''}` : '<div class="muted" style="padding:6px 4px 12px">No cards with that name.</div>');
+        $$('#bdall [data-ac]').forEach(b => b.onclick = () => binderCard(l[+b.dataset.ac], () => draw(), null)) })
+        .catch(e => { if($('#bdall')) $('#bdall').innerHTML = `<div class="muted" style="padding:6px 4px 12px">Could not search the card site: ${esc(e.message || String(e))}</div>` }) }
     $$('#bdl [data-o]').forEach(b => b.onclick = () => { BD.open ||= {}; BD.open[b.dataset.o] = !BD.open[b.dataset.o]; draw() });
     $$('.bset').forEach(b => b.onclick = () => { BD.set = sets.find(x => (x.key || x.code) === b.dataset.s); BD.filter = 'all'; BD.cq = ''; viewBinder(); $('#main').scrollTop = 0 }) };
-  draw(); let t; $('#bdq').oninput = e => { clearTimeout(t); t = setTimeout(() => { BD.q = e.target.value; draw() }, 150) };
+  draw(); let t; $('#bdq').oninput = e => { clearTimeout(t); t = setTimeout(() => { BD.q = e.target.value; draw() }, 400) };
 }
 /* card number order: the number part counts as a number (2 before 10), letters and suffixes after it (TG01, 001 H, EX12-048 UR) */
 function numKey(c){ const t = String(c.showNum || c.number || '').trim(), m = /^(.*?)(\d+)(.*)$/.exec(t);
@@ -3252,7 +3276,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610111556';
+const BUILD = '202610111607';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
