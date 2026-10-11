@@ -3,6 +3,18 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 34,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Better card search in the binder",
+   "items": [
+    "Searching a name on a game's set list now finds every card with that name in it, in every set: for Magic all Chandra cards and all their printings, for Yu-Gi-Oh! every matching card, and for the other games their complete card list."
+   ]
+  },
+  {
    "id": 33,
    "date": "2026-10-11",
    "where": [

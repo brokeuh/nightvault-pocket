@@ -565,10 +565,10 @@ async function findPokemon(q){
   if(!r.data || !r.data.length) return findTCGdex(q);
   return (r.data || []).map(pkmMap);
 }
-async function findYGO(q){
+async function findYGO(q, tokens, max){
   let r = await getJSON('https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=' + enc(q)).catch(() => ({data:[]}));
   const out = [];
-  for(const c of (r.data || []).slice(0, 12)){
+  for(const c of (r.data || []).slice(0, max || 12)){
     const price = num((c.card_prices || [])[0]?.cardmarket_price), img = (c.card_images || [])[0]?.image_url_small || '';
     const sets = c.card_sets && c.card_sets.length ? c.card_sets : [{set_code:'', set_name:'', set_rarity:''}];
     const seen = new Set();
@@ -576,7 +576,7 @@ async function findYGO(q){
       out.push({game:'ygo', set:(code || '').toLowerCase(), number:normNum(n || ''), showSet:code || '?', showNum:n || '', name:c.name, setName:s.set_name, rarity:s.set_rarity || '', released:'',
         image:img, price, priceFoil:null, currency:'EUR', psrc:'Cardmarket', info:ygoInfo(c)}) }
   }
-  return out.slice(0, 300);
+  return out.slice(0, max ? 3000 : 300);
 }
 async function findLorcana(q){
   const r = await getJSON('https://api.lorcast.com/v0/cards/search?q=' + enc(q));
@@ -2702,11 +2702,17 @@ async function binderFind(g, q){ const k = g + '|' + lwr(q); if(_bfind[k]) retur
       try{ for(let page = 1; page <= 3; page++){ const j = await getJSON(base + enc(pat) + '&page=' + page); l.push(...(j.data || []).map(pkmMap)); if((j.data || []).length < 250) break } }catch(e){ l = [] }
       if(l.length) break }
     if(!l.length) l = await findPokemon(q).catch(() => []) }
+  else if(g === 'mtg'){ let u = 'https://api.scryfall.com/cards/search?unique=prints&order=released&dir=desc&q=' + enc(`name:"${q.trim()}" game:paper`);   // every card with this in its name, every printing
+    while(u && l.length < 900){ let j; try{ j = await getJSON(u) }catch(e){ break } l.push(...(j.data || []).map(mtgMap)); u = j.has_more ? j.next_page : null; if(u) await sleep(110) }
+    if(!l.length) l = await findMTG(q).catch(() => []) }
+  else if(g === 'ygo') l = await findYGO(q, null, 400).catch(() => []);
   else if(isHS(g)){ const d = await hsData(), b = lwr(q); l = d.cards.filter(r => lwr(r[2]).includes(b)).map(r => hsMap(d, r)) }
+  else if(!REMOTE.has(g)){ try{ l = (await deckPool(g)).slice() }catch(e){ l = [] } if(!l.length && FIND[g]) l = await FIND[g](q, new Set()) }   // the whole card list of the game (as in the deck builder)
   else if(FIND[g]) l = await FIND[g](q, new Set());
   const w = lwr(q).split(' ').filter(Boolean);
   l = l.filter(m => { const n = lwr(m.name); return w.every(x => n.includes(x)) });
   const seen = new Set(); l = l.filter(m => { const k2 = m.set + '|' + m.number; if(seen.has(k2)) return false; seen.add(k2); return true });
+  if(l.some(m => m.released)) l.sort((a, b) => String(b.released || '').localeCompare(String(a.released || '')));
   return (_bfind[k] = l) }
 async function binderSets(){
   const g = BD.game, own = ownedIn(g), om = ownedMap(g), cur = own[0] ? own[0].currency : 'EUR';
@@ -3276,7 +3282,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610111607';
+const BUILD = '202610111619';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
