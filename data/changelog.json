@@ -3,6 +3,32 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 29,
+   "date": "2026-10-11",
+   "where": [
+    "android"
+   ],
+   "title": "Hearthstone screen capture (alpha)",
+   "items": [
+    "Android app, optional: Settings → “Hearthstone screen capture (alpha)”. Binder → Hearthstone → Screenshots then offers “Capture from Hearthstone”.",
+    "Hearthstone opens with a floating 📷 button: tap it on every page of your collection (drag it out of the way if needed), then ✕ to come back. The app reads the captured pages straight away.",
+    "Android asks to allow “Display over other apps” the first time, and to record the screen each time you start. This is an early test - tell us what goes wrong."
+   ]
+  },
+  {
+   "id": 28,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Hearthstone screenshots: ×2 and golden",
+   "items": [
+    "Reading Hearthstone screenshots now sees the “x2” badge under a card, and golden copies by their gold frame. Tuned on real screenshots from the Hearthstone app.",
+    "Cards that were reprinted with the same picture always go to the same set."
+   ]
+  },
+  {
    "id": 27,
    "date": "2026-10-11",
    "where": [
