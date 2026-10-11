@@ -1273,6 +1273,9 @@ function bestName(R){
   return best && best.conf >= 60 ? best : null }
 const grow = (b, k) => { const h = b[3] - b[1]; return [Math.max(0, b[0] - 0.03), Math.max(0, b[1] - h * k), Math.min(1, b[2] + 0.03), Math.min(1, b[3] + h * k)] };
 /* Pokémon: "150/217" at the bottom is enough - the set is the one with 217 cards (and the code printed next to it) */
+let _p1e;
+const p1eData = () => _p1e ||= firstJSON(['data/prices/pokemon-1st.json']).then(d => (d && d.cards) || {}).catch(() => { _p1e = null; return {} });
+async function p1eFor(c){ const d = await p1eData(), e = d[String(c.set).toLowerCase() + '|' + normNum(String(c.showNum || c.number).split('/')[0])]; return e ? (e.h ?? e.n ?? null) : null }
 let _pkSets;
 const pkSets = () => _pkSets ||= getJSON('https://api.tcgdex.net/v2/en/sets').catch(e => { _pkSets = null; throw e });
 const pkNorm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '');
@@ -1288,6 +1291,7 @@ async function pokemonPrices(list, redraw){
   const tp1 = tp => { const k = Object.keys(tp || {}).filter(x => /^1st/i.test(x)).sort((a, b) => /holo/i.test(b) - /holo/i.test(a))[0]; return k ? (tp[k].marketPrice ?? tp[k].midPrice ?? null) : null };
   let n = 0, i = 0, since = 0;
   const work = async () => { while(i < list.length){ const c = list[i++]; c._pkp = 1;
+    if(c.ed1){ const pf = await p1eFor(c); if(pf != null){ c.price = pf; c.priceFoil = null; c.currency = 'USD'; c.psrc = 'TCGplayer (1st Edition)'; c.px = {tcgplayer:[pf, null, Date.now(), 'USD', 'TCGplayer (1st Edition)']}; pickPx(c); n++; since++; if(since >= 24 && redraw){ since = 0; redraw() } continue } }
     try{ const d = await getJSON('https://api.tcgdex.net/v2/en/cards/' + enc(await pkTcgdexId(c))), cm = (d.pricing || {}).cardmarket || {}, tp = (d.pricing || {}).tcgplayer || {};
       const eur = cm.avg ?? cm.trend ?? null, holo = cm['avg-holo'] ?? cm['trend-holo'] ?? null, usd = ((tp.normal || tp.holofoil || tp.reverse || {}).marketPrice) ?? null;
       if(c.ed1){ const p1 = tp1(tp); if(p1 != null){ c.price = p1; c.priceFoil = null; c.currency = 'USD'; c.psrc = 'TCGplayer (1st Edition)'; c.px = {tcgplayer:[p1, null, Date.now(), 'USD', 'TCGplayer (1st Edition)']}; pickPx(c); n++; since++ } }
@@ -2125,6 +2129,7 @@ function openPrices(o, after){
 async function priceOne0(c, cache){
   const before = priceOf(c), k = c.game + '|' + c.name.toLowerCase(); c._before = before;
   if(c.ed1){                                                   // 1st Edition: only TCGplayer knows it apart (Pokémon); otherwise your own price
+    if(c.game === 'pokemon'){ const pf = await p1eFor(c); if(pf != null){ c.price = pf; c.priceFoil = null; c.currency = 'USD'; c.psrc = 'TCGplayer (1st Edition)'; c.priced = Date.now(); return before == null ? 'filled' : before !== pf ? 'updated' : 'same' } }
     if(c.game === 'pokemon'){ try{ const d = (await getJSON(`https://api.pokemontcg.io/v2/cards/${enc(c.set)}-${enc(String(c.showNum).split('/')[0])}`)).data, tp = (d.tcgplayer || {}).prices || {};
       const p1 = ((tp['1stEditionHolofoil'] || tp['1stEditionNormal'] || tp['1stEdition'] || {}).market) ?? null;
       if(p1 != null){ c.price = p1; c.priceFoil = null; c.currency = 'USD'; c.psrc = 'TCGplayer (1st Edition)'; c.priced = Date.now(); return before == null ? 'filled' : before !== p1 ? 'updated' : 'same' } }catch(e){}
@@ -2364,8 +2369,13 @@ const SETSRC = {
        cards:async st => { if(st.tcgdex){ const j = await getJSON('https://api.tcgdex.net/v2/en/sets/' + st.id); return (j.cards || []).map(c => ({game:'pokemon', set:st.code, number:normNum(c.localId), showSet:st.code.toUpperCase(), showNum:c.localId,
            name:c.name, setName:j.name || st.name, rarity:'', released:'', image:c.image ? c.image + '/low.webp' : '', price:null, priceFoil:null, currency:'EUR', psrc:''})) }
          let out = [], page = 1;
-         while(page < 6){ const j = await getJSON(`https://api.pokemontcg.io/v2/cards?q=${enc('set.id:' + st.code)}&pageSize=250&page=${page}&orderBy=number&select=id,name,set,number,images,rarity,cardmarket,tcgplayer,supertype,subtypes,hp,types,abilities,attacks,weaknesses,rules,artist,flavorText`);
-           out.push(...j.data.map(pkmMap)); if(j.data.length < 250) break; page++ } return out }},
+         try{ while(page < 6){ const j = await getJSON(`https://api.pokemontcg.io/v2/cards?q=${enc('set.id:' + st.code)}&pageSize=250&page=${page}&orderBy=number&select=id,name,set,number,images,rarity,cardmarket,tcgplayer,supertype,subtypes,hp,types,abilities,attacks,weaknesses,rules,artist,flavorText`);
+           out.push(...j.data.map(pkmMap)); if(j.data.length < 250) break; page++ } return out }
+         catch(e){ if(out.length) return out;                     // the Pokémon card site is down: the same set from TCGdex (prices come after)
+           const sets = await pkSets(), want = pkNorm(st.name), hit = sets.find(x => String(x.id).toLowerCase() === String(st.code).toLowerCase()) || sets.find(x => pkNorm(x.name) === want); if(!hit) throw e;
+           const j = await getJSON('https://api.tcgdex.net/v2/en/sets/' + hit.id);
+           return (j.cards || []).map(c => ({game:'pokemon', set:st.code, number:normNum(c.localId), showSet:String(st.abbr || st.code).toUpperCase(), showNum:c.localId + (st.total ? '/' + st.total : ''),
+             name:c.name, setName:st.name, rarity:'', released:st.released || '', image:c.image ? c.image + '/low.webp' : '', price:null, priceFoil:null, currency:'EUR', psrc:''})) } }},
   ygo:{list:async () => (await getJSON('https://db.ygoprodeck.com/api/v7/cardsets.php')).map(x => ({code:String(x.set_code).toLowerCase(), name:x.set_name, released:x.tcg_date || '', total:x.num_of_cards})),
        cards:async st => { const j = await getJSON('https://db.ygoprodeck.com/api/v7/cardinfo.php?cardset=' + enc(st.name)), out = [];
          for(const c of j.data || []) for(const x of (c.card_sets || []).filter(x => x.set_name === st.name)){ const [code, n] = String(x.set_code).split(/-(.*)/s);
@@ -2554,6 +2564,8 @@ async function binderSet(){
   const seen = new Set(cards.map(c => c.set + '|' + c.number));
   for(const c of ownedIn(g).filter(c => c.set === st.code)) if(!seen.has(c.set + '|' + c.number)){ cards.push({...c}); seen.add(c.set + '|' + c.number) }   // owned cards the list does not have
   cards.sort(byCardNumber);                                     // 1, 2, 3 ... 10, 111 - not in the order the card site sent them
+  if(g === 'pokemon' && ED1_SETS.has(String(st.code).toLowerCase())){ const d = await p1eData(); for(const m of cards){ const e = d[String(m.set).toLowerCase() + '|' + normNum(String(m.showNum || m.number).split('/')[0])]; if(e && (e.h ?? e.n) != null) m.p1e = e.h ?? e.n }
+    for(const c of store.cards) if(c.ed1 && c.game === 'pokemon' && c.set === st.code && c.price == null){ const pf = await p1eFor(c); if(pf != null){ c.price = pf; c.currency = 'USD'; c.psrc = 'TCGplayer (1st Edition)'; c.px = {tcgplayer:[pf, null, Date.now(), 'USD', 'TCGplayer (1st Edition)']} } } persist() }
   if(g === 'pokemon') setTimeout(() => pokemonPrices(cards, () => { persist(); if(VIEW === 'binder' && BD.set === st) try{ draw() }catch(e){} }), 50);
   await XPI; if(XPG.has(g) || store.myPx){ for(const m of cards){ if(!m._xp){ m._xp = 1; capturePx(m); await addExtras(m).catch(() => {}) } pickPx(m, null) } }
   $('#bdset').onclick = () => { const own = ownedIn(g).filter(c => c.set === st.code && (!(g === 'pokemon' && ED1_SETS.has(String(st.code).toLowerCase())) || !!c.ed1 === !!st.ed1));
@@ -3016,7 +3028,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610110154';
+const BUILD = '202610110204';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
@@ -3585,6 +3597,7 @@ applyTheme(); tabCount(); restoreNav(); fsSync(); $('#fsbtn').onclick = toggleFu
 (() => { const sp = $('#splash'); if(!sp) return; if(O.splash === false){ sp.remove(); return }     // splash: logo for a moment, then the app
   const go = () => { if(!sp.isConnected || sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(() => sp.remove(), 450) };
   sp.onclick = go; setTimeout(go, matchMedia('(prefers-reduced-motion: reduce)').matches ? 450 : 1350) })();
+if(!O.ed1fix2){ O.ed1fix2 = 1; setTimeout(() => { const l = store.cards.filter(c => c.ed1 && c.price == null); l.forEach(c => c._pkp = 0); pokemonPrices(l, () => persist()) }, 3500) }
 if(!O.ed1fix){ O.ed1fix = 1; let k = 0; for(const c of store.cards) if(c.ed1 && !/1st/i.test(c.psrc || '') && !myPx(c)){ c.price = null; c.priceFoil = null; c.px = {}; c.psrc = ''; k++ }
   if(k){ persist(); setTimeout(() => pokemonPrices(store.cards.filter(c => c.ed1), () => persist()), 3000) } }
 setTimeout(() => { if(document.querySelector('#modal > *')) return; if(!O.guideSeen && !store.cards.length){ showGuide(0); changelog().then(l => { if(l.length && O.seenLog == null){ O.seenLog = Math.max(...l.map(e => +e.id || 0)); persist() } }) } else whatsNew(false) }, 2400);   // after an update: what changed, once

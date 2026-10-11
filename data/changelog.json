@@ -12,7 +12,9 @@
    "title": "1st Edition as its own set",
    "items": [
     "Pokémon sets with 1st Edition prints (Base Set, Jungle, Fossil, Team Rocket, Gym, Neo) now appear twice in the binder: the normal set and “… · 1st Edition”, each with its own progress, value and missing cards.",
-    "In the 1st Edition set, Tick off and “I have the whole set” add 1st Edition copies, and its value uses the 1st Edition prices."
+    "In the 1st Edition set, Tick off and “I have the whole set” add 1st Edition copies, and its value uses the 1st Edition prices.",
+    "1st Edition prices now come from a daily list of TCGplayer's 1st Edition prices (about 930 cards of Base Set to Neo Destiny), so they also work when the Pokémon card site is down.",
+    "When the Pokémon card site fails to load a set (“HTTP 500”), the app now loads the same set from TCGdex instead."
    ]
   },
   {
