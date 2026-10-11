@@ -3,6 +3,18 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 35,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Swipe through cards",
+   "items": [
+    "In the big card picture, swipe left or right (or use the ‹ › buttons) to go to the next or previous card of the set - or of your search results. When you close it, the card window shows the card you ended on."
+   ]
+  },
+  {
    "id": 34,
    "date": "2026-10-11",
    "where": [

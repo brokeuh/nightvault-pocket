@@ -2756,14 +2756,14 @@ async function binderSets(){
     if(canAll) html = `<div id="bdall"><div class="dgh">Cards named “${esc(qq)}” in every set</div><div class="muted" style="padding:6px 4px 12px">Searching ...</div></div>` + (html ? '<div class="dgh">Sets</div>' + html : '');
     if(mineC.length) html = `<div class="dgh">Your cards <span class="muted">${mineC.length}</span></div><div class="slist">${mineC.slice(0, 60).map((c, i) => `<button class="srow" data-oc="${i}" style="width:100%;text-align:left;color:var(--text)">${c.image ? pic(c, 'loading="lazy"') : '<div class="ph"></div>'}<div class="grow"><div class="nm">${esc(c.name)}${vtag(c) ? ' ' + vbadge(c) : ''}</div><div class="meta">${esc(c.setName || c.showSet)}${c.showNum ? ' #' + esc(c.showNum) : ''}${c.foil ? ' · ' + ((GAMES[c.game] || {}).foil || 'foil').toLowerCase() : ''} · ×${c.qty}</div></div></button>`).join('')}</div>${mineC.length > 60 ? '<div class="hint">First 60 - type more to narrow it down</div>' : ''}` + (html ? '<div class="dgh">Sets</div>' + html : '');
     $('#bdl').innerHTML = html || `<div class="empty">No sets${q.trim().length >= 2 ? ' or cards of yours' : ''} found.</div>`;
-    $$('#bdl [data-oc]').forEach(b => b.onclick = () => binderCard(mineC[+b.dataset.oc], () => binderSets(), mineC[+b.dataset.oc].ed1 ? {ed1:true} : mineC[+b.dataset.oc].sh ? {sh:true} : null));
+    $$('#bdl [data-oc]').forEach(b => b.onclick = () => binderCard(mineC[+b.dataset.oc], () => binderSets(), mineC[+b.dataset.oc].ed1 ? {ed1:true} : mineC[+b.dataset.oc].sh ? {sh:true} : null, mineC.slice(0, 60)));
     if(canAll){ const tok = (BD._st = (BD._st || 0) + 1);
       binderFind(g, qq).then(l => { if(BD._st !== tok || !$('#bdall')) return; const om2 = ownedMap(g), dm2 = digitalMap(g);
         const tiles = l.slice(0, 200).map((m, i) => { const n = (om2.get(m.set + '|' + m.number) || 0) + (dm2.get(m.set + '|' + m.number) || 0);
           return `<button class="bcard ${n ? '' : 'miss'}" data-ac="${i}" title="${esc(m.name)}">${m.image ? pic(m, 'loading="lazy"') : ''}${n ? `<span class="q">${n}</span>` : ''}${isWant(m) ? '<span class="bflag"><i class="ti ti-heart-filled"></i></span>' : ''}<span class="nm">${esc(m.name)}</span><span class="no">${esc(m.setName || m.showSet)}${m.showNum ? ' #' + esc(m.showNum) : ''}</span></button>` }).join('');
         const have = l.filter(m => om2.get(m.set + '|' + m.number) || dm2.get(m.set + '|' + m.number)).length;
         $('#bdall').innerHTML = `<div class="dgh">Cards named “${esc(qq)}” in every set <span class="muted">${l.length}${l.length ? ` · you have ${have}` : ''}</span></div>` + (l.length ? `<div class="bcards">${tiles}</div>${l.length > 200 ? '<div class="hint">First 200 - type more to narrow it down</div>' : ''}` : '<div class="muted" style="padding:6px 4px 12px">No cards with that name.</div>');
-        $$('#bdall [data-ac]').forEach(b => b.onclick = () => binderCard(l[+b.dataset.ac], () => draw(), null)) })
+        $$('#bdall [data-ac]').forEach(b => b.onclick = () => binderCard(l[+b.dataset.ac], () => draw(), null, l.slice(0, 200))) })
         .catch(e => { if($('#bdall')) $('#bdall').innerHTML = `<div class="muted" style="padding:6px 4px 12px">Could not search the card site: ${esc(e.message || String(e))}</div>` }) }
     $$('#bdl [data-o]').forEach(b => b.onclick = () => { BD.open ||= {}; BD.open[b.dataset.o] = !BD.open[b.dataset.o]; draw() });
     $$('.bset').forEach(b => b.onclick = () => { BD.set = sets.find(x => (x.key || x.code) === b.dataset.s); BD.filter = 'all'; BD.cq = ''; viewBinder(); $('#main').scrollTop = 0 }) };
@@ -2840,7 +2840,7 @@ async function binderSet(){
     if($('#bded1')) $('#bded1').onclick = () => { BD.ed1 = !BD.ed1; toast(BD.ed1 ? 'Tick off adds 1st Edition copies now' : 'Tick off adds normal copies'); draw() };
     $('#bdtick').onclick = () => { BD.tick = !BD.tick; if(BD.tick) toast('Tick off: tap a card you have to add it, tap again to take it off'); draw() };
     $$('#bdc .bcard').forEach(b => b.onclick = async () => { const m = cards[+b.dataset.i];
-      if(!BD.tick) return binderCard(m, draw, VK);
+      if(!BD.tick) return binderCard(m, draw, VK, list);
       if(VK){ const q1 = om.get(m.set + '|' + m.number) || 0; if(q1 > 1) return binderCard(m, draw, VK); addCard(m, false, q1 ? -1 : 1, VK); if(!q1 && isWant(m)) toggleWant(m); draw();
         const c = !q1 && store.cards.find(x => x.key === ckey(m, false, VK)); if(c && priceOf(c) == null){ await priceOne(c); persist(); draw() } return }
       if(BD.ed1 && canEd1(m)){ const q1 = e1.get(m.set + '|' + m.number) || 0; if(q1 > 1) return binderCard(m, draw); addCard(m, false, q1 ? -1 : 1, {ed1:true}); if(!q1 && isWant(m)) toggleWant(m); draw(); return }
@@ -2857,7 +2857,7 @@ async function binderSet(){
 function hq(u){ u = String(u || ''); return u.replace('/render/latest/enUS/256x/', '/render/latest/enUS/512x/').replace('/normal/', '/large/').replace(/\/low\.webp$/, '/high.webp').replace(/_200w\.jpg$/, '_in_1000x1000.jpg')
   .replace('key=card-medium', 'key=directus-large-contain').replace('/cards_small/', '/cards/').replace(/(images\.pokemontcg\.io\/[^/]+\/[^/.]+)\.png$/, '$1_hires.png')
   .replace(/(cards\.lorcast\.io\/card\/digital)\/small\//, '$1/large/').replace('/xxsmall_', '/').replace('/thumbnail_', '/') }
-const _vw = {m:null, mode:'pic'};
+const _vw = {m:null, mode:'pic', ctx:null, orig:null};
 function infoHtml(m){ const i = m.info || {};
   const rows = [['Set', `${m.setName || m.showSet} ${m.showNum ? '#' + m.showNum : ''}`], ['Rarity', m.rarity], ['Type', i.type], ['Cost', i.cost], ['Stats', i.stats], ['Artist', i.artist]].filter(r => r[1] && String(r[1]).trim());
   return `<div class="vtext"><div class="cname" style="margin-bottom:8px">${esc(m.name)}</div><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
@@ -2884,10 +2884,16 @@ async function lookupInfo(m){                                    // card text fo
 function drawViewer(){
   const m = _vw.m; if(!m){ $('#viewer').innerHTML = ''; return }
   if(_vw.mode === 'pic' && (!m.image || _vw.noPic)) _vw.mode = 'info';           // no picture (or it cannot load, e.g. offline): show the card text instead
-  $('#viewer').innerHTML = `<div class="vw"><div class="vhead"><b>${esc(m.name)}</b><button id="vclose" aria-label="Close">✕</button></div>
+  const cx = _vw.ctx, nav = cx && cx.list.length > 1;
+  $('#viewer').innerHTML = `<div class="vw"><div class="vhead">${nav ? `<button id="vprev" aria-label="Previous card" ${cx.i > 0 ? '' : 'disabled style="opacity:.35"'}>‹</button>` : ''}<b>${esc(m.name)}${nav ? ` <span style="opacity:.55;font-weight:400;font-size:12.5px">${cx.i + 1} / ${cx.list.length}</span>` : ''}</b>${nav ? `<button id="vnext" aria-label="Next card" ${cx.i < cx.list.length - 1 ? '' : 'disabled style="opacity:.35"'}>›</button>` : ''}<button id="vclose" aria-label="Close">✕</button></div>
     <div class="vbody" id="vbody">${_vw.mode === 'pic' ? (m.image ? `<img id="vimg" src="${esc(m.image)}" alt="${esc(m.name)}">` : '<div class="muted">No picture for this card.</div>') : infoHtml(m)}</div>
     <div class="vtabs"><button data-vm="pic" class="${_vw.mode === 'pic' ? 'on' : ''}" ${!m.image || _vw.noPic ? 'disabled style="opacity:.4"' : ''}>Picture</button><button data-vm="info" class="${_vw.mode === 'info' ? 'on' : ''}">Details</button></div></div>`;
   $('#vclose').onclick = closeViewer;
+  if(nav){ $('#vprev').onclick = () => viewStep(-1); $('#vnext').onclick = () => viewStep(1);       // swipe left / right: the next / previous card of the list
+    let x0 = null, y0 = 0; const vb = $('#vbody');
+    vb.addEventListener('touchstart', e => { if(e.touches.length === 1){ x0 = e.touches[0].clientX; y0 = e.touches[0].clientY } else x0 = null }, {passive:true});
+    vb.addEventListener('touchend', e => { if(x0 == null) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+      if(Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) viewStep(dx < 0 ? 1 : -1) }, {passive:true}) }
   if($('#vimg')) $('#vimg').onerror = () => { if(_vw.m === m){ _vw.noPic = true; drawViewer(); toast('Picture not available - showing the card text') } };
   $$('#viewer [data-vm]').forEach(b => b.onclick = () => { _vw.mode = b.dataset.vm; drawViewer() });
   $('#vbody').onclick = e => { if(e.target.id === 'vbody') closeViewer() };
@@ -2896,8 +2902,10 @@ function drawViewer(){
     lookupInfo(m).then(info => { if(info){ m.info = info; for(const c of store.cards) if(c.game === m.game && c.set === m.set && c.number === m.number) c.info = info; persist() }
       if(_vw.m === m && _vw.mode === 'info') info ? drawViewer() : ($('#vnotext') && ($('#vnotext').textContent = 'No card text found for this card.')) }) }
 }
-function openViewer(m, mode){ _vw.m = m; _vw.mode = mode || 'pic'; _vw.noPic = false; drawViewer() }
-function closeViewer(){ _vw.m = null; $('#viewer').innerHTML = '' }
+function openViewer(m, mode, ctx){ _vw.ctx = ctx && ctx.list && ctx.i >= 0 ? ctx : null; _vw.orig = _vw.ctx ? ctx.list[ctx.i] : null; _vw.m = m; _vw.mode = mode || 'pic'; _vw.noPic = false; drawViewer() }
+function viewStep(d){ const cx = _vw.ctx; if(!cx) return; const i = cx.i + d; if(i < 0 || i >= cx.list.length) return;
+  cx.i = i; _vw.orig = cx.list[i]; _vw.m = cx.map ? cx.map(_vw.orig) : _vw.orig; _vw.noPic = false; if(_vw.mode === 'info' && _vw.m.image) _vw.mode = 'pic'; drawViewer() }
+function closeViewer(){ const cx = _vw.ctx, o = _vw.orig; _vw.m = null; _vw.ctx = null; _vw.orig = null; $('#viewer').innerHTML = ''; if(cx && cx.done && o) cx.done(o) }
 /* wishlist (cards you want) and trade list (cards you offer) */
 const wkey = m => `${m.game}|${m.set}|${m.number}`;
 const isWant = m => !!(store.want || {})[wkey(m)];
@@ -2912,7 +2920,7 @@ function shareLists(){
   const text = [part('FOR TRADE', trade), part('LOOKING FOR', want)].filter(Boolean).join('\n\n') + '\n\n(from Nightvault Pocket)';
   if(navigator.share) navigator.share({title:'My card lists', text}).catch(() => {});
   else navigator.clipboard.writeText(text).then(() => toast('Lists copied - paste them in a message')).catch(() => toast('Could not copy', true)) }
-function binderCard(m, redraw, vk){
+function binderCard(m, redraw, vk, list){
   const e1 = vk && vk.ed1, s1 = vk && vk.sh;
   const mine = store.cards.filter(c => c.game === m.game && c.set === m.set && c.number === m.number);
   const q = f => (mine.find(c => !!c.foil === f && !c.lang && !c.grade && !c.digital && !!c.ed1 === !!e1 && !!c.sh === !!s1) || {}).qty || 0;
@@ -2926,12 +2934,13 @@ function binderCard(m, redraw, vk){
     <div class="btns" style="margin-top:10px"><button class="btn sm" id="binfo"><i class="ti ti-info-circle"></i>Details</button><button class="btn sm" id="bprices" ${isHS(m.game) ? 'hidden' : ''}><i class="ti ti-coin-euro"></i>Prices</button><button class="btn sm" id="bdeck"><i class="ti ti-cards"></i>Add to deck</button><button class="btn sm ${isWant(m) ? 'on' : ''}" id="bwant"><i class="ti ti-heart${isWant(m) ? '-filled' : ''}"></i>${isWant(m) ? 'On my wishlist' : 'Want this'}</button>
       <button class="btn sm ${mine.some(c => c.trade) ? 'on' : ''}" id="btrade" ${mine.length ? '' : 'disabled'}><i class="ti ti-arrows-exchange"></i>${mine.some(c => c.trade) ? 'For trade' : 'Offer for trade'}</button></div>
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" id="bcx">Done</button></div>`);
-  $('#bzm').onclick = () => openViewer(mp); $('#binfo').onclick = () => openViewer(mp, 'info');
-  $$('.mbox [data-vu]').forEach(b => b.onclick = () => { const c = store.cards.find(x => x.uid === b.dataset.vu); if(!c) return; c.qty += +b.dataset.d; if(c.qty <= 0) store.cards = store.cards.filter(x => x !== c); persist(); tabCount(); binderCard(m, redraw, vk); if(redraw) redraw() });
-  $('#bver').onclick = () => versionModal(null, v => { if(!vtag(v)){ binderCard(m, redraw, vk); return } modal('<h3>Foil?</h3><div class="btns" style="justify-content:flex-end"><button class="btn" id="bvn">Normal</button><button class="btn" id="bvf"><i class="ti ti-sparkles"></i>Foil</button></div>');
-    const go = f => { addCard(m, f, 1, v); binderCard(m, redraw, vk); if(redraw) redraw() }; $('#bvn').onclick = () => go(false); $('#bvf').onclick = () => go(true) }, 'Other version', m);
-  $('#bdeck').onclick = () => deckPick(m, () => binderCard(m, redraw, vk));
-  $('#bprices').onclick = () => { const own = store.cards.find(c => c.game === m.game && c.set === m.set && c.number === m.number); openPrices(own || m, () => binderCard(m, redraw, vk)) };
+  const vctx = () => list && list.length > 1 ? {list, i:list.indexOf(m), map:x => e1 && x.img1e ? Object.assign({}, x, {image:x.img1e}) : s1 && x.imgsh ? Object.assign({}, x, {image:x.imgsh}) : x, done:x => { if(x !== m) binderCard(x, redraw, vk, list) }} : null;
+  $('#bzm').onclick = () => openViewer(mp, null, vctx()); $('#binfo').onclick = () => openViewer(mp, 'info', vctx());
+  $$('.mbox [data-vu]').forEach(b => b.onclick = () => { const c = store.cards.find(x => x.uid === b.dataset.vu); if(!c) return; c.qty += +b.dataset.d; if(c.qty <= 0) store.cards = store.cards.filter(x => x !== c); persist(); tabCount(); binderCard(m, redraw, vk, list); if(redraw) redraw() });
+  $('#bver').onclick = () => versionModal(null, v => { if(!vtag(v)){ binderCard(m, redraw, vk, list); return } modal('<h3>Foil?</h3><div class="btns" style="justify-content:flex-end"><button class="btn" id="bvn">Normal</button><button class="btn" id="bvf"><i class="ti ti-sparkles"></i>Foil</button></div>');
+    const go = f => { addCard(m, f, 1, v); binderCard(m, redraw, vk, list); if(redraw) redraw() }; $('#bvn').onclick = () => go(false); $('#bvf').onclick = () => go(true) }, 'Other version', m);
+  $('#bdeck').onclick = () => deckPick(m, () => binderCard(m, redraw, vk, list));
+  $('#bprices').onclick = () => { const own = store.cards.find(c => c.game === m.game && c.set === m.set && c.number === m.number); openPrices(own || m, () => binderCard(m, redraw, vk, list)) };
   $('#bwant').onclick = () => { const on = toggleWant(m); $('#bwant').classList.toggle('on', on); $('#bwant').innerHTML = `<i class="ti ti-heart${on ? '-filled' : ''}"></i>${on ? 'On my wishlist' : 'Want this'}` };
   $('#btrade').onclick = () => { const own = store.cards.filter(c => c.game === m.game && c.set === m.set && c.number === m.number); if(!own.length) return;
     const on = !own.some(c => c.trade); own.forEach(c => c.trade = on); persist(); $('#btrade').classList.toggle('on', on); $('#btrade').innerHTML = `<i class="ti ti-arrows-exchange"></i>${on ? 'For trade' : 'Offer for trade'}` };
@@ -3282,7 +3291,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610111619';
+const BUILD = '202610111802';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
