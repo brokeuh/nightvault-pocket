@@ -1,0 +1,72 @@
+# Makes data/prices/pokemon-1st.json once a day: TCGplayer prices of the 1st Edition prints of Pokémon's first sets
+# (Wizards of the Coast, 1999-2002), from TCGplayer's price list as copied daily by tcgcsv.com.
+# The card sites the app uses do not list these apart from the normal (unlimited) print.
+name: Update Pokémon 1st Edition prices
+
+on:
+  schedule:
+    - cron: "41 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  first-edition:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Collect 1st Edition prices
+        run: |
+          python3 - <<'PYEOF'
+          import datetime, json, os, re, time, urllib.request
+          def get(url, tries=3):
+              req = urllib.request.Request(url, headers={"User-Agent": "nightvault-pocket (personal card collection app, once a day)"})
+              for a in range(tries):
+                  try:
+                      with urllib.request.urlopen(req, timeout=120) as r:
+                          return json.load(r)
+                  except Exception as e:
+                      if a == tries - 1: raise
+                      time.sleep(4 * (a + 1))
+          SETS = {"base1": ["base set", "base set (shadowless)", "base set 1st edition"], "base2": ["jungle"], "base3": ["fossil"], "base5": ["team rocket"],
+                  "gym1": ["gym heroes"], "gym2": ["gym challenge"], "neo1": ["neo genesis"], "neo2": ["neo discovery"], "neo3": ["neo revelation"], "neo4": ["neo destiny"]}
+          groups = get("https://tcgcsv.com/tcgplayer/3/groups")["results"]
+          out, seen_types = {}, set()
+          for code, names in SETS.items():
+              gs = [g for g in groups if (g.get("name") or "").strip().lower() in names]
+              print(code, "->", [g["name"] for g in gs])
+              for g in gs:
+                  prods = get(f"https://tcgcsv.com/tcgplayer/3/{g['groupId']}/products")["results"]
+                  prices = get(f"https://tcgcsv.com/tcgplayer/3/{g['groupId']}/prices")["results"]
+                  num = {}
+                  for p in prods:
+                      ext = {e.get("name"): e.get("value") for e in p.get("extendedData") or []}
+                      m = re.match(r"\s*0*(\d+)", str(ext.get("Number") or ""))
+                      if m: num[p["productId"]] = (m.group(1), p.get("cleanName") or p.get("name"))
+                  for pr in prices:
+                      st = pr.get("subTypeName") or ""; seen_types.add(st)
+                      if "1st edition" not in st.lower() or pr["productId"] not in num: continue
+                      v = pr.get("marketPrice") or pr.get("midPrice") or pr.get("lowPrice")
+                      if v is None: continue
+                      n, name = num[pr["productId"]]
+                      e = out.setdefault(f"{code}|{n}", {"name": name})
+                      key = "h" if "holo" in st.lower() else "n"
+                      if e.get(key) is None or (g["name"].lower() != "base set (shadowless)"):
+                          e[key] = round(float(v), 2)
+                          e["id"] = pr["productId"]
+                  time.sleep(0.2)
+          print("subtypes seen:", sorted(seen_types))
+          print(len(out), "1st Edition cards with a price")
+          if len(out) < 50:
+              raise SystemExit("Too few - keeping the old file")
+          os.makedirs("data/prices", exist_ok=True)
+          with open("data/prices/pokemon-1st.json", "w", encoding="utf-8") as f:
+              json.dump({"updated": datetime.date.today().isoformat(), "currency": "USD", "source": "TCGplayer via tcgcsv.com", "cards": out}, f, separators=(",", ":"), ensure_ascii=False)
+          PYEOF
+      - name: Save
+        run: |
+          git config user.name "card-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/prices/pokemon-1st.json
+          if git diff --cached --quiet; then echo "Nothing changed."; else git commit -m "Update Pokémon 1st Edition prices"; git pull --rebase -q || true; git push; fi
