@@ -182,6 +182,7 @@ select{width:auto}
 .cands{display:flex;gap:8px;overflow-x:auto;margin:12px -14px 0;padding:0 14px 4px}
 .guide{text-align:center}.guide h3{margin:6px 0 8px}.guide p{margin:0;font-size:14px;line-height:1.55;color:var(--text);text-align:left}.gic{width:64px;height:64px;margin:4px auto 6px;border-radius:18px;display:grid;place-items:center;font-size:32px;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--card))}
 .gstep{font-size:11.5px;color:var(--mut);letter-spacing:.06em}.gdots{display:flex;gap:6px;justify-content:center;margin-top:14px}.gdots i{width:7px;height:7px;border-radius:50%;background:var(--line)}.gdots i.on{background:var(--accent);width:18px;border-radius:4px}
+.updrow{display:flex;align-items:center;gap:10px;padding:8px 0 12px;border-bottom:1px solid var(--line);margin-bottom:4px}
 .clog{padding:10px 0;border-bottom:1px solid var(--line)}.clog:last-child{border-bottom:0}.clh{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.clh span{font-size:12px;color:var(--mut);white-space:nowrap}
 .clog ul{margin:6px 0 0;padding-left:18px;font-size:13.5px;line-height:1.45}.clog li{margin:3px 0}.cltag{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
 .vbadge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:1px 6px;border-radius:6px;background:var(--accentbg,#1b2740);color:var(--accent);vertical-align:1px}
@@ -3026,12 +3027,13 @@ async function whatsNew(force){
   O.seenLog = Math.max(O.seenLog || 0, top); O.seenCnt = Object.fromEntries(l.map(e => [e.id, cnt(e)])); persist();
   if(!fresh.length) return;
   modal(`<h3><i class="ti ti-sparkles" style="color:var(--accent)"></i> What's new</h3><div style="max-height:60vh;overflow:auto">${clogHTML(force ? fresh : fresh.slice(0, 6))}</div>
-    <div class="btns" style="justify-content:space-between;margin-top:12px">${force ? '<span></span>' : '<button class="btn" id="wnall">All updates</button>'}<button class="btn primary" onclick="closeModal()">OK</button></div>`);
+    <div class="btns" style="justify-content:space-between;margin-top:12px">${force ? '<button class="btn" id="wnchk"><i class="ti ti-refresh"></i>Check for updates</button>' : '<button class="btn" id="wnall">All updates</button>'}<button class="btn primary" onclick="closeModal()">OK</button></div>`);
+  if($('#wnchk')) $('#wnchk').onclick = () => { closeModal(); manualUpdateCheck() };
   if($('#wnall')) $('#wnall').onclick = () => whatsNew(true) }
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610110212';
+const BUILD = '202610110216';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
@@ -3045,8 +3047,13 @@ async function newerBuild(){
     const b = (/web (\d{12})/.exec(r.body || '') || [])[1]; return b && b > BUILD ? {b, url:url + '?build=' + b} : null }
   const t = await fetch(location.pathname + '?v=' + Date.now(), {cache:'no-store'}).then(x => x.ok ? x.text() : '').catch(() => '');
   const b = buildOf(t); return b && b > BUILD ? {b} : null }
+async function manualUpdateCheck(){
+  const b = $('#vcheck2') || $('#vercheck'); if(b){ b.disabled = true; b.innerHTML = '<i class="ti ti-loader-2"></i>Checking ...' }
+  UPD.shown = false; const old = $('#updbar'); if(old) old.remove(); await checkUpdate(true);
+  if(b){ b.disabled = false; b.innerHTML = '<i class="ti ti-refresh"></i>Check for updates' }
+  if(!$('#updbar')) toast('You have the newest version' + (UPD.info ? ' (' + UPD.info + ')' : '')) }
 async function checkUpdate(force){
-  if(BUILD.startsWith('__') || UPD.shown || (!force && Date.now() - UPD.at < 10 * 60e3)) return; UPD.at = Date.now();
+  if(BUILD.startsWith('__') || UPD.shown || (!force && Date.now() - UPD.at < 3 * 60e3)) return; UPD.at = Date.now();
   const n = await newerBuild(); if(!n) return; UPD.shown = true;
   const bar = document.createElement('div'); bar.id = 'updbar';
   bar.innerHTML = `<i class="ti ti-sparkles"></i><span>${n.url ? (n.mine ? `Build ${n.b} of the app is ready <small class="muted">(you have ${n.mine})</small>` : 'A new version of the app is ready') : 'A new version is ready'}</span><button class="btn sm primary" id="updgo">${n.url ? 'Download' : 'Update'}</button><button class="lnk" id="updx" aria-label="Later">Later</button>`;
@@ -3069,13 +3076,16 @@ async function checkUpdate(force){
   $('#updx').onclick = () => bar.remove() }
 setTimeout(() => checkUpdate(true), 6000);
 document.addEventListener('visibilitychange', () => { if(!document.hidden) checkUpdate(false) });
+setInterval(() => { if(!document.hidden) checkUpdate(false) }, 20 * 60e3);
 
 function viewSettings(){
   const total = store.cards.reduce((a, c) => a + c.qty, 0);
   $('#main').innerHTML = `<div class="head">${SP.page ? '<button class="btn sm" id="spback"><i class="ti ti-arrow-left"></i>Settings</button>' : '<h1>Settings</h1>'}</div>
     <div id="smenu"></div>
     <div class="panel" data-p="help"><h3>How to use the app</h3><button class="btn primary" id="gtour" style="margin-bottom:6px"><i class="ti ti-player-play"></i>Show the tour</button>${guideHTML()}</div>
-    <div class="panel" data-p="news"><h3>What's new</h3><div id="clogall" class="muted">Loading the list of updates ...</div></div>
+    <div class="panel" data-p="news"><h3>What's new</h3>
+      <div class="updrow"><div class="grow"><b>Updates</b><div class="hint" id="verinfo2" style="margin:2px 0 0">Version ${esc(BUILD)}</div></div><button class="btn sm primary" id="vcheck2"><i class="ti ti-refresh"></i>Check for updates</button></div>
+      <div id="clogall" class="muted">Loading the list of updates ...</div></div>
     <div class="panel" data-p="sync"><h3>Send to Nightvault</h3>
       <p style="margin:0 0 10px;font-size:13.5px">${total.toLocaleString()} cards on this phone${store.lastExport ? ` · last sent ${new Date(store.lastExport).toLocaleString()}` : ''}.</p>
       <div class="btns"><button class="btn primary" id="sexp"><i class="ti ti-device-desktop-up"></i>Export for Nightvault</button><button class="btn" id="scsv"><i class="ti ti-file-spreadsheet"></i>Export CSV</button>
@@ -3140,7 +3150,9 @@ function viewSettings(){
   if($('#clogall')) changelog().then(l => { if($('#clogall')) $('#clogall').outerHTML = l.length ? `<div id="clogall">${clogHTML(l)}</div>` : '<div id="clogall" class="muted">The list of updates could not be loaded - check the internet connection.</div>' });
   if($('#gtour')) $('#gtour').onclick = () => showGuide(0);
   if($('#verinfo') && NATIVE) appBuild().then(b => { if($('#verinfo')) $('#verinfo').textContent = `Android app build ${b || '?'} · page ${BUILD}` });
-  if($('#vercheck')) $('#vercheck').onclick = async () => { UPD.shown = false; const old = $('#updbar'); if(old) old.remove(); await checkUpdate(true); if(!$('#updbar')) toast('You have the newest version' + (UPD.info ? ' (' + UPD.info + ')' : '')) };
+  if($('#vercheck')) $('#vercheck').onclick = manualUpdateCheck;
+  if($('#vcheck2')) $('#vcheck2').onclick = manualUpdateCheck;
+  if($('#verinfo2')) (NATIVE ? appBuild() : Promise.resolve(0)).then(b => { if($('#verinfo2')) $('#verinfo2').textContent = (NATIVE ? `Android app build ${b || '?'} · ` : TEST ? 'Test version · ' : '') + 'page ' + BUILD.replace(/^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)$/, '$3-$2-$1 $4:$5') });
   if($('#sinst')) $('#sinst').onclick = installApp;
   if($('#sfull')) $('#sfull').onclick = async () => { await toggleFull(); viewSettings() };
   if($('#tcopy')) $('#tcopy').onclick = () => { let real = null; try{ real = JSON.parse(localStorage.getItem('nightvault.pocket.v1') || 'null') }catch(e){}

@@ -3,6 +3,19 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 24,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Check for updates",
+   "items": [
+    "Settings → What's new now starts with your version and a “Check for updates” button (also in the full What's new list).",
+    "While the app is open it also looks for a new version every 20 minutes, and each time you come back to it after a few minutes."
+   ]
+  },
+  {
    "id": 23,
    "date": "2026-10-11",
    "where": [
