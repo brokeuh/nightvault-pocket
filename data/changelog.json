@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 25,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Shadowless Base Set and special-print pictures",
+   "items": [
+    "New binder set “Base · Shadowless” next to Base and Base · 1st Edition, with its own Shadowless prices (TCGplayer).",
+    "Mark a single card as Shadowless in the card window when you add it (Base Set only).",
+    "1st Edition and Shadowless cards now use the TCGplayer picture of that print where one exists. Some of these pictures may still show the normal print."
+   ]
+  },
+  {
    "id": 24,
    "date": "2026-10-11",
    "where": [
