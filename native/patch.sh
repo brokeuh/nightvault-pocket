@@ -15,6 +15,11 @@ grep -q 'android.permission.CAMERA' "$M" || sed -i 's#<uses-permission android:n
 R=android/app/src/main/res
 rm -rf "$R/mipmap-anydpi-v26"
 for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do cp res/mipmap-$d/*.png "$R/mipmap-$d/"; done
+# adaptive icon (Android 8+): Android shapes it itself - no white frame on the start-up screen or on Samsung phones
+mkdir -p "$R/mipmap-anydpi-v26" "$R/drawable-nodpi"
+cp res/mipmap-anydpi-v26/*.xml "$R/mipmap-anydpi-v26/"
+cp res/drawable-nodpi/nv_icon_full.png "$R/drawable-nodpi/"
+ls "$R/mipmap-anydpi-v26"
 grep -n "mlkit\|versionCode" android/app/build.gradle
 # screen capture (alpha): floating button over other apps, and the capture service
 grep -q 'SYSTEM_ALERT_WINDOW' "$M" || sed -i 's#<uses-permission android:name="android.permission.CAMERA" />#<uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' "$M"

@@ -3,6 +3,17 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 32,
+   "date": "2026-10-11",
+   "where": [
+    "android"
+   ],
+   "title": "New app icon format",
+   "items": [
+    "The app icon is now a modern Android icon: no more white frame on the start-up screen, and on the home screen it takes the icon shape of your phone."
+   ]
+  },
+  {
    "id": 31,
    "date": "2026-10-11",
    "where": [

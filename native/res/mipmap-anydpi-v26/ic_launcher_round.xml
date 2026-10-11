@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- adaptive icon: the whole Nightvault picture as the background layer, so Android shapes it itself (no white frame) -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/nv_icon_full" />
+    <foreground android:drawable="@android:color/transparent" />
+</adaptive-icon>
