@@ -3,6 +3,18 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 33,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Find a card in every set",
+   "items": [
+    "On a game's set list, type a card name (like “pikachu”) and you see that card from every set at once, with how many you have. Tap one to add it or see its price."
+   ]
+  },
+  {
    "id": 32,
    "date": "2026-10-11",
    "where": [
