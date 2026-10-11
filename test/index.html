@@ -123,8 +123,9 @@ select{width:auto}
 #viewer .vw{position:fixed;inset:0;z-index:60;background:#050608;display:flex;flex-direction:column;color:#fff}
 #viewer .vhead{display:flex;align-items:center;gap:8px;padding:10px 12px calc(10px) 14px;padding-top:calc(10px + env(safe-area-inset-top,0px))}
 #viewer .vhead b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#viewer .vbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:8px;touch-action:pinch-zoom}
-#viewer .vbody img{max-width:100%;max-height:100%;border-radius:14px;box-shadow:0 10px 40px #000}
+#viewer .vbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:4px 0;touch-action:pinch-zoom;position:relative}
+#viewer .vnav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:34px;height:52px;border:0;border-radius:10px;background:#0007;color:#fff;font-size:26px;line-height:1;padding:0;opacity:.75}#viewer .vnav[disabled]{opacity:.15}#viewer .vnav.l{left:4px}#viewer .vnav.r{right:4px}
+#viewer .vbody img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 10px 40px #000}
 #viewer .vtabs{display:flex;gap:8px;justify-content:center;padding:10px 12px calc(14px + env(safe-area-inset-bottom,0px))}
 #viewer .vtabs button,#viewer .vhead button{border:1px solid #fff4;background:#fff1;color:#fff;border-radius:999px;padding:8px 16px;font-size:14px}
 #viewer .vtabs button.on{background:#fff;color:#000}
@@ -2885,8 +2886,8 @@ function drawViewer(){
   const m = _vw.m; if(!m){ $('#viewer').innerHTML = ''; return }
   if(_vw.mode === 'pic' && (!m.image || _vw.noPic)) _vw.mode = 'info';           // no picture (or it cannot load, e.g. offline): show the card text instead
   const cx = _vw.ctx, nav = cx && cx.list.length > 1;
-  $('#viewer').innerHTML = `<div class="vw"><div class="vhead">${nav ? `<button id="vprev" aria-label="Previous card" ${cx.i > 0 ? '' : 'disabled style="opacity:.35"'}>‹</button>` : ''}<b>${esc(m.name)}${nav ? ` <span style="opacity:.55;font-weight:400;font-size:12.5px">${cx.i + 1} / ${cx.list.length}</span>` : ''}</b>${nav ? `<button id="vnext" aria-label="Next card" ${cx.i < cx.list.length - 1 ? '' : 'disabled style="opacity:.35"'}>›</button>` : ''}<button id="vclose" aria-label="Close">✕</button></div>
-    <div class="vbody" id="vbody">${_vw.mode === 'pic' ? (m.image ? `<img id="vimg" src="${esc(m.image)}" alt="${esc(m.name)}">` : '<div class="muted">No picture for this card.</div>') : infoHtml(m)}</div>
+  $('#viewer').innerHTML = `<div class="vw"><div class="vhead"><b>${esc(m.name)}${nav ? ` <span style="opacity:.55;font-weight:400;font-size:12.5px">${cx.i + 1} / ${cx.list.length}</span>` : ''}</b><button id="vclose" aria-label="Close">✕</button></div>
+    <div class="vbody" id="vbody">${nav ? `<button class="vnav l" id="vprev" aria-label="Previous card" ${cx.i > 0 ? '' : 'disabled'}>‹</button><button class="vnav r" id="vnext" aria-label="Next card" ${cx.i < cx.list.length - 1 ? '' : 'disabled'}>›</button>` : ''}${_vw.mode === 'pic' ? (m.image ? `<img id="vimg" src="${esc(m.image)}" alt="${esc(m.name)}">` : '<div class="muted">No picture for this card.</div>') : infoHtml(m)}</div>
     <div class="vtabs"><button data-vm="pic" class="${_vw.mode === 'pic' ? 'on' : ''}" ${!m.image || _vw.noPic ? 'disabled style="opacity:.4"' : ''}>Picture</button><button data-vm="info" class="${_vw.mode === 'info' ? 'on' : ''}">Details</button></div></div>`;
   $('#vclose').onclick = closeViewer;
   if(nav){ $('#vprev').onclick = () => viewStep(-1); $('#vnext').onclick = () => viewStep(1);       // swipe left / right: the next / previous card of the list
@@ -2936,6 +2937,12 @@ function binderCard(m, redraw, vk, list){
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" id="bcx">Done</button></div>`);
   const vctx = () => list && list.length > 1 ? {list, i:list.indexOf(m), map:x => e1 && x.img1e ? Object.assign({}, x, {image:x.img1e}) : s1 && x.imgsh ? Object.assign({}, x, {image:x.imgsh}) : x, done:x => { if(x !== m) binderCard(x, redraw, vk, list) }} : null;
   $('#bzm').onclick = () => openViewer(mp, null, vctx()); $('#binfo').onclick = () => openViewer(mp, 'info', vctx());
+  if(list && list.length > 1){ const li = list.indexOf(m), top = $('.mbox .cres-top');           // swipe left / right on the card: next / previous card of the list
+    if(top && li >= 0){ top.insertAdjacentHTML('afterend', `<div class="hint" style="text-align:center;margin:-2px 0 6px">‹ swipe · ${li + 1} of ${list.length} ›</div>`);
+      let x0 = null, y0 = 0; const mb = $('.mbox');
+      mb.addEventListener('touchstart', e => { if(e.touches.length === 1){ x0 = e.touches[0].clientX; y0 = e.touches[0].clientY } else x0 = null }, {passive:true});
+      mb.addEventListener('touchend', e => { if(x0 == null) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+        if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5){ const j = li + (dx < 0 ? 1 : -1); if(j >= 0 && j < list.length) binderCard(list[j], redraw, vk, list) } }, {passive:true}) } }
   $$('.mbox [data-vu]').forEach(b => b.onclick = () => { const c = store.cards.find(x => x.uid === b.dataset.vu); if(!c) return; c.qty += +b.dataset.d; if(c.qty <= 0) store.cards = store.cards.filter(x => x !== c); persist(); tabCount(); binderCard(m, redraw, vk, list); if(redraw) redraw() });
   $('#bver').onclick = () => versionModal(null, v => { if(!vtag(v)){ binderCard(m, redraw, vk, list); return } modal('<h3>Foil?</h3><div class="btns" style="justify-content:flex-end"><button class="btn" id="bvn">Normal</button><button class="btn" id="bvf"><i class="ti ti-sparkles"></i>Foil</button></div>');
     const go = f => { addCard(m, f, 1, v); binderCard(m, redraw, vk, list); if(redraw) redraw() }; $('#bvn').onclick = () => go(false); $('#bvf').onclick = () => go(true) }, 'Other version', m);
@@ -3291,7 +3298,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610111802';
+const BUILD = '202610111814';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }

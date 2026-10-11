@@ -3,6 +3,19 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 36,
+   "date": "2026-10-11",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Swiping, part 2",
+   "items": [
+    "The big card picture uses the full width of the screen again; the ‹ › buttons now sit on the sides of the picture.",
+    "You can also swipe left and right in the card window itself (before opening the big picture) to go through the cards."
+   ]
+  },
+  {
    "id": 35,
    "date": "2026-10-11",
    "where": [
