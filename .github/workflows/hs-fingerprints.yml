@@ -1,0 +1,95 @@
+# Makes data/hs-fp.json: a small "fingerprint" of the picture of every Hearthstone card, so the app can recognise cards
+# on screenshots of the Hearthstone collection. Runs after the weekly card list and only fingerprints new cards.
+name: Update Hearthstone fingerprints
+
+on:
+  workflow_run:
+    workflows: ["Update Hearthstone cards"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      samples:
+        description: "Only save a few sample card pictures (for tuning)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  fingerprints:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install pillow
+      - name: Fingerprint the card pictures
+        env:
+          SAMPLES: ${{ inputs.samples }}
+        run: |
+          python3 - <<'PYEOF'
+          import base64, io, json, os, time, urllib.request
+          from concurrent.futures import ThreadPoolExecutor
+          from PIL import Image
+          V = 1
+          ART = (0.30, 0.17, 0.70, 0.40)      # part of the card picture inside the art of every card type (x0, y0, x1, y1)
+          FRAME = (0.06, 0.62, 0.11, 0.80)    # a strip of the left frame edge (its colour tells golden from normal)
+          d = json.load(open("data/hearthstone.json"))
+          url = lambda cid: f"https://art.hearthstonejson.com/v1/render/latest/enUS/256x/{cid}.png"
+          def get(cid):
+              req = urllib.request.Request(url(cid), headers={"User-Agent": "nightvault-pocket (personal card collection app)"})
+              for a in range(3):
+                  try:
+                      with urllib.request.urlopen(req, timeout=60) as r:
+                          return r.read()
+                  except Exception as e:
+                      if a == 2: return None
+                      time.sleep(2 + 3 * a)
+          if os.environ.get("SAMPLES") == "true":
+              os.makedirs("data/hs-samples", exist_ok=True)
+              want = {"Minion": 3, "Spell": 3, "Weapon": 2, "Location": 2, "Hero": 1}
+              for r in d["cards"]:
+                  if want.get(r[8], 0) > 0 and r[3] in ("Common", "Rare", "Epic", "Legendary"):
+                      b = get(r[5])
+                      if b:
+                          open(f"data/hs-samples/{r[4]}_{r[8]}_{r[5]}.png", "wb").write(b); want[r[8]] -= 1
+              raise SystemExit(0)
+          old = {}
+          try:
+              o = json.load(open("data/hs-fp.json"))
+              if o.get("v") == V and o.get("art") == list(ART) and o.get("frame") == list(FRAME): old = o["cards"]
+          except Exception: pass
+          def box(im, r):
+              w, h = im.size
+              return im.crop((round(r[0] * w), round(r[1] * h), round(r[2] * w), round(r[3] * h)))
+          def fp(cid):
+              b = get(cid)
+              if not b: return None
+              im = Image.open(io.BytesIO(b)).convert("RGBA")
+              bg = Image.new("RGBA", im.size, (0, 0, 0, 255)); bg.alpha_composite(im); im = bg.convert("RGB")
+              art = box(im, ART)
+              g = art.convert("L").resize((9, 8), Image.BOX).load()
+              bits = 0
+              for y in range(8):
+                  for x in range(8):
+                      bits = (bits << 1) | (1 if g[x, y] > g[x + 1, y] else 0)
+              c = art.resize((4, 4), Image.BOX).tobytes()
+              f = box(im, FRAME).resize((1, 1), Image.BOX).tobytes()
+              return f"{bits:016x}" + base64.b64encode(c + f).decode()
+          todo = [(str(r[4]), r[5]) for r in d["cards"] if str(r[4]) not in old]
+          print(len(old), "known,", len(todo), "to fingerprint")
+          out = dict(old)
+          with ThreadPoolExecutor(8) as ex:
+              for (dbf, cid), res in zip(todo, ex.map(lambda t: fp(t[1]), todo)):
+                  if res: out[dbf] = res
+          keep = {str(r[4]) for r in d["cards"]}
+          out = {k: v for k, v in out.items() if k in keep}
+          print(len(out), "fingerprints")
+          if len(out) < 1000: raise SystemExit("Too few - keeping the old file")
+          json.dump({"v": V, "art": list(ART), "frame": list(FRAME), "updated": time.strftime("%Y-%m-%d"), "cards": out}, open("data/hs-fp.json", "w"), separators=(",", ":"))
+          PYEOF
+      - name: Save
+        run: |
+          git config user.name "card-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then echo "Nothing changed."; else git commit -m "Update Hearthstone fingerprints"; git pull --rebase -q || true; git push; fi
