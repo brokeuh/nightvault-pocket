@@ -11,7 +11,7 @@
    "files": [
     {
      "path": "test/index.html",
-     "size": 464424
+     "size": 464545
     }
    ],
    "provides": [
@@ -24,9 +24,9 @@
     "convert"
    ],
    "keepsData": "Your collection stays: Scanner and Binder share it.",
-   "size": 464424,
-   "hash": "5f66be0738ed",
-   "version": "2026.10.12.1325",
+   "size": 464545,
+   "hash": "65aadd135f39",
+   "version": "2026.10.12.1338",
    "updated": "2026-10-12"
   },
   {
@@ -38,7 +38,7 @@
    "files": [
     {
      "path": "test/index.html",
-     "size": 464424
+     "size": 464545
     }
    ],
    "provides": [
@@ -48,9 +48,9 @@
     "scan"
    ],
    "keepsData": "Your collection stays: Scanner and Binder share it.",
-   "size": 464424,
-   "hash": "5f66be0738ed",
-   "version": "2026.10.12.1325",
+   "size": 464545,
+   "hash": "65aadd135f39",
+   "version": "2026.10.12.1338",
    "updated": "2026-10-12"
   },
   {
