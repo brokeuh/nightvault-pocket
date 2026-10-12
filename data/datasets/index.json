@@ -8,6 +8,15 @@
    "updated": "2026-10-12T06:55Z",
    "count": 102,
    "error": ""
+  },
+  {
+   "name": "test-tcg-base",
+   "source": "tcgplayer",
+   "query": "3/Base Set",
+   "repeat": "once",
+   "updated": "2026-10-12T06:58Z",
+   "count": 1363,
+   "error": ""
   }
  ]
 }
