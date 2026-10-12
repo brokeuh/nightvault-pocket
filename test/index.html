@@ -328,7 +328,7 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 <rect class="spl-card" x="36.5" y="35" width="27" height="39" rx="4.5"/>
 <path class="spl-spark" d="M50 45l2.1 5.1 5.1 2.1-5.1 2.1-2.1 5.1-2.1-5.1-5.1-2.1 5.1-2.1z"/>
 </svg></div><div class="spl-word">Nightvault</div><div class="spl-sub">POCKET</div></div></div>
-  <header id="top"><div class="logo"><i class="ti ti-moon-stars"></i>Nightvault <small>Pocket</small><span id="testbadge" hidden style="margin-left:8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;background:var(--amber);color:#000;border-radius:6px;padding:2px 6px">TEST</span></div><div id="scst"></div><button id="fsbtn" class="hbtn" hidden aria-label="Full screen"><i class="ti ti-maximize"></i></button><button id="setbtn" class="hbtn" aria-label="Settings"><i class="ti ti-settings"></i></button></header>
+  <header id="top"><button id="hubbtn" class="hbtn" hidden aria-label="Back to The Nightvault" title="The Nightvault" style="margin:0 10px 0 0"><i class="ti ti-grid-dots"></i></button><div class="logo"><i class="ti ti-moon-stars"></i>Nightvault <small>Pocket</small><span id="testbadge" hidden style="margin-left:8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;background:var(--amber);color:#000;border-radius:6px;padding:2px 6px">TEST</span></div><div id="scst"></div><button id="fsbtn" class="hbtn" hidden aria-label="Full screen"><i class="ti ti-maximize"></i></button><button id="setbtn" class="hbtn" aria-label="Settings"><i class="ti ti-settings"></i></button></header>
   <main id="main"></main>
   <nav id="tabs">
     <button data-v="home" class="on"><i class="ti ti-home"></i>Home</button>
@@ -480,6 +480,10 @@ async function toggleFull(){ try{ if(document.fullscreenElement) await document.
 async function installApp(){ if(INSTALL){ INSTALL.prompt(); const r = await INSTALL.userChoice.catch(() => ({})); if(r.outcome === 'accepted') INSTALL = null; viewSettings(); return } SP.page = 'app'; viewSettings() }
 document.addEventListener('fullscreenchange', fsSync);
 if(!NATIVE && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+/* opened from The Nightvault (the app tiles, test): a button back to the tiles */
+(() => { try{ if(new URLSearchParams(location.search).get('nv') === 'hub') sessionStorage.setItem('nvHub', '1') }catch(e){}
+  let on = false; try{ on = sessionStorage.getItem('nvHub') === '1' }catch(e){}
+  const b = $('#hubbtn'); if(on && b){ b.hidden = false; b.onclick = () => { location.href = '../hub/' } } })();
 function setSt(t){ $('#scst').textContent = t || '' }
 function toast(msg, err){
   $$('#toast .t1').forEach(e => { if(e.textContent === msg) e.remove() });
@@ -3301,7 +3305,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610111821';
+const BUILD = '202610121223';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }

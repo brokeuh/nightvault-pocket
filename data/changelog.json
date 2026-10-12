@@ -3,6 +3,18 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 38,
+   "date": "2026-10-12",
+   "where": [
+    "test"
+   ],
+   "title": "The Nightvault (test)",
+   "items": [
+    "A first test of The Nightvault: one home screen with a tile per Nightvault app - Binder (this app), Convert, and more later. Open it at brokeuh.github.io/nightvault-pocket/hub/.",
+    "When you open Binder from there, a small button at the top left takes you back to the tiles. Opened on its own, nothing changes."
+   ]
+  },
+  {
    "id": 37,
    "date": "2026-10-11",
    "where": [

@@ -44,6 +44,8 @@ dialog{background:var(--pan);color:var(--text);border:1px solid var(--line);bord
 </style>
 </head>
 <body>
+<a id="hubback" hidden href="../hub/" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;margin:0 0 10px;border-radius:12px;border:1px solid #2a323d;background:#151a20;color:#e9edf2;text-decoration:none;font-size:13.5px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3dbf8f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><rect x="14" y="14" width="6" height="6" rx="1.5"></rect></svg>The Nightvault</a>
+<script>(() => { try{ if(new URLSearchParams(location.search).get('nv') === 'hub') sessionStorage.setItem('nvHub', '1'); if(sessionStorage.getItem('nvHub') === '1') document.getElementById('hubback').hidden = false }catch(e){} })();</script>
 <div class="top"><h1>Nightvault control</h1><span class="sp"></span><span id="who" class="muted small"></span><a class="btn sm" href="../tools/convert/" target="_blank" rel="noopener">Picture converter</a><button class="btn sm" id="refresh" hidden>Refresh</button><button class="btn sm" id="keybtn" hidden>GitHub key</button></div>
 <p class="muted small" style="margin:6px 0 0">Every data set of Nightvault Pocket: when it was last made, start a job by hand, and make your own data sets. Runs on GitHub - nothing to install.</p>
 
