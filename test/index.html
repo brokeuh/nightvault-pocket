@@ -3310,7 +3310,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610121524';
+const BUILD = '202610121538';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
@@ -3856,7 +3856,7 @@ function deckPick(m, back){
 /* ---------------------------------------------------------------- back gesture and coming back to where you were
    The phone's back gesture steps back inside the app (close a pop-up, set -> game -> games, settings page -> settings,
    other tabs -> scan). Only on the scan screen does it leave the app. Where you were is remembered for 2 hours. */
-const atRoot = () => VIEW === startView() && !$('#modal').innerHTML.trim() && !$('#viewer').innerHTML.trim();
+const atRoot = () => VIEW === startView() && !(VIEW === 'binder' && (BD.up || BD.set || BD.game)) && !$('#modal').innerHTML.trim() && !$('#viewer').innerHTML.trim();   // in a set or game of the binder you are not at the start yet
 const startView = () => MODE === 'binder' ? 'binder' : O.start === 'scan' ? 'scan' : 'home';
 function saveNav(){
   O.nav = {at:Date.now(), view:VIEW === 'review' ? 'review' : VIEW, game:BD.game, set:BD.set ? {code:BD.set.code, id:BD.set.id, name:BD.set.name, abbr:BD.set.abbr, tcgdex:BD.set.tcgdex, local:BD.set.local, released:BD.set.released} : null,

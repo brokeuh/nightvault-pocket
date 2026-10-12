@@ -3,6 +3,18 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 44,
+   "date": "2026-10-12",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Back button in the binder",
+   "items": [
+    "In a set or a game in Binder, the back button now goes back one step (to the set list, then the game list) instead of straight to the tiles."
+   ]
+  },
+  {
    "id": 43,
    "date": "2026-10-12",
    "where": [
