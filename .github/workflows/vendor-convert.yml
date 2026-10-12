@@ -1,0 +1,35 @@
+# One-time (or when updating): copies the WebP and AVIF encoders (jSquash, the Squoosh codecs compiled to WebAssembly)
+# into tools/convert/lib, so the converter app works without any other website and offline.
+name: Update converter libraries
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Fetch the encoders
+        run: |
+          set -e
+          mkdir -p /tmp/v && cd /tmp/v
+          npm pack @jsquash/avif @jsquash/webp
+          L=$GITHUB_WORKSPACE/tools/convert/lib
+          rm -rf "$L"; mkdir -p "$L"
+          for f in *.tgz; do d=$(basename "$f" .tgz); mkdir "$d"; tar xzf "$f" -C "$d" --strip-components 1; done
+          for d in */; do n=$(node -p "require('./${d}package.json').name.split('/')[1]"); v=$(node -p "require('./${d}package.json').version"); cp -r "$d" "$L/$n"; echo "$n $v" >> "$L/VERSIONS.txt"; done
+          rm -rf "$L"/*/node_modules
+          cat "$L/VERSIONS.txt"; find "$L" -maxdepth 3 | head -80; du -sh "$L"
+      - name: Save
+        run: |
+          git config user.name "card-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools/convert/lib
+          if git diff --cached --quiet; then echo "Nothing changed."; else git commit -m "Update converter libraries"; git pull --rebase -q || true; git push; fi
