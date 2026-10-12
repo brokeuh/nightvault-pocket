@@ -132,6 +132,66 @@
         "audiobooks"
       ],
       "uses": []
+    },
+    {
+      "id": "cinema",
+      "name": "Cinema",
+      "desc": "Movies, TV shows, cartoons and anime, each on its own shelf",
+      "color": "#3a1620",
+      "soon": true,
+      "files": [],
+      "provides": [
+        "video"
+      ],
+      "uses": []
+    },
+    {
+      "id": "boardgames",
+      "name": "Boardgames",
+      "desc": "Your board games with BoardGameGeek sync, miniatures and terrain",
+      "color": "#1f3216",
+      "soon": true,
+      "files": [],
+      "provides": [
+        "boardgames"
+      ],
+      "uses": []
+    },
+    {
+      "id": "print3d",
+      "name": "3D Print",
+      "desc": "Your 3D models (STL, OBJ, 3MF) with a 3D viewer",
+      "color": "#16323a",
+      "soon": true,
+      "files": [],
+      "provides": [
+        "models3d"
+      ],
+      "uses": []
+    },
+    {
+      "id": "collectables",
+      "name": "Collectables",
+      "desc": "Everything else you collect, in your own groups",
+      "color": "#3a3216",
+      "soon": true,
+      "files": [],
+      "provides": [
+        "collectables"
+      ],
+      "uses": []
+    },
+    {
+      "id": "games",
+      "name": "Games",
+      "desc": "Your computer, console and retro games in one list",
+      "color": "#1c1f3e",
+      "soon": true,
+      "files": [],
+      "provides": [
+        "videogames"
+      ],
+      "uses": []
     }
   ]
 }

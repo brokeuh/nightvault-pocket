@@ -3,6 +3,18 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 41,
+   "date": "2026-10-12",
+   "where": [
+    "test"
+   ],
+   "title": "The Nightvault: even more apps coming",
+   "items": [
+    "The Apps screen in The Nightvault (test) now also shows Nightvault Cinema, Boardgames, 3D Print, Collectables and Games as coming later.",
+    "They can't be installed yet - this is only to show how they will look."
+   ]
+  },
+  {
    "id": 40,
    "date": "2026-10-12",
    "where": [
