@@ -17,6 +17,15 @@
    "updated": "2026-10-12T06:58Z",
    "count": 1363,
    "error": ""
+  },
+  {
+   "name": "test-lea",
+   "source": "scryfall",
+   "query": "set:lea",
+   "repeat": "once",
+   "updated": "2026-10-12T06:58Z",
+   "count": 295,
+   "error": ""
   }
  ]
 }
