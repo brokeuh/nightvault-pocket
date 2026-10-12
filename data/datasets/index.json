@@ -1,0 +1,13 @@
+{
+ "sets": [
+  {
+   "name": "test-base1",
+   "source": "pokemon",
+   "query": "base1",
+   "repeat": "once",
+   "updated": "2026-10-12T06:55Z",
+   "count": 102,
+   "error": ""
+  }
+ ]
+}
