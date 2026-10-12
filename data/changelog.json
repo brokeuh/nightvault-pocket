@@ -3,6 +3,18 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 39,
+   "date": "2026-10-12",
+   "where": [
+    "test"
+   ],
+   "title": "The Nightvault: Scanner and Binder tiles",
+   "items": [
+    "In The Nightvault (test) this app now has two tiles: Nightvault Scanner (the whole app) and Nightvault Binder (only your binders, no tabs and no scanning). Both use the same collection.",
+    "Opened normally, nothing changes in this app."
+   ]
+  },
+  {
    "id": 38,
    "date": "2026-10-12",
    "where": [

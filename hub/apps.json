@@ -3,18 +3,19 @@
  "v": 1,
  "apps": [
   {
-   "id": "binder",
-   "name": "Binder",
-   "desc": "Scan cards, binders, decks, prices - the collection app",
+   "id": "scanner",
+   "name": "Scanner",
+   "desc": "The full app: scan cards, binders, my cards, decks, prices",
    "color": "#173a30",
-   "entry": "test/?nv=hub",
+   "entry": "test/?nv=hub&mode=full",
    "files": [
     {
      "path": "test/index.html",
-     "size": 462553
+     "size": 463781
     }
    ],
    "provides": [
+    "scan",
     "collection",
     "prices",
     "decks"
@@ -22,10 +23,34 @@
    "uses": [
     "convert"
    ],
-   "keepsData": "Your collection stays in The Nightvault when you remove the app.",
-   "size": 462553,
-   "hash": "9c5e46fe2c9b",
-   "version": "2026.10.12.1243",
+   "keepsData": "Your collection stays: Scanner and Binder share it.",
+   "size": 463781,
+   "hash": "b9543db3ed10",
+   "version": "2026.10.12.1252",
+   "updated": "2026-10-12"
+  },
+  {
+   "id": "binder",
+   "name": "Binder",
+   "desc": "Only your binders - the same collection as Scanner, no scanning",
+   "color": "#173a30",
+   "entry": "test/?nv=hub&mode=binder",
+   "files": [
+    {
+     "path": "test/index.html",
+     "size": 463781
+    }
+   ],
+   "provides": [
+    "binders"
+   ],
+   "uses": [
+    "scan"
+   ],
+   "keepsData": "Your collection stays: Scanner and Binder share it.",
+   "size": 463781,
+   "hash": "b9543db3ed10",
+   "version": "2026.10.12.1252",
    "updated": "2026-10-12"
   },
   {

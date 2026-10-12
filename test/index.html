@@ -220,6 +220,7 @@ h4{margin:16px 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;le
 .steps li{margin:3px 0}
 
 /* tabs */
+html.binder-only #tabs{display:none!important}
 #tabs{display:grid;grid-template-columns:repeat(5,1fr);background:var(--side);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 #tabs button{border:0;background:none;padding:9px 0 8px;color:var(--dim);font-size:11.5px;display:grid;justify-items:center;gap:2px}
 #tabs button i{font-size:22px}
@@ -484,6 +485,9 @@ if(!NATIVE && 'serviceWorker' in navigator && location.protocol === 'https:') na
 (() => { try{ if(new URLSearchParams(location.search).get('nv') === 'hub') sessionStorage.setItem('nvHub', '1') }catch(e){}
   let on = false; try{ on = sessionStorage.getItem('nvHub') === '1' }catch(e){}
   const b = $('#hubbtn'); if(on && b){ b.hidden = false; b.onclick = () => { location.href = '../hub/' } } })();
+/* "binder only" (the Nightvault Binder tile, test): the same app and collection, opened straight in the binders - no tabs, no scanning */
+const MODE = (() => { try{ const q = new URLSearchParams(location.search).get('mode'); if(q === 'binder' || q === 'full') sessionStorage.setItem('nvMode', q); return sessionStorage.getItem('nvMode') === 'binder' ? 'binder' : 'full' }catch(e){ return 'full' } })();
+if(MODE === 'binder'){ document.documentElement.classList.add('binder-only'); const lg = $('#top .logo small'); if(lg) lg.textContent = 'Binder' }
 function setSt(t){ $('#scst').textContent = t || '' }
 function toast(msg, err){
   $$('#toast .t1').forEach(e => { if(e.textContent === msg) e.remove() });
@@ -1002,6 +1006,7 @@ const SC = {stream:null, timer:null, prev:null, stable:0, armed:true, busy:false
 /* ================================================================ views */
 let VIEW = 'scan';
 function show(v){
+  if(MODE === 'binder' && !['binder', 'settings'].includes(v)){ if(v === 'scan') toast('Scanning is in Nightvault Scanner - your binders are shared'); v = 'binder' }
   VIEW = v; $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === (v === 'review' ? 'cards' : v)));
   if(v !== 'scan') stopCamera();
   ({home:viewHome, scan:viewScan, cards:viewCards, settings:viewSettings, review:viewReview, binder:viewBinder, decks:viewDecks})[v]();
@@ -3305,7 +3310,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610121223';
+const BUILD = '202610121252';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
@@ -3852,7 +3857,7 @@ function deckPick(m, back){
    The phone's back gesture steps back inside the app (close a pop-up, set -> game -> games, settings page -> settings,
    other tabs -> scan). Only on the scan screen does it leave the app. Where you were is remembered for 2 hours. */
 const atRoot = () => VIEW === startView() && !$('#modal').innerHTML.trim() && !$('#viewer').innerHTML.trim();
-const startView = () => O.start === 'scan' ? 'scan' : 'home';
+const startView = () => MODE === 'binder' ? 'binder' : O.start === 'scan' ? 'scan' : 'home';
 function saveNav(){
   O.nav = {at:Date.now(), view:VIEW === 'review' ? 'review' : VIEW, game:BD.game, set:BD.set ? {code:BD.set.code, id:BD.set.id, name:BD.set.name, abbr:BD.set.abbr, tcgdex:BD.set.tcgdex, local:BD.set.local, released:BD.set.released} : null,
     sp:SP.page, f:Object.assign({}, F), dk:DK.id, dks:DK.search, up:!!BD.up, cam:VIEW === 'scan' && (!!SC.stream || !!O.camWasOn)};
@@ -3865,6 +3870,7 @@ function goBack(){
   if(VIEW === 'binder' && BD.up){ BD.up = false; viewBinder(); return }
   if(VIEW === 'binder' && BD.set){ BD.set = null; viewBinder(); return }
   if(VIEW === 'binder' && BD.game){ BD.game = null; viewBinder(); return }
+  if(MODE === 'binder' && VIEW === 'binder'){ try{ if(sessionStorage.getItem('nvHub') === '1'){ location.href = '../hub/'; return } }catch(e){} return }
   if(VIEW === 'settings' && SP.page){ SP.page = null; viewSettings(); return }
   if(VIEW === 'decks' && DK.search){ DK.search = false; viewDecks(); return }
   if(VIEW === 'decks' && DK.id){ DK.id = null; viewDecks(); return }
@@ -3892,7 +3898,7 @@ function restoreNav(){
   show(n.view);
 }
 if(TEST){ $('#testbadge').hidden = false; document.title = 'Pocket TEST' }
-applyTheme(); tabCount(); restoreNav(); fsSync(); $('#fsbtn').onclick = toggleFull;
+applyTheme(); tabCount(); if(MODE === 'binder'){ try{ const n = JSON.parse(localStorage.getItem(NAVKEY) || 'null'); if(n && n.view === 'binder' && Date.now() - (n.at || 0) < 2 * 3600e3){ BD.game = n.game && GAMES[n.game] ? n.game : null; BD.set = BD.game ? n.set : null } }catch(e){} show('binder') } else restoreNav(); fsSync(); $('#fsbtn').onclick = toggleFull;
 (() => { const sp = $('#splash'); if(!sp) return; if(O.splash === false){ sp.remove(); return }     // splash: logo for a moment, then the app
   const go = () => { if(!sp.isConnected || sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(() => sp.remove(), 450) };
   sp.onclick = go; setTimeout(go, matchMedia('(prefers-reduced-motion: reduce)').matches ? 450 : 1350) })();

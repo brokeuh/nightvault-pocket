@@ -106,12 +106,13 @@ const toast = t => { const el = $('#toast'); el.textContent = t; el.className = 
 const LOGO = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5fe0b0" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="7" width="8" height="12" rx="1.5"></rect><path d="M6 9l-2 9 5 1.5M18 9l2 9-5 1.5"></path><path d="M6 4l3 1.5 3-1 3 1.5 3-1" stroke="#c9d2ff"></path></svg>';
 $('#lg1').innerHTML = $('#lg2').innerHTML = LOGO;
 const ICON = {
+  scanner:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#8fb0ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"></path><rect x="8" y="7" width="8" height="10" rx="1"></rect></svg>`,
   binder:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#5fe0b0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="2"></rect><path d="M9 21h9a2 2 0 0 0 2-2V8"></path></svg>`,
   convert:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#6fd3ea" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="10" height="13" rx="1.5"></rect><path d="M16 9h4v11H9v-3"></path><path d="M13 13l3 3"></path></svg>`,
   go:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#f1dc6b" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M4 12h5M15 12h5"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
   control:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#c4cdd8" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2"></circle><circle cx="15" cy="12" r="2"></circle><circle cx="7" cy="18" r="2"></circle></svg>`};
 const icon = (a, big) => `<div class="ic ${big ? '' : 's'}" style="background:${a.color}">${(ICON[a.id] || ICON.control)(big ? 30 : 22)}</div>`;
-const SERVICE = {collection:'your collection', prices:'prices', decks:'decks', convert:'picture converting', datajobs:'data jobs', pogo:'Pokémon GO list'};
+const SERVICE = {scan:'adding cards by scanning', binders:'binders', collection:'your collection', prices:'prices', decks:'decks', convert:'picture converting', datajobs:'data jobs', pogo:'Pokémon GO list'};
 const isOwner = () => get('nvHub.owner', null) ?? (() => { try{ return !!localStorage.getItem('nvControlToken') }catch(e){ return false } })();
 let CAT = [], arranging = false;
 
@@ -124,9 +125,9 @@ function setup(){
   show('setup');
   const hasCollection = (() => { try{ return !!localStorage.getItem('nightvault.pocket.test.v1') }catch(e){ return false } })();
   const list = CAT.filter(a => !a.owner || isOwner());
-  $('#setlist').innerHTML = list.map(a => `<label class="pick ${a.soon ? 'dis' : ''}"><input type="checkbox" value="${a.id}" ${a.soon ? 'disabled' : a.id === 'binder' ? 'checked' : ''}>${icon(a)}
+  $('#setlist').innerHTML = list.map(a => `<label class="pick ${a.soon ? 'dis' : ''}"><input type="checkbox" value="${a.id}" ${a.soon ? 'disabled' : a.id === 'scanner' ? 'checked' : ''}>${icon(a)}
       <div class="tx"><b style="font-size:15.5px">Nightvault ${esc(a.name)}</b><span class="d">${esc(a.desc)}</span>
-      <span class="meta">${a.soon ? '<span class="tag soon">COMING LATER</span>' : mb(a.size)}${a.id === 'binder' && hasCollection ? ' · your collection is already here' : ''}${a.owner ? ' · only for you' : ''}</span></div></label>`).join('');
+      <span class="meta">${a.soon ? '<span class="tag soon">COMING LATER</span>' : mb(a.size)}${(a.id === 'scanner' || a.id === 'binder') && hasCollection ? ' · your collection is already here' : ''}${a.owner ? ' · only for you' : ''}</span></div></label>`).join('');
   const upd = () => { const pick = [...document.querySelectorAll('#setlist input:checked')].map(i => CAT.find(a => a.id === i.value)), size = pick.reduce((s, a) => s + a.size, 0);
     $('#setgo').textContent = pick.length ? `Install ${pick.length} app${pick.length === 1 ? '' : 's'} · ${mb(size)}` : 'Continue without apps'; };
   document.querySelectorAll('#setlist input').forEach(i => i.onchange = upd); upd();
@@ -154,9 +155,10 @@ function home(){
   $('#arrange').textContent = arranging ? 'Done' : 'Arrange'; $('#arrange').hidden = !list.length;
   // continue where you were in Binder (the test app remembers it for 2 hours)
   const n = get('nightvault.pocket.test.nav', null);
-  if(inst.binder && n && Date.now() - (n.at || 0) < 2 * 3600e3 && n.view && n.view !== 'home'){
+  const contApp = n && n.view === 'binder' && inst.binder ? 'binder' : inst.scanner ? 'scanner' : inst.binder && n && n.view === 'binder' ? 'binder' : null;
+  if(contApp && n && Date.now() - (n.at || 0) < 2 * 3600e3 && n.view && n.view !== 'home'){
     const where = n.view === 'binder' ? (n.set ? n.set.name : 'Binder') : ({scan:'Scan', cards:'My cards', decks:'Decks', settings:'Settings', review:'Cards to check'})[n.view] || 'Binder';
-    $('#cont').innerHTML = `<a class="cont" href="${esc(NV.url(CAT.find(a => a.id === 'binder')))}"><div style="flex:1;min-width:0"><small>CONTINUE WHERE YOU WERE</small><b>Nightvault Binder · ${esc(where)}</b></div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e9edf2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>` }
+    $('#cont').innerHTML = `<a class="cont" href="${esc(NV.url(CAT.find(a => a.id === contApp)))}"><div style="flex:1;min-width:0"><small>CONTINUE WHERE YOU WERE</small><b>Nightvault ${contApp === 'binder' ? 'Binder' : 'Scanner'} · ${esc(where)}</b></div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e9edf2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>` }
   else $('#cont').innerHTML = '';
 }
 
