@@ -1,0 +1,153 @@
+{
+ "format": "nightvault-apps",
+ "v": 1,
+ "apps": [
+  {
+   "id": "binder",
+   "name": "Binder",
+   "desc": "Scan cards, binders, decks, prices - the collection app",
+   "color": "#173a30",
+   "entry": "test/?nv=hub",
+   "files": [
+    {
+     "path": "test/index.html",
+     "size": 462553
+    }
+   ],
+   "provides": [
+    "collection",
+    "prices",
+    "decks"
+   ],
+   "uses": [
+    "convert"
+   ],
+   "keepsData": "Your collection stays in The Nightvault when you remove the app.",
+   "size": 462553,
+   "hash": "9c5e46fe2c9b",
+   "version": "2026.10.12.1243",
+   "updated": "2026-10-12"
+  },
+  {
+   "id": "convert",
+   "name": "Convert",
+   "desc": "Many pictures to WebP and AVIF at once",
+   "color": "#13323a",
+   "entry": "tools/convert/?nv=hub",
+   "files": [
+    {
+     "path": "tools/convert/index.html",
+     "size": 16445
+    },
+    {
+     "path": "tools/convert/worker.js",
+     "size": 1888
+    },
+    {
+     "path": "tools/convert/manifest.webmanifest",
+     "size": 553
+    },
+    {
+     "path": "tools/convert/lib/feature.js",
+     "size": 556
+    },
+    {
+     "path": "tools/convert/lib/webp/encode.js",
+     "size": 1940
+    },
+    {
+     "path": "tools/convert/lib/webp/meta.js",
+     "size": 749
+    },
+    {
+     "path": "tools/convert/lib/webp/utils.js",
+     "size": 1272
+    },
+    {
+     "path": "tools/convert/lib/webp/codec/enc/webp_enc.js",
+     "size": 38665
+    },
+    {
+     "path": "tools/convert/lib/webp/codec/enc/webp_enc.wasm",
+     "size": 281261
+    },
+    {
+     "path": "tools/convert/lib/webp/codec/enc/webp_enc_simd.js",
+     "size": 38646
+    },
+    {
+     "path": "tools/convert/lib/webp/codec/enc/webp_enc_simd.wasm",
+     "size": 345584
+    },
+    {
+     "path": "tools/convert/lib/avif/encode.js",
+     "size": 3548
+    },
+    {
+     "path": "tools/convert/lib/avif/meta.js",
+     "size": 410
+    },
+    {
+     "path": "tools/convert/lib/avif/utils.js",
+     "size": 1272
+    },
+    {
+     "path": "tools/convert/lib/avif/codec/enc/avif_enc.js",
+     "size": 39621
+    },
+    {
+     "path": "tools/convert/lib/avif/codec/enc/avif_enc.wasm",
+     "size": 3485872
+    }
+   ],
+   "provides": [
+    "convert"
+   ],
+   "uses": [],
+   "size": 4258282,
+   "hash": "efc5f92f2337",
+   "version": "2026.10.12.1243",
+   "updated": "2026-10-12"
+  },
+  {
+   "id": "control",
+   "name": "Control",
+   "desc": "Data jobs and your data sets",
+   "color": "#222a33",
+   "owner": true,
+   "entry": "admin/?nv=hub",
+   "files": [
+    {
+     "path": "admin/index.html",
+     "size": 22914
+    }
+   ],
+   "provides": [
+    "datajobs"
+   ],
+   "uses": [],
+   "size": 22914,
+   "hash": "b94af8c2683f",
+   "version": "2026.10.12.1243",
+   "updated": "2026-10-12"
+  },
+  {
+   "id": "go",
+   "name": "GO",
+   "desc": "Keep or transfer advice for Pokémon GO",
+   "color": "#2e2a12",
+   "soon": true,
+   "files": [],
+   "provides": [
+    "pogo"
+   ],
+   "uses": [
+    "collection"
+   ],
+   "size": 0,
+   "hash": "e3b0c44298fc",
+   "version": "2026.10.12.1243",
+   "updated": "2026-10-12"
+  }
+ ]
+}

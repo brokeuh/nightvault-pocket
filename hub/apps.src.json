@@ -1,0 +1,21 @@
+{
+  "note": "The Nightvault app list (source). build_catalog.py turns this into apps.json with version and size per app. Paths are relative to the site root.",
+  "apps": [
+    {"id": "binder", "name": "Binder", "desc": "Scan cards, binders, decks, prices - the collection app", "color": "#173a30",
+     "entry": "test/?nv=hub", "files": ["test/index.html"],
+     "provides": ["collection", "prices", "decks"], "uses": ["convert"], "keepsData": "Your collection stays in The Nightvault when you remove the app."},
+    {"id": "convert", "name": "Convert", "desc": "Many pictures to WebP and AVIF at once", "color": "#13323a",
+     "entry": "tools/convert/?nv=hub",
+     "files": ["tools/convert/index.html", "tools/convert/worker.js", "tools/convert/manifest.webmanifest", "tools/convert/lib/feature.js",
+               "tools/convert/lib/webp/encode.js", "tools/convert/lib/webp/meta.js", "tools/convert/lib/webp/utils.js",
+               "tools/convert/lib/webp/codec/enc/webp_enc.js", "tools/convert/lib/webp/codec/enc/webp_enc.wasm",
+               "tools/convert/lib/webp/codec/enc/webp_enc_simd.js", "tools/convert/lib/webp/codec/enc/webp_enc_simd.wasm",
+               "tools/convert/lib/avif/encode.js", "tools/convert/lib/avif/meta.js", "tools/convert/lib/avif/utils.js",
+               "tools/convert/lib/avif/codec/enc/avif_enc.js", "tools/convert/lib/avif/codec/enc/avif_enc.wasm"],
+     "provides": ["convert"], "uses": []},
+    {"id": "control", "name": "Control", "desc": "Data jobs and your data sets", "color": "#222a33", "owner": true,
+     "entry": "admin/?nv=hub", "files": ["admin/index.html"], "provides": ["datajobs"], "uses": []},
+    {"id": "go", "name": "GO", "desc": "Keep or transfer advice for Pokémon GO", "color": "#2e2a12", "soon": true,
+     "files": [], "provides": ["pogo"], "uses": ["collection"]}
+  ]
+}

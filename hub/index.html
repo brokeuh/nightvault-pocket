@@ -10,100 +10,186 @@
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="core.js"></script>
 <style>
-:root{--bg:#0b0e13;--pan:#151a22;--line:#232b36;--text:#e9edf2;--dim:#9aa7b5;--dim2:#8fa0b2;--accent:#5fe0b0;--accentd:#2a8f6a}
+:root{--bg:#0b0e13;--pan:#151a22;--pan2:#10141b;--line:#232b36;--text:#e9edf2;--dim:#9aa7b5;--dim2:#8fa0b2;--accent:#5fe0b0;--accentd:#2a8f6a;--amber:#f1dc6b;--red:#ef8a8f}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 'DM Sans',system-ui,sans-serif}
 body{max-width:560px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(28px + env(safe-area-inset-bottom,0px))}
 a{color:var(--accent)}
+[hidden]{display:none!important}
 .top{display:flex;align-items:center;gap:12px;padding:6px 0 4px}
 .logo{width:42px;height:42px;border-radius:13px;background:#1b2150;display:flex;align-items:center;justify-content:center;flex:none}
 .word{font-family:'Unbounded',sans-serif;font-weight:700;font-size:18px;letter-spacing:.5px}
 .sub{font-size:12px;color:var(--dim2)}
-.ib{width:44px;height:44px;border-radius:14px;border:1px solid var(--line);background:var(--pan);display:flex;align-items:center;justify-content:center;padding:0;color:#c4cdd8;cursor:pointer}
+.ib{width:44px;height:44px;border-radius:14px;border:1px solid var(--line);background:var(--pan);display:flex;align-items:center;justify-content:center;padding:0;color:#c4cdd8;cursor:pointer;flex:none}
 .cont{margin:14px 0 4px;padding:13px 16px;border-radius:16px;background:linear-gradient(135deg,#1a2a55,#13342c);border:1px solid #2a3b62;display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--text)}
 .cont small{display:block;font-size:11px;color:#a9c4ff;font-weight:700;letter-spacing:.6px}
 .cont b{display:block;font-size:14.5px;margin-top:2px}
 .head{display:flex;align-items:baseline;justify-content:space-between;padding:18px 0 8px}
 .head span{font-size:13px;font-weight:700;color:var(--dim2);letter-spacing:.6px}
-.head button{background:none;border:0;color:var(--accent);font:inherit;font-size:13.5px;cursor:pointer;padding:6px 0}
+.lnk{background:none;border:0;color:var(--accent);font:inherit;font-size:13.5px;cursor:pointer;padding:6px 0}
 .apps{display:flex;flex-direction:column;gap:12px}
-.app{display:flex;align-items:center;gap:14px;padding:16px;border-radius:22px;background:var(--pan);border:1px solid var(--line);text-decoration:none;color:var(--text);transition:transform .12s,border-color .12s}
+.app{display:flex;align-items:center;gap:14px;padding:16px;border-radius:22px;background:var(--pan);border:1px solid var(--line);text-decoration:none;color:var(--text)}
 a.app:active{transform:scale(.985)}a.app:hover{border-color:#33404f}
-.app .ic{width:58px;height:58px;border-radius:17px;display:flex;align-items:center;justify-content:center;flex:none}
-.app .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.app small{font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--dim2)}
-.app b{font-size:17px}
-.app .d{font-size:13px;color:var(--dim);line-height:1.35}
+.ic{width:58px;height:58px;border-radius:17px;display:flex;align-items:center;justify-content:center;flex:none}
+.ic.s{width:44px;height:44px;border-radius:13px}
+.tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.tx small{font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--dim2)}
+.tx b{font-size:17px}
+.tx .d{font-size:13px;color:var(--dim);line-height:1.35}
 .tag{font-size:10.5px;font-weight:700;letter-spacing:.4px;padding:2px 8px;border-radius:99px;align-self:flex-start;margin-top:4px;background:#26303b;color:#c4cdd8}
-.app.soon{opacity:.6}
-.app.off{opacity:.45}
+.tag.new{background:#173a30;color:var(--accent)}.tag.soon{background:#3b3515;color:var(--amber)}
+.off{opacity:.45}
 .ctl{display:flex;gap:6px;flex:none}
-.ctl button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:#10141b;color:#c4cdd8;font-size:16px;cursor:pointer}
-.more{padding:16px;border-radius:22px;border:1px dashed #2f3a48;color:var(--dim2);font-size:13px;display:flex;align-items:center;gap:12px}
+.ctl button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--pan2);color:#c4cdd8;font-size:16px;cursor:pointer}
+.more{padding:16px;border-radius:22px;border:1px dashed #2f3a48;color:var(--dim2);font-size:14px;display:flex;align-items:center;gap:12px;background:none;width:100%;font-family:inherit;cursor:pointer;text-align:left}
 .foot{margin-top:22px;font-size:12px;color:#6f7d8c;text-align:center}
-.menu{position:fixed;inset:0;background:#000a;display:flex;align-items:flex-end;justify-content:center;z-index:5}
-.menu>div{background:#121720;border:1px solid var(--line);border-radius:20px 20px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom,0px));width:min(560px,100%)}
-.menu label{display:flex;align-items:center;gap:12px;padding:12px 2px;font-size:14.5px;border-bottom:1px solid var(--line)}
-.menu input{width:20px;height:20px;accent-color:var(--accentd)}
-.menu .btn{margin-top:14px;width:100%;height:46px;border-radius:14px;border:1px solid var(--line);background:var(--pan);color:var(--text);font:inherit;cursor:pointer}
+.btn{height:48px;border-radius:14px;border:1px solid var(--line);background:var(--pan);color:var(--text);font:inherit;font-size:15px;cursor:pointer;padding:0 18px}
+.btn.primary{background:var(--accentd);border-color:#3fbf91;color:#fff;font-weight:700}
+.btn.sm{height:38px;font-size:13.5px;padding:0 13px;border-radius:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.pick{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:var(--pan);border:1px solid var(--line);cursor:pointer}
+.pick input{width:22px;height:22px;accent-color:var(--accentd);flex:none}
+.pick.dis{cursor:default;opacity:.6}
+.meta{font-size:12px;color:var(--dim2)}
+.bar{height:6px;border-radius:99px;background:#232b36;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .15s}
+.sheet{position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:5;padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(28px + env(safe-area-inset-bottom,0px))}
+.sheet>div{max-width:560px;margin:0 auto}
+.sec{font-size:13px;font-weight:700;color:var(--dim2);letter-spacing:.6px;margin:20px 0 8px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:var(--pan);border:1px solid var(--line);margin-bottom:10px;flex-wrap:wrap}
+.works{flex-basis:100%;font-size:12.5px;color:var(--dim);display:flex;flex-wrap:wrap;gap:6px 10px;padding-left:56px}
+.works .ok{color:var(--accent)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222a33;border:1px solid var(--line);padding:10px 14px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9;max-width:90vw}
+#toast.on{opacity:1}
 </style>
 </head>
 <body>
-<div class="top">
-  <div class="logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5fe0b0" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="7" width="8" height="12" rx="1.5"></rect><path d="M6 9l-2 9 5 1.5M18 9l2 9-5 1.5"></path><path d="M6 4l3 1.5 3-1 3 1.5 3-1" stroke="#c9d2ff"></path></svg></div>
-  <div style="flex:1;min-width:0"><div class="word">THE NIGHTVAULT</div><div class="sub">Your apps · test version</div></div>
-  <button class="ib" id="menu" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg></button>
+<!-- first start: pick your apps -->
+<div id="setup" hidden>
+  <div class="top"><div class="logo" id="lg1"></div><div style="flex:1"><div class="word">THE NIGHTVAULT</div><div class="sub">Welcome</div></div></div>
+  <h2 style="font-size:20px;margin:22px 0 4px">Pick your apps</h2>
+  <p class="meta" style="font-size:13.5px;margin:0 0 14px">Only the apps you pick are downloaded. You can add or remove apps any time from the Apps screen - your collection is never removed.</p>
+  <div id="setlist" style="display:flex;flex-direction:column;gap:10px"></div>
+  <div id="setprog" hidden style="margin-top:16px"></div>
+  <div style="display:flex;gap:10px;margin-top:18px"><button class="btn primary" id="setgo" style="flex:1">Install</button></div>
 </div>
-<div id="cont"></div>
-<div class="head"><span>APPS</span><button id="arrange">Arrange</button></div>
-<div class="apps" id="apps"></div>
-<div class="foot">The Nightvault is a test. Each app works on its own too - nothing changes in them.</div>
+
+<!-- home: tiles of the installed apps -->
+<div id="home" hidden>
+  <div class="top">
+    <div class="logo" id="lg2"></div>
+    <div style="flex:1;min-width:0"><div class="word">THE NIGHTVAULT</div><div class="sub">Your apps · test version</div></div>
+    <button class="ib" id="appsbtn" aria-label="Apps"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><path d="M17 14v6M14 17h6" stroke-linecap="round"></path></svg></button>
+  </div>
+  <div id="cont"></div>
+  <div class="head"><span>APPS</span><button class="lnk" id="arrange">Arrange</button></div>
+  <div class="apps" id="tiles"></div>
+  <div class="foot">The Nightvault is a test. Each app also works on its own - nothing changes in them.</div>
+</div>
+
+<!-- the Apps screen: install, update, remove -->
+<div class="sheet" id="appsheet" hidden><div>
+  <div class="top"><button class="btn sm" id="appsdone">Done</button><div style="flex:1;text-align:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;margin-right:64px">Apps</div></div>
+  <div id="applist"></div>
+  <label class="meta" style="display:flex;align-items:center;gap:10px;margin-top:18px"><input type="checkbox" id="ownchk" style="width:18px;height:18px;accent-color:var(--accentd)"> Show the apps only meant for the owner</label>
+</div></div>
+<div id="toast"></div>
 
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const ICON = {
-  binder:'<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#5fe0b0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="2"></rect><path d="M9 21h9a2 2 0 0 0 2-2V8"></path></svg>',
-  convert:'<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#6fd3ea" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="10" height="13" rx="1.5"></rect><path d="M16 9h4v11H9v-3"></path><path d="M13 13l3 3"></path></svg>',
-  go:'<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#f1dc6b" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M4 12h5M15 12h5"></path><circle cx="12" cy="12" r="3"></circle></svg>',
-  control:'<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#c4cdd8" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2"></circle><circle cx="15" cy="12" r="2"></circle><circle cx="7" cy="18" r="2"></circle></svg>'};
-const APPS = [
-  {id:'binder', name:'Binder', desc:'Scan cards, binders, decks, prices - the app you use now', url:'../test/?nv=hub', bg:'#173a30'},
-  {id:'convert', name:'Convert', desc:'Many pictures to WebP and AVIF at once', url:'../tools/convert/?nv=hub', bg:'#13323a'},
-  {id:'go', name:'GO', desc:'Keep or transfer advice for Pokémon GO', soon:'COMING LATER', bg:'#2e2a12'},
-  {id:'control', name:'Control', desc:'Data jobs and your data sets', url:'../admin/?nv=hub', bg:'#222a33', owner:true, tag:'ONLY FOR YOU'}];
+const mb = n => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
 const get = (k, d) => { try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v) }catch(e){ return d } };
 const set = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)) }catch(e){} };
-const isOwner = () => { try{ return !!localStorage.getItem('nvControlToken') }catch(e){ return false } };
-let arranging = false;
-function order(){ const o = get('nvHub.order', []); return APPS.slice().sort((a, b) => ((o.indexOf(a.id) + 1) || 99) - ((o.indexOf(b.id) + 1) || 99)) }
-function visible(a){ const h = get('nvHub.hidden', []); if(h.includes(a.id)) return false; if(a.owner) return get('nvHub.owner', null) ?? isOwner(); return true }
-function draw(){
-  const list = order().filter(a => arranging || visible(a));
-  $('#apps').innerHTML = list.map((a, i) => {
-    const inner = `<div class="ic" style="background:${a.bg}">${ICON[a.id] || ''}</div><div class="tx"><small>NIGHTVAULT</small><b>${esc(a.name)}</b><span class="d">${esc(a.desc)}</span>${a.soon ? `<span class="tag" style="background:#3b3515;color:#f1dc6b">${a.soon}</span>` : a.tag ? `<span class="tag">${a.tag}</span>` : ''}</div>`;
-    if(arranging) return `<div class="app ${visible(a) ? '' : 'off'}">${inner}<div class="ctl"><button data-up="${a.id}" aria-label="Move ${esc(a.name)} up" ${i ? '' : 'disabled'}>↑</button><button data-eye="${a.id}" aria-label="${visible(a) ? 'Hide' : 'Show'} ${esc(a.name)}">${visible(a) ? '✓' : '–'}</button></div></div>`;
-    return a.url ? `<a class="app" href="${a.url}" data-open="${a.id}">${inner}</a>` : `<div class="app soon">${inner}</div>` }).join('')
-    + (arranging ? '' : '<div class="more"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6c7a8a" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>More Nightvault apps will show up here</div>');
+const toast = t => { const el = $('#toast'); el.textContent = t; el.className = 'on'; clearTimeout(toast.t); toast.t = setTimeout(() => el.className = '', 3500) };
+const LOGO = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5fe0b0" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="7" width="8" height="12" rx="1.5"></rect><path d="M6 9l-2 9 5 1.5M18 9l2 9-5 1.5"></path><path d="M6 4l3 1.5 3-1 3 1.5 3-1" stroke="#c9d2ff"></path></svg>';
+$('#lg1').innerHTML = $('#lg2').innerHTML = LOGO;
+const ICON = {
+  binder:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#5fe0b0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="2"></rect><path d="M9 21h9a2 2 0 0 0 2-2V8"></path></svg>`,
+  convert:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#6fd3ea" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="10" height="13" rx="1.5"></rect><path d="M16 9h4v11H9v-3"></path><path d="M13 13l3 3"></path></svg>`,
+  go:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#f1dc6b" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M4 12h5M15 12h5"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
+  control:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#c4cdd8" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2"></circle><circle cx="15" cy="12" r="2"></circle><circle cx="7" cy="18" r="2"></circle></svg>`};
+const icon = (a, big) => `<div class="ic ${big ? '' : 's'}" style="background:${a.color}">${(ICON[a.id] || ICON.control)(big ? 30 : 22)}</div>`;
+const SERVICE = {collection:'your collection', prices:'prices', decks:'decks', convert:'picture converting', datajobs:'data jobs', pogo:'Pokémon GO list'};
+const isOwner = () => get('nvHub.owner', null) ?? (() => { try{ return !!localStorage.getItem('nvControlToken') }catch(e){ return false } })();
+let CAT = [], arranging = false;
+
+function show(view){ $('#setup').hidden = view !== 'setup'; $('#home').hidden = view !== 'home' }
+const order = list => { const o = get('nvHub.order', []); return list.slice().sort((a, b) => ((o.indexOf(a.id) + 1) || 99) - ((o.indexOf(b.id) + 1) || 99)) };
+const hidden = id => get('nvHub.hidden', []).includes(id);
+
+/* ---------- first start ---------- */
+function setup(){
+  show('setup');
+  const hasCollection = (() => { try{ return !!localStorage.getItem('nightvault.pocket.test.v1') }catch(e){ return false } })();
+  const list = CAT.filter(a => !a.owner || isOwner());
+  $('#setlist').innerHTML = list.map(a => `<label class="pick ${a.soon ? 'dis' : ''}"><input type="checkbox" value="${a.id}" ${a.soon ? 'disabled' : a.id === 'binder' ? 'checked' : ''}>${icon(a)}
+      <div class="tx"><b style="font-size:15.5px">Nightvault ${esc(a.name)}</b><span class="d">${esc(a.desc)}</span>
+      <span class="meta">${a.soon ? '<span class="tag soon">COMING LATER</span>' : mb(a.size)}${a.id === 'binder' && hasCollection ? ' · your collection is already here' : ''}${a.owner ? ' · only for you' : ''}</span></div></label>`).join('');
+  const upd = () => { const pick = [...document.querySelectorAll('#setlist input:checked')].map(i => CAT.find(a => a.id === i.value)), size = pick.reduce((s, a) => s + a.size, 0);
+    $('#setgo').textContent = pick.length ? `Install ${pick.length} app${pick.length === 1 ? '' : 's'} · ${mb(size)}` : 'Continue without apps'; };
+  document.querySelectorAll('#setlist input').forEach(i => i.onchange = upd); upd();
+  $('#setgo').onclick = async () => { const ids = [...document.querySelectorAll('#setlist input:checked')].map(i => i.value);
+    $('#setgo').disabled = true; document.querySelectorAll('#setlist input').forEach(i => i.disabled = true);
+    $('#setprog').hidden = false; $('#setprog').innerHTML = ids.map(id => `<div style="margin-bottom:10px"><div class="meta" id="pl-${id}">Nightvault ${esc(CAT.find(a => a.id === id).name)} · waiting</div><div class="bar"><i id="pb-${id}"></i></div></div>`).join('');
+    for(const id of ids){ try{ await NV.install(id, (d, t) => { $('#pb-' + id).style.width = (100 * d / t) + '%'; $('#pl-' + id).textContent = `Nightvault ${CAT.find(a => a.id === id).name} · ${mb(d)} of ${mb(t)}` }); $('#pl-' + id).textContent += ' · ready' }
+      catch(e){ $('#pl-' + id).textContent = `Nightvault ${CAT.find(a => a.id === id).name} · ${e.message}` } }
+    set('nvHub.setupDone', Date.now()); setTimeout(home, 500) };
+}
+
+/* ---------- home ---------- */
+function home(){
+  show('home');
+  const inst = NV.installed(), list = order(CAT.filter(a => inst[a.id] && (arranging || !hidden(a.id))));
+  $('#tiles').innerHTML = list.map((a, i) => { const upd = NV.updateAvailable(a);
+      const inner = `${icon(a, true)}<div class="tx"><small>NIGHTVAULT</small><b>${esc(a.name)}</b><span class="d">${esc(a.desc)}</span>${upd ? '<span class="tag new">UPDATE READY</span>' : a.owner ? '<span class="tag">ONLY FOR YOU</span>' : ''}</div>`;
+      if(arranging) return `<div class="app ${hidden(a.id) ? 'off' : ''}">${inner}<div class="ctl"><button data-up="${a.id}" aria-label="Move up" ${i ? '' : 'disabled'}>↑</button><button data-eye="${a.id}" aria-label="${hidden(a.id) ? 'Show' : 'Hide'}">${hidden(a.id) ? '–' : '✓'}</button></div></div>`;
+      return `<a class="app" href="${esc(NV.url(a))}" data-open="${a.id}">${inner}</a>` }).join('')
+    + (arranging ? '' : `<button class="more" id="addapps"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6c7a8a" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>${list.length ? 'Add more Nightvault apps' : 'Add your first app'}</button>`);
   document.querySelectorAll('[data-open]').forEach(el => el.onclick = () => set('nvHub.last', {id:el.dataset.open, at:Date.now()}));
-  document.querySelectorAll('[data-up]').forEach(b => b.onclick = () => { const ids = order().map(a => a.id), i = ids.indexOf(b.dataset.up); if(i > 0){ [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]]; set('nvHub.order', ids); draw() } });
-  document.querySelectorAll('[data-eye]').forEach(b => b.onclick = () => { const id = b.dataset.eye, a = APPS.find(x => x.id === id), h = get('nvHub.hidden', []);
-    if(a.owner){ const now = visible(a); set('nvHub.owner', !now); set('nvHub.hidden', h.filter(x => x !== id)) } else set('nvHub.hidden', h.includes(id) ? h.filter(x => x !== id) : h.concat(id)); draw() });
-  $('#arrange').textContent = arranging ? 'Done' : 'Arrange' }
-function cont(){                                 // where you were in Nightvault Binder (the test app remembers it for 2 hours)
+  document.querySelectorAll('[data-up]').forEach(b => b.onclick = () => { const ids = order(CAT).map(a => a.id), i = ids.indexOf(b.dataset.up); [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]]; set('nvHub.order', ids); home() });
+  document.querySelectorAll('[data-eye]').forEach(b => b.onclick = () => { const h = get('nvHub.hidden', []), id = b.dataset.eye; set('nvHub.hidden', h.includes(id) ? h.filter(x => x !== id) : h.concat(id)); home() });
+  if($('#addapps')) $('#addapps').onclick = appsScreen;
+  $('#arrange').textContent = arranging ? 'Done' : 'Arrange'; $('#arrange').hidden = !list.length;
+  // continue where you were in Binder (the test app remembers it for 2 hours)
   const n = get('nightvault.pocket.test.nav', null);
-  if(!n || Date.now() - (n.at || 0) > 2 * 3600e3 || !n.view || n.view === 'home'){ $('#cont').innerHTML = ''; return }
-  const where = n.view === 'binder' ? (n.set ? n.set.name : 'Binder') : ({scan:'Scan', cards:'My cards', decks:'Decks', settings:'Settings', review:'Cards to check'})[n.view] || 'Binder';
-  $('#cont').innerHTML = `<a class="cont" href="../test/?nv=hub"><div style="flex:1;min-width:0"><small>CONTINUE WHERE YOU WERE</small><b>Nightvault Binder · ${esc(where)}</b></div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e9edf2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>` }
-$('#arrange').onclick = () => { arranging = !arranging; draw() };
-$('#menu').onclick = () => { const m = document.createElement('div'); m.className = 'menu';
-  m.innerHTML = `<div><b style="font-size:16px">The Nightvault</b><label><input type="checkbox" id="mown" ${visible(APPS.find(a => a.owner)) ? 'checked' : ''}> Show “Control” (only for the owner)</label><label><input type="checkbox" id="mreset"> Put the apps back in the first order</label><button class="btn" id="mdone">Done</button></div>`;
-  document.body.appendChild(m);
-  m.onclick = e => { if(e.target === m) m.remove() };
-  m.querySelector('#mdone').onclick = () => { set('nvHub.owner', m.querySelector('#mown').checked); if(m.querySelector('#mreset').checked){ set('nvHub.order', []); set('nvHub.hidden', []) } m.remove(); draw() } };
-window.addEventListener('pageshow', () => { cont(); draw() });
-cont(); draw();
+  if(inst.binder && n && Date.now() - (n.at || 0) < 2 * 3600e3 && n.view && n.view !== 'home'){
+    const where = n.view === 'binder' ? (n.set ? n.set.name : 'Binder') : ({scan:'Scan', cards:'My cards', decks:'Decks', settings:'Settings', review:'Cards to check'})[n.view] || 'Binder';
+    $('#cont').innerHTML = `<a class="cont" href="${esc(NV.url(CAT.find(a => a.id === 'binder')))}"><div style="flex:1;min-width:0"><small>CONTINUE WHERE YOU WERE</small><b>Nightvault Binder · ${esc(where)}</b></div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e9edf2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>` }
+  else $('#cont').innerHTML = '';
+}
+
+/* ---------- Apps screen ---------- */
+function appsScreen(){
+  $('#appsheet').hidden = false; $('#ownchk').checked = isOwner();
+  const inst = NV.installed(), vis = CAT.filter(a => !a.owner || isOwner()), mine = vis.filter(a => inst[a.id]), other = vis.filter(a => !inst[a.id] && !a.soon), soon = vis.filter(a => a.soon);
+  const works = a => { const u = (a.uses || []).map(s => { const p = CAT.find(x => (x.provides || []).includes(s)); if(!p) return ''; const ok = !!inst[p.id];
+      return `<span>${esc(SERVICE[s] || s)}: ${ok ? `<span class="ok">✓ Nightvault ${esc(p.name)}</span>` : p.soon ? `Nightvault ${esc(p.name)} (later)` : `<button class="lnk" data-inst="${p.id}" style="font-size:12.5px;padding:0">install Nightvault ${esc(p.name)}</button>`}</span>` }).filter(Boolean);
+    return u.length ? `<div class="works">Works with ${u.join('')}</div>` : '' };
+  const row = (a, btns) => `<div class="row">${icon(a)}<div class="tx"><b style="font-size:15.5px">Nightvault ${esc(a.name)}</b><span class="d">${esc(a.desc)}</span>
+      <span class="meta">${a.soon ? '<span class="tag soon">COMING LATER</span>' : `${mb(a.size)}${inst[a.id] ? ' · version ' + esc(inst[a.id].version) : ''}`}</span><span class="meta" id="ap-${a.id}"></span></div><div class="ctl" style="gap:8px">${btns}</div>${a.soon ? '' : works(a)}</div>`;
+  $('#applist').innerHTML =
+    (mine.length ? '<div class="sec">ON THIS DEVICE</div>' + mine.map(a => row(a, (NV.updateAvailable(a) ? `<button class="btn sm primary" data-inst="${a.id}">Update</button>` : '') + `<button class="btn sm" data-rm="${a.id}">Remove</button>`)).join('') : '')
+    + (other.length ? '<div class="sec">AVAILABLE</div>' + other.map(a => row(a, `<button class="btn sm primary" data-inst="${a.id}">Install</button>`)).join('') : '')
+    + (soon.length ? '<div class="sec">COMING LATER</div>' + soon.map(a => row(a, '')).join('') : '');
+  document.querySelectorAll('[data-inst]').forEach(b => b.onclick = async () => { const id = b.dataset.inst, a = CAT.find(x => x.id === id); b.disabled = true;
+    try{ await NV.install(id, (d, t) => { const el = $('#ap-' + id); if(el) el.textContent = `Downloading ${mb(d)} of ${mb(t)}` }); toast(`Nightvault ${a.name} is ready`) }catch(e){ toast(e.message) }
+    appsScreen() });
+  document.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { const a = CAT.find(x => x.id === b.dataset.rm);
+    if(!confirm(`Remove Nightvault ${a.name} from this device?${a.keepsData ? '\n\n' + a.keepsData : ''}`)) return; await NV.remove(a.id); toast(`Nightvault ${a.name} removed`); appsScreen() });
+}
+$('#appsdone').onclick = () => { $('#appsheet').hidden = true; home() };
+$('#ownchk').onchange = e => { set('nvHub.owner', e.target.checked); appsScreen() };
+$('#appsbtn').onclick = appsScreen;
+$('#arrange').onclick = () => { arranging = !arranging; home() };
+
+(async () => {
+  try{ CAT = await NV.catalog() }catch(e){ document.body.insertAdjacentHTML('afterbegin', `<p class="meta">${esc(e.message)} - check your internet connection.</p>`); return }
+  // first start: no apps chosen yet (someone who used the earlier test tiles has Binder already)
+  if(!get('nvHub.setupDone', null) && !Object.keys(NV.installed()).length) setup(); else home();
+})();
+window.addEventListener('pageshow', e => { if(e.persisted && CAT.length && !$('#home').hidden) home() });
 </script>
 </body>
 </html>
