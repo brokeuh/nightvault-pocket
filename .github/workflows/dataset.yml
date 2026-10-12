@@ -155,7 +155,8 @@ jobs:
                   if not e: e = {"name": name}; index["sets"].append(e)
                   e.update(source=os.environ.get("IN_SOURCE") or "tcgplayer", query=os.environ.get("IN_QUERY") or "", repeat=os.environ.get("IN_REPEAT") or "once")
                   try: make(e)
-                  except SystemExit as x: e["error"] = str(x); json.dump(index, open(IDX, "w"), indent=1, ensure_ascii=False); raise
+                  except BaseException as x:                          # keep the reason, the control page shows it
+                      e["error"] = (str(x) or type(x).__name__)[:300]; json.dump(index, open(IDX, "w"), indent=1, ensure_ascii=False); raise
           else:
               monday = datetime.datetime.utcnow().weekday() == 0 or os.environ.get("EVENT") == "workflow_dispatch"   # by hand: all of them now
               for e in index["sets"]:
