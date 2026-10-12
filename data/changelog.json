@@ -3,6 +3,19 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 43,
+   "date": "2026-10-12",
+   "where": [
+    "android"
+   ],
+   "title": "The app starts on The Nightvault",
+   "items": [
+    "The Android app now opens on The Nightvault: the tiles for Scanner, Binder, Convert and the apps coming later. Tap a tile to open it.",
+    "Your collection stays exactly as it was.",
+    "The back button on the first screen of Scanner or Binder takes you back to the tiles."
+   ]
+  },
+  {
    "id": 42,
    "date": "2026-10-12",
    "where": [

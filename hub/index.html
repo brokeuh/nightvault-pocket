@@ -199,6 +199,9 @@ $('#arrange').onclick = () => { arranging = !arranging; home() };
   // first start: no apps chosen yet (someone who used the earlier test tiles has Binder already)
   if(!get('nvHub.setupDone', null) && !Object.keys(NV.installed()).length) setup(); else home();
 })();
+/* Android app: the hub is the first screen; back closes the Apps screen, otherwise the app goes to the background */
+if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
+  A.addListener('backButton', () => { if(!$('#appsheet').hidden){ $('#appsdone').click(); return } if(arranging){ $('#arrange').click(); return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 window.addEventListener('pageshow', e => { if(e.persisted && CAT.length && !$('#home').hidden) home() });
 </script>
 </body>

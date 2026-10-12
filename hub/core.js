@@ -16,7 +16,8 @@
     installed(){ return get(REG, {}) },
     isInstalled(id){ return !!NV.installed()[id] },
     async app(id){ return (await NV.catalog()).find(a => a.id === id) || null },
-    url(app){ return app && app.entry ? SITE + app.entry : null },
+    /* always with index.html: the Android app's own server answers a folder address (ending in /) with the start page */
+    url(app){ return app && app.entry ? SITE + app.entry.replace(/\/(\?|#|$)/, '/index.html$1') : null },
     /* who offers a service: {ok:true, app} when an installed app does, else {ok:false, app:<the app that would>} */
     async need(service){ const cat = await NV.catalog(), inst = NV.installed(), all = cat.filter(a => (a.provides || []).includes(service));
       const have = all.find(a => inst[a.id]); return have ? {ok:true, app:have} : {ok:false, app:all.find(a => !a.soon) || all[0] || null} },
@@ -37,7 +38,7 @@
     async remove(id){ try{ if(self.caches) await caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('nvapp-' + id + '-')).map(k => caches.delete(k)))) }catch(e){}
       const reg = NV.installed(); delete reg[id]; set(REG, reg) },
     /* for apps opened from The Nightvault: go back to the tiles */
-    home(){ location.href = HUB }
+    home(){ location.href = HUB + 'index.html' }
   };
   window.NV = NV;
 })();

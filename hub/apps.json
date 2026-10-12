@@ -11,7 +11,11 @@
    "files": [
     {
      "path": "test/index.html",
+<<<<<<< Updated upstream
      "size": 464204
+=======
+     "size": 464424
+>>>>>>> Stashed changes
     }
    ],
    "provides": [
@@ -24,9 +28,15 @@
     "convert"
    ],
    "keepsData": "Your collection stays: Scanner and Binder share it.",
+<<<<<<< Updated upstream
    "size": 464204,
    "hash": "5df60803162e",
    "version": "2026.10.12.1320",
+=======
+   "size": 464424,
+   "hash": "5f66be0738ed",
+   "version": "2026.10.12.1524",
+>>>>>>> Stashed changes
    "updated": "2026-10-12"
   },
   {
@@ -38,7 +48,11 @@
    "files": [
     {
      "path": "test/index.html",
+<<<<<<< Updated upstream
      "size": 464204
+=======
+     "size": 464424
+>>>>>>> Stashed changes
     }
    ],
    "provides": [
@@ -48,9 +62,15 @@
     "scan"
    ],
    "keepsData": "Your collection stays: Scanner and Binder share it.",
+<<<<<<< Updated upstream
    "size": 464204,
    "hash": "5df60803162e",
    "version": "2026.10.12.1320",
+=======
+   "size": 464424,
+   "hash": "5f66be0738ed",
+   "version": "2026.10.12.1524",
+>>>>>>> Stashed changes
    "updated": "2026-10-12"
   },
   {
@@ -62,7 +82,7 @@
    "files": [
     {
      "path": "tools/convert/index.html",
-     "size": 16445
+     "size": 16455
     },
     {
      "path": "tools/convert/worker.js",
@@ -129,9 +149,9 @@
     "convert"
    ],
    "uses": [],
-   "size": 4258282,
-   "hash": "efc5f92f2337",
-   "version": "2026.10.12.1243",
+   "size": 4258292,
+   "hash": "4f0bf094dd8a",
+   "version": "2026.10.12.1524",
    "updated": "2026-10-12"
   },
   {
@@ -144,16 +164,16 @@
    "files": [
     {
      "path": "admin/index.html",
-     "size": 22914
+     "size": 22924
     }
    ],
    "provides": [
     "datajobs"
    ],
    "uses": [],
-   "size": 22914,
-   "hash": "b94af8c2683f",
-   "version": "2026.10.12.1243",
+   "size": 22924,
+   "hash": "1bd954365de0",
+   "version": "2026.10.12.1524",
    "updated": "2026-10-12"
   },
   {

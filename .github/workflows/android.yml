@@ -6,7 +6,7 @@ name: Build Android app
 on:
   push:
     branches: [main]
-    paths: ["native/**", "test/index.html", ".github/workflows/android.yml"]
+    paths: ["native/**", "test/index.html", "hub/**", "tools/**", "admin/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 
 permissions:
@@ -37,13 +37,20 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
         run: |
           npm install --no-audit --no-fund
-          mkdir -p www
-          cp ../test/index.html www/index.html
-          # the Capacitor helper first, so the page sees the Android app's plugins (text reader, share, files)
+          # the app is laid out like the website: The Nightvault (hub/) is the first screen, Pocket test is test/, plus Convert and Control.
+          # Everything stays on the same address inside the app, so the collection saved by earlier versions is kept.
+          mkdir -p www/test www/hub www/tools
+          cp ../test/index.html www/test/index.html
+          cp ../hub/index.html ../hub/core.js ../hub/apps.json ../hub/manifest.webmanifest www/hub/
+          cp -r ../tools/convert www/tools/convert
+          cp -r ../admin www/admin
+          cp ../favicon.svg ../favicon-32.png ../apple-touch-icon.png ../icon-*.png www/
+          printf '<!doctype html><meta charset="utf-8"><title>Nightvault</title><style>html{background:#0b0e13}</style><script>location.replace("hub/index.html")</script>' > www/index.html
+          # the Capacitor helper first, so the pages see the Android app's plugins (text reader, share, files, back button)
           cp node_modules/@capacitor/core/dist/capacitor.js www/capacitor.js
-          sed -i 's#<head>#<head><script src="capacitor.js"></script>#' www/index.html
-          grep -c 'capacitor.js' www/index.html
-          echo "WEB_BUILD=$(grep -o "const BUILD = '[0-9]\{12\}'" www/index.html | grep -o '[0-9]\{12\}')" >> "$GITHUB_ENV"
+          sed -i 's#<head>#<head><script src="/capacitor.js"></script>#' www/test/index.html www/hub/index.html
+          grep -c 'capacitor.js' www/test/index.html www/hub/index.html
+          echo "WEB_BUILD=$(grep -o "const BUILD = '[0-9]\{12\}'" www/test/index.html | grep -o '[0-9]\{12\}')" >> "$GITHUB_ENV"
           npx cap add android
           bash patch.sh
           npx cap sync android

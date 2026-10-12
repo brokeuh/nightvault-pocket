@@ -484,7 +484,7 @@ if(!NATIVE && 'serviceWorker' in navigator && location.protocol === 'https:') na
 /* opened from The Nightvault (the app tiles, test): a button back to the tiles */
 (() => { try{ if(new URLSearchParams(location.search).get('nv') === 'hub') sessionStorage.setItem('nvHub', '1') }catch(e){}
   let on = false; try{ on = sessionStorage.getItem('nvHub') === '1' }catch(e){}
-  const b = $('#hubbtn'); if(on && b){ b.hidden = false; b.onclick = () => { location.href = '../hub/' } } })();
+  const b = $('#hubbtn'); if(on && b){ b.hidden = false; b.onclick = () => { location.href = '../hub/index.html' } } })();
 /* "binder only" (the Nightvault Binder tile, test): the same app and collection, opened straight in the binders - no tabs, no scanning */
 const MODE = (() => { try{ const q = new URLSearchParams(location.search).get('mode'); if(q === 'binder' || q === 'full') sessionStorage.setItem('nvMode', q); return sessionStorage.getItem('nvMode') === 'binder' ? 'binder' : 'full' }catch(e){ return 'full' } })();
 if(MODE === 'binder'){ document.documentElement.classList.add('binder-only'); const lg = $('#top .logo small'); if(lg) lg.textContent = 'Binder' }
@@ -3310,7 +3310,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610121520';
+const BUILD = '202610121524';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
@@ -3870,7 +3870,7 @@ function goBack(){
   if(VIEW === 'binder' && BD.up){ BD.up = false; viewBinder(); return }
   if(VIEW === 'binder' && BD.set){ BD.set = null; viewBinder(); return }
   if(VIEW === 'binder' && BD.game){ BD.game = null; viewBinder(); return }
-  if(MODE === 'binder' && VIEW === 'binder'){ try{ if(sessionStorage.getItem('nvHub') === '1'){ location.href = '../hub/'; return } }catch(e){} return }
+  if(MODE === 'binder' && VIEW === 'binder'){ try{ if(sessionStorage.getItem('nvHub') === '1'){ location.href = '../hub/index.html'; return } }catch(e){} return }
   if(VIEW === 'settings' && SP.page){ SP.page = null; viewSettings(); return }
   if(VIEW === 'decks' && DK.search){ DK.search = false; viewDecks(); return }
   if(VIEW === 'decks' && DK.id){ DK.id = null; viewDecks(); return }
@@ -3881,7 +3881,8 @@ window.addEventListener('popstate', () => { goBack(); navSync() });
 /* Android app: the back button steps back inside the app itself, without the browser history (that could lose track after
    the big card picture closed, so back stopped closing the card window and the set) */
 if(NATIVE) try{ const A = _capP.App ||= Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(atRoot()) capCall('App', 'minimizeApp').catch(() => {}); else goBack() });
+  A.addListener('backButton', () => { if(atRoot()){ let hub = false; try{ hub = sessionStorage.getItem('nvHub') === '1' }catch(e){}
+    if(hub) location.href = '../hub/index.html'; else capCall('App', 'minimizeApp').catch(() => {}) } else goBack() });   // opened from the tiles: back at the start goes to the tiles
   A.addListener('resume', () => setTimeout(hsCaptured, 400)); setTimeout(hsCaptured, 2500) }catch(e){}
 new MutationObserver(navSync).observe($('#main'), {childList:true});
 new MutationObserver(navSync).observe($('#modal'), {childList:true});
