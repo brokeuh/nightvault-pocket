@@ -12,7 +12,7 @@
  */
 import { defaultOptions } from './meta.js';
 import { initEmscriptenModule } from './utils.js';
-import { simd } from 'wasm-feature-detect';
+import { simd } from '../feature.js';
 let emscriptenModule;
 export async function init(module, moduleOptionOverrides) {
     let actualModule = module;

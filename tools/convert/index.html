@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c0f12">
+<title>Nightvault Convert</title>
+<link rel="icon" href="../../favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{--bg:#0c0f12;--pan:#151a20;--pan2:#1b2129;--line:#2a323d;--text:#e9edf2;--dim:#93a0ae;--accent:#3dbf8f;--accentd:#2a8f6a;--red:#e5656a;--amber:#e3b04b;--green:#4cc38a}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(40px + env(safe-area-inset-bottom,0px));max-width:860px;margin:0 auto}
+h1{font-size:20px;margin:0}.muted{color:var(--dim)}.small{font-size:12.5px}
+.panel{background:var(--pan);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px}
+.btn{border:1px solid var(--line);background:var(--pan2);color:var(--text);border-radius:10px;padding:9px 14px;font:inherit;font-size:14px;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:default}.btn.primary{background:var(--accentd);border-color:var(--accent);color:#fff}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#drop{border:2px dashed var(--line);border-radius:14px;padding:22px 14px;text-align:center}#drop.over{border-color:var(--accent);background:#3dbf8f12}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}.seg button{border:0;background:transparent;color:var(--dim);padding:8px 13px;font:inherit;font-size:14px;cursor:pointer}.seg button.on{background:var(--accentd);color:#fff}
+.set{display:grid;grid-template-columns:150px 1fr;gap:10px 12px;align-items:center}@media (max-width:560px){.set{grid-template-columns:1fr}.set>.lbl{margin-bottom:-6px}}
+.lbl{color:var(--dim);font-size:13px}
+select{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:8px 10px;font:inherit;font-size:14px}
+input[type=range]{width:min(260px,60vw);accent-color:var(--accent)}
+.bar{height:8px;background:var(--pan2);border-radius:99px;overflow:hidden;margin:8px 0}.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.list{max-height:46vh;overflow:auto;font-size:13px}.list>div{display:flex;gap:10px;padding:6px 2px;border-bottom:1px solid var(--line);align-items:center}
+.list .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ok{color:var(--green)}.bad{color:var(--red)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}.stats b{display:block;font-size:18px}.stats span{color:var(--dim);font-size:12px}
+</style>
+</head>
+<body>
+<h1>Nightvault Convert</h1>
+<p class="muted small" style="margin:6px 0 0">Turn many pictures into WebP and/or AVIF at once - smaller files, same look. Everything happens on this device: no picture is uploaded.</p>
+
+<div class="panel">
+  <div id="drop"><div style="font-size:15px">Drop pictures or a folder here</div><div class="muted small" style="margin:4px 0 12px">JPG, PNG, WebP, AVIF, GIF, BMP</div>
+    <div class="row" style="justify-content:center"><button class="btn primary" id="pick">Pick pictures</button><button class="btn" id="pickdir">Pick a folder</button></div>
+    <input type="file" id="files" accept="image/*" multiple hidden><input type="file" id="dir" webkitdirectory multiple hidden></div>
+  <div id="chosen" class="muted small" style="margin-top:8px"></div>
+</div>
+
+<div class="panel set">
+  <span class="lbl">Make</span><span class="seg" id="fmt"><button data-v="webp">WebP</button><button data-v="avif">AVIF</button><button data-v="both">Both</button></span>
+  <span class="lbl">WebP quality</span><span class="row"><input type="range" id="qw" min="40" max="100" step="1"><b id="qwv"></b><span class="muted small">85 looks the same as the original</span></span>
+  <span class="lbl">AVIF quality</span><span class="row"><input type="range" id="qa" min="20" max="100" step="1"><b id="qav"></b><span class="muted small">60 ≈ WebP 85, even smaller</span></span>
+  <span class="lbl">Longest side</span><span class="row"><select id="max"><option value="0">Keep the size</option><option>2400</option><option>2000</option><option>1500</option><option>1200</option><option>1040</option><option>800</option><option>600</option></select><span class="muted small">never made bigger</span></span>
+  <span class="lbl">Small extra copy</span><span class="row"><select id="thumb"><option value="0">No</option><option>200</option><option>300</option><option>400</option><option>500</option></select><span class="muted small">also a small one (in a “thumbs” folder), e.g. for binder tiles</span></span>
+  <span class="lbl">Speed</span><span class="seg" id="effort"><button data-v="fast">Fast</button><button data-v="normal">Normal</button><button data-v="small">Smallest files</button></span>
+</div>
+
+<div class="panel">
+  <div class="row"><button class="btn primary" id="go" disabled>Convert</button><button class="btn" id="stop" hidden>Stop</button><span class="muted small" id="where"></span></div>
+  <div class="bar"><i id="prog"></i></div>
+  <div class="stats"><div><b id="sdone">0</b><span>pictures done</span></div><div><b id="sbefore">–</b><span>before</span></div><div><b id="safter">–</b><span>after</span></div></div>
+  <div class="row" style="margin-top:10px"><button class="btn" id="zip" hidden>Download all (ZIP)</button><span id="saved" class="muted small"></span></div>
+  <div class="list" id="list" style="margin-top:8px"></div>
+</div>
+<p class="muted small">Tip for big batches on a PC (Chrome or Edge): you are asked for a folder and every picture is saved there as soon as it is ready. On a phone, convert a few hundred at a time and download the ZIP.</p>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const kb = n => n >= 1048576 ? (n / 1048576).toFixed(n >= 104857600 ? 0 : 1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+const S = Object.assign({fmt:'webp', qw:85, qa:60, max:'0', thumb:'0', effort:'normal'}, (() => { try{ return JSON.parse(localStorage.getItem('nvConvert') || '{}') }catch(e){ return {} } })());
+const save = () => { try{ localStorage.setItem('nvConvert', JSON.stringify(S)) }catch(e){} };
+let files = [], results = [], dirHandle = null, running = false, stopNow = false;
+
+function seg(id, key){ const el = $('#' + id); const draw = () => el.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === S[key])); el.onclick = e => { const v = e.target.dataset.v; if(v){ S[key] = v; save(); draw() } }; draw() }
+seg('fmt', 'fmt'); seg('effort', 'effort');
+for(const [id, k] of [['qw', 'qw'], ['qa', 'qa']]){ const r = $('#' + id); r.value = S[k]; const show = () => $('#' + id + 'v').textContent = r.value; show(); r.oninput = () => { S[k] = +r.value; save(); show() } }
+for(const id of ['max', 'thumb']){ const s = $('#' + id); s.value = S[id]; s.onchange = () => { S[id] = s.value; save() } }
+
+const IMG = /\.(jpe?g|png|webp|avif|gif|bmp)$/i;
+function add(list){ const fresh = list.filter(f => (f.type.startsWith('image/') || IMG.test(f.name)) && !/\.svg$/i.test(f.name));
+  files = files.concat(fresh); const total = files.reduce((a, f) => a + f.size, 0);
+  $('#chosen').innerHTML = files.length ? `<b style="color:var(--text)">${files.length.toLocaleString()} picture${files.length === 1 ? '' : 's'}</b> · ${kb(total)} <button class="btn" style="padding:3px 9px;font-size:12px;margin-left:6px" id="clear">Clear</button>` : '';
+  if($('#clear')) $('#clear').onclick = () => { files = []; add([]) };
+  $('#go').disabled = !files.length || running }
+$('#pick').onclick = () => $('#files').click(); $('#pickdir').onclick = () => $('#dir').click();
+$('#files').onchange = e => { add([...e.target.files]); e.target.value = '' };
+$('#dir').onchange = e => { add([...e.target.files]); e.target.value = '' };
+const drop = $('#drop');
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over') }; drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = async e => { e.preventDefault(); drop.classList.remove('over'); const items = [...(e.dataTransfer.items || [])].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  if(!items.length) return add([...e.dataTransfer.files]);
+  const out = []; const walk = (en, path) => new Promise(res => { if(en.isFile) en.file(f => { Object.defineProperty(f, 'relPath', {value:path + f.name}); out.push(f); res() }, () => res());
+    else { const r = en.createReader(), all = []; const more = () => r.readEntries(async es => { if(!es.length){ for(const x of all) await walk(x, path + en.name + '/'); res() } else { all.push(...es); more() } }, () => res()); more() } });
+  for(const en of items) await walk(en, ''); add(out) };
+
+const relOf = f => f.relPath || f.webkitRelativePath || f.name;
+let used = new Set();
+const outName = (f, fmt, tag) => { let p = relOf(f).replace(/\.[^./]+$/, '') + '.' + fmt; if(used.has((tag || '') + p)){ const ext = (relOf(f).match(/\.([^./]+)$/) || [, 'x'])[1].toLowerCase(); p = p.replace(/\.[^.]+$/, '_' + ext + '.' + fmt) } used.add((tag || '') + p); return tag ? (p.includes('/') ? p.replace(/\/([^/]*)$/, '/thumbs/$1') : 'thumbs/' + p) : p };
+
+async function writeFile(path, buf){ let d = dirHandle; const parts = path.split('/'); const name = parts.pop();
+  for(const p of parts) d = await d.getDirectoryHandle(p, {create:true});
+  const w = await (await d.getFileHandle(name, {create:true})).createWritable(); await w.write(buf); await w.close() }
+
+$('#go').onclick = async () => {
+  if(!files.length || running) return;
+  dirHandle = null;
+  if(window.showDirectoryPicker && files.length > 1 && !/Android|iPhone|iPad/i.test(navigator.userAgent)){
+    try{ dirHandle = await showDirectoryPicker({mode:'readwrite', id:'nvconvert'}) }catch(e){ if(e.name === 'AbortError') return; dirHandle = null } }
+  running = true; stopNow = false; results = []; used = new Set(); $('#go').disabled = true; $('#stop').hidden = false; $('#zip').hidden = true; $('#saved').textContent = ''; $('#list').innerHTML = '';
+  $('#where').textContent = dirHandle ? `Saving into “${dirHandle.name}”` : 'Download the ZIP when it is done';
+  const o = {webp:S.fmt !== 'avif', avif:S.fmt !== 'webp', qWebp:S.qw, qAvif:S.qa, max:+S.max, thumb:+S.thumb, effort:S.effort};
+  const n = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)), queue = files.map((f, i) => i);
+  let done = 0, before = 0, after = 0;
+  const show = () => { $('#prog').style.width = (100 * done / files.length) + '%'; $('#sdone').textContent = `${done} / ${files.length}`; $('#sbefore').textContent = before ? kb(before) : '–';
+    $('#safter').textContent = after ? `${kb(after)} (−${Math.max(0, Math.round(100 - 100 * after / before))}%)` : '–' };
+  show();
+  const line = html => { const el = document.createElement('div'); el.innerHTML = html; const L = $('#list'); L.prepend(el); while(L.children.length > 300) L.lastChild.remove() };
+  const one = (w, i) => new Promise(res => { w.onmessage = async e => { const r = e.data, f = files[i];
+      if(r.ok){ let size = 0; for(const x of r.out){ const path = outName(f, x.fmt, x.tag); size += x.buf.byteLength;
+          if(dirHandle){ try{ await writeFile(path, x.buf) }catch(err){ line(`<span class="n">${esc(path)}</span><span class="bad">could not save: ${esc(err.message)}</span>`) } } else results.push({path, buf:x.buf}) }
+        before += f.size; after += size;
+        const main = r.out.filter(x => !x.tag), desc = main.map(x => `${x.fmt.toUpperCase()} ${kb(x.buf.byteLength)}`).join(' · ');
+        line(`<span class="n" title="${esc(relOf(f))}">${esc(relOf(f))}</span><span class="muted">${kb(f.size)} →</span><span class="ok">${desc}</span>`) }
+      else line(`<span class="n">${esc(relOf(f))}</span><span class="bad">${esc(r.error)}</span>`);
+      done++; show(); res() };
+    w.postMessage({id:i, file:files[i], o}) });
+  const workers = Array.from({length:n}, () => new Worker('worker.js', {type:'module'}));
+  await Promise.all(workers.map(async w => { while(queue.length && !stopNow) await one(w, queue.shift()) }));
+  workers.forEach(w => w.terminate());
+  running = false; $('#stop').hidden = true; $('#go').disabled = !files.length;
+  $('#where').textContent = stopNow ? 'Stopped' : 'Done';
+  if(!dirHandle && results.length){ $('#zip').hidden = false; $('#saved').textContent = `${results.length} file${results.length === 1 ? '' : 's'} ready` }
+  if(dirHandle) $('#saved').textContent = `Saved in “${dirHandle.name}”`;
+  if(results.length === 1 && !dirHandle) download(results[0].path.split('/').pop(), new Blob([results[0].buf])) };
+$('#stop').onclick = () => { stopNow = true; $('#where').textContent = 'Stopping after the pictures in progress ...' };
+
+function download(name, blob){ const a = Object.assign(document.createElement('a'), {href:URL.createObjectURL(blob), download:name}); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000) }
+// a plain ZIP (pictures are already compressed, so they are stored as they are)
+const CRC = (() => { const t = new Uint32Array(256); for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0 } return t })();
+const crc32 = b => { let c = 0xFFFFFFFF; for(let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0 };
+function makeZip(entries){ const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  const now = new Date(), dt = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xFFFF, dd = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xFFFF;
+  for(const e of entries){ const name = enc.encode(e.path), data = new Uint8Array(e.buf), crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true); h.setUint16(10, dt, true); h.setUint16(12, dd, true);
+    h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    parts.push(h.buffer, name, data);
+    const c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true); c.setUint16(12, dt, true); c.setUint16(14, dd, true);
+    c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, name.length, true); c.setUint32(42, off, true);
+    central.push(c.buffer, name); off += 30 + name.length + data.length }
+  const csize = central.reduce((a, x) => a + (x.byteLength ?? x.length), 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true); end.setUint32(12, csize, true); end.setUint32(16, off, true);
+  return new Blob([...parts, ...central, end.buffer], {type:'application/zip'}) }
+$('#zip').onclick = () => download(`nightvault-convert-${new Date().toISOString().slice(0, 10)}.zip`, makeZip(results));
+</script>
+</body>
+</html>

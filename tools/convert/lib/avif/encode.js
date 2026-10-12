@@ -12,7 +12,7 @@
  */
 import { defaultOptions } from './meta.js';
 import { initEmscriptenModule } from './utils.js';
-import { threads } from 'wasm-feature-detect';
+import { threads } from '../feature.js';
 let emscriptenModule;
 const isRunningInNode = () => typeof process !== 'undefined' &&
     process.release &&

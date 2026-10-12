@@ -26,6 +26,12 @@ jobs:
           for f in *.tgz; do d=$(basename "$f" .tgz); mkdir "$d"; tar xzf "$f" -C "$d" --strip-components 1; done
           for d in */; do n=$(node -p "require('./${d}package.json').name.split('/')[1]"); v=$(node -p "require('./${d}package.json').version"); cp -r "$d" "$L/$n"; echo "$n $v" >> "$L/VERSIONS.txt"; done
           rm -rf "$L"/*/node_modules
+          # no bundler in the browser: our own small feature check instead of the 'wasm-feature-detect' package
+          cat > "$L/feature.js" <<'JS'
+          export const simd = async () => { try{ return WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11])) }catch(e){ return false } };
+          export const threads = async () => false;
+          JS
+          sed -i "s#from 'wasm-feature-detect'#from '../feature.js'#" "$L"/*/encode.js "$L"/*/decode.js
           cat "$L/VERSIONS.txt"; find "$L" -maxdepth 3 | head -80; du -sh "$L"
       - name: Save
         run: |
