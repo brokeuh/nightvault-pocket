@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Nightvault control</title>
+<link rel="icon" href="../favicon.svg">
+<style>
+:root{--bg:#0c0f12;--pan:#151a20;--pan2:#1b2129;--line:#2a323d;--text:#e9edf2;--dim:#93a0ae;--accent:#3dbf8f;--accentd:#2a8f6a;--red:#e5656a;--amber:#e3b04b;--green:#4cc38a;--blue:#6b8cff}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:calc(14px + env(safe-area-inset-top,0px)) 16px 40px;max-width:980px;margin:0 auto}
+h1{font-size:20px;margin:0}h2{font-size:16px;margin:26px 0 10px;letter-spacing:.2px}
+a{color:var(--accent)}
+.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.top .sp{flex:1}
+.muted{color:var(--dim)}.small{font-size:12.5px}
+.btn{border:1px solid var(--line);background:var(--pan2);color:var(--text);border-radius:10px;padding:8px 13px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#3b4654}.btn:disabled{opacity:.5;cursor:default}
+.btn.primary{background:var(--accentd);border-color:var(--accent);color:#fff}.btn.sm{padding:5px 10px;font-size:13px}.btn.danger{color:var(--red)}
+.panel{background:var(--pan);border:1px solid var(--line);border-radius:14px;padding:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.job{display:flex;flex-direction:column;gap:6px}
+.job .t{display:flex;align-items:center;gap:8px}.job .t b{flex:1;min-width:0}
+.job .d{color:var(--dim);font-size:13px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:13px}.kv span:nth-child(odd){color:var(--dim)}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px;font-size:12px;border:1px solid var(--line);white-space:nowrap}
+.badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.ok{color:var(--green)}.bad{color:var(--red)}.run{color:var(--amber)}.idle{color:var(--dim)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:9px 11px;font:inherit;font-size:14px;width:100%}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--dim)}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form .full{grid-column:1/-1}
+@media (max-width:600px){.form{grid-template-columns:1fr}}
+ol{padding-left:20px;margin:8px 0}li{margin:3px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:6px 6px;border-bottom:1px solid var(--line);vertical-align:middle}th{color:var(--dim);font-weight:500}
+td img{width:34px;border-radius:3px;display:block}
+.tablewrap{overflow-x:auto;max-height:60vh;overflow-y:auto;border:1px solid var(--line);border-radius:10px}
+.list>div{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line)}.list>div:last-child{border:0}
+.list .grow{flex:1;min-width:0}.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#222a33;border:1px solid var(--line);padding:10px 14px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;z-index:9}
+#toast.on{opacity:1}#toast.err{border-color:var(--red)}
+dialog{background:var(--pan);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:16px;width:min(900px,96vw)}dialog::backdrop{background:#000a}
+</style>
+</head>
+<body>
+<div class="top"><h1>Nightvault control</h1><span class="sp"></span><span id="who" class="muted small"></span><button class="btn sm" id="refresh" hidden>Refresh</button><button class="btn sm" id="keybtn" hidden>GitHub key</button></div>
+<p class="muted small" style="margin:6px 0 0">Every data set of Nightvault Pocket: when it was last made, start a job by hand, and make your own data sets. Runs on GitHub - nothing to install.</p>
+
+<div id="setup" class="panel" style="margin-top:16px" hidden>
+  <b>Connect your GitHub account (once per device)</b>
+  <p class="muted small" style="margin:6px 0">The page needs a GitHub key that may start jobs in nightvault-pocket. The key stays on this device only (it is never put in the app or on the site).</p>
+  <ol class="small">
+    <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com → Settings → Developer settings → Fine-grained tokens → Generate new token</a>.</li>
+    <li>Name: <b>Nightvault control</b>. Expiration: as long as you like (for example 1 year).</li>
+    <li>Repository access: <b>Only select repositories</b> → <b>brokeuh/nightvault-pocket</b>.</li>
+    <li>Permissions → Repository permissions → <b>Actions: Read and write</b>. Nothing else is needed.</li>
+    <li>Generate token, copy it and paste it here:</li>
+  </ol>
+  <div class="row"><input id="tok" type="password" placeholder="github_pat_..." autocomplete="off" style="flex:1;min-width:220px"><button class="btn primary" id="tokok">Save on this device</button></div>
+</div>
+
+<div id="main" hidden>
+  <h2>Jobs</h2>
+  <div class="grid" id="jobs"></div>
+
+  <h2>Your data sets</h2>
+  <div class="panel">
+    <div id="dsets" class="list"><div class="muted small">Loading ...</div></div>
+    <details id="newds" style="margin-top:10px"><summary style="cursor:pointer;color:var(--accent)">Make a new data set</summary>
+      <div class="form" style="margin-top:10px">
+        <label class="f">Name<input id="dsname" placeholder="e.g. base-set-prices"></label>
+        <label class="f">Source<select id="dssrc"><option value="tcgplayer">TCGplayer prices (every game on TCGplayer)</option><option value="scryfall">Scryfall (Magic)</option><option value="pokemon">Pokémon TCG API</option></select></label>
+        <label class="f full">What<input id="dsq" placeholder=""><span id="dshelp" class="small"></span></label>
+        <label class="f">Refresh<select id="dsrep"><option value="once">Once</option><option value="daily">Every day</option><option value="weekly">Every Monday</option></select></label>
+        <div class="row" style="align-self:end"><button class="btn primary" id="dsgo">Make it</button></div>
+      </div>
+      <p class="muted small">Every card gets its price and a link to the picture in high quality. One data set is made at a time; it takes from a few seconds to a few minutes.</p>
+    </details>
+  </div>
+
+  <h2>Recent runs</h2>
+  <div class="panel"><div id="runs" class="list"><div class="muted small">Loading ...</div></div></div>
+</div>
+
+<dialog id="dlg"><div id="dlgc"></div><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="document.getElementById('dlg').close()">Close</button></div></dialog>
+<div id="toast"></div>
+
+<script>
+const OWNER = 'brokeuh', REPO = 'nightvault-pocket', KEY = 'nvControlToken';
+const JOBS = [
+  {file:'card-data.yml', title:'Card lists (TCGplayer games)', desc:'Gundam, Digimon, Flesh and Blood, Sorcery, Weiss Schwarz, Dragon Ball: cards, prices, card text.', when:'Every day ~06:53', path:'data/gundam.json'},
+  {file:'prices.yml', title:'Extra prices', desc:'Prices of the games added from the CCG Trader catalog and more (data/prices).', when:'Every day ~07:17', path:'data/prices'},
+  {file:'pokemon-1st.yml', title:'Pokémon 1st Edition & Shadowless', desc:'TCGplayer prices and pictures of the 1st Edition and Shadowless prints.', when:'Every day ~07:41', path:'data/prices/pokemon-1st.json'},
+  {file:'riftbound-prices.yml', title:'Riftbound prices', desc:'Prices from riftbound.gg (it blocks the app, so a daily copy).', when:'Every day ~06:17', path:'riftbound-prices.json'},
+  {file:'swu-cards.yml', title:'Star Wars: Unlimited', desc:'Card list and prices copy.', when:'Every day ~06:41', path:'swu-cards.json'},
+  {file:'upcoming.yml', title:'Upcoming releases', desc:'New sets coming out, for the calendar.', when:'Every day ~07:29', path:'data/upcoming.json'},
+  {file:'hearthstone.yml', title:'Hearthstone cards', desc:'Every collectible card from HearthstoneJSON. A new expansion needs its name added once.', when:'Wednesdays ~08:17', path:'data/hearthstone.json'},
+  {file:'hs-fingerprints.yml', title:'Hearthstone fingerprints', desc:'Picture fingerprints for reading Hearthstone screenshots (only new cards).', when:'After “Hearthstone cards”', path:'data/hs-fp.json'},
+  {file:'ccgt-backup.yml', title:'CCG Trader catalog backup', desc:'Copy of ~295 old and new card games (sets, cards, pictures).', when:'Sundays ~05:23', path:'data/ccgt'},
+  {file:'dataset.yml', title:'Your data sets', desc:'Refreshes the data sets below that are set to daily or weekly.', when:'Every day ~07:11', path:'data/datasets', inputsNeeded:true},
+  {file:'android.yml', title:'Android app build', desc:'Builds the test APK. Runs by itself after every app change.', when:'After app changes', path:null, release:'android-test'},
+];
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let TOKEN = ''; try{ TOKEN = localStorage.getItem(KEY) || '' }catch(e){}
+function toast(t, err){ const el = $('#toast'); el.textContent = t; el.className = 'on' + (err ? ' err' : ''); clearTimeout(toast.t); toast.t = setTimeout(() => el.className = '', 4500) }
+async function gh(path, opt = {}){
+  const r = await fetch('https://api.github.com' + path, Object.assign({}, opt, {headers:Object.assign({'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'}, TOKEN ? {'Authorization':'Bearer ' + TOKEN} : {}, opt.headers || {})}));
+  if(r.status === 204) return null;
+  if(!r.ok){ let m = ''; try{ m = (await r.json()).message }catch(e){} const e = new Error(r.status === 401 ? 'The GitHub key is not valid (any more) - make a new one' : r.status === 403 ? (m || 'Not allowed') + ' - does the key have “Actions: Read and write” for nightvault-pocket?' : m || ('GitHub said ' + r.status)); e.status = r.status; throw e }
+  return r.headers.get('content-type')?.includes('json') ? r.json() : r.text() }
+const raw = path => gh(`/repos/${OWNER}/${REPO}/contents/${path}?ref=main`, {headers:{'Accept':'application/vnd.github.raw+json'}}).then(x => typeof x === 'string' ? JSON.parse(x) : x);
+function ago(t){ if(!t) return '–'; const s = (Date.now() - new Date(t)) / 1000; return s < 90 ? 'just now' : s < 5400 ? Math.round(s / 60) + ' min ago' : s < 129600 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' days ago' }
+const when = t => t ? new Date(t).toLocaleString([], {dateStyle:'medium', timeStyle:'short'}) : '';
+function badge(run){ if(!run) return '<span class="badge idle">never ran</span>';
+  if(run.status !== 'completed') return `<span class="badge run">${run.status === 'queued' ? 'waiting' : 'running'}</span>`;
+  return run.conclusion === 'success' ? '<span class="badge ok">worked</span>' : run.conclusion === 'cancelled' || run.conclusion === 'skipped' ? `<span class="badge idle">${run.conclusion}</span>` : '<span class="badge bad">failed</span>' }
+const dur = r => { if(!r || !r.run_started_at || r.status !== 'completed') return ''; const s = (new Date(r.updated_at) - new Date(r.run_started_at)) / 1000; return s < 90 ? Math.round(s) + ' s' : Math.round(s / 60) + ' min' };
+
+const state = {runs:{}, fresh:{}, rel:null, datasets:null};
+async function loadJob(j){
+  try{ const r = await gh(`/repos/${OWNER}/${REPO}/actions/workflows/${j.file}/runs?per_page=1`); state.runs[j.file] = (r.workflow_runs || [])[0] || null }catch(e){ state.runs[j.file] = {err:e.message} }
+  if(j.path) try{ const c = await gh(`/repos/${OWNER}/${REPO}/commits?per_page=1&path=${encodeURIComponent(j.path)}`); state.fresh[j.file] = c[0] ? c[0].commit.committer.date : null }catch(e){}
+  if(j.release) try{ state.rel = await gh(`/repos/${OWNER}/${REPO}/releases/tags/${j.release}`) }catch(e){}
+  drawJob(j) }
+function drawJob(j){
+  const el = document.getElementById('job-' + j.file) || Object.assign(document.createElement('div'), {id:'job-' + j.file, className:'panel job'}); if(!el.parentNode) $('#jobs').appendChild(el);
+  const r = state.runs[j.file], f = state.fresh[j.file];
+  el.innerHTML = `<div class="t"><b>${esc(j.title)}</b>${r && r.err ? '<span class="badge bad">?</span>' : badge(r)}</div><div class="d">${esc(j.desc)}</div>
+    <div class="kv"><span>Schedule</span><span>${esc(j.when)}</span>
+      <span>Last run</span><span>${r && !r.err ? `<a href="${r.html_url}" target="_blank" rel="noopener" title="${esc(when(r.created_at))}">${ago(r.created_at)}</a>${dur(r) ? ' · ' + dur(r) : ''}${r.event === 'workflow_dispatch' ? ' · by hand' : ''}` : r && r.err ? `<span class="bad">${esc(r.err)}</span>` : '–'}</span>
+      ${j.path ? `<span>Data changed</span><span title="${esc(when(f))}">${ago(f)}</span>` : ''}
+      ${j.release && state.rel ? `<span>Latest app</span><span>${esc((state.rel.body || '').split('(')[0].trim())} · ${ago(state.rel.published_at || state.rel.created_at)}</span>` : ''}</div>
+    <div class="row" style="margin-top:4px"><button class="btn sm primary" data-run="${j.file}" ${r && !r.err && r.status !== 'completed' ? 'disabled' : ''}>Run now</button><a class="btn sm" href="https://github.com/${OWNER}/${REPO}/actions/workflows/${j.file}" target="_blank" rel="noopener">All runs</a></div>`;
+  el.querySelector('[data-run]').onclick = () => runJob(j) }
+async function runJob(j, inputs){
+  const btn = document.querySelector(`[data-run="${j.file}"]`); if(btn) btn.disabled = true;
+  const t0 = Date.now() - 5000;
+  try{ await gh(`/repos/${OWNER}/${REPO}/actions/workflows/${j.file}/dispatches`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(Object.assign({ref:'main'}, inputs ? {inputs} : {}))}) }
+  catch(e){ toast(e.message, true); if(btn) btn.disabled = false; return }
+  toast(`Started “${j.title}” - this page follows it`);
+  for(let i = 0; i < 120; i++){ await new Promise(r => setTimeout(r, i < 5 ? 3000 : 6000));
+    let r; try{ r = (await gh(`/repos/${OWNER}/${REPO}/actions/workflows/${j.file}/runs?per_page=1`)).workflow_runs[0] }catch(e){ continue }
+    if(!r || new Date(r.created_at) < t0) continue;
+    state.runs[j.file] = r; drawJob(j);
+    if(r.status === 'completed'){ toast(r.conclusion === 'success' ? `“${j.title}” worked` : `“${j.title}” ${r.conclusion} - open “Last run” to see why`, r.conclusion !== 'success'); loadJob(j); loadRuns(); if(j.file === 'dataset.yml') setTimeout(loadDatasets, 4000); return } }
+}
+async function loadRuns(){
+  try{ const r = await gh(`/repos/${OWNER}/${REPO}/actions/runs?per_page=15`);
+    $('#runs').innerHTML = (r.workflow_runs || []).map(x => `<div><div class="grow"><div class="ell"><b>${esc(x.name)}</b> <span class="muted small">${esc(x.display_title !== x.name ? x.display_title : '')}</span></div><div class="muted small">${ago(x.created_at)} · ${esc(x.event === 'workflow_dispatch' ? 'by hand' : x.event === 'schedule' ? 'scheduled' : x.event)}${dur(x) ? ' · ' + dur(x) : ''}</div></div>${badge(x)}<a class="btn sm" href="${x.html_url}" target="_blank" rel="noopener">Log</a></div>`).join('') || '<div class="muted small">No runs yet.</div>' }
+  catch(e){ $('#runs').innerHTML = `<div class="bad small">${esc(e.message)}</div>` } }
+
+const HELP = {tcgplayer:['3/Base Set', 'The game and set: category number or game name, then / and the set name (or part of it). E.g. “3/Base Set” (Pokémon), “Magic/Bloomburrow”, “Lorcana/Shimmering”. Up to 60 sets at once.'],
+  scryfall:['set:mh3', 'Any Scryfall search: “set:mh3”, “chandra”, “t:dragon r:mythic”, “e:lea”.'],
+  pokemon:['sv8', 'A set id (“sv8”, “base1”) or a search (“name:pikachu”, “rarity:"Special Illustration Rare"”).']};
+function dsHelp(){ const h = HELP[$('#dssrc').value]; $('#dsq').placeholder = 'e.g. ' + h[0]; $('#dshelp').textContent = h[1] }
+async function loadDatasets(){
+  try{ state.datasets = await raw('data/datasets/index.json') }catch(e){ state.datasets = e.status === 404 ? {sets:[]} : null; if(!state.datasets){ $('#dsets').innerHTML = `<div class="bad small">${esc(e.message)}</div>`; return } }
+  const l = state.datasets.sets || [];
+  $('#dsets').innerHTML = l.length ? l.map((d, i) => `<div><div class="grow"><div class="ell"><b>${esc(d.name)}</b> <span class="muted small">${esc(d.source)}: ${esc(d.query)}</span></div>
+      <div class="small ${d.error ? 'bad' : 'muted'}">${d.error ? esc(d.error) : `${(d.count || 0).toLocaleString()} cards · made ${ago(d.updated)}`} · ${d.repeat === 'daily' ? 'every day' : d.repeat === 'weekly' ? 'every Monday' : 'once'}</div></div>
+      <button class="btn sm" data-dv="${i}" ${d.count ? '' : 'disabled'}>Open</button><button class="btn sm" data-dr="${i}">Refresh</button><button class="btn sm danger" data-dx="${i}" aria-label="Delete">✕</button></div>`).join('')
+    : '<div class="muted small">No data sets yet - make one below.</div>';
+  document.querySelectorAll('[data-dv]').forEach(b => b.onclick = () => openDataset(l[+b.dataset.dv]));
+  document.querySelectorAll('[data-dr]').forEach(b => b.onclick = () => { const d = l[+b.dataset.dr]; runJob(JOBS.find(j => j.file === 'dataset.yml'), {name:d.name, source:d.source, query:d.query || '', repeat:d.repeat || 'once', remove:'false'}) });
+  document.querySelectorAll('[data-dx]').forEach(b => b.onclick = () => { const d = l[+b.dataset.dx]; if(confirm(`Delete the data set “${d.name}”?`)) runJob(JOBS.find(j => j.file === 'dataset.yml'), {name:d.name, source:d.source, query:d.query || '', repeat:'once', remove:'true'}) }) }
+async function openDataset(d){
+  $('#dlgc').innerHTML = `<b>${esc(d.name)}</b><div class="muted small">Loading ...</div>`; $('#dlg').showModal();
+  let j; try{ j = await raw(`data/datasets/${encodeURIComponent(d.name)}.json`) }catch(e){ $('#dlgc').innerHTML = `<div class="bad">${esc(e.message)}</div>`; return }
+  const cards = j.cards || [], cur = c => c.currency === 'USD' ? '$' : '€', f = v => v == null ? '' : v.toFixed(2);
+  const draw = q => { const w = q.toLowerCase().split(/\s+/).filter(Boolean), l = cards.filter(c => w.every(x => `${c.name} ${c.set} ${c.number} ${c.rarity}`.toLowerCase().includes(x)));
+    $('#dtab').innerHTML = `<table><thead><tr><th></th><th>Card</th><th>Set</th><th>#</th><th>Rarity</th><th>Price</th><th>Foil</th><th>HQ</th></tr></thead><tbody>${l.slice(0, 500).map(c => `<tr><td>${c.image ? `<img loading="lazy" src="${esc(c.image)}" alt="">` : ''}</td><td>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.name)}</a>` : esc(c.name)}</td><td>${esc(c.set)}</td><td>${esc(c.number)}</td><td>${esc(c.rarity)}</td><td>${c.price != null ? cur(c) + ' ' + f(c.price) : ''}</td><td>${c.priceFoil != null ? cur(c) + ' ' + f(c.priceFoil) : ''}</td><td>${c.imageHQ ? `<a href="${esc(c.imageHQ)}" target="_blank" rel="noopener">picture</a>` : ''}</td></tr>`).join('')}</tbody></table>${l.length > 500 ? `<div class="muted small" style="padding:6px">First 500 of ${l.length} - search to narrow it down</div>` : ''}` };
+  $('#dlgc').innerHTML = `<div class="row"><b style="flex:1">${esc(j.name)}</b><span class="muted small">${cards.length.toLocaleString()} cards · ${esc(when(j.updated))}</span></div>
+    <div class="row" style="margin:10px 0"><input id="dq" placeholder="Search in this data set" style="flex:1;min-width:180px"><button class="btn sm" id="dcsv">Download CSV</button><button class="btn sm" id="djson">Download JSON</button></div><div class="tablewrap" id="dtab"></div>`;
+  draw(''); $('#dq').oninput = e => draw(e.target.value);
+  const save = (name, text, type) => { const a = Object.assign(document.createElement('a'), {href:URL.createObjectURL(new Blob([text], {type})), download:name}); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000) };
+  $('#djson').onclick = () => save(j.name + '.json', JSON.stringify(j, null, 1), 'application/json');
+  $('#dcsv').onclick = () => { const cols = ['name', 'set', 'number', 'rarity', 'price', 'priceFoil', 'priceUSD', 'currency', 'imageHQ', 'url'], q = v => v == null ? '' : /[",\n;]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
+    save(j.name + '.csv', '﻿' + [cols.join(',')].concat(cards.map(c => cols.map(k => q(c[k])).join(','))).join('\n'), 'text/csv') } }
+
+$('#dssrc').onchange = dsHelp;
+$('#dsgo').onclick = () => { const name = $('#dsname').value.trim().replace(/[^A-Za-z0-9_-]+/g, '-'), q = $('#dsq').value.trim();
+  if(!name) return toast('Give the data set a name', true); if(!q) return toast('Fill in what to fetch', true);
+  runJob(JOBS.find(j => j.file === 'dataset.yml'), {name, source:$('#dssrc').value, query:q, repeat:$('#dsrep').value, remove:'false'}); $('#newds').open = false };
+$('#tokok').onclick = async () => { const t = $('#tok').value.trim(); if(!t) return; TOKEN = t;
+  try{ await gh(`/repos/${OWNER}/${REPO}/actions/workflows?per_page=1`); try{ localStorage.setItem(KEY, t) }catch(e){} $('#tok').value = ''; start() }catch(e){ TOKEN = ''; toast(e.message, true) } };
+$('#keybtn').onclick = () => { if(confirm('Remove the GitHub key from this device? (You can paste a new one afterwards.)')){ try{ localStorage.removeItem(KEY) }catch(e){} TOKEN = ''; start() } };
+$('#refresh').onclick = () => start();
+function start(){
+  const has = !!TOKEN; $('#setup').hidden = has; $('#main').hidden = !has; $('#keybtn').hidden = !has; $('#refresh').hidden = !has;
+  $('#who').textContent = has ? `${OWNER}/${REPO}` : ''; if(!has) return;
+  $('#jobs').innerHTML = ''; dsHelp(); JOBS.forEach(j => { drawJob(j); loadJob(j) }); loadRuns(); loadDatasets() }
+start();
+</script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+# Your own data sets, made from the control page (admin/): card lists with prices and HQ picture links from
+# TCGplayer (via tcgcsv.com), Scryfall (Magic) or the Pokémon TCG API. Saved in data/datasets/<name>.json,
+# listed in data/datasets/index.json. Data sets marked daily / weekly are refreshed by the schedule below.
+name: Make a data set
+
+on:
+  schedule:
+    - cron: "11 5 * * *"       # every day around 07:11 Brussels time: refresh the daily (and on Mondays the weekly) data sets
+  workflow_dispatch:
+    inputs:
+      name:
+        description: "Name of the data set (letters, numbers, - and _). Empty: refresh every daily/weekly data set now"
+        required: false
+      source:
+        description: "Where the cards come from"
+        type: choice
+        options: [tcgplayer, scryfall, pokemon]
+        default: tcgplayer
+      query:
+        description: "tcgplayer: category or category/set (number or part of the set name, e.g. 3/Base Set) · scryfall: a search (e.g. set:mh3) · pokemon: a set id (e.g. sv8) or a search (e.g. name:pikachu)"
+        required: false
+      repeat:
+        description: "Refresh it automatically"
+        type: choice
+        options: [once, daily, weekly]
+        default: once
+      remove:
+        description: "Delete this data set"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: datasets
+
+jobs:
+  dataset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Make or refresh data sets
+        env:
+          IN_NAME: ${{ inputs.name }}
+          IN_SOURCE: ${{ inputs.source }}
+          IN_QUERY: ${{ inputs.query }}
+          IN_REPEAT: ${{ inputs.repeat }}
+          IN_REMOVE: ${{ inputs.remove }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          python3 - <<'PYEOF'
+          import datetime, json, os, re, time, urllib.parse, urllib.request
+          D = "data/datasets"; os.makedirs(D, exist_ok=True)
+          IDX = f"{D}/index.json"
+          try: index = json.load(open(IDX))
+          except Exception: index = {"sets": []}
+          def get(url, tries=3):
+              req = urllib.request.Request(url, headers={"User-Agent": "nightvault-pocket/1.0 (personal card collection app)", "Accept": "application/json"})
+              for a in range(tries):
+                  try:
+                      with urllib.request.urlopen(req, timeout=120) as r: return json.load(r)
+                  except urllib.error.HTTPError as e:
+                      if e.code == 404: return None
+                      if a == tries - 1: raise
+                  except Exception:
+                      if a == tries - 1: raise
+                  time.sleep(3 * (a + 1))
+          money = lambda v: round(float(v), 2) if v not in (None, "") else None
+
+          def tcgplayer(q):
+              cat, _, grp = (q or "").partition("/")
+              cat = cat.strip()
+              if not cat.isdigit():                                   # a game name: look up its category number
+                  cats = get("https://tcgcsv.com/tcgplayer/categories")["results"]
+                  m = [c for c in cats if cat.lower() in (c.get("displayName") or c.get("name") or "").lower()]
+                  if not m: raise SystemExit(f"No TCGplayer category matches '{cat}'")
+                  cat = str(m[0]["categoryId"])
+              groups = get(f"https://tcgcsv.com/tcgplayer/{cat}/groups")["results"]
+              g = grp.strip()
+              if g: groups = [x for x in groups if str(x["groupId"]) == g or g.lower() in (x.get("name") or "").lower()]
+              if not groups: raise SystemExit("No TCGplayer set matches that")
+              if len(groups) > 60: raise SystemExit(f"{len(groups)} sets in this category - add /set name to pick one (or a part of the name that a few sets share)")
+              out = []
+              for x in groups:
+                  prods = get(f"https://tcgcsv.com/tcgplayer/{cat}/{x['groupId']}/products")["results"]
+                  prices = get(f"https://tcgcsv.com/tcgplayer/{cat}/{x['groupId']}/prices")["results"]
+                  px = {}
+                  for p in prices:
+                      px.setdefault(p["productId"], {})[p.get("subTypeName") or "Normal"] = money(p.get("marketPrice") or p.get("midPrice") or p.get("lowPrice"))
+                  for p in prods:
+                      ext = {e.get("name"): e.get("value") for e in p.get("extendedData") or []}
+                      pr = px.get(p["productId"], {})
+                      normal = pr.get("Normal", next(iter(pr.values()), None))
+                      foil = next((v for k, v in pr.items() if k != "Normal"), None)
+                      img = p.get("imageUrl") or ""
+                      out.append({"name": p.get("name"), "set": x.get("name"), "number": ext.get("Number") or "", "rarity": ext.get("Rarity") or "",
+                                  "price": normal, "priceFoil": foil, "prices": pr, "currency": "USD", "image": img,
+                                  "imageHQ": img.replace("_200w.jpg", "_in_1000x1000.jpg"), "url": p.get("url") or ""})
+                  time.sleep(0.2)
+              return out
+
+          def scryfall(q):
+              u = "https://api.scryfall.com/cards/search?unique=prints&order=set&q=" + urllib.parse.quote(q)
+              out = []
+              while u and len(out) < 5000:
+                  j = get(u)
+                  if not j: break
+                  for c in j.get("data", []):
+                      iu = c.get("image_uris") or ((c.get("card_faces") or [{}])[0].get("image_uris") or {})
+                      pr = c.get("prices") or {}
+                      out.append({"name": c.get("name"), "set": c.get("set_name"), "setCode": c.get("set"), "number": c.get("collector_number"), "rarity": c.get("rarity"),
+                                  "price": money(pr.get("eur")), "priceFoil": money(pr.get("eur_foil")), "priceUSD": money(pr.get("usd")), "currency": "EUR",
+                                  "image": iu.get("normal", ""), "imageHQ": iu.get("png") or iu.get("large", ""), "url": c.get("scryfall_uri")})
+                  u = j.get("next_page") if j.get("has_more") else None
+                  time.sleep(0.12)
+              return out
+
+          def pokemon(q):
+              qq = q if ":" in q else f"set.id:{q}"
+              out, page = [], 1
+              while page < 40:
+                  j = get("https://api.pokemontcg.io/v2/cards?pageSize=250&page=%d&q=%s" % (page, urllib.parse.quote(qq)))
+                  data = (j or {}).get("data", [])
+                  for c in data:
+                      cm = (c.get("cardmarket") or {}).get("prices") or {}
+                      tp = next(iter(((c.get("tcgplayer") or {}).get("prices") or {}).values()), {}) or {}
+                      im = c.get("images") or {}
+                      out.append({"name": c.get("name"), "set": (c.get("set") or {}).get("name"), "setCode": (c.get("set") or {}).get("id"), "number": c.get("number"),
+                                  "rarity": c.get("rarity"), "price": money(cm.get("trendPrice") or cm.get("averageSellPrice")), "priceUSD": money(tp.get("market")),
+                                  "currency": "EUR", "image": im.get("small", ""), "imageHQ": im.get("large", ""), "url": (c.get("cardmarket") or {}).get("url") or ""})
+                  if len(data) < 250: break
+                  page += 1
+              return out
+
+          SRC = {"tcgplayer": tcgplayer, "scryfall": scryfall, "pokemon": pokemon}
+
+          def make(e):
+              cards = SRC[e["source"]](e["query"])
+              now = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%MZ")
+              json.dump({"name": e["name"], "source": e["source"], "query": e["query"], "updated": now, "count": len(cards), "cards": cards},
+                        open(f"{D}/{e['name']}.json", "w"), separators=(",", ":"), ensure_ascii=False)
+              e.update(updated=now, count=len(cards), error="")
+              print(e["name"], len(cards), "cards")
+
+          name = re.sub(r"[^A-Za-z0-9_-]+", "-", os.environ.get("IN_NAME") or "").strip("-")[:60]
+          if os.environ.get("EVENT") == "workflow_dispatch" and name:
+              index["sets"] = [x for x in index["sets"] if x["name"] != name] if os.environ.get("IN_REMOVE") == "true" else index["sets"]
+              if os.environ.get("IN_REMOVE") == "true":
+                  try: os.remove(f"{D}/{name}.json")
+                  except FileNotFoundError: pass
+                  print("removed", name)
+              else:
+                  e = next((x for x in index["sets"] if x["name"] == name), None)
+                  if not e: e = {"name": name}; index["sets"].append(e)
+                  e.update(source=os.environ.get("IN_SOURCE") or "tcgplayer", query=os.environ.get("IN_QUERY") or "", repeat=os.environ.get("IN_REPEAT") or "once")
+                  try: make(e)
+                  except SystemExit as x: e["error"] = str(x); json.dump(index, open(IDX, "w"), indent=1, ensure_ascii=False); raise
+          else:
+              monday = datetime.datetime.utcnow().weekday() == 0 or os.environ.get("EVENT") == "workflow_dispatch"   # by hand: all of them now
+              for e in index["sets"]:
+                  if e.get("repeat") == "daily" or (e.get("repeat") == "weekly" and monday):
+                      try: make(e)
+                      except BaseException as x: e["error"] = str(x)[:300]; print(e["name"], "failed:", x)
+          json.dump(index, open(IDX, "w"), indent=1, ensure_ascii=False)
+          PYEOF
+      - name: Save
+        if: always()
+        run: |
+          git config user.name "card-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/datasets
+          if git diff --cached --quiet; then echo "Nothing changed."; else git commit -m "Data sets: ${{ inputs.name || 'scheduled refresh' }}"; git pull --rebase -q || true; git push; fi
