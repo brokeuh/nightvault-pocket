@@ -40,6 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: main            # the newest version (a waiting job must see what the job before it saved)
       - name: Make or refresh data sets
         env:
           IN_NAME: ${{ inputs.name }}
@@ -171,4 +173,7 @@ jobs:
           git config user.name "card-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/datasets
-          if git diff --cached --quiet; then echo "Nothing changed."; else git commit -m "Data sets: ${{ inputs.name || 'scheduled refresh' }}"; git pull --rebase -q || true; git push; fi
+          if git diff --cached --quiet; then echo "Nothing changed."; exit 0; fi
+          git commit -m "Data sets: ${{ inputs.name || 'scheduled refresh' }}"
+          for i in 1 2 3 4; do git pull --rebase -q && git push && exit 0; git rebase --abort 2>/dev/null; sleep $((i * 5)); done
+          exit 1
