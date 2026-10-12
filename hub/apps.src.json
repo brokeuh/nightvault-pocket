@@ -95,6 +95,43 @@
       "uses": [
         "collection"
       ]
+    },
+    {
+      "id": "bookcase",
+      "name": "Bookcase",
+      "desc": "Books, manga, comics and rulebooks on shelves, with one reader",
+      "color": "#3a2816",
+      "soon": true,
+      "files": [],
+      "provides": [
+        "reader",
+        "books"
+      ],
+      "uses": []
+    },
+    {
+      "id": "music",
+      "name": "Music",
+      "desc": "Your music with big covers, albums and playlists",
+      "color": "#2e1a3a",
+      "soon": true,
+      "files": [],
+      "provides": [
+        "music"
+      ],
+      "uses": []
+    },
+    {
+      "id": "audiobooks",
+      "name": "Audiobooks",
+      "desc": "Audiobooks that remember where you were, at any speed",
+      "color": "#13283d",
+      "soon": true,
+      "files": [],
+      "provides": [
+        "audiobooks"
+      ],
+      "uses": []
     }
   ]
 }

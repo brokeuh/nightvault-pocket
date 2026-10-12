@@ -173,6 +173,55 @@
    "hash": "e3b0c44298fc",
    "version": "2026.10.12.1243",
    "updated": "2026-10-12"
+  },
+  {
+   "id": "bookcase",
+   "name": "Bookcase",
+   "desc": "Books, manga, comics and rulebooks on shelves, with one reader",
+   "color": "#3a2816",
+   "soon": true,
+   "files": [],
+   "provides": [
+    "reader",
+    "books"
+   ],
+   "uses": [],
+   "size": 0,
+   "hash": "e3b0c44298fc",
+   "version": "2026.10.12.1447",
+   "updated": "2026-10-12"
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "desc": "Your music with big covers, albums and playlists",
+   "color": "#2e1a3a",
+   "soon": true,
+   "files": [],
+   "provides": [
+    "music"
+   ],
+   "uses": [],
+   "size": 0,
+   "hash": "e3b0c44298fc",
+   "version": "2026.10.12.1447",
+   "updated": "2026-10-12"
+  },
+  {
+   "id": "audiobooks",
+   "name": "Audiobooks",
+   "desc": "Audiobooks that remember where you were, at any speed",
+   "color": "#13283d",
+   "soon": true,
+   "files": [],
+   "provides": [
+    "audiobooks"
+   ],
+   "uses": [],
+   "size": 0,
+   "hash": "e3b0c44298fc",
+   "version": "2026.10.12.1447",
+   "updated": "2026-10-12"
   }
  ]
 }
