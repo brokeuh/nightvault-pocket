@@ -3,6 +3,18 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 42,
+   "date": "2026-10-12",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "Logo screen fits every phone",
+   "items": [
+    "The word Nightvault on the screen you see when the app opens is no longer cut off at the edges, also on narrow phones or with a big text size."
+   ]
+  },
+  {
    "id": 41,
    "date": "2026-10-12",
    "where": [

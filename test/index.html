@@ -31,7 +31,7 @@ if(o.theme)document.documentElement.setAttribute('data-theme',o.theme);if(o.spla
 /* splash screen: the Nightvault logo in the colours of the theme */
 #splash{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg);transition:opacity .42s ease,visibility .42s}
 #splash.out{opacity:0;visibility:hidden;pointer-events:none}.nosplash #splash{display:none}
-.spl-in{display:flex;flex-direction:column;align-items:center;gap:6px;animation:splUp .6s cubic-bezier(.2,.8,.2,1) both}
+.spl-in{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:100vw;animation:splUp .6s cubic-bezier(.2,.8,.2,1) both}
 .spl-tile{width:150px;height:150px;border-radius:36px;display:grid;place-items:center;margin-bottom:20px;box-shadow:0 20px 60px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.08);
   background:radial-gradient(circle at 50% 18%,color-mix(in srgb,var(--accent) 32%,#20255a) 0%,color-mix(in srgb,var(--accent) 10%,#121636) 58%,#0a0d22 100%)}
 .spl-mark{width:112px;height:112px}
@@ -39,7 +39,7 @@ if(o.theme)document.documentElement.setAttribute('data-theme',o.theme);if(o.spla
 .spl-st{fill:#eef1ff;opacity:0;animation:splTw .5s forwards}.spl-acc{fill:var(--accent)}
 .spl-card{fill:color-mix(in srgb,var(--accent) 22%,#1b2150);stroke:var(--accent);stroke-width:3.2}.spl-card.back{stroke-width:2.6;opacity:.78;fill:color-mix(in srgb,var(--accent) 14%,#161b42)}
 .spl-spark{fill:#eef1ff;transform-origin:50px 52px;animation:splSpark .7s .25s both}
-.spl-word{font-family:Syne,"Segoe UI",system-ui,sans-serif;font-weight:800;font-size:44px;line-height:1;color:var(--accent);letter-spacing:-.01em}
+.spl-word{font-family:Syne,"Segoe UI",system-ui,sans-serif;font-weight:800;font-size:clamp(26px,10vw,44px);line-height:1.1;color:var(--accent);letter-spacing:-.01em;white-space:nowrap;padding:0 .06em;transform-origin:50% 50%}
 .spl-sub{font-size:14px;letter-spacing:.34em;padding-left:.34em;color:var(--text);opacity:.92}
 @keyframes splUp{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
 @keyframes splFade{to{opacity:.5}}@keyframes splTw{0%{opacity:0;transform:scale(.4)}60%{opacity:1}100%{opacity:1;transform:none}}
@@ -3310,7 +3310,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610121252';
+const BUILD = '202610121520';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
@@ -3899,7 +3899,9 @@ function restoreNav(){
 }
 if(TEST){ $('#testbadge').hidden = false; document.title = 'Pocket TEST' }
 applyTheme(); tabCount(); if(MODE === 'binder'){ try{ const n = JSON.parse(localStorage.getItem(NAVKEY) || 'null'); if(n && n.view === 'binder' && Date.now() - (n.at || 0) < 2 * 3600e3){ BD.game = n.game && GAMES[n.game] ? n.game : null; BD.set = BD.game ? n.set : null } }catch(e){} show('binder') } else restoreNav(); fsSync(); $('#fsbtn').onclick = toggleFull;
-(() => { const sp = $('#splash'); if(!sp) return; if(O.splash === false){ sp.remove(); return }     // splash: logo for a moment, then the app
+(() => { const sp = $('#splash'); if(!sp) return; if(O.splash === false){ sp.remove(); return }
+  { const w = sp.querySelector('.spl-word'), fit = () => { if(!w) return; w.style.transform = ''; const room = innerWidth - 40, need = w.scrollWidth; if(need > room) w.style.transform = `scale(${room / need})` };   // the word always fits, also with a big text size
+    fit(); document.fonts && document.fonts.ready.then(fit) }     // splash: logo for a moment, then the app
   const go = () => { if(!sp.isConnected || sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(() => sp.remove(), 450) };
   sp.onclick = go; setTimeout(go, matchMedia('(prefers-reduced-motion: reduce)').matches ? 450 : 1350) })();
 if(!O.ed1fix2){ O.ed1fix2 = 1; setTimeout(() => { const l = store.cards.filter(c => c.ed1 && c.price == null); l.forEach(c => c._pkp = 0); pokemonPrices(l, () => persist()) }, 3500) }
