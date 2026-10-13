@@ -22,7 +22,7 @@ jobs:
         env:
           REQ: ${{ github.event.inputs.url }}
         run: |
-          mkdir -p tools/probe; LOG=tools/probe/last-run.txt; : > $LOG
+          set +e; mkdir -p tools/probe; LOG=tools/probe/last-run.txt; : > $LOG
           [ -z "$REQ" ] && REQ=$(head -1 tools/probe/request.txt)
           URL="$REQ"; echo "request: $REQ" >> $LOG
           if [[ "$REQ" == librivox:* ]]; then
