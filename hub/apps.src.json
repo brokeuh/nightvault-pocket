@@ -2,6 +2,18 @@
   "note": "The Nightvault app list (source). build_catalog.py turns this into apps.json with version and size per app. Paths are relative to the site root.",
   "apps": [
     {
+      "id": "hub",
+      "name": "The Nightvault",
+      "desc": "The home screen with the app tiles, installing and updates",
+      "system": true,
+      "files": [
+        "hub/index.html",
+        "hub/core.js"
+      ],
+      "provides": [],
+      "uses": []
+    },
+    {
       "id": "scanner",
       "name": "Scanner",
       "desc": "The full app: scan cards, binders, my cards, decks, prices",

@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 47,
+   "date": "2026-10-13",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "Updates for every app",
+   "items": [
+    "The Nightvault now looks for updates itself, so you get them even without Scanner installed.",
+    "Android: it tells you which of your apps changed, and only asks when something new is there for the apps on your phone (or a new app came out). \"Later\" hides that update.",
+    "What's new and Check for updates are at the bottom of The Nightvault; What's new only shows news for the apps you have."
+   ]
+  },
+  {
    "id": 46,
    "date": "2026-10-13",
    "where": [
@@ -11,6 +28,9 @@
    "title": "Audiobooks in the app list",
    "items": [
     "Audiobooks can now be installed from Apps in The Nightvault (the previous build still showed it as \"coming later\")."
+   ],
+   "apps": [
+    "hub"
    ]
   },
   {
@@ -26,6 +46,9 @@
     "Tap Add and pick the files of a book: one M4B, one long MP3/M4A, or all the MP3s of a book at once. They are copied into the app, so they play without internet.",
     "Remembers where you were in every book, with chapters (also inside M4B and MP3 files), bookmarks, speed from 0.5× to 3.5× and a sleep timer.",
     "Android app: keeps playing with the screen off, with play/pause and skip buttons in the notification and on the lock screen."
+   ],
+   "apps": [
+    "audiobooks"
    ]
   },
   {
@@ -51,6 +74,9 @@
     "The Android app now opens on The Nightvault: the tiles for Scanner, Binder, Convert and the apps coming later. Tap a tile to open it.",
     "Your collection stays exactly as it was.",
     "The back button on the first screen of Scanner or Binder takes you back to the tiles."
+   ],
+   "apps": [
+    "hub"
    ]
   },
   {

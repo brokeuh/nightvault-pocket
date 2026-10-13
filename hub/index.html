@@ -60,6 +60,11 @@ a.app:active{transform:scale(.985)}a.app:hover{border-color:#33404f}
 .row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:var(--pan);border:1px solid var(--line);margin-bottom:10px;flex-wrap:wrap}
 .works{flex-basis:100%;font-size:12.5px;color:var(--dim);display:flex;flex-wrap:wrap;gap:6px 10px;padding-left:56px}
 .works .ok{color:var(--accent)}
+.upd{margin:12px 0 4px;padding:14px;border-radius:18px;background:linear-gradient(135deg,#173a30,#13283d);border:1px solid #2e6b55}
+.upd b{display:block;font-size:15px}.upd .meta{margin-top:3px;font-size:12.5px;color:#b9c7d6}.upd .bar{margin-top:10px}
+.upd .acts{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
+.clog{padding:12px 0;border-bottom:1px solid var(--line)}.clog:last-child{border-bottom:0}.clog .clh{display:flex;justify-content:space-between;gap:10px}.clog .clh span{font-size:12px;color:var(--dim2);flex:none}
+.clog ul{margin:6px 0 0;padding-left:18px;color:#c9d3de;font-size:13.5px}.clog .for{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.4px}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222a33;border:1px solid var(--line);padding:10px 14px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9;max-width:90vw}
 #toast.on{opacity:1}
 </style>
@@ -82,10 +87,11 @@ a.app:active{transform:scale(.985)}a.app:hover{border-color:#33404f}
     <div style="flex:1;min-width:0"><div class="word">THE NIGHTVAULT</div><div class="sub">Your apps · test version</div></div>
     <button class="ib" id="appsbtn" aria-label="Apps"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><path d="M17 14v6M14 17h6" stroke-linecap="round"></path></svg></button>
   </div>
+  <div id="upd"></div>
   <div id="cont"></div>
   <div class="head"><span>APPS</span><button class="lnk" id="arrange">Arrange</button></div>
   <div class="apps" id="tiles"></div>
-  <div class="foot">The Nightvault is a test. Each app also works on its own - nothing changes in them.</div>
+  <div class="foot"><button class="lnk" id="wnbtn">What's new</button> · <button class="lnk" id="chkbtn">Check for updates</button><div id="verline" style="margin-top:6px"></div>The Nightvault is a test. Each app also works on its own - nothing changes in them.</div>
 </div>
 
 <!-- the Apps screen: install, update, remove -->
@@ -93,6 +99,12 @@ a.app:active{transform:scale(.985)}a.app:hover{border-color:#33404f}
   <div class="top"><button class="btn sm" id="appsdone">Done</button><div style="flex:1;text-align:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;margin-right:64px">Apps</div></div>
   <div id="applist"></div>
   <label class="meta" style="display:flex;align-items:center;gap:10px;margin-top:18px"><input type="checkbox" id="ownchk" style="width:18px;height:18px;accent-color:var(--accentd)"> Show the apps only meant for the owner</label>
+</div></div>
+<!-- what's new -->
+<div class="sheet" id="wnsheet" hidden><div>
+  <div class="top"><button class="btn sm" id="wndone">Done</button><div style="flex:1;text-align:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;margin-right:64px">What's new</div></div>
+  <p class="meta" style="margin:4px 0 8px">Only the news for The Nightvault and the apps on this device.</p>
+  <div id="wnlist"></div>
 </div></div>
 <div id="toast"></div>
 
@@ -160,6 +172,7 @@ function home(){
   document.querySelectorAll('[data-up]').forEach(b => b.onclick = () => { const ids = order(CAT).map(a => a.id), i = ids.indexOf(b.dataset.up); [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]]; set('nvHub.order', ids); home() });
   document.querySelectorAll('[data-eye]').forEach(b => b.onclick = () => { const h = get('nvHub.hidden', []), id = b.dataset.eye; set('nvHub.hidden', h.includes(id) ? h.filter(x => x !== id) : h.concat(id)); home() });
   if($('#addapps')) $('#addapps').onclick = appsScreen;
+  drawUpd();
   $('#arrange').textContent = arranging ? 'Done' : 'Arrange'; $('#arrange').hidden = !list.length;
   // continue where you were in Binder (the test app remembers it for 2 hours)
   const n = get('nightvault.pocket.test.nav', null);
@@ -179,13 +192,14 @@ function appsScreen(){
     return u.length ? `<div class="works">Works with ${u.join('')}</div>` : '' };
   const row = (a, btns) => `<div class="row">${icon(a)}<div class="tx"><b style="font-size:15.5px">Nightvault ${esc(a.name)}</b><span class="d">${esc(a.desc)}</span>
       <span class="meta">${a.soon ? '<span class="tag soon">COMING LATER</span>' : `${mb(a.size)}${inst[a.id] ? ' · version ' + esc(inst[a.id].version) : ''}`}</span><span class="meta" id="ap-${a.id}"></span></div><div class="ctl" style="gap:8px">${btns}</div>${a.soon ? '' : works(a)}</div>`;
-  $('#applist').innerHTML =
+  $('#applist').innerHTML = (UPD.c && UPD.c.shell ? `<div class="row"><div class="tx"><b style="font-size:15px">Android app build ${UPD.c.newest} is ready</b><span class="d">${UPD.c.mine.length ? 'New for your apps: ' + esc(names(UPD.c.mine)) : 'Nothing new for the apps on this device - you can skip it.'}</span></div><div class="ctl"><button class="btn sm primary" id="apkgo2">Download</button></div></div>` : '') +
     (mine.length ? '<div class="sec">ON THIS DEVICE</div>' + mine.map(a => row(a, (NV.updateAvailable(a) ? `<button class="btn sm primary" data-inst="${a.id}">Update</button>` : '') + `<button class="btn sm" data-rm="${a.id}">Remove</button>`)).join('') : '')
     + (other.length ? '<div class="sec">AVAILABLE</div>' + other.map(a => row(a, `<button class="btn sm primary" data-inst="${a.id}">Install</button>`)).join('') : '')
     + (soon.length ? '<div class="sec">COMING LATER</div>' + soon.map(a => row(a, '')).join('') : '');
   document.querySelectorAll('[data-inst]').forEach(b => b.onclick = async () => { const id = b.dataset.inst, a = CAT.find(x => x.id === id); b.disabled = true;
     try{ await NV.install(id, (d, t) => { const el = $('#ap-' + id); if(el) el.textContent = `Downloading ${mb(d)} of ${mb(t)}` }); toast(`Nightvault ${a.name} is ready`) }catch(e){ toast(e.message) }
     appsScreen() });
+  if($('#apkgo2')) $('#apkgo2').onclick = () => { $('#appsheet').hidden = true; home(); installShell() };
   document.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { const a = CAT.find(x => x.id === b.dataset.rm);
     if(!confirm(`Remove Nightvault ${a.name} from this device?${a.keepsData ? '\n\n' + a.keepsData : ''}`)) return; await NV.remove(a.id); toast(`Nightvault ${a.name} removed`); appsScreen() });
 }
@@ -194,14 +208,69 @@ $('#ownchk').onchange = e => { set('nvHub.owner', e.target.checked); appsScreen(
 $('#appsbtn').onclick = appsScreen;
 $('#arrange').onclick = () => { arranging = !arranging; home() };
 
+/* ---------- updates: The Nightvault checks for every app (not only Scanner) ---------- */
+const UPD = {c:null, at:0, busy:false, msg:'', skip:get('nvHub.skipBuild', 0)};
+const names = ids => ids.map(id => id === 'hub' ? 'The Nightvault' : (CAT.find(a => a.id === id) || {name:id}).name).join(', ');
+async function checkUpdates(force){
+  if(UPD.busy || (!force && Date.now() - UPD.at < 3 * 60e3)) return; UPD.busy = true; UPD.at = Date.now();
+  try{ UPD.c = await NV.changes() }catch(e){ UPD.c = null; if(force) toast('Could not check for updates - check the internet connection') }
+  UPD.busy = false; drawUpd(force);
+  if(force && UPD.c && !$('#upd').innerHTML) toast(NV.native ? `You have the newest version for your apps (build ${UPD.c.build || '?'})` : 'You have the newest version');
+  if(!$('#appsheet').hidden) appsScreen();
+  if(UPD.c && !UPD.c.shell) whatsNew(false) }
+function drawUpd(force){
+  const el = $('#upd'), c = UPD.c; if(!el) return; el.innerHTML = '';
+  $('#verline').textContent = NV.native ? (c && c.build ? `Android app build ${c.build}` : '') : '';
+  if(!c || UPD.msg) { if(UPD.msg) el.innerHTML = `<div class="upd"><b>Updating</b><div class="meta" id="updmsg">${esc(UPD.msg)}</div><div class="bar"><i id="updbar"></i></div></div>`; return }
+  const parts = []; if(c.mine.length) parts.push('New for you: ' + names(c.mine)); if(c.newApps.length) parts.push('New app' + (c.newApps.length > 1 ? 's' : '') + ' to install: ' + c.newApps.map(id => (c.online.find(a => a.id === id) || {name:id}).name).join(', '));
+  if(NV.native){
+    // only bother when something changed for the apps on this device (or a new app came out), or when asked
+    if(!c.shell || (!force && !c.mine.length && !c.newApps.length) || (!force && UPD.skip >= c.newest)) return;
+    el.innerHTML = `<div class="upd"><b>Update ready · build ${c.newest}</b><div class="meta">${esc(parts.join(' · ') || 'Nothing new for the apps on this device')} <span style="opacity:.7">(you have build ${c.build})</span></div>
+      <div class="acts"><button class="btn sm primary" id="apkgo">Download</button><button class="lnk" id="updnews">What's new</button><button class="lnk" id="updlater" style="margin-left:auto;color:var(--dim2)">Later</button></div></div>`;
+    $('#apkgo').onclick = installShell; $('#updnews').onclick = () => whatsNew(true);
+    $('#updlater').onclick = () => { UPD.skip = c.newest; set('nvHub.skipBuild', c.newest); el.innerHTML = '' };
+  } else if(c.mine.includes('hub')){
+    el.innerHTML = `<div class="upd"><b>A new version of The Nightvault is ready</b><div class="meta">${esc(parts.join(' · '))}</div><div class="acts"><button class="btn sm primary" id="hubreload">Load it</button></div></div>`;
+    $('#hubreload').onclick = () => location.reload() } }
+/* Android: download the new app and open Android's installer (the NvUpdate plugin; your data stays) */
+async function installShell(){
+  const c = UPD.c; if(!c) return; UPD.msg = 'Downloading the update …'; drawUpd();
+  let P = null, lis = [];
+  try{ P = Capacitor.registerPlugin('NvUpdate');
+    lis.push(await P.addListener('progress', e => { const p = Math.round(100 * e.done / e.total); UPD.msg = `Downloading the update … ${p}%`; if($('#updmsg')) $('#updmsg').textContent = UPD.msg; if($('#updbar')) $('#updbar').style.width = p + '%' }));
+    lis.push(await P.addListener('installResult', e => { if(+e.status === 0) return; UPD.msg = ''; drawUpd(true); toast(+e.status === 3 ? 'Update cancelled - tap Download to try again' : 'Not installed: ' + (e.message || 'status ' + e.status)) }));
+    await P.install({url:NV.APK});
+    UPD.msg = 'Tap Install in the window that opens - your apps and data stay'; if($('#updmsg')) $('#updmsg').textContent = UPD.msg; if($('#updbar')) $('#updbar').style.width = '100%';
+  }catch(e){ const m = (e && e.message) || String(e); UPD.msg = '';
+    if(/allow/i.test(m)){ drawUpd(true); toast('Allow “Install unknown apps” for Nightvault, come back and tap Download again') }
+    else { drawUpd(true); toast(m + ' - opening the download in the browser'); location.href = NV.APK } }
+  finally{ setTimeout(() => lis.forEach(l => l && l.remove && l.remove()), 1500) } }
+/* what's new: once after an update, and on request (only the news for the hub and the apps on this device) */
+async function whatsNew(force){
+  let l = []; try{ l = await NV.changelog() }catch(e){ if(force) toast('The list of updates could not be loaded'); return }
+  if(!l.length){ if(force) toast('No news yet'); return }
+  const top = Math.max(...l.map(e => +e.id || 0)), seen = get('nvHub.seenLog', null);
+  if(!force){ set('nvHub.seenLog', top); if(seen == null) return; l = l.filter(e => +e.id > seen); if(!l.length) return }
+  const lbl = e => e.apps.filter(a => a === 'hub' || NV.installed()[a]).map(a => a === 'hub' ? 'THE NIGHTVAULT' : (CAT.find(x => x.id === a) || {name:a}).name.toUpperCase()).join(' · ');
+  $('#wnlist').innerHTML = l.slice(0, force ? 40 : 8).map(e => `<div class="clog"><span class="for">${esc(lbl(e))}</span><div class="clh"><b>${esc(e.title)}</b><span>${esc(new Date(e.date + 'T12:00:00').toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'}))}</span></div><ul>${(e.items || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('');
+  $('#wnsheet').hidden = false }
+$('#wndone').onclick = () => $('#wnsheet').hidden = true;
+$('#wnbtn').onclick = () => whatsNew(true);
+$('#chkbtn').onclick = () => { UPD.skip = 0; set('nvHub.skipBuild', 0); checkUpdates(true) };
+setTimeout(() => checkUpdates(false), 1500);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) checkUpdates(false) });
+
 (async () => {
-  try{ CAT = await NV.catalog() }catch(e){ document.body.insertAdjacentHTML('afterbegin', `<p class="meta">${esc(e.message)} - check your internet connection.</p>`); return }
+  try{ CAT = (await NV.catalog()).filter(a => !a.system) }catch(e){ document.body.insertAdjacentHTML('afterbegin', `<p class="meta">${esc(e.message)} - check your internet connection.</p>`); return }
+  // Android: the apps came with the Android app itself, so after an Android update they are up to date already (no "update ready" per app)
+  if(NV.native) try{ const reg = NV.installed(); let ch = false; for(const a of CAT) if(reg[a.id] && a.version && reg[a.id].version !== a.version){ reg[a.id].version = a.version; reg[a.id].size = a.size; ch = true } if(ch) set('nvHub.installed', reg) }catch(e){}
   // first start: no apps chosen yet (someone who used the earlier test tiles has Binder already)
   if(!get('nvHub.setupDone', null) && !Object.keys(NV.installed()).length) setup(); else home();
 })();
 /* Android app: the hub is the first screen; back closes the Apps screen, otherwise the app goes to the background */
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(!$('#appsheet').hidden){ $('#appsdone').click(); return } if(arranging){ $('#arrange').click(); return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
+  A.addListener('backButton', () => { if(!$('#wnsheet').hidden){ $('#wndone').click(); return } if(!$('#appsheet').hidden){ $('#appsdone').click(); return } if(arranging){ $('#arrange').click(); return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 window.addEventListener('pageshow', e => { if(e.persisted && CAT.length && !$('#home').hidden) home() });
 </script>
 </body>

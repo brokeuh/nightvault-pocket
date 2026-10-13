@@ -38,7 +38,35 @@
     async remove(id){ try{ if(self.caches) await caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('nvapp-' + id + '-')).map(k => caches.delete(k)))) }catch(e){}
       const reg = NV.installed(); delete reg[id]; set(REG, reg) },
     /* for apps opened from The Nightvault: go back to the tiles */
-    home(){ location.href = HUB + 'index.html' }
+    home(){ location.href = HUB + 'index.html' },
+
+    /* ---------- updates (checked by The Nightvault itself, so every app gets them - not only Scanner) ----------
+       Android: all apps are inside the Android app, so an update is a new Android app (build N of release android-test).
+       NV.changes() says what changed for the apps on THIS device, by comparing the app list inside this copy with the one online
+       (by the hash of each app's files). Website: the apps load from the site, so only the hub page itself may need a reload. */
+    native:!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()),
+    REMOTE:'https://brokeuh.github.io/nightvault-pocket/',
+    remoteBase(){ return NV.native ? NV.REMOTE : SITE },
+    async remoteCatalog(){ const r = await fetch(NV.remoteBase() + 'hub/apps.json?t=' + Date.now(), {cache:'no-store'}); if(!r.ok) throw new Error('App list not available (' + r.status + ')'); return (await r.json()).apps || [] },
+    async appBuild(){ if(!NV.native) return 0; try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App'); return +((await A.getInfo()) || {}).build || 0 }catch(e){ return 0 } },
+    async newestBuild(){ const r = await fetch('https://api.github.com/repos/brokeuh/nightvault-pocket/releases/tags/android-test', {cache:'no-store'}).then(x => x.ok ? x.json() : null).catch(() => null);
+      return r ? +((/Test build (\d+)/.exec(r.body || '') || [])[1] || 0) : 0 },
+    APK:'https://github.com/brokeuh/nightvault-pocket/releases/download/android-test/nightvault-pocket.apk',
+    async changes(){
+      const [here, online] = await Promise.all([NV.catalog(), NV.remoteCatalog()]);
+      const inst = NV.installed(), h = {}; for(const a of here) h[a.id] = a.hash;
+      const changed = online.filter(a => !a.soon && h[a.id] !== undefined && a.hash && h[a.id] !== a.hash).map(a => a.id);
+      const newApps = online.filter(a => !a.soon && !a.system && (h[a.id] === undefined || (here.find(x => x.id === a.id) || {}).soon)).map(a => a.id);
+      const out = {mine:changed.filter(id => inst[id] || id === 'hub'), others:changed.filter(id => !inst[id] && id !== 'hub'), newApps, online};
+      if(NV.native){ const [mine, newest] = await Promise.all([NV.appBuild(), NV.newestBuild()]); out.build = mine; out.newest = newest; out.shell = !!(mine && newest > mine) }
+      return out },
+    /* the update notes (data/changelog.json) for the apps on this device: entries with "apps": [...]; entries without it belong to Scanner/Binder */
+    async changelog(){ const SEES = NV.native ? ['live', 'test', 'android'] : /\/test\/|\/hub\//.test(location.pathname) ? ['live', 'test'] : ['live'];
+      const r = await fetch(NV.remoteBase() + 'data/changelog.json?d=' + new Date().toISOString().slice(0, 13)); if(!r.ok) return [];
+      const inst = NV.installed();
+      return ((await r.json()).entries || []).filter(e => (e.where || []).some(w => SEES.includes(w)))
+        .map(e => Object.assign({}, e, {apps:e.apps || ['scanner', 'binder']}))
+        .filter(e => e.apps.some(a => a === 'hub' || inst[a])) }
   };
   window.NV = NV;
 })();
