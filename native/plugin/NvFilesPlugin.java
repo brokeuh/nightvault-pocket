@@ -248,7 +248,9 @@ public class NvFilesPlugin extends Plugin {
             long len = Math.max(0, end - start + 1);
             h.put("Content-Length", String.valueOf(len));
             if (partial) h.put("Content-Range", "bytes " + start + "-" + end + "/" + size);
-            InputStream body = new Bounded(open(ctx, doc, start), len, null);
+            // Android's web view applies the Range itself (it asks available() for the size and skips to the start), so the answer is the
+            // whole file seen from byte 0; RangeStream also copes with a web view that does not skip, and stops after the range.
+            InputStream body = new RangeStream(ctx, doc, size, partial ? start : 0, end);
             Log.d("NvFiles", "serve " + name + " " + (range == null ? "(no range)" : range) + " -> " + (partial ? 206 : 200) + " " + start + "-" + end + "/" + size + " " + mime);
             return new WebResourceResponse(mime, null, partial ? 206 : 200, partial ? "Partial Content" : "OK", h, body);
         } catch (SecurityException e) {
@@ -258,6 +260,31 @@ public class NvFilesPlugin extends Plugin {
             Log.w("NvFiles", "serve failed for " + path, e);
             return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", h, new java.io.ByteArrayInputStream(("not found: " + e.getMessage()).getBytes()));
         }
+    }
+
+    /** The file from byte 0 as far as the web view can see: skip() really jumps (fast, no reading), reading stops after 'end'.
+        If the web view reads without skipping first, it starts at 'start' itself. */
+    private static class RangeStream extends InputStream {
+        private final Context ctx; private final Uri doc; private final long size, start, end;
+        private long pos = 0; private boolean skipped = false; private InputStream in = null; private long inPos = -1;
+        RangeStream(Context ctx, Uri doc, long size, long start, long end) { this.ctx = ctx; this.doc = doc; this.size = size; this.start = start; this.end = end; }
+        private void ensure() throws IOException {
+            if (!skipped && pos == 0 && start > 0) pos = start;      // the web view did not skip: go to the range ourselves
+            skipped = true;
+            if (in == null || inPos != pos) { if (in != null) try { in.close(); } catch (Exception e) {} in = open(ctx, doc, pos); inPos = pos; }
+        }
+        @Override public int available() { return (int) Math.min(Integer.MAX_VALUE, Math.max(0, size - pos)); }
+        @Override public long skip(long n) { if (n <= 0) return 0; long k = Math.min(n, Math.max(0, size - pos)); pos += k; skipped = true; return k; }
+        @Override public int read() throws IOException { byte[] b = new byte[1]; int n = read(b, 0, 1); return n <= 0 ? -1 : b[0] & 0xff; }
+        @Override public int read(byte[] b, int off, int len) throws IOException {
+            if (len == 0) return 0;
+            ensure();
+            if (pos > end) return -1;
+            int n = in.read(b, off, (int) Math.min(len, end - pos + 1));
+            if (n > 0) { pos += n; inPos = pos; }
+            return n;
+        }
+        @Override public void close() throws IOException { if (in != null) in.close(); }
     }
 
     /** reads at most n bytes, and closes the file when done */

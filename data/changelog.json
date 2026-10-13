@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 51,
+   "date": "2026-10-13",
+   "where": [
+    "android"
+   ],
+   "apps": [
+    "audiobooks"
+   ],
+   "title": "Audiobooks: books from a folder play now",
+   "items": [
+    "Fixed: books from a folder on the phone got the wrong part of the file, so they did not start and their title, author and length were missing.",
+    "For a book added before this fix: open it, tap ⋯ → \"Read the book info again\"."
+   ]
+  },
+  {
    "id": 50,
    "date": "2026-10-13",
    "where": [
