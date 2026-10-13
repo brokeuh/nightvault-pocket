@@ -3,7 +3,7 @@ name: Update app list
 
 on:
   push:
-    paths: ["test/**", "tools/**", "admin/**", "hub/apps.src.json", "hub/build_catalog.py"]
+    paths: ["test/**", "tools/**", "admin/**", "audio/**", "hub/apps.src.json", "hub/build_catalog.py"]
   workflow_dispatch:
 
 permissions:

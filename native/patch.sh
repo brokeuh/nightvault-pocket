@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 J=android/app/src/main/java/be/brokeuh/nightvault
 mkdir -p "$J"
-cp plugin/MainActivity.java plugin/NvOcrPlugin.java plugin/NvUpdatePlugin.java plugin/NvCapturePlugin.java plugin/NvCaptureService.java "$J/"
+cp plugin/MainActivity.java plugin/NvOcrPlugin.java plugin/NvUpdatePlugin.java plugin/NvCapturePlugin.java plugin/NvCaptureService.java plugin/NvMediaPlugin.java plugin/NvMediaService.java "$J/"
 # Google ML Kit text recognition (the model is inside the app, works without internet)
 sed -i "s#^dependencies {#dependencies {\n    implementation 'com.google.mlkit:text-recognition:16.0.1'#" android/app/build.gradle
 # version shown in Android settings: the build number
@@ -24,7 +24,10 @@ grep -n "mlkit\|versionCode" android/app/build.gradle
 # screen capture (alpha): floating button over other apps, and the capture service
 grep -q 'SYSTEM_ALERT_WINDOW' "$M" || sed -i 's#<uses-permission android:name="android.permission.CAMERA" />#<uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' "$M"
 grep -q 'NvCaptureService' "$M" || sed -i 's#</application>#    <service android:name=".NvCaptureService" android:exported="false" android:foregroundServiceType="mediaProjection" />\n    </application>#' "$M"
-grep -n "CAMERA\|SYSTEM_ALERT\|MEDIA_PROJECTION\|NvCaptureService" "$M"
+# audio player (Nightvault Audio): media notification + keeps playing with the screen off
+grep -q 'FOREGROUND_SERVICE_MEDIA_PLAYBACK' "$M" || sed -i 's#<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />#<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />#' "$M"
+grep -q 'NvMediaService' "$M" || sed -i 's#</application>#    <service android:name=".NvMediaService" android:exported="false" android:foregroundServiceType="mediaPlayback" />\n    </application>#' "$M"
+grep -n "CAMERA\|SYSTEM_ALERT\|MEDIA_PROJECTION\|MEDIA_PLAYBACK\|NvCaptureService\|NvMediaService" "$M"
 # start-up screen (Android 12+): the app's dark colour behind the icon instead of a white circle
 python3 - <<'PY'
 import re

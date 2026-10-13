@@ -126,8 +126,12 @@
       "name": "Audiobooks",
       "desc": "Audiobooks that remember where you were, at any speed",
       "color": "#13283d",
-      "soon": true,
-      "files": [],
+      "entry": "audio/?nv=hub&mode=audiobooks",
+      "files": [
+        "audio/index.html",
+        "audio/manifest.webmanifest"
+      ],
+      "keepsData": "Your audiobooks and where you were stay on this device.",
       "provides": [
         "audiobooks"
       ],

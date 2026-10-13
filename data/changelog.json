@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 45,
+   "date": "2026-10-13",
+   "where": [
+    "test",
+    "android"
+   ],
+   "title": "New app: Nightvault Audiobooks",
+   "items": [
+    "Audiobooks is now a real app in The Nightvault: open Apps and install it.",
+    "Tap Add and pick the files of a book: one M4B, one long MP3/M4A, or all the MP3s of a book at once. They are copied into the app, so they play without internet.",
+    "Remembers where you were in every book, with chapters (also inside M4B and MP3 files), bookmarks, speed from 0.5× to 3.5× and a sleep timer.",
+    "Android app: keeps playing with the screen off, with play/pause and skip buttons in the notification and on the lock screen."
+   ]
+  },
+  {
    "id": 44,
    "date": "2026-10-12",
    "where": [

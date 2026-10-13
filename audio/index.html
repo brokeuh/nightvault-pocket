@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e13">
+<title>Nightvault Audiobooks</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<!-- Nightvault Audio (test): one app for Audiobooks (?mode=audiobooks, built) and Music (?mode=music, later), one shared player.
+     Books are copied into the app (IndexedDB), so they play without internet. Plan: plans/audiobooks.md and plans/music.md (nightvault-src). -->
+<style>
+:root{--bg:#0b0e13;--pan:#151a22;--pan2:#10141b;--line:#232b36;--text:#e9edf2;--dim:#9aa7b5;--dim2:#8fa0b2;--accent:#5fe0b0;--accentd:#2a8f6a;--blue:#7fb2ff;--amber:#f1dc6b;--red:#ef8a8f}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 'DM Sans',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{max-width:640px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(96px + env(safe-area-inset-bottom,0px))}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+.muted{color:var(--dim)}.small{font-size:12.5px}
+.top{display:flex;align-items:center;gap:10px;padding:4px 0 8px}
+.top h1{font-size:21px;margin:0;flex:1;letter-spacing:.2px}
+.ib{width:42px;height:42px;border-radius:13px;border:1px solid var(--line);background:var(--pan);display:inline-flex;align-items:center;justify-content:center;padding:0;color:#c4cdd8;cursor:pointer;flex:none}
+.ib svg{width:20px;height:20px}
+.hubback{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;margin:0 0 6px;border-radius:12px;border:1px solid var(--line);background:var(--pan);color:var(--text);text-decoration:none;font-size:13.5px}
+.btn{height:44px;border-radius:13px;border:1px solid var(--line);background:var(--pan);color:var(--text);font-size:14.5px;cursor:pointer;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.primary{background:var(--accentd);border-color:#3fbf91;color:#fff;font-weight:700}
+.btn.sm{height:34px;font-size:13px;padding:0 12px;border-radius:11px}
+.btn.danger{color:var(--red)}
+.btn:disabled{opacity:.5;cursor:default}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chip{height:32px;border-radius:99px;border:1px solid var(--line);background:var(--pan2);color:var(--dim);padding:0 12px;font-size:13px;cursor:pointer}
+.chip.on{background:#173a30;border-color:#2e6b55;color:var(--accent)}
+input[type=search],input[type=text]{width:100%;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--pan2);color:var(--text);padding:0 12px;font:inherit;font-size:14.5px}
+select{height:34px;border-radius:11px;border:1px solid var(--line);background:var(--pan2);color:var(--text);padding:0 8px;font:inherit;font-size:13px}
+/* continue card */
+.cont{display:flex;gap:14px;align-items:center;padding:12px;border-radius:18px;background:linear-gradient(135deg,#13283d,#13342c);border:1px solid #24405e;cursor:pointer;margin:6px 0 4px}
+.cont .cv{width:74px;height:74px;border-radius:12px}
+.cont small{display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:#a9c4ff}
+.cont b{display:block;font-size:15.5px;line-height:1.25;margin-top:2px}
+/* cover grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:14px 12px;margin-top:6px}
+.bk{cursor:pointer;min-width:0}
+.cv{position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#1a2230;flex:none}
+.cv img{width:100%;height:100%;object-fit:cover;display:block}
+.cv .ph{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:10px;font-weight:700;font-size:14px;line-height:1.2;color:#fff;background:linear-gradient(160deg,var(--c1),var(--c2))}
+.cv .ph span{font-size:11px;font-weight:500;opacity:.8;margin-top:3px}
+.cv .done{position:absolute;top:6px;right:6px;background:#0b0e13cc;color:var(--accent);font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px}
+.bk .t{font-size:13.5px;font-weight:600;margin-top:6px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.bk .a{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbar{height:4px;border-radius:99px;background:#232b36;overflow:hidden;margin-top:5px}.pbar i{display:block;height:100%;background:var(--accent)}
+.empty{text-align:center;padding:40px 16px;border:1px dashed #2f3a48;border-radius:20px;margin-top:14px}
+.empty svg{width:48px;height:48px;color:var(--blue)}
+.store{font-size:12px;color:#6f7d8c;text-align:center;margin-top:22px}
+/* mini player */
+#mini{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(620px,calc(100% - 20px));display:flex;align-items:center;gap:10px;padding:8px;border-radius:16px;background:#18202bf2;border:1px solid #2a3442;box-shadow:0 8px 30px #0008;z-index:4;cursor:pointer}
+#mini .cv{width:46px;height:46px;border-radius:10px}
+#mini .cv .ph{font-size:9px;padding:5px}#mini .cv .ph span{display:none}
+#mini .tx{flex:1;min-width:0}#mini .tx b,#mini .tx div{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#mini .tx b{font-size:14px}#mini .tx div{font-size:12px;color:var(--dim)}
+#mini .pbar{position:absolute;left:14px;right:14px;bottom:3px;height:2px;margin:0}
+/* player */
+#player{position:fixed;inset:0;background:var(--bg);z-index:6;overflow:auto}
+#player>div{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:calc(10px + env(safe-area-inset-top,0px)) 20px calc(18px + env(safe-area-inset-bottom,0px))}
+#player .bg{position:fixed;inset:0;z-index:-1;opacity:.28;filter:blur(40px) saturate(1.3);background-size:cover;background-position:center}
+.pcover{width:min(78vw,340px,42vh);margin:8px auto 0}
+.pcover .cv{border-radius:20px;box-shadow:0 18px 50px #000a}
+.pcover .cv .ph{font-size:22px;padding:18px}.pcover .cv .ph span{font-size:14px}
+.ptitle{text-align:center;margin-top:16px}
+.ptitle b{display:block;font-size:19px;line-height:1.25}
+.ptitle div{color:var(--dim);font-size:13.5px;margin-top:3px}
+.chap{display:flex;align-items:center;justify-content:center;gap:6px;margin:14px auto 0;max-width:100%;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--pan);font-size:13.5px;cursor:pointer;color:var(--text)}
+.chap span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+input[type=range].seek{width:100%;margin:16px 0 0;accent-color:var(--accent);height:28px}
+.times{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+.booktime{text-align:center;font-size:12px;color:var(--dim2);margin-top:4px}
+.ctl{display:flex;align-items:center;justify-content:space-between;margin:14px auto 0;width:100%;max-width:400px}
+.ctl button{background:none;border:0;cursor:pointer;color:#dfe6ee;display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;padding:0}
+.ctl button svg{width:30px;height:30px}
+.ctl .skip svg{width:40px;height:40px}
+.ctl .pp{width:76px;height:76px;background:var(--accent);color:#08251b}
+.ctl .pp svg{width:36px;height:36px}
+.tools{display:flex;justify-content:space-around;margin-top:auto;padding-top:22px}
+.tools button{background:none;border:0;color:var(--dim);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;min-width:64px}
+.tools button svg{width:22px;height:22px}
+.tools button b{color:var(--text);font-size:13px;font-weight:600}
+.tools button.on{color:var(--accent)}.tools button.on b{color:var(--accent)}
+/* sheets */
+.scrim{position:fixed;inset:0;background:#000a;z-index:8;display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:560px;max-height:86vh;overflow:auto;background:var(--pan);border:1px solid var(--line);border-bottom:0;border-radius:22px 22px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+.sheet h3{margin:0 0 10px;font-size:17px}
+.sheet .grab{width:40px;height:4px;border-radius:9px;background:#3a4553;margin:-6px auto 12px}
+.li{display:flex;align-items:center;gap:10px;padding:11px 8px;border-bottom:1px solid var(--line);cursor:pointer}
+.li:last-child{border-bottom:0}
+.li .n{flex:1;min-width:0}.li .n div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .r{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;flex:none}
+.li.cur{color:var(--accent)}
+.li .x{background:none;border:0;color:var(--dim);cursor:pointer;padding:4px 6px;font-size:16px}
+.tabs{display:flex;gap:6px;margin-bottom:8px}
+.speedv{font-size:34px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums}
+.sheet input[type=range]{width:100%;accent-color:var(--accent)}
+.opt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.opt:last-child{border-bottom:0}
+.opt label{flex:1}
+.opt input[type=checkbox]{width:22px;height:22px;accent-color:var(--accentd)}
+.grp{padding:10px;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;background:var(--pan2)}
+.prog{height:6px;border-radius:99px;background:#232b36;overflow:hidden;margin:8px 0}.prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#222a33;border:1px solid var(--line);padding:10px 14px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:90vw;text-align:center}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<a id="hubback" class="hubback" hidden href="../hub/index.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5fe0b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><rect x="14" y="14" width="6" height="6" rx="1.5"></rect></svg>The Nightvault</a>
+
+<!-- library -->
+<div id="lib">
+  <div class="top"><h1 id="apptitle">Audiobooks</h1>
+    <button class="ib" id="setbtn" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>
+    <button class="btn primary sm" id="addbtn" style="height:42px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add</button></div>
+  <div id="libbody"></div>
+</div>
+<div id="musicsoon" hidden class="empty"><h2 style="margin:6px 0">Nightvault Music</h2><p class="muted">Music is coming later. It will use the same player as Audiobooks.</p><a class="btn" href="?mode=audiobooks">Open Audiobooks</a></div>
+
+<!-- mini player -->
+<div id="mini" hidden></div>
+
+<!-- full player -->
+<div id="player" hidden><div class="bg" id="pbg"></div><div>
+  <div class="top" style="padding:0">
+    <button class="ib" id="pclose" aria-label="Back to the shelf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+    <div style="flex:1;text-align:center;font-size:12px;color:var(--dim2);font-weight:700;letter-spacing:.6px">NOW LISTENING</div>
+    <button class="ib" id="pmore" aria-label="About this book"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+  </div>
+  <div class="pcover" id="pcover"></div>
+  <div class="ptitle"><b id="ptitle"></b><div id="pauthor"></div></div>
+  <button class="chap" id="pchap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span id="pchapname"></span></button>
+  <input type="range" class="seek" id="seek" min="0" max="1000" value="0" aria-label="Position">
+  <div class="times"><span id="tleft">0:00</span><span id="tright">0:00</span></div>
+  <div class="booktime" id="booktime"></div>
+  <div class="ctl">
+    <button id="prevch" aria-label="Previous chapter"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+    <button class="skip" id="back" aria-label="Back"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 24a14 14 0 1 0 4.1-9.9"/><path d="M13 7v8h8"/><text x="24" y="29" fill="currentColor" stroke="none" font-size="12" font-weight="700" text-anchor="middle" font-family="system-ui,sans-serif" id="backn">15</text></svg></button>
+    <button class="pp" id="pp" aria-label="Play"></button>
+    <button class="skip" id="fwd" aria-label="Forward"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M38 24a14 14 0 1 1-4.1-9.9"/><path d="M35 7v8h-8"/><text x="24" y="29" fill="currentColor" stroke="none" font-size="12" font-weight="700" text-anchor="middle" font-family="system-ui,sans-serif" id="fwdn">30</text></svg></button>
+    <button id="nextch" aria-label="Next chapter"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+  </div>
+  <div class="tools">
+    <button id="tspeed"><b id="speedlbl">1×</b>Speed</button>
+    <button id="tsleep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><span id="sleeplbl">Sleep</span></button>
+    <button id="tmark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M12 7v6M9 10h6"/></svg>Bookmark</button>
+    <button id="tlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Chapters</button>
+  </div>
+</div></div>
+
+<div id="sheets"></div>
+<input type="file" id="pickfiles" multiple hidden accept="audio/*,.mp3,.m4a,.m4b,.aac,.ogg,.oga,.opus,.flac,.wav,.webm,.mka,.jpg,.jpeg,.png">
+<input type="file" id="pickdir" webkitdirectory multiple hidden>
+<audio id="au" preload="auto"></audio>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ---------- basics ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const P = new URLSearchParams(location.search);
+const MODE = P.get('mode') === 'music' ? 'music' : 'audiobooks';
+const NATIVE = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+const coll = new Intl.Collator(undefined, {numeric:true, sensitivity:'base'});
+const mb = n => n >= 1073741824 ? (n / 1073741824).toFixed(1) + ' GB' : n >= 1048576 ? Math.round(n / 1048576) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+function clock(s){ s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0') }
+function hm(s){ s = Math.max(0, Math.round(s || 0)); const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h} h ${m} m` : `${Math.max(m, s > 0 ? 1 : 0)} m` }
+const speedTxt = v => (Math.round(v * 100) / 100).toString().replace(/\.?0+$/, '') + '×';
+let toastT = 0; function toast(m, ms){ const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms || 2600) }
+const lsGet = (k, d) => { try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v) }catch(e){ return d } };
+const lsSet = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)) }catch(e){} };
+const S = Object.assign({back:15, fwd:30, smart:true, speed:1, sort:'recent', filter:'all'}, lsGet('nvAudio.settings', {}));
+const saveS = () => lsSet('nvAudio.settings', S);
+try{ if(P.get('nv') === 'hub') sessionStorage.setItem('nvHub', '1'); if(sessionStorage.getItem('nvHub') === '1') $('#hubback').hidden = false }catch(e){}
+const fromHub = () => { try{ return sessionStorage.getItem('nvHub') === '1' }catch(e){ return false } };
+
+/* ---------- storage: IndexedDB (works offline; big files are kept on disk by the browser) ----------
+   books  : {id, title, author, narrator, year, parts:[{fid,name,type,size,dur,title}], chapters:[{t,title}], dur, size, added, hasCover}
+   state  : {id, pos, speed, last, finished, marks:[{t,note,at}]}      (written often, kept apart from the book)
+   covers : {id, blob}     files : {id, blob} */
+let DB = null;
+function openDB(){ return new Promise((ok, no) => { const r = indexedDB.open('nvAudio', 1);
+  r.onupgradeneeded = () => { const d = r.result; for(const s of ['books', 'state', 'covers', 'files']) if(!d.objectStoreNames.contains(s)) d.createObjectStore(s, {keyPath:'id'}) };
+  r.onsuccess = () => ok(DB = r.result); r.onerror = () => no(r.error) }) }
+function tx(store, mode, fn){ return new Promise((ok, no) => { const t = DB.transaction(store, mode), st = t.objectStore(store); let res; const q = fn(st); if(q) q.onsuccess = () => res = q.result; t.oncomplete = () => ok(res); t.onerror = t.onabort = () => no(t.error || new Error('Storage error')) }) }
+const dbGet = (s, id) => tx(s, 'readonly', st => st.get(id));
+const dbAll = s => tx(s, 'readonly', st => st.getAll());
+const dbPut = (s, v) => tx(s, 'readwrite', st => st.put(v));
+const dbDel = (s, id) => tx(s, 'readwrite', st => st.delete(id));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+/* ---------- reading tags, chapters and length from the files ---------- */
+const AUDIO_RE = /\.(mp3|m4a|m4b|mp4|aac|ogg|oga|opus|flac|wav|webm|mka)$/i;
+const IMG_RE = /\.(jpe?g|png|webp)$/i;
+const MIME = {mp3:'audio/mpeg', m4a:'audio/mp4', m4b:'audio/mp4', mp4:'audio/mp4', aac:'audio/aac', ogg:'audio/ogg', oga:'audio/ogg', opus:'audio/ogg', flac:'audio/flac', wav:'audio/wav', webm:'audio/webm', mka:'audio/webm'};
+const ext = n => (n.match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
+const rd = (b, a, z) => b.slice(a, Math.min(z, b.size)).arrayBuffer();
+const latin = (u8, a, z) => { let s = ''; for(let i = a; i < z; i++) s += String.fromCharCode(u8[i]); return s };
+const utf8 = new TextDecoder('utf-8');
+
+/* MP4 / M4A / M4B: tags (ilst), length (mvhd), chapters (QuickTime chapter track, else Nero 'chpl') */
+async function mp4Info(blob){
+  let off = 0, moov = null;
+  for(let n = 0; n < 64 && off + 8 <= blob.size; n++){
+    const h = new DataView(await rd(blob, off, off + 16)); let size = h.getUint32(0), hl = 8; const type = latin(new Uint8Array(h.buffer), 4, 8);
+    if(size === 1 && h.byteLength >= 16){ size = Number(h.getBigUint64(8)); hl = 16 } else if(size === 0) size = blob.size - off;
+    if(size < hl) break;
+    if(type === 'moov'){ if(size > 96e6) return null; moov = new DataView(await rd(blob, off, off + size)); break }
+    off += size }
+  if(!moov) return null;
+  const u8 = new Uint8Array(moov.buffer);
+  const kids = (s, e) => { const out = []; let p = s; while(p + 8 <= e){ let sz = moov.getUint32(p), hl = 8; const t = latin(u8, p + 4, p + 8);
+      if(sz === 1){ sz = Number(moov.getBigUint64(p + 8)); hl = 16 } else if(sz === 0) sz = e - p;
+      if(sz < hl || p + sz > e) break; out.push({t, s:p + hl, e:p + sz}); p += sz } return out };
+  const one = (box, t) => box && kids(box.s, box.e).find(k => k.t === t);
+  const path = (box, ...ts) => { for(const t of ts){ box = one(box, t); if(!box) return null } return box };
+  const top = {s:8, e:moov.byteLength}, info = {tags:{}, chapters:[], dur:0};
+  const mvhd = one(top, 'mvhd');
+  if(mvhd){ const v = moov.getUint8(mvhd.s); const ts = moov.getUint32(mvhd.s + (v ? 20 : 12)); const d = v ? Number(moov.getBigUint64(mvhd.s + 24)) : moov.getUint32(mvhd.s + 16); if(ts) info.dur = d / ts }
+  // tags
+  const meta = path(top, 'udta', 'meta') || one(top, 'meta');
+  const ilst = meta && kids(meta.s + 4, meta.e).find(k => k.t === 'ilst');
+  if(ilst) for(const it of kids(ilst.s, ilst.e)){ const d = one(it, 'data'); if(!d || d.e - d.s < 8) continue;
+    const kind = moov.getUint32(d.s) & 0xffffff, a = d.s + 8, z = d.e, key = it.t.replace('\xa9', '@');
+    if(key === 'covr'){ info.tags.cover = new Blob([u8.slice(a, z)], {type:kind === 14 ? 'image/png' : 'image/jpeg'}); continue }
+    if(key === 'trkn' || key === 'disk'){ if(z - a >= 4) info.tags[key === 'trkn' ? 'track' : 'disc'] = moov.getUint16(a + 2); continue }
+    const map = {'@nam':'title', '@ART':'artist', 'aART':'albumartist', '@alb':'album', '@wrt':'composer', '@day':'year', 'desc':'desc', '@nrt':'narrator'};
+    if(map[key] && kind === 1) info.tags[map[key]] = utf8.decode(u8.slice(a, z)).trim() }
+  // chapters: QuickTime chapter track (text samples)
+  try{
+    const traks = kids(top.s, top.e).filter(k => k.t === 'trak'), byId = {}; let chapId = 0;
+    for(const tr of traks){ const tk = one(tr, 'tkhd'); if(!tk) continue; const v = moov.getUint8(tk.s); byId[moov.getUint32(tk.s + (v ? 20 : 12))] = tr;
+      const chap = path(tr, 'tref', 'chap'); if(chap && chap.e - chap.s >= 4) chapId = moov.getUint32(chap.s) }
+    const ct = chapId && byId[chapId];
+    if(ct){ const mdhd = path(ct, 'mdia', 'mdhd'), stbl = path(ct, 'mdia', 'minf', 'stbl');
+      const v = moov.getUint8(mdhd.s), ts = moov.getUint32(mdhd.s + (v ? 20 : 12));
+      const stts = one(stbl, 'stts'), stsz = one(stbl, 'stsz'), stsc = one(stbl, 'stsc'), stco = one(stbl, 'stco') || one(stbl, 'co64'), big = stco && stco.t === 'co64';
+      const times = []; { let t = 0; const n = moov.getUint32(stts.s + 4); for(let i = 0; i < n; i++){ const c = moov.getUint32(stts.s + 8 + i * 8), d = moov.getUint32(stts.s + 12 + i * 8); for(let j = 0; j < c; j++){ times.push(t); t += d } } }
+      const fixed = moov.getUint32(stsz.s + 4), ns = moov.getUint32(stsz.s + 8), sizes = []; for(let i = 0; i < ns; i++) sizes.push(fixed || moov.getUint32(stsz.s + 12 + i * 4));
+      const nc = moov.getUint32(stco.s + 4), chunks = []; for(let i = 0; i < nc; i++) chunks.push(big ? Number(moov.getBigUint64(stco.s + 8 + i * 8)) : moov.getUint32(stco.s + 8 + i * 4));
+      const ne = moov.getUint32(stsc.s + 4), ent = []; for(let i = 0; i < ne; i++) ent.push([moov.getUint32(stsc.s + 8 + i * 12), moov.getUint32(stsc.s + 12 + i * 12)]);
+      const offs = []; let si = 0;
+      for(let c = 0; c < nc && si < ns; c++){ let per = 1; for(const [first, spc] of ent) if(c + 1 >= first) per = spc; let o = chunks[c]; for(let k = 0; k < per && si < ns; k++){ offs.push(o); o += sizes[si]; si++ } }
+      if(offs.length && ts){ const lo = Math.min(...offs), hi = Math.max(...offs.map((o, i) => o + sizes[i]));
+        if(hi - lo < 4e6){ const b = new Uint8Array(await rd(blob, lo, hi)), dv = new DataView(b.buffer);
+          for(let i = 0; i < offs.length; i++){ const p = offs[i] - lo; if(p + 2 > b.length) continue; const len = dv.getUint16(p); let s = b.slice(p + 2, p + 2 + len);
+            const title = (s[0] === 0xfe && s[1] === 0xff) ? new TextDecoder('utf-16be').decode(s.slice(2)) : utf8.decode(s);
+            info.chapters.push({t:times[i] / ts, title:title.trim()}) } } } }
+  }catch(e){ info.chapters = [] }
+  // chapters: Nero chpl
+  if(!info.chapters.length){ const ch = path(top, 'udta', 'chpl');
+    if(ch){ try{ const v = moov.getUint8(ch.s); let p = ch.s + 4 + (v ? 4 : 0); const n = moov.getUint8(p++);
+      for(let i = 0; i < n && p + 9 <= ch.e; i++){ const t = Number(moov.getBigUint64(p)) / 1e7, l = moov.getUint8(p + 8); info.chapters.push({t, title:utf8.decode(u8.slice(p + 9, p + 9 + l)).trim()}); p += 9 + l } }catch(e){} } }
+  info.chapters.sort((a, b) => a.t - b.t);
+  return info }
+
+/* MP3: ID3v2 tags, picture and CHAP chapters; length from the Xing/VBRI header or the bitrate */
+function id3text(b, enc){ let s;
+  if(enc === 0) s = latin(b, 0, b.length);
+  else if(enc === 1){ const be = b[0] === 0xfe && b[1] === 0xff; s = new TextDecoder(be ? 'utf-16be' : 'utf-16le').decode((b[0] === 0xfe || b[0] === 0xff) ? b.slice(2) : b) }
+  else if(enc === 2) s = new TextDecoder('utf-16be').decode(b);
+  else s = utf8.decode(b);
+  return s.split('\0')[0].trim() }
+function id3frames(b, v, a, z, out){
+  const ssafe = (p) => (b[p] << 21) | (b[p + 1] << 14) | (b[p + 2] << 7) | b[p + 3];
+  let p = a;
+  while(p + (v === 2 ? 6 : 10) <= z){
+    let id, size, hl;
+    if(v === 2){ id = latin(b, p, p + 3); size = (b[p + 3] << 16) | (b[p + 4] << 8) | b[p + 5]; hl = 6 }
+    else { id = latin(b, p, p + 4); size = v === 4 ? ssafe(p + 4) : ((b[p + 4] << 24) >>> 0) + (b[p + 5] << 16) + (b[p + 6] << 8) + b[p + 7]; hl = 10 }
+    if(!/^[A-Z0-9]{3,4}$/.test(id) || size <= 0 || p + hl + size > z) break;
+    const s = p + hl, e = s + size, f = b.subarray(s, e);
+    const T = {TIT2:'title', TT2:'title', TPE1:'artist', TP1:'artist', TPE2:'albumartist', TP2:'albumartist', TALB:'album', TAL:'album', TCOM:'composer', TCM:'composer', TYER:'year', TDRC:'year', TYE:'year', TRCK:'track', TRK:'track', TPOS:'disc', TPA:'disc'};
+    if(T[id]){ const val = id3text(f.subarray(1), f[0]); if(T[id] === 'track' || T[id] === 'disc') out.tags[T[id]] = parseInt(val) || 0; else if(val) out.tags[T[id]] = val }
+    else if((id === 'APIC' || id === 'PIC') && !out.tags.cover){
+      const enc = f[0]; let q = 1, mime;
+      if(id === 'PIC'){ mime = /png/i.test(latin(f, 1, 4)) ? 'image/png' : 'image/jpeg'; q = 4 } else { const m0 = q; while(q < f.length && f[q]) q++; mime = latin(f, m0, q) || 'image/jpeg'; q++ }
+      q++;  // picture type
+      if(enc === 1 || enc === 2){ while(q + 1 < f.length && (f[q] || f[q + 1])) q += 2; q += 2 } else { while(q < f.length && f[q]) q++; q++ }
+      if(!/^image\//.test(mime)) mime = /png/i.test(mime) ? 'image/png' : 'image/jpeg';
+      if(q < f.length) out.tags.cover = new Blob([f.slice(q)], {type:mime}) }
+    else if(id === 'CHAP'){ let q = 0; while(q < f.length && f[q]) q++; q++;
+      const dv = new DataView(f.buffer, f.byteOffset, f.byteLength), start = dv.getUint32(q) / 1000; const sub = {tags:{}, chapters:[]};
+      id3frames(f, v, q + 16, f.length, sub); out.chapters.push({t:start, title:sub.tags.title || ''}) }
+    p = e }
+}
+async function mp3Info(blob){
+  const out = {tags:{}, chapters:[], dur:0}; let start = 0;
+  const h = new Uint8Array(await rd(blob, 0, 10));
+  if(h[0] === 0x49 && h[1] === 0x44 && h[2] === 0x33){
+    const v = h[3], fl = h[5], size = ((h[6] << 21) | (h[7] << 14) | (h[8] << 7) | h[9]) + 10;
+    start = size + (fl & 0x10 ? 10 : 0);
+    if(size < 64e6){ const b = new Uint8Array(await rd(blob, 0, size)); let a = 10;
+      if(fl & 0x40 && v >= 3){ a += v === 4 ? ((b[10] << 21) | (b[11] << 14) | (b[12] << 7) | b[13]) : (((b[10] << 24) >>> 0) + (b[11] << 16) + (b[12] << 8) + b[13] + 4) }
+      try{ id3frames(b, v, a, size, out) }catch(e){} } }
+  out.chapters.sort((x, y) => x.t - y.t);
+  // first audio frame
+  try{ const b = new Uint8Array(await rd(blob, start, start + 65536));
+    for(let i = 0; i + 4 < b.length; i++){ if(b[i] !== 0xff || (b[i + 1] & 0xe0) !== 0xe0) continue;
+      const ver = (b[i + 1] >> 3) & 3, layer = (b[i + 1] >> 1) & 3, bi = b[i + 2] >> 4, ri = (b[i + 2] >> 2) & 3, mono = (b[i + 3] >> 6) === 3;
+      if(ver === 1 || layer !== 1 || bi === 0 || bi === 15 || ri === 3) continue;   // only MPEG layer III
+      const v1 = ver === 3, sr = [[11025, 12000, 8000], null, [22050, 24000, 16000], [44100, 48000, 32000]][ver][ri];
+      const br = (v1 ? [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320] : [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160])[bi] * 1000;
+      const spf = v1 ? 1152 : 576, side = v1 ? (mono ? 17 : 32) : (mono ? 9 : 17), dv = new DataView(b.buffer);
+      const x = i + 4 + side, tag = latin(b, x, x + 4);
+      if((tag === 'Xing' || tag === 'Info') && x + 12 <= b.length && (dv.getUint32(x + 4) & 1)) out.dur = dv.getUint32(x + 8) * spf / sr;
+      else if(latin(b, i + 36, i + 40) === 'VBRI' && i + 54 <= b.length) out.dur = dv.getUint32(i + 50) * spf / sr;
+      else out.dur = (blob.size - start - i) * 8 / br;
+      break } }catch(e){}
+  return out }
+
+/* length of anything else: ask the browser */
+function probeDur(blob, type){ return new Promise(ok => { const a = new Audio(), u = URL.createObjectURL(type ? new Blob([blob], {type}) : blob); let done = false;
+  const fin = d => { if(done) return; done = true; a.removeAttribute('src'); a.load(); URL.revokeObjectURL(u); ok(isFinite(d) ? d : 0) };
+  a.preload = 'metadata'; a.onloadedmetadata = () => fin(a.duration); a.onerror = () => fin(0); setTimeout(() => fin(a.duration), 12000); a.src = u }) }
+
+async function fileInfo(f){
+  const e = ext(f.name); let info = null;
+  try{ if(['m4a', 'm4b', 'mp4', 'aac'].includes(e)) info = await mp4Info(f); else if(e === 'mp3') info = await mp3Info(f) }catch(err){ info = null }
+  info = info || {tags:{}, chapters:[], dur:0};
+  if(!info.dur) info.dur = await probeDur(f, MIME[e]);
+  return info }
+
+/* ---------- library in memory ---------- */
+let BOOKS = [], STATE = {}, COVERURL = {};
+async function loadLib(){ BOOKS = await dbAll('books'); STATE = {}; for(const s of await dbAll('state')) STATE[s.id] = s }
+const st = id => STATE[id] || (STATE[id] = {id, pos:0, speed:0, last:0, finished:false, marks:[]});
+let stTimer = {};
+function saveState(id, now){ clearTimeout(stTimer[id]); const go = () => dbPut('state', st(id)).catch(() => {}); if(now) return go(); stTimer[id] = setTimeout(go, 400) }
+async function coverUrl(b){ if(!b.hasCover) return null; if(COVERURL[b.id]) return COVERURL[b.id];
+  const c = await dbGet('covers', b.id).catch(() => null); return c && c.blob ? (COVERURL[b.id] = URL.createObjectURL(c.blob)) : null }
+function hue(s){ let h = 0; for(const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360 }
+function coverHTML(b, url, extra){ extra = extra || ''; if(url) return `<div class="cv"><img src="${url}" alt="" loading="lazy">${extra}</div>`;
+  const h = hue(b.title); return `<div class="cv"><div class="ph" style="--c1:hsl(${h} 45% 30%);--c2:hsl(${(h + 40) % 360} 50% 16%)">${esc(b.title)}<span>${esc(b.author || '')}</span></div>${extra}</div>` }
+const progress = b => { const s = STATE[b.id]; if(!s) return 0; if(s.finished) return 1; return b.dur ? Math.min(1, s.pos / b.dur) : 0 };
+
+/* ---------- library screen ---------- */
+async function drawLib(){
+  const body = $('#libbody');
+  if(!BOOKS.length){ body.innerHTML = `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+    <h2 style="margin:8px 0 4px;font-size:18px">No audiobooks yet</h2><p class="muted small" style="margin:0 0 14px">Tap <b>Add</b> and pick the files of a book: one M4B, one long MP3/M4A, or all the MP3s of a book at once. They are copied into the app, so they play without internet.</p>
+    <button class="btn primary" onclick="openAdd()">Add an audiobook</button></div>${await storeLine()}`; return }
+  const q = (S.q || '').toLowerCase();
+  let list = BOOKS.filter(b => { const s = STATE[b.id] || {}; const started = s.pos > 0 || s.finished;
+    if(S.filter === 'listening' && !(started && !s.finished)) return false; if(S.filter === 'new' && started) return false; if(S.filter === 'finished' && !s.finished) return false;
+    return !q || (b.title + ' ' + (b.author || '') + ' ' + (b.narrator || '')).toLowerCase().includes(q) });
+  const last = b => (STATE[b.id] || {}).last || 0;
+  list.sort(S.sort === 'title' ? (a, b) => coll.compare(a.title, b.title) : S.sort === 'author' ? (a, b) => coll.compare(a.author || '~', b.author || '~') || coll.compare(a.title, b.title) : S.sort === 'added' ? (a, b) => b.added - a.added : (a, b) => (last(b) - last(a)) || (b.added - a.added));
+  const lastId = lsGet('nvAudio.last', null), lb = BOOKS.find(b => b.id === lastId), ls = lb && STATE[lb.id];
+  const urls = {}; await Promise.all(BOOKS.map(async b => urls[b.id] = await coverUrl(b)));
+  let h = '';
+  if(lb && ls && !ls.finished && (!cur || cur.id !== lb.id)){ h += `<div class="cont" data-open="${lb.id}">${coverHTML(lb, urls[lb.id])}<div style="flex:1;min-width:0"><small>CONTINUE LISTENING</small><b>${esc(lb.title)}</b><div class="muted small">${esc(chapterAt(lb, ls.pos).title || '')}${lb.dur ? ' · ' + hm(lb.dur - ls.pos) + ' left' : ''}</div><div class="pbar"><i style="width:${progress(lb) * 100}%"></i></div></div></div>` }
+  h += `<div class="chips">${[['all', 'All'], ['listening', 'Listening'], ['new', 'Not started'], ['finished', 'Finished']].map(([v, t]) => `<button class="chip ${S.filter === v ? 'on' : ''}" data-filter="${v}">${t}</button>`).join('')}
+    <select id="sort" aria-label="Sort" style="margin-left:auto"><option value="recent">Recent</option><option value="added">Added</option><option value="title">Title</option><option value="author">Author</option></select></div>`;
+  if(BOOKS.length > 8) h += `<input type="search" id="q" placeholder="Search title, author or narrator" value="${esc(S.q || '')}" style="margin-bottom:8px">`;
+  h += list.length ? `<div class="grid">${list.map(b => { const s = STATE[b.id] || {}, p = progress(b);
+      return `<div class="bk" data-open="${b.id}">${coverHTML(b, urls[b.id], s.finished ? '<span class="done">✓ Done</span>' : '')}<div class="t">${esc(b.title)}</div><div class="a">${esc(b.author || '')}${b.dur ? (b.author ? ' · ' : '') + hm(b.dur) : ''}</div>${p > 0 && !s.finished ? `<div class="pbar"><i style="width:${p * 100}%"></i></div>` : ''}</div>` }).join('')}</div>`
+    : `<p class="muted" style="text-align:center;margin-top:30px">Nothing here.</p>`;
+  h += await storeLine();
+  body.innerHTML = h;
+  $('#sort').value = S.sort; $('#sort').onchange = e => { S.sort = e.target.value; saveS(); drawLib() };
+  if($('#q')) $('#q').oninput = e => { S.q = e.target.value; clearTimeout(drawLib.t); drawLib.t = setTimeout(() => { const pos = e.target.selectionStart; drawLib().then(() => { const i = $('#q'); if(i){ i.focus(); i.setSelectionRange(pos, pos) } }) }, 250) };
+}
+async function storeLine(){ let used = BOOKS.reduce((a, b) => a + (b.size || 0), 0), t = `${BOOKS.length} book${BOOKS.length === 1 ? '' : 's'} · ${mb(used)} on this device`;
+  try{ const e = await navigator.storage.estimate(); if(e && e.quota) t += ` · ${mb(Math.max(0, e.quota - e.usage))} free for the app` }catch(e){}
+  return `<div class="store">${t}</div>` }
+$('#libbody').addEventListener('click', e => { const f = e.target.closest('[data-filter]'); if(f){ S.filter = f.dataset.filter; saveS(); drawLib(); return }
+  const o = e.target.closest('[data-open]'); if(o) openBook(o.dataset.open) });
+
+/* ---------- adding books ---------- */
+function openAdd(){
+  const dirOK = !NATIVE && 'webkitdirectory' in document.createElement('input') && !/Android|iPhone|iPad/i.test(navigator.userAgent);
+  sheet(`<h3>Add audiobooks</h3>
+    <p class="muted small" style="margin:0 0 12px">Pick all the files of one book at once (or several books - you can sort them out next). Works with M4B (with chapters), M4A, MP3, AAC, OGG/Opus, FLAC and WAV. A picture (cover.jpg) picked along becomes the cover.</p>
+    <div style="display:flex;flex-direction:column;gap:8px"><button class="btn primary" id="pf">Pick files</button>${dirOK ? '<button class="btn" id="pd">Pick a folder (every book folder inside it)</button>' : ''}</div>`);
+  $('#pf').onclick = () => { closeSheet(); $('#pickfiles').value = ''; $('#pickfiles').click() };
+  if($('#pd')) $('#pd').onclick = () => { closeSheet(); $('#pickdir').value = ''; $('#pickdir').click() };
+}
+$('#addbtn').onclick = openAdd;
+$('#pickfiles').onchange = e => review([...e.target.files]);
+$('#pickdir').onchange = e => review([...e.target.files]);
+
+const DISC_RE = /^(disc|disk|cd|part|deel)[\s._-]*\d+$/i;
+function folderOf(f){ const p = (f.webkitRelativePath || '').split('/'); p.pop(); while(p.length > 1 && DISC_RE.test(p[p.length - 1])) p.pop(); return p.join('/') }
+const cleanName = n => n.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim();
+
+let PENDING = null;
+async function review(files){
+  const audio = files.filter(f => AUDIO_RE.test(f.name) || (f.type || '').startsWith('audio/')), pics = files.filter(f => IMG_RE.test(f.name));
+  if(!audio.length){ toast('No audio files among them'); return }
+  sheet(`<h3>Reading ${audio.length} file${audio.length === 1 ? '' : 's'}…</h3><div class="prog"><i id="rp"></i></div>`, true);
+  const items = [];
+  for(let i = 0; i < audio.length; i++){ const f = audio[i]; items.push({f, info:await fileInfo(f), dir:folderOf(f)}); const el = $('#rp'); if(el) el.style.width = (100 * (i + 1) / audio.length) + '%' }
+  PENDING = {items, pics, how:'auto'};
+  drawReview() }
+/* sorted out: by folder when picked as a folder, else by album tag, else all one book */
+function makeGroups(){ const P0 = PENDING; if(P0.how === 'one') return [P0.items]; if(P0.how === 'each') return P0.items.map(i => [i]);
+  const auto = {}; for(const it of P0.items){ const k = it.dir || (it.info.tags.album ? 'album:' + it.info.tags.album.toLowerCase() : ''); (auto[k] = auto[k] || []).push(it) } return Object.values(auto) }
+function sortParts(g){ return g.slice().sort((a, b) => ((a.info.tags.disc || 0) - (b.info.tags.disc || 0)) || coll.compare(a.f.webkitRelativePath || '', b.f.webkitRelativePath || '') || ((a.info.tags.track || 0) - (b.info.tags.track || 0)) || coll.compare(a.f.name, b.f.name)) }
+function describe(g){ g = sortParts(g); const t = g[0].info.tags, dir = g[0].dir;
+  const title = (g.length > 1 ? t.album || (dir ? dir.split('/').pop() : '') : t.album || t.title) || (dir ? dir.split('/').pop() : '') || cleanName(g[0].f.name);
+  return {parts:g, title, author:t.albumartist || t.artist || '', narrator:t.narrator || (t.composer && t.composer !== (t.albumartist || t.artist) ? t.composer : ''), year:(t.year || '').slice(0, 4),
+    dur:g.reduce((a, i) => a + (i.info.dur || 0), 0), size:g.reduce((a, i) => a + i.f.size, 0), chapters:g.reduce((a, i) => a + Math.max(1, i.info.chapters.length), 0)} }
+function drawReview(){
+  const groups = makeGroups(), D = groups.map(describe), total = D.reduce((a, d) => a + d.size, 0);
+  sheet(`<h3>${D.length === 1 ? 'Add this audiobook?' : `Add ${D.length} audiobooks?`}</h3>
+    ${PENDING.items.length > 1 ? `<div class="chips" id="how">${[['auto', 'Sorted out'], ['one', 'All one book'], ['each', 'Each file a book']].map(([v, t]) => `<button class="chip ${PENDING.how === v ? 'on' : ''}" data-how="${v}">${t}</button>`).join('')}</div>` : ''}
+    <div style="max-height:46vh;overflow:auto">${D.map((d, i) => `<div class="grp"><input type="text" data-ti="${i}" value="${esc(d.title)}" aria-label="Title" style="height:38px;font-weight:600"><div class="muted small" style="margin-top:6px">${esc(d.author || 'Unknown author')} · ${d.parts.length} file${d.parts.length === 1 ? '' : 's'} · ${d.chapters} chapter${d.chapters === 1 ? '' : 's'} · ${d.dur ? hm(d.dur) : 'length unknown'} · ${mb(d.size)}</div></div>`).join('')}</div>
+    <p class="muted small">${mb(total)} will be copied into the app.</p>
+    <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="doadd">Add</button></div>`, true);
+  const how = $('#how'); if(how) how.onclick = e => { const b = e.target.closest('[data-how]'); if(b){ PENDING.how = b.dataset.how; drawReview() } };
+  $('#doadd').onclick = () => { D.forEach((d, i) => { const v = $(`[data-ti="${i}"]`).value.trim(); if(v) d.title = v }); addBooks(D) };
+}
+async function addBooks(D){
+  try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist() }catch(e){}
+  const total = D.reduce((a, d) => a + d.size, 0); let done = 0;
+  try{ const e = await navigator.storage.estimate(); if(e && e.quota && e.quota - e.usage < total * 1.05){ toast(`Not enough space: ${mb(total)} needed, ${mb(e.quota - e.usage)} free`, 5000); return } }catch(e){}
+  sheet(`<h3>Copying into the app…</h3><div class="prog"><i id="cp"></i></div><div class="muted small" id="cpt"></div>`, true);
+  let added = 0;
+  for(const d of D){
+    const id = uid(), parts = [], chapters = []; let t0 = 0;
+    try{
+      for(const it of d.parts){ const fid = uid(), e = ext(it.f.name);
+        $('#cpt').textContent = `${d.title} · ${it.f.name}`;
+        await dbPut('files', {id:fid, blob:it.f});
+        done += it.f.size; $('#cp').style.width = (100 * done / total) + '%';
+        const dur = it.info.dur || 0, ttl = it.info.tags.title && d.parts.length > 1 ? it.info.tags.title : cleanName(it.f.name);
+        parts.push({fid, name:it.f.name, type:MIME[e] || it.f.type || 'audio/mpeg', size:it.f.size, dur, title:ttl});
+        if(it.info.chapters.length) for(const c of it.info.chapters){ if(c.t < dur || !dur) chapters.push({t:t0 + c.t, title:c.title || `Chapter ${chapters.length + 1}`}) }
+        else if(d.parts.length > 1) chapters.push({t:t0, title:ttl});
+        t0 += dur }
+      let cover = d.parts.map(i => i.info.tags.cover).find(Boolean);
+      if(!cover && PENDING && PENDING.pics.length){ const dir = d.parts[0].dir; const pics = PENDING.pics.filter(p => !dir || folderOf(p) === dir);
+        cover = (pics.find(p => /cover|folder|front/i.test(p.name)) || pics[0]) || null }
+      if(cover) await dbPut('covers', {id, blob:cover});
+      const book = {id, kind:'audiobook', title:d.title, author:d.author, narrator:d.narrator, year:d.year, parts, chapters, dur:t0, size:d.size, added:Date.now(), hasCover:!!cover};
+      await dbPut('books', book); BOOKS.push(book); added++;
+    }catch(err){ for(const p of parts) await dbDel('files', p.fid).catch(() => {}); closeSheet(); toast(`Could not copy "${d.title}": ${err && err.name === 'QuotaExceededError' ? 'the phone is full' : (err && err.message) || err}`, 6000); break }
+  }
+  PENDING = null; closeSheet(); if(added) toast(added === 1 ? 'Audiobook added' : `${added} audiobooks added`); drawLib();
+}
+
+/* ---------- chapters and positions ---------- */
+function chaptersOf(b){ return b.chapters && b.chapters.length ? b.chapters : [{t:0, title:b.title}] }
+function chapterIdx(b, t){ const c = chaptersOf(b); let i = 0; while(i + 1 < c.length && c[i + 1].t <= t + 0.25) i++; return i }
+function chapterAt(b, t){ const c = chaptersOf(b), i = chapterIdx(b, t); return {i, title:b.chapters && b.chapters.length ? c[i].title : '', start:c[i].t, end:i + 1 < c.length ? c[i + 1].t : b.dur} }
+function partStarts(b){ let t = 0; return b.parts.map(p => { const s = t; t += p.dur || 0; return s }) }
+function partAt(b, t){ const s = partStarts(b); let i = 0; while(i + 1 < s.length && s[i + 1] <= t) i++; return {i, off:Math.max(0, t - s[i])} }
+
+/* ---------- the player ---------- */
+const au = $('#au');
+let cur = null, curPart = -1, curUrl = null, pausedAt = 0, seeking = false;
+try{ au.preservesPitch = true }catch(e){}
+const gpos = () => !cur ? 0 : curPart < 0 ? (st(cur.id).pos || 0) : partStarts(cur)[curPart] + (au.currentTime || 0);
+const rate = () => cur ? (st(cur.id).speed || S.speed || 1) : 1;
+
+async function loadPart(i, off, play){
+  const p = cur.parts[i]; if(!p) return;
+  if(curPart !== i || !au.src){ const rec = await dbGet('files', p.fid);
+    if(!rec || !rec.blob){ toast('This part of the book is missing - add the book again'); return }
+    if(curUrl) URL.revokeObjectURL(curUrl);
+    curUrl = URL.createObjectURL(rec.blob.type ? rec.blob : new Blob([rec.blob], {type:p.type})); curPart = i;
+    au.src = curUrl;
+    await new Promise(ok => { const done = () => { au.removeEventListener('loadedmetadata', done); au.removeEventListener('error', done); ok() }; au.addEventListener('loadedmetadata', done); au.addEventListener('error', done) });
+    if(au.error){ toast(`This phone cannot play ${ext(p.name).toUpperCase()} files${p.type === 'audio/mp4' ? ' (try MP3)' : ''}`, 5000); return }
+    if(isFinite(au.duration) && au.duration > 0 && Math.abs((p.dur || 0) - au.duration) > 1){ p.dur = au.duration; cur.dur = cur.parts.reduce((a, x) => a + (x.dur || 0), 0); dbPut('books', cur).catch(() => {}) } }
+  try{ au.currentTime = off }catch(e){}
+  au.playbackRate = rate(); try{ au.preservesPitch = true }catch(e){}
+  if(play) await au.play().catch(e => toast('Tap play to start'));
+}
+async function openBook(id, play){
+  const b = BOOKS.find(x => x.id === id); if(!b) return;
+  if(!cur || cur.id !== b.id){
+    if(cur){ au.pause(); saveState(cur.id, true) }
+    cur = b; curPart = -1; au.removeAttribute('src');
+    lsSet('nvAudio.last', b.id);
+    const s = st(b.id), {i, off} = partAt(b, s.finished ? 0 : s.pos || 0);
+    if(s.finished){ s.finished = false; s.pos = 0 }
+    await loadPart(i, off, false); artKey = null }
+  showPlayer(true); drawPlayer(true);
+  if(play) togglePlay(true);
+}
+async function seekTo(t, keepPlaying){
+  if(!cur) return; t = Math.max(0, Math.min(t, Math.max(0, cur.dur - 0.5)));
+  const play = keepPlaying === undefined ? !au.paused : keepPlaying, {i, off} = partAt(cur, t);
+  if(i !== curPart) await loadPart(i, off, play); else { try{ au.currentTime = off }catch(e){} }
+  st(cur.id).pos = t; saveState(cur.id); drawPlayer(); syncMedia();
+}
+async function togglePlay(force){
+  if(!cur) return;
+  const want = force === undefined ? au.paused : force;
+  if(want){
+    if(S.smart && pausedAt){ const away = (Date.now() - pausedAt) / 1000; const back = away > 3600 ? 30 : away > 600 ? 15 : away > 60 ? 5 : 0; if(back) await seekTo(gpos() - back, false) }
+    if(curPart < 0){ const {i, off} = partAt(cur, st(cur.id).pos || 0); await loadPart(i, off, false) }
+    au.playbackRate = rate();
+    await au.play().catch(e => toast('Could not start playing: ' + (e.message || e)));
+  } else au.pause();
+}
+function finishBook(){ const s = st(cur.id); s.finished = true; s.pos = cur.dur; saveState(cur.id, true); au.pause(); drawPlayer(); toast('Finished: ' + cur.title) }
+au.addEventListener('ended', async () => { if(!cur) return; if(curPart + 1 < cur.parts.length) await loadPart(curPart + 1, 0, true); else finishBook() });
+au.addEventListener('play', () => { pausedAt = 0; drawPP(); syncMedia(); sleepTick() });
+au.addEventListener('pause', () => { pausedAt = Date.now(); if(cur){ st(cur.id).pos = gpos(); saveState(cur.id, true) } drawPP(); syncMedia() });
+let lastSave = 0;
+au.addEventListener('timeupdate', () => { if(!cur || curPart < 0) return; const s = st(cur.id); s.pos = gpos(); s.last = Date.now();
+  if(Date.now() - lastSave > 5000){ lastSave = Date.now(); saveState(cur.id) }
+  if(sleep && sleep.chapter != null && chapterIdx(cur, s.pos) > sleep.chapter){ sleep = null; au.pause(); drawSleep(); toast('Sleep timer: paused at the end of the chapter') }
+  if(!seeking) drawPlayer() });
+document.addEventListener('visibilitychange', () => { if(document.hidden && cur){ st(cur.id).pos = gpos(); saveState(cur.id, true) } });
+addEventListener('pagehide', () => { if(cur){ st(cur.id).pos = gpos(); saveState(cur.id, true) } });
+
+/* ---------- drawing the player ---------- */
+const IC_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>';
+const IC_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>';
+function drawPP(){ $('#pp').innerHTML = au.paused ? IC_PLAY : IC_PAUSE; $('#pp').setAttribute('aria-label', au.paused ? 'Play' : 'Pause'); drawMini() }
+function showPlayer(on){ $('#player').hidden = !on; document.body.style.overflow = on ? 'hidden' : ''; if(!on) drawLib(); drawMini() }
+async function drawPlayer(full){
+  if(!cur) return; const b = cur, t = gpos() || st(b.id).pos || 0, c = chapterAt(b, t), r = rate();
+  if(full){ const u = await coverUrl(b); $('#pcover').innerHTML = coverHTML(b, u); $('#pbg').style.backgroundImage = u ? `url("${u}")` : 'none';
+    $('#ptitle').textContent = b.title; $('#pauthor').textContent = [b.author, b.narrator ? 'read by ' + b.narrator : ''].filter(Boolean).join(' · ');
+    $('#backn').textContent = S.back; $('#fwdn').textContent = S.fwd; drawPP(); drawSleep() }
+  const has = b.chapters && b.chapters.length;
+  $('#pchap').style.visibility = has ? 'visible' : 'hidden';
+  $('#pchapname').textContent = has ? `${c.i + 1}/${b.chapters.length} · ${c.title}` : '';
+  const a = has ? c.start : 0, z = has ? c.end : b.dur, len = Math.max(0.1, z - a);
+  if(!seeking) $('#seek').value = Math.round(1000 * (t - a) / len);
+  $('#tleft').textContent = clock(t - a); $('#tright').textContent = '-' + clock((z - t) / r);
+  const left = Math.max(0, b.dur - t);
+  $('#booktime').textContent = b.dur ? `${Math.round(100 * t / b.dur)}% · ${hm(left / r)} left${r !== 1 ? ' at ' + speedTxt(r) : ''}` : '';
+  $('#speedlbl').textContent = speedTxt(r);
+  $('#prevch').style.opacity = has ? 1 : .35; $('#nextch').style.opacity = has ? 1 : .35;
+  drawMini();
+}
+async function drawMini(){
+  const m = $('#mini'); if(!cur || !$('#player').hidden || MODE !== 'audiobooks'){ m.hidden = true; return }
+  const t = gpos() || st(cur.id).pos || 0, c = chapterAt(cur, t);
+  m.hidden = false;
+  if(m.dataset.id !== cur.id){ m.dataset.id = cur.id; m.innerHTML = `<span id="mcv">${coverHTML(cur, await coverUrl(cur))}</span><div class="tx"><b>${esc(cur.title)}</b><div id="msub"></div></div><button class="ib" id="mpp" aria-label="Play or pause" style="border-radius:50%;background:var(--accent);color:#08251b;border:0"></button><div class="pbar"><i id="mbar"></i></div>`;
+    $('#mpp').onclick = e => { e.stopPropagation(); togglePlay() } }
+  $('#msub').textContent = c.title || (cur.dur ? hm((cur.dur - t) / rate()) + ' left' : '');
+  $('#mpp').innerHTML = au.paused ? IC_PLAY : IC_PAUSE;
+  $('#mbar').style.width = (cur.dur ? 100 * t / cur.dur : 0) + '%';
+}
+$('#mini').onclick = () => { if(cur){ showPlayer(true); drawPlayer(true) } };
+$('#pclose').onclick = () => showPlayer(false);
+$('#pp').onclick = () => togglePlay();
+$('#back').onclick = () => seekTo(gpos() - S.back);
+$('#fwd').onclick = () => seekTo(gpos() + S.fwd);
+$('#prevch').onclick = () => { if(!cur) return; const t = gpos(), c = chapterAt(cur, t); seekTo(t - c.start > 3 || c.i === 0 ? c.start : chaptersOf(cur)[c.i - 1].t) };
+$('#nextch').onclick = () => { if(!cur) return; const c = chapterAt(cur, gpos()), ch = chaptersOf(cur); if(c.i + 1 < ch.length) seekTo(ch[c.i + 1].t) };
+$('#pchap').onclick = () => openList('chapters');
+$('#tlist').onclick = () => openList('chapters');
+$('#seek').addEventListener('input', () => { seeking = true; const b = cur, has = b.chapters && b.chapters.length, c = chapterAt(b, gpos()), a = has ? c.start : 0, z = has ? c.end : b.dur; const t = a + (z - a) * $('#seek').value / 1000; $('#tleft').textContent = clock(t - a); $('#tright').textContent = '-' + clock((z - t) / rate()); $('#seek').dataset.t = t });
+$('#seek').addEventListener('change', () => { seeking = false; if($('#seek').dataset.t) seekTo(+$('#seek').dataset.t) });
+
+/* ---------- sheets ---------- */
+function sheet(html, sticky){ $('#sheets').innerHTML = `<div class="scrim" id="scrim"><div class="sheet"><div class="grab"></div>${html}</div></div>`; $('#scrim').dataset.sticky = sticky ? '1' : '';
+  $('#scrim').onclick = e => { if(e.target.id === 'scrim' && !$('#scrim').dataset.sticky) closeSheet() } }
+function closeSheet(){ $('#sheets').innerHTML = '' }
+const sheetOpen = () => !!$('#scrim');
+
+function openList(tab){
+  if(!cur) return; const b = cur, s = st(b.id), t = gpos(), ci = chapterIdx(b, t), r = rate();
+  const ch = chaptersOf(b);
+  const chHTML = (b.chapters && b.chapters.length) ? ch.map((c, i) => { const end = i + 1 < ch.length ? ch[i + 1].t : b.dur; return `<div class="li ${i === ci ? 'cur' : ''}" data-t="${c.t}"><div class="n"><div>${esc(c.title)}</div></div><span class="r">${clock(c.t)} · ${hm((end - c.t) / r)}</span></div>` }).join('') : '<p class="muted">This book has no chapters.</p>';
+  const mk = s.marks.slice().sort((x, y) => x.t - y.t);
+  const bmHTML = mk.length ? mk.map(m => `<div class="li" data-t="${m.t}"><div class="n"><div>${esc(m.note || chapterAt(b, m.t).title || 'Bookmark')}</div><div class="muted small">${clock(m.t)} · ${new Date(m.at).toLocaleDateString()}</div></div><button class="x" data-del="${m.at}" aria-label="Remove bookmark">✕</button></div>`).join('') : '<p class="muted small">No bookmarks yet. Tap <b>Bookmark</b> in the player to keep a spot.</p>';
+  sheet(`<div class="tabs"><button class="chip ${tab === 'chapters' ? 'on' : ''}" data-tab="chapters">Chapters${b.chapters && b.chapters.length ? ' (' + b.chapters.length + ')' : ''}</button><button class="chip ${tab === 'marks' ? 'on' : ''}" data-tab="marks">Bookmarks${mk.length ? ' (' + mk.length + ')' : ''}</button></div><div id="lst">${tab === 'chapters' ? chHTML : bmHTML}</div>`);
+  $('.sheet').onclick = e => { const tb = e.target.closest('[data-tab]'); if(tb){ openList(tb.dataset.tab); return }
+    const d = e.target.closest('[data-del]'); if(d){ s.marks = s.marks.filter(m => String(m.at) !== d.dataset.del); saveState(b.id, true); openList('marks'); return }
+    const li = e.target.closest('[data-t]'); if(li){ closeSheet(); seekTo(+li.dataset.t) } };
+  const c = $('.li.cur'); if(c) c.scrollIntoView({block:'center'});
+}
+$('#tmark').onclick = () => { if(!cur) return; const t = gpos();
+  sheet(`<h3>Bookmark at ${clock(t)}</h3><input type="text" id="bmnote" placeholder="A note (optional)" maxlength="120"><div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="bmsave">Save bookmark</button></div>`);
+  $('#bmsave').onclick = () => { st(cur.id).marks.push({t, note:$('#bmnote').value.trim(), at:Date.now()}); saveState(cur.id, true); closeSheet(); toast('Bookmark saved') } };
+
+/* speed */
+$('#tspeed').onclick = () => { if(!cur) return; const presets = [0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+  const draw = () => { const r = rate(); $('#spv').textContent = speedTxt(r); $('#spr').value = r; document.querySelectorAll('[data-sp]').forEach(b => b.classList.toggle('on', Math.abs(+b.dataset.sp - r) < 0.001)) };
+  sheet(`<h3>Playback speed</h3><div class="speedv" id="spv"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin:8px 0"><button class="ib" id="spm" aria-label="Slower">−</button><input type="range" id="spr" min="0.5" max="3.5" step="0.05"><button class="ib" id="spp" aria-label="Faster">+</button></div>
+    <div class="chips">${presets.map(p => `<button class="chip" data-sp="${p}">${speedTxt(p)}</button>`).join('')}</div>
+    <div class="opt"><label for="spall">Use this speed for new books too</label><input type="checkbox" id="spall"></div>
+    <p class="muted small" style="margin:6px 0 0">Every book remembers its own speed. Voices keep their normal pitch.</p>`);
+  const setR = v => { v = Math.round(Math.max(0.5, Math.min(3.5, v)) * 100) / 100; st(cur.id).speed = v; if($('#spall').checked){ S.speed = v; saveS() } au.playbackRate = v; saveState(cur.id); draw(); drawPlayer(); syncMedia() };
+  $('#spr').oninput = e => setR(+e.target.value); $('#spm').onclick = () => setR(rate() - 0.05); $('#spp').onclick = () => setR(rate() + 0.05);
+  $('#spall').onchange = e => { if(e.target.checked){ S.speed = rate(); saveS() } };
+  $('.sheet .chips').onclick = e => { const b = e.target.closest('[data-sp]'); if(b) setR(+b.dataset.sp) };
+  draw() };
+
+/* sleep timer: counts down while playing; the last 10 seconds fade out */
+let sleep = null, sleepIv = 0;
+function drawSleep(){ const b = $('#tsleep'); b.classList.toggle('on', !!sleep); $('#sleeplbl').textContent = !sleep ? 'Sleep' : sleep.chapter != null ? 'End of chapter' : clock(sleep.left) }
+function sleepTick(){ clearInterval(sleepIv); if(!sleep || sleep.chapter != null) return;
+  sleepIv = setInterval(() => { if(!sleep || sleep.chapter != null){ clearInterval(sleepIv); au.volume = 1; return } if(au.paused) return;
+    sleep.left -= 1; au.volume = sleep.left < 10 ? Math.max(0, sleep.left / 10) : 1;
+    if(sleep.left <= 0){ sleep = null; clearInterval(sleepIv); au.pause(); au.volume = 1; toast('Sleep timer: paused. Sleep well!') } drawSleep() }, 1000) }
+$('#tsleep').onclick = () => { if(!cur) return;
+  sheet(`<h3>Sleep timer</h3><div class="chips">${[5, 10, 15, 20, 30, 45, 60, 90].map(m => `<button class="chip" data-m="${m}">${m} min</button>`).join('')}<button class="chip" data-m="ch">End of chapter</button></div>
+    ${sleep ? '<button class="btn danger" id="sloff" style="width:100%;margin-top:8px">Turn the timer off</button>' : ''}<p class="muted small" style="margin:10px 0 0">The timer only counts while the book plays, and the sound fades out at the end.</p>`);
+  $('.sheet').onclick = e => { const b = e.target.closest('[data-m]');
+    if(b){ sleep = b.dataset.m === 'ch' ? {chapter:chapterIdx(cur, gpos())} : {left:+b.dataset.m * 60}; au.volume = 1; closeSheet(); drawSleep(); sleepTick(); if(au.paused) togglePlay(true); toast(b.dataset.m === 'ch' ? 'Stops at the end of this chapter' : `Stops in ${b.dataset.m} minutes`) }
+    if(e.target.id === 'sloff'){ sleep = null; au.volume = 1; clearInterval(sleepIv); closeSheet(); drawSleep() } } };
+
+/* book details */
+$('#pmore').onclick = () => bookSheet(cur && cur.id);
+function bookSheet(id){
+  const b = BOOKS.find(x => x.id === id); if(!b) return; const s = st(b.id);
+  sheet(`<h3>About this book</h3>
+    <div class="opt"><label>Title</label></div><input type="text" id="bt" value="${esc(b.title)}">
+    <div class="opt"><label>Author</label></div><input type="text" id="ba" value="${esc(b.author || '')}">
+    <div class="opt"><label>Read by</label></div><input type="text" id="bn" value="${esc(b.narrator || '')}">
+    <p class="muted small">${b.parts.length} file${b.parts.length === 1 ? '' : 's'} · ${(b.chapters || []).length} chapters · ${hm(b.dur)} · ${mb(b.size)}${b.year ? ' · ' + esc(b.year) : ''}<br>Added ${new Date(b.added).toLocaleDateString()}</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn primary" id="bsave">Save</button>
+      <button class="btn" id="bcover">Change the cover picture</button>
+      <button class="btn" id="bfin">${s.finished ? 'Mark as not finished' : 'Mark as finished'}</button>
+      <button class="btn" id="bstart">Start again from the beginning</button>
+      <button class="btn danger" id="bdel">Remove from this device</button></div>
+    <input type="file" id="bcf" accept="image/*" hidden>`);
+  $('#bsave').onclick = async () => { b.title = $('#bt').value.trim() || b.title; b.author = $('#ba').value.trim(); b.narrator = $('#bn').value.trim(); await dbPut('books', b); closeSheet(); if(cur && cur.id === b.id) drawPlayer(true); $('#mini').dataset.id = ''; drawMini(); toast('Saved') };
+  $('#bcover').onclick = () => $('#bcf').click();
+  $('#bcf').onchange = async e => { const f = e.target.files[0]; if(!f) return; await dbPut('covers', {id:b.id, blob:f}); b.hasCover = true; await dbPut('books', b); if(COVERURL[b.id]){ URL.revokeObjectURL(COVERURL[b.id]); delete COVERURL[b.id] } artKey = null; $('#mini').dataset.id = ''; closeSheet(); if(cur && cur.id === b.id){ drawPlayer(true); syncMedia() } toast('New cover saved') };
+  $('#bfin').onclick = async () => { s.finished = !s.finished; if(!s.finished && s.pos >= b.dur - 1) s.pos = 0; if(s.finished && cur && cur.id === b.id) au.pause(); await saveState(b.id, true); closeSheet(); drawPlayer(); toast(s.finished ? 'Marked as finished' : 'Marked as not finished') };
+  $('#bstart').onclick = async () => { s.finished = false; s.pos = 0; await saveState(b.id, true); closeSheet(); if(cur && cur.id === b.id) seekTo(0); toast('Back at the start') };
+  $('#bdel').onclick = () => { sheet(`<h3>Remove "${esc(b.title)}"?</h3><p class="muted small">The copy on this device (${mb(b.size)}) and its place and bookmarks are removed. Your original files are not touched.</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Keep it</button><button class="btn primary" style="flex:1;background:#7a2a2f;border-color:#a3454b" id="bdel2">Remove</button></div>`);
+    $('#bdel2').onclick = async () => { if(cur && cur.id === b.id){ au.pause(); au.removeAttribute('src'); au.load(); cur = null; curPart = -1; mediaStop(); showPlayer(false) }
+      for(const p of b.parts) await dbDel('files', p.fid).catch(() => {}); await dbDel('covers', b.id).catch(() => {}); await dbDel('state', b.id).catch(() => {}); await dbDel('books', b.id);
+      BOOKS = BOOKS.filter(x => x.id !== b.id); delete STATE[b.id]; closeSheet(); drawLib(); drawMini(); toast('Removed') } };
+}
+
+/* settings */
+$('#setbtn').onclick = () => {
+  sheet(`<h3>Settings</h3>
+    <div class="opt"><label for="sb">Skip back</label><select id="sb">${[5, 10, 15, 20, 30, 60].map(v => `<option ${v === S.back ? 'selected' : ''}>${v}</option>`).join('')}</select><span class="muted small">sec</span></div>
+    <div class="opt"><label for="sf">Skip forward</label><select id="sf">${[10, 15, 20, 30, 45, 60, 90].map(v => `<option ${v === S.fwd ? 'selected' : ''}>${v}</option>`).join('')}</select><span class="muted small">sec</span></div>
+    <div class="opt"><label for="ss">Smart rewind<div class="muted small">After a pause, start a few seconds earlier (5 s after 1 minute, 15 s after 10 minutes, 30 s after an hour).</div></label><input type="checkbox" id="ss" ${S.smart ? 'checked' : ''}></div>
+    <div class="opt"><label>Speed for new books</label><b>${speedTxt(S.speed || 1)}</b></div>`);
+  $('#sb').onchange = e => { S.back = +e.target.value; saveS(); $('#backn').textContent = S.back };
+  $('#sf').onchange = e => { S.fwd = +e.target.value; saveS(); $('#fwdn').textContent = S.fwd };
+  $('#ss').onchange = e => { S.smart = e.target.checked; saveS() } };
+
+/* ---------- lock screen / notification controls ----------
+   Browser: Media Session.  Android app: the NvMedia plugin (a media notification that also keeps playing with the screen off). */
+let NvMedia = null, artKey = null, mediaOn = false;
+if(NATIVE) try{ NvMedia = Capacitor.registerPlugin('NvMedia');
+  NvMedia.addListener('action', e => { const a = e && e.action;
+    if(a === 'play') togglePlay(true); else if(a === 'pause') togglePlay(false); else if(a === 'toggle') togglePlay();
+    else if(a === 'back') seekTo(gpos() - S.back); else if(a === 'forward') seekTo(gpos() + S.fwd);
+    else if(a === 'next') $('#nextch').onclick(); else if(a === 'prev') $('#prevch').onclick();
+    else if(a === 'seek' && e.pos != null) seekTo(e.pos / 1000) }).catch(() => { NvMedia = null }) }catch(e){ NvMedia = null }
+async function artData(){ const u = cur && await coverUrl(cur); if(!u) return null;
+  try{ const img = new Image(); img.src = u; await img.decode(); const c = document.createElement('canvas'), k = Math.min(1, 384 / Math.max(img.naturalWidth, img.naturalHeight)); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.85) }catch(e){ return null } }
+async function syncMedia(){
+  if(!cur) return; const t = gpos(), c = chapterAt(cur, t), title = c.title || cur.title;
+  if(NvMedia){ const o = {title, artist:cur.author || '', album:cur.title, playing:!au.paused, position:Math.round(t * 1000), duration:Math.round(cur.dur * 1000), speed:rate()};
+    if(artKey !== cur.id){ artKey = cur.id; o.art = await artData() || '' }
+    if(!au.paused || mediaOn){ mediaOn = true; NvMedia.update(o).catch(() => {}) } return }
+  if(!('mediaSession' in navigator)) return;
+  try{ const u = await coverUrl(cur);
+    navigator.mediaSession.metadata = new MediaMetadata({title, artist:cur.author || '', album:cur.title, artwork:u ? [{src:u, sizes:'512x512'}] : []});
+    navigator.mediaSession.playbackState = au.paused ? 'paused' : 'playing';
+    if(cur.dur) navigator.mediaSession.setPositionState({duration:cur.dur, position:Math.min(t, cur.dur), playbackRate:rate()}) }catch(e){} }
+function mediaStop(){ mediaOn = false; if(NvMedia) NvMedia.stop().catch(() => {}); try{ navigator.mediaSession.metadata = null }catch(e){} }
+if('mediaSession' in navigator && !NATIVE){ const ms = navigator.mediaSession, H = (a, f) => { try{ ms.setActionHandler(a, f) }catch(e){} };
+  H('play', () => togglePlay(true)); H('pause', () => togglePlay(false)); H('seekbackward', () => seekTo(gpos() - S.back)); H('seekforward', () => seekTo(gpos() + S.fwd));
+  H('previoustrack', () => $('#prevch').onclick()); H('nexttrack', () => $('#nextch').onclick()); H('seekto', d => seekTo(d.seekTime)) }
+let mediaT = 0; au.addEventListener('timeupdate', () => { if(Date.now() - mediaT > 10000){ mediaT = Date.now(); syncMedia() } });
+
+/* ---------- Android back button ---------- */
+if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
+  A.addListener('backButton', () => { if(sheetOpen()){ if(!$('#scrim').dataset.sticky) closeSheet(); return } if(!$('#player').hidden){ showPlayer(false); return }
+    if(fromHub() && window.NVHOME !== false){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
+
+/* ---------- start ---------- */
+(async () => {
+  if(MODE === 'music'){ document.title = 'Nightvault Music'; $('#lib').hidden = true; $('#musicsoon').hidden = false; return }
+  try{ await openDB(); await loadLib() }catch(e){ $('#libbody').innerHTML = `<div class="empty"><p>The app's storage cannot be opened here (${esc(e && e.message || e)}). In a private window, audiobooks cannot be kept.</p></div>`; return }
+  await drawLib();
+  const lastId = lsGet('nvAudio.last', null); if(lastId && BOOKS.find(b => b.id === lastId) && !(STATE[lastId] || {}).finished){ const b = BOOKS.find(x => x.id === lastId); cur = b; curPart = -1; drawMini(); drawLib() }
+})();
+window.NVAUDIO = {get cur(){ return cur }, get books(){ return BOOKS }, state:st, gpos, seekTo, openBook, togglePlay, mp4Info, mp3Info, review, au};
+</script>
+</body>
+</html>
