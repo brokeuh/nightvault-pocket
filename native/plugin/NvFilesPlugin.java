@@ -79,9 +79,12 @@ public class NvFilesPlugin extends Plugin {
             try {
                 Uri tree = Uri.parse(t);
                 JSArray out = new JSArray();
+                listStop = false; listFolders = 0; listAudio = 0; lastNote = 0;
                 walk(getContext().getContentResolver(), tree, DocumentsContract.getTreeDocumentId(tree), nameOf(tree), out, 0);
+                note(out, "", true);
                 JSObject o = new JSObject();
                 o.put("files", out);
+                o.put("stopped", listStop);
                 call.resolve(o);
             } catch (SecurityException e) {
                 call.reject("Nightvault may no longer read this folder - pick it again", "permission");
@@ -91,14 +94,34 @@ public class NvFilesPlugin extends Plugin {
         }).start();
     }
 
+    /* progress while listing a big folder (an SD card can take minutes): event "listProgress" about twice a second */
+    private volatile boolean listStop = false;
+    private int listFolders = 0, listAudio = 0;
+    private long lastNote = 0;
+    private static final java.util.regex.Pattern AUDIO = java.util.regex.Pattern.compile("(?i).*\\.(mp3|m4a|m4b|mp4|aac|ogg|oga|opus|flac|wav|webm|mka)$");
+    private void note(JSArray out, String path, boolean force) {
+        long now = System.currentTimeMillis();
+        if (!force && now - lastNote < 450) return;
+        lastNote = now;
+        JSObject e = new JSObject();
+        e.put("files", out.length()); e.put("audio", listAudio); e.put("folders", listFolders); e.put("at", path);
+        notifyListeners("listProgress", e);
+    }
+
+    /** stops a running list() - it then answers with stopped: true */
+    @PluginMethod
+    public void stopList(PluginCall call) { listStop = true; call.resolve(); }
+
     private void walk(ContentResolver cr, Uri tree, String docId, String path, JSArray out, int depth) {
-        if (depth > 8 || out.length() > 20000) return;
+        if (listStop || depth > 8 || out.length() > 20000) return;
+        listFolders++; note(out, path, false);
         Uri kids = DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId);
         String[] cols = {DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME,
                 DocumentsContract.Document.COLUMN_MIME_TYPE, DocumentsContract.Document.COLUMN_SIZE, DocumentsContract.Document.COLUMN_LAST_MODIFIED};
         try (Cursor c = cr.query(kids, cols, null, null, null)) {
             if (c == null) return;
             while (c.moveToNext()) {
+                if (listStop) return;
                 String id = c.getString(0), name = c.getString(1), mime = c.getString(2);
                 if (name == null || name.startsWith(".")) continue;
                 if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) { walk(cr, tree, id, path + "/" + name, out, depth + 1); continue; }
@@ -110,6 +133,7 @@ public class NvFilesPlugin extends Plugin {
                 f.put("mime", mime == null ? "" : mime);
                 f.put("modified", c.isNull(4) ? 0 : c.getLong(4));
                 out.put(f);
+                if (AUDIO.matcher(name).matches()) listAudio++;
             }
         }
     }

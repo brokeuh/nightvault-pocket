@@ -105,6 +105,7 @@ input[type=range].seek{width:100%;margin:16px 0 0;accent-color:var(--accent);hei
 .opt input[type=checkbox]{width:22px;height:22px;accent-color:var(--accentd)}
 .grp{padding:10px;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;background:var(--pan2)}
 .prog{height:6px;border-radius:99px;background:#232b36;overflow:hidden;margin:8px 0}.prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.prog.busy i{width:30%;transition:none;animation:nvbusy 1.3s ease-in-out infinite}@keyframes nvbusy{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
 #toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#222a33;border:1px solid var(--line);padding:10px 14px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:90vw;text-align:center}
 #toast.on{opacity:1}
 /* music */
@@ -613,7 +614,7 @@ async function addBooks(D){
 async function linkFolder(f){
   try{ f = f || await NvFiles.pickFolder() }catch(e){ if(!/cancel|No folder/i.test(e.message || '')) toast(e.message || String(e)); return }
   const fl = lsGet('nvAudio.folders', []); if(!fl.some(x => x.tree === f.tree)){ fl.push({tree:f.tree, name:f.name}); lsSet('nvAudio.folders', fl) }
-  sheet(`<h3>Looking in “${esc(f.name)}”…</h3><div class="prog"><i style="width:30%"></i></div>`, true);
+  sheet(`<h3>Looking in “${esc(f.name)}”…</h3><div class="prog busy"><i></i></div>`, true);
   let list; try{ list = (await NvFiles.list({tree:f.tree})).files || [] }catch(e){ LE('folder', 'list failed', e); closeSheet(); toast(e.message || String(e), 5000); return }
   L('folder', `“${f.name}”: ${list.length} files`, list.slice(0, 40).map(x => `${x.path} ${x.size} ${x.mime}`));
   const have = new Set(); for(const b of BOOKS) for(const p of b.parts) if(p.uri) have.add(p.uri);
@@ -983,8 +984,22 @@ $('#mpickdir').onchange = $('#mpick').onchange;
 async function musicFolder(f){
   try{ f = f || await NvFiles.pickFolder() }catch(e){ if(!/cancel|No folder/i.test(e.message || '')) toast(e.message || String(e)); return }
   const fl = lsGet('nvMusic.folders', []); if(!fl.some(x => x.tree === f.tree)){ fl.push({tree:f.tree, name:f.name}); lsSet('nvMusic.folders', fl) }
-  sheet(`<h3>Looking in “${esc(f.name)}”…</h3><div class="prog"><i style="width:30%"></i></div><p class="muted small">A big music folder takes a moment.</p>`, true);
-  let list; try{ list = (await NvFiles.list({tree:f.tree})).files || [] }catch(e){ LE('folder', 'list failed', e); closeSheet(); toast(e.message || String(e), 5000); return }
+  /* listing a big folder (an SD card) can take minutes: show what it is doing - songs found, folders looked at, the folder it is in, time */
+  sheet(`<h3>Looking in “${esc(f.name)}”…</h3><div class="prog busy"><i></i></div><div class="small" id="mlst">Starting…</div>
+    <div class="muted small" id="mlat" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">&nbsp;</div>
+    <p class="muted small">A big folder or an SD card can take a few minutes. Keep the app open while it looks.</p><button class="btn" id="mlstop" style="width:100%">Stop</button>`, true);
+  const t0 = Date.now(); let last = null, stopped = false, hl = null;
+  const draw = () => { const el = $('#mlst'); if(!el) return; const tm = clock((Date.now() - t0) / 1000);
+    el.textContent = last ? `${plural(last.audio, 'song')} found · ${plural(last.folders, 'folder')} looked at · ${tm}` : `Looking… ${tm}`;
+    if(last && last.at) $('#mlat').textContent = '\u200e' + last.at.split('/').slice(1).join(' / ') };
+  const iv = setInterval(draw, 1000);
+  try{ hl = await NvFiles.addListener('listProgress', e => { last = e; draw() }) }catch(e){}
+  $('#mlstop').onclick = () => { stopped = true; NvFiles.stopList().catch(() => {}); closeSheet(); toast('Stopped - nothing was added. Tip: pick the music folder itself, not the whole SD card.', 6000) };
+  let list, res;
+  try{ res = await NvFiles.list({tree:f.tree}) }catch(e){ if(!stopped){ LE('folder', 'list failed', e); closeSheet(); toast(e.message || String(e), 5000) } return }
+  finally{ clearInterval(iv); try{ hl && hl.remove() }catch(e){} }
+  if(stopped || res.stopped) return;
+  list = res.files || []; L('folder', `listed in ${Math.round((Date.now() - t0) / 1000)} s`);
   L('folder', `music “${f.name}”: ${list.length} files`, list.slice(0, 30).map(x => `${x.path} ${x.size}`));
   const items = list.map(x => ({f:new LinkFile({uri:x.uri, name:x.name, size:x.size, type:x.mime || MIME[ext(x.name)] || ''}), path:x.path.split('/').slice(1).join('/')}));
   musicScan(items, {tree:f.tree, name:f.name, capped:list.length >= 20000}) }
@@ -1005,7 +1020,7 @@ async function musicScan(items, folder){
     try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist() }catch(e){}
     try{ const e = await navigator.storage.estimate(); if(e && e.quota && e.quota - e.usage < total * 1.05){ toast(`Not enough space: ${mb(total)} needed, ${mb(e.quota - e.usage)} free`, 5000); return } }catch(e){} }
   SCAN = {stop:false}; const me = SCAN;
-  sheet(`<h3>${folder ? 'Reading your songs…' : 'Copying songs into the app…'}</h3><div class="prog"><i id="msp"></i></div><div class="muted small" id="mst">0 of ${fresh.length}</div>
+  sheet(`<h3>${folder ? 'Reading your songs…' : 'Copying songs into the app…'}</h3><div class="prog"><i id="msp"></i></div><div class="muted small" id="mst" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">0 of ${fresh.length} · starting…</div>
     <button class="btn" id="mstop" style="width:100%;margin-top:12px">Stop (keep what is read so far)</button>`, true);
   $('#mstop').onclick = () => { me.stop = true; $('#mstop').disabled = true; $('#mstop').textContent = 'Stopping…' };
   let done = 0, batch = [], added = 0, failed = 0, i = 0; const now = Date.now();

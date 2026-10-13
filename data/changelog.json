@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 54,
+   "date": "2026-10-13",
+   "where": [
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: see what it does while looking in a big folder",
+   "items": [
+    "While Music looks through a big folder or an SD card, it now shows how many songs it found so far, how many folders it looked at, which folder it is in and how long it has been busy, with a moving bar.",
+    "A Stop button, in case you picked a folder that is too big. Tip: pick the music folder itself, not the whole SD card.",
+    "While reading the songs afterwards, the song it is reading is shown under the bar."
+   ]
+  },
+  {
    "id": 53,
    "date": "2026-10-13",
    "where": [
