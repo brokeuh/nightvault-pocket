@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 61,
+   "date": "2026-10-13",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: cover names and a clear message when covers can't be looked up",
+   "items": [
+    "Any picture with \"front\" in its name (front.jpeg, Front.JPG, …-front.jpg, Frontcover.png) is taken as the album cover.",
+    "Fixed: a cover was skipped when a word in its name only started like a skipped word (\"Disco … Front.jpg\" looked like \"disc\").",
+    "When the cover website can't be reached (some Wi-Fi networks, like at work, block it), Music now says so and suggests mobile data, instead of \"Nothing found\"."
+   ]
+  },
+  {
    "id": 60,
    "date": "2026-10-13",
    "where": [

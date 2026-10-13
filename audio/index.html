@@ -1078,7 +1078,7 @@ async function musicScan(items, folder){
   L('scan', `done: ${added} added, ${failed} failed${me.stop ? ', stopped by you' : ''}`); SCAN = null; if(folder) scanDone(folder); else awake(false); closeSheet(); drawM();
   toast(`${plural(added, 'song')} added${nc ? ` · ${plural(nc, 'cover')} from the folders` : ''}${removed ? ` · ${removed} gone` : ''}${failed ? ` · ${failed} could not be read` : ''}${bad ? ` · ${bad} can't play on a phone (WMA, APE …)` : ''}${folder && folder.capped ? ' · folder has over 20,000 files: pick a smaller one' : ''}`, 6000) }
 
-const ART_DIR = /^(covers?|scans?|artwork|art|images?|pictures?|pics?)$/i, COVER_BAD = /back|\bcd\s*\d|^cd|disc|disk|inlay|tray|inside|booklet|label|matrix|spine|obi|small/i;
+const ART_DIR = /^(covers?|scans?|artwork|art|images?|pictures?|pics?)$/i, COVER_BAD = /\b(back(?:cover)?|cd|disc|disk|inlay|tray|inside|booklet|label|matrix|spine|obi|small)(?![a-z])/i;
 const coverRank = n => { n = cleanName(n).toLowerCase(); if(COVER_BAD.test(n)) return 0; return /front/.test(n) ? 4 : /^cover|cover$/.test(n) ? 3 : /folder|albumart|cover/.test(n) ? 2 : 1 };
 async function folderCovers(pics){
   const chosen = new Set(lsGet('nvMusic.chosen', [])), fc = new Set(lsGet('nvMusic.fcov', [])); let n = 0;
@@ -1129,20 +1129,22 @@ const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 
 const toRoman = s => s.replace(/\b0*(\d{1,2})\b/g, (m, n) => ROMAN[+n] || m);
 const fromRoman = s => s.replace(/\b([IVX]{1,6})\b/g, (m, r) => { const i = ROMAN.indexOf(r.toUpperCase()); return i > 0 ? String(i) : m });
 const titleKey = s => norm(fromRoman(String(s || '').toUpperCase() === String(s || '') ? s : s.replace(/\b[ivx]+\b/gi, x => x.toUpperCase()))).replace(/\b0+(\d)/g, '$1');
+const NET_MSG = 'Could not reach the cover website (MusicBrainz). Some Wi-Fi networks, like at work, block it - try mobile data or your home Wi-Fi.';
 /* MusicBrainz: the exact name first, then loose words, then with 06 ↔ VI; up to 15 different albums */
 async function mbFind(a){ const ar = a.aa.replace(/["\\]/g, ''), various = /^various/i.test(ar) || /unknown/i.test(ar);
   const words = x => x.replace(/[^\p{L}\p{N}' ]+/gu, ' ').replace(/\s+/g, ' ').trim(), art = various ? '' : ` AND artist:(${words(ar)})`;
   const tries = [`release:"${a.title.replace(/["\\]/g, '')}"` + (various ? '' : ` AND artist:"${ar}"`), `release:(${words(a.title)})` + art, `release:(${words(toRoman(a.title))})` + art, `release:(${words(fromRoman(a.title))})` + art];
-  const seen = new Set(), out = [];
-  for(const q of [...new Set(tries)]){ if(out.length >= 8) break;
-    try{ for(const x of (await webGet('https://musicbrainz.org/ws/2/release/?fmt=json&limit=12&query=' + encodeURIComponent(q), 'json')).releases || []) if(!seen.has(x.id)){ seen.add(x.id); out.push(x) } }catch(e){ LE('cover', 'MusicBrainz: ' + q, e); if(!out.length && q === tries[tries.length - 1]) throw e }
+  const seen = new Set(), out = [], qs = [...new Set(tries)]; let fails = 0, lastErr = null;
+  for(const q of qs){ if(out.length >= 8) break;
+    try{ for(const x of (await webGet('https://musicbrainz.org/ws/2/release/?fmt=json&limit=12&query=' + encodeURIComponent(q), 'json')).releases || []) if(!seen.has(x.id)){ seen.add(x.id); out.push(x) } }catch(e){ fails++; lastErr = e; LE('cover', 'MusicBrainz: ' + q, e) }
     L('cover', `MusicBrainz “${q}”: ${out.length} so far`); await new Promise(r => setTimeout(r, 1000)) }
+  if(!out.length && fails) throw Object.assign(new Error('blocked'), {net:true, cause:lastErr});
   const want = titleKey(a.title); return out.sort((x, y) => (titleKey(y.title) === want) - (titleKey(x.title) === want)).slice(0, 15) }
 async function caaBlob(id){ return webGet(`https://coverartarchive.org/release/${id}/front-500`, 'blob') }
 async function saveCover(a, blob){ await dbPut('covers', {id:'al:' + a.key, blob}); ALCOV.add(a.key); markChosen(a.key); if(ALURL[a.key]){ URL.revokeObjectURL(ALURL[a.key]); delete ALURL[a.key] } mArtKey = null }
 async function coverOnline(a){
   sheet(`<h3>Covers for “${esc(a.title)}”</h3><div class="prog busy"><i></i></div><p class="muted small">Looking on MusicBrainz…</p>`, true);
-  let rel; try{ rel = await mbFind(a) }catch(e){ LE('cover', 'online search failed', e); closeSheet(); toast('Could not look online: ' + (e.message || e), 5000); return }
+  let rel; try{ rel = await mbFind(a) }catch(e){ LE('cover', 'online search failed', e); closeSheet(); toast(NET_MSG, 7000); return }
   if(!rel.length){ closeSheet(); toast('Nothing found online for this album', 4000); return }
   sheet(`<h3>Pick the cover</h3><p class="muted small" style="margin:0 0 8px">From MusicBrainz / Cover Art Archive. Albums without a picture there are hidden.</p><div class="grid" id="cogrid">${rel.map(x => `<div class="bk" data-rel="${x.id}"><div class="cv"><img src="https://coverartarchive.org/release/${x.id}/front-250" alt="" loading="lazy" onerror="this.closest('.bk').remove()"></div><div class="t">${esc(x.title)}</div><div class="a">${esc(((x['artist-credit'] || [])[0] || {}).name || '')}${x.date ? ' · ' + esc(x.date.slice(0, 4)) : ''}${x.country ? ' · ' + esc(x.country) : ''}</div></div>`).join('')}</div>
     <button class="btn" style="width:100%;margin-top:10px" onclick="closeSheet()">Cancel</button>`);
@@ -1156,9 +1158,9 @@ async function coversOnlineAll(){
   $('#costop').onclick = () => { me.stop = true }; awake(true);
   for(const a of todo){ if(me.stop) break; i++; $('#cot').textContent = `${i} of ${todo.length} · ${a.title} · ${got} found`; $('#cop').style.width = (100 * i / todo.length) + '%';
     try{ const want = titleKey(a.title), va = /^various/i.test(a.aa), rel = (await mbFind(a)).filter(x => titleKey(x.title) === want && (va || norm(((x['artist-credit'] || [])[0] || {}).name) === norm(a.aa)));
-      for(const x of rel.slice(0, 3)){ try{ await saveCover(a, await caaBlob(x.id)); got++; break }catch(e){} } }catch(e){ LE('cover', 'online: ' + a.title, e) }
+      for(const x of rel.slice(0, 3)){ try{ await saveCover(a, await caaBlob(x.id)); got++; break }catch(e){} } }catch(e){ LE('cover', 'online: ' + a.title, e); if(e.net){ me.stop = true; toast(NET_MSG, 7000) } }
     await new Promise(r => setTimeout(r, 1100)) }
-  awake(false); closeSheet(); drawM(); toast(`${got} of ${todo.length} covers found online`, 5000) }
+  awake(false); closeSheet(); drawM(); if(!me.stop || got) toast(`${got} of ${todo.length} covers found online`, 5000) }
 
 /* a song record from the tags; missing tags come from the path: Artist / Album / [CD 1 /] 01 - Title.ext */
 function makeTrack(x, info, folder, now){
