@@ -222,16 +222,26 @@
    "name": "Music",
    "desc": "Your music with big covers, albums and playlists",
    "color": "#2e1a3a",
-   "soon": true,
-   "files": [],
+   "entry": "audio/?nv=hub&mode=music",
+   "files": [
+    {
+     "path": "audio/index.html",
+     "size": 148840
+    },
+    {
+     "path": "audio/manifest.webmanifest",
+     "size": 561
+    }
+   ],
+   "keepsData": "Your songs, favourites, play counts and playlists stay on this device.",
    "provides": [
     "music"
    ],
    "uses": [],
-   "size": 0,
-   "hash": "e3b0c44298fc",
-   "version": "2026.10.12.1325",
-   "updated": "2026-10-12"
+   "size": 149401,
+   "hash": "ffb1871f5251",
+   "version": "2026.10.13.0942",
+   "updated": "2026-10-13"
   },
   {
    "id": "audiobooks",
@@ -242,7 +252,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 81702
+     "size": 148840
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -254,9 +264,9 @@
     "audiobooks"
    ],
    "uses": [],
-   "size": 82263,
-   "hash": "ad146c60ad5b",
-   "version": "2026.10.13.0849",
+   "size": 149401,
+   "hash": "ffb1871f5251",
+   "version": "2026.10.13.0942",
    "updated": "2026-10-13"
   },
   {
