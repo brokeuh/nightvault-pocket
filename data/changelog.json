@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 58,
+   "date": "2026-10-13",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: pick the cover from the album's own folder",
+   "items": [
+    "Album ⋯ → \"Change the cover picture\" now shows the pictures in that album's folders first (the album folder, its CD folders and Covers / Scans folders). Tap the right one.",
+    "\"Find a cover online\" and \"Pick from elsewhere on the phone\" are right below.",
+    "For music added before this update: Settings → \"Look for changes\" next to your folder once, so Music knows which pictures are in it."
+   ]
+  },
+  {
    "id": 57,
    "date": "2026-10-13",
    "where": [

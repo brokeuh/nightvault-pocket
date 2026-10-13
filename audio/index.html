@@ -187,6 +187,7 @@ input[type=range].seek{width:100%;margin:16px 0 0;accent-color:var(--accent);hei
 </div></div>
 <input type="file" id="mpick" multiple hidden accept="audio/*,.mp3,.m4a,.aac,.ogg,.oga,.opus,.flac,.wav,.webm,.jpg,.jpeg,.png">
 <input type="file" id="mpickdir" webkitdirectory multiple hidden>
+<input type="file" id="mcover" accept="image/*" hidden>
 
 <!-- mini player -->
 <div id="mini" hidden></div>
@@ -1037,6 +1038,7 @@ let SCAN = null;
 async function musicScan(items, folder){
   const audio = items.filter(x => PLAY_RE.test(x.f.name)), bad = items.filter(x => NOPLAY_RE.test(x.f.name)).length;
   const pre = folder ? folder.tree + '|' : '', pics = {}; for(const x of items) if(IMG_RE.test(x.f.name)){ const d = pre + x.path.split('/').slice(0, -1).join('/'); (pics[d] = pics[d] || []).push(x.f) }
+  if(folder) dbPut('kv', {id:'pics:' + folder.tree, at:Date.now(), pics:Object.fromEntries(Object.entries(pics).map(([d, ps]) => [d, ps.map(p => ({uri:p.uri, name:p.name, size:p.size}))]))}).catch(() => {});
   const have = new Set(TR.filter(t => t.uri).map(t => t.uri));
   const copied = new Set(TR.filter(t => t.fid).map(t => t.name + '|' + t.size)), fresh = folder ? audio.filter(x => !have.has(x.f.uri)) : audio.filter(x => !copied.has(x.f.name + '|' + x.f.size));
   let removed = 0;
@@ -1083,6 +1085,27 @@ async function folderCovers(pics){
     try{ const b = best.uri ? await best.blob() : best; await dbPut('covers', {id:'al:' + a.key, blob:b}); ALCOV.add(a.key); fc.add(a.key); n++;
       if(ALURL[a.key]){ URL.revokeObjectURL(ALURL[a.key]); delete ALURL[a.key] } }catch(e){ LE('cover', 'could not read ' + best.name, e) } }
   lsSet('nvMusic.fcov', [...fc]); if(n) L('cover', `${n} covers from the folders`); return n }
+/* "Change the cover picture": the pictures in this album's folders first (album folder, CD folders, Covers / Scans …), tap one */
+async function coverPicker(a){
+  const trees = [...new Set(a.tracks.map(t => t.tree).filter(Boolean))]; let all = {};
+  for(const tr of trees){ const r = await dbGet('kv', 'pics:' + tr).catch(() => null); if(r && r.pics) Object.assign(all, r.pics) }
+  const top = [...new Set(a.tracks.map(t => t.adir || ''))], cds = [...new Set(a.tracks.map(t => t.dir || ''))].filter(d => !top.includes(d));
+  const near = d => Object.keys(all).filter(k => k === d || (k.startsWith(d + '/') && ART_DIR.test(k.slice(d.length + 1).split('/')[0])));
+  const dirs = [...new Set([...top.flatMap(near), ...cds.flatMap(near)])], groups = dirs.map(d => [d, all[d] || []]).filter(g => g[1].length);
+  const label = d => { const tr = trees.find(t => d.startsWith(t + '|')); return (tr ? d.slice(tr.length + 1) : d).split('/').slice(-2).join(' / ') || 'Folder' };
+  const known = Object.keys(all).length > 0;
+  sheet(`<h3>Cover for “${esc(a.title)}”</h3>
+    ${groups.length ? groups.map(([d, ps], gi) => `<div class="sec">${esc(label(d))}</div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(96px,1fr))">${ps.map((p, i) => `<div class="bk" data-pic="${gi}:${i}"><div class="cv"><img src="${linkUrl(p.uri, p.name)}" alt="" loading="lazy"></div><div class="a">${esc(p.name)}</div></div>`).join('')}</div>`).join('')
+      : `<p class="muted small">${!trees.length ? 'These songs were copied into the app, so there is no folder to look in.' : known ? 'No pictures in this album\'s folders.' : 'Music doesn\'t know the pictures in this folder yet: Settings → “Look for changes” next to the folder once, then try again.'}</p>`}
+    <div class="mlist" style="margin-top:12px"><button class="btn" id="cponline">Find a cover online</button><button class="btn" id="cpphone">Pick from elsewhere on the phone</button></div>`);
+  $('.sheet').onclick = async e => { const b = e.target.closest('[data-pic]');
+    if(b){ const [gi, i] = b.dataset.pic.split(':').map(Number), p = groups[gi][1][i];
+      try{ const blob = await new LinkFile({uri:p.uri, name:p.name, size:p.size, type:''}).blob(); await saveCover(a, blob); closeSheet(); drawM(); drawMP(true); syncMM(); toast('New cover saved') }catch(err){ LE('cover', 'could not read ' + p.name, err); toast('Could not read that picture', 4000) } return }
+    if(e.target.id === 'cponline'){ coverOnline(a); return }
+    if(e.target.id === 'cpphone') coverFile(a) } }
+/* a picture from anywhere on the phone (the system picker) */
+function coverFile(a){ const inp = $('#mcover'); inp.value = '';
+  inp.onchange = async e => { const f = e.target.files[0]; if(!f) return; await saveCover(a, f); closeSheet(); drawM(); drawMP(true); syncMM(); toast('New cover saved') }; inp.click() }
 const markChosen = k => { const c = new Set(lsGet('nvMusic.chosen', [])); c.add(k); lsSet('nvMusic.chosen', [...c]) };
 
 /* covers online: MusicBrainz finds the album, the Cover Art Archive has the front picture (both free, no account) */
@@ -1251,11 +1274,10 @@ function songMenu(t){ if(!t) return; const v = mtop(), inList = v.v === 'list' &
     if(a === 'album'){ showMP(false); mGo({v:'album', key:t.al}) } if(a === 'artist'){ showMP(false); mGo({v:'artist', key:norm((albumOf(t) || {}).aa || t.aa) || 'unknown'}) } } }
 function albumMenu(a){ if(!a) return; const cp = a.tracks.filter(t => t.fid);
   sheet(`<h3>${esc(a.title)}</h3><div class="mlist"><button class="btn" data-a="next">Play next</button><button class="btn" data-a="queue">Add to the queue</button><button class="btn" data-a="list">Add to a playlist…</button>
-    <button class="btn" data-a="online">Find a cover online</button><button class="btn" data-a="cover">Change the cover picture (from the phone)</button>${cp.length ? `<button class="btn danger" data-a="del">Remove from this device (${mb(cp.reduce((n, t) => n + t.size, 0))})</button>` : ''}</div>
-    ${cp.length < a.tracks.length ? '<p class="muted small" style="margin:10px 0 0">Songs from a folder on the phone stay as long as they are in that folder.</p>' : ''}<input type="file" id="mcf" accept="image/*" hidden>`);
-  $('#mcf').onchange = async e => { const f = e.target.files[0]; if(!f) return; await dbPut('covers', {id:'al:' + a.key, blob:f}); ALCOV.add(a.key); markChosen(a.key); if(ALURL[a.key]){ URL.revokeObjectURL(ALURL[a.key]); delete ALURL[a.key] } mArtKey = null; closeSheet(); drawM(); drawMP(true); toast('New cover saved') };
+    <button class="btn" data-a="online">Find a cover online</button><button class="btn" data-a="cover">Change the cover picture</button>${cp.length ? `<button class="btn danger" data-a="del">Remove from this device (${mb(cp.reduce((n, t) => n + t.size, 0))})</button>` : ''}</div>
+    ${cp.length < a.tracks.length ? '<p class="muted small" style="margin:10px 0 0">Songs from a folder on the phone stay as long as they are in that folder.</p>' : ''}`);
   $('.sheet').onclick = async e => { const b = e.target.closest('[data-a]'); if(!b) return; const k = b.dataset.a, ids = a.tracks.map(t => t.id);
-    if(k === 'cover'){ $('#mcf').click(); return } if(k === 'online'){ coverOnline(a); return } closeSheet();
+    if(k === 'cover'){ if(a.tracks.some(t => t.tree)) coverPicker(a); else coverFile(a); return } if(k === 'online'){ coverOnline(a); return } closeSheet();
     if(k === 'next') qAdd(ids, true); if(k === 'queue') qAdd(ids, false); if(k === 'list') addToList(a.tracks);
     if(k === 'del'){ const gone = new Set(cp.map(t => t.id)); if(curT() && gone.has(curT().id)){ au.pause(); au.removeAttribute('src'); au.load(); mLoadedId = null }
       for(const t of cp) await dbDel('files', t.fid).catch(() => {}); await dbDelMany('tracks', [...gone]); TR = TR.filter(t => !gone.has(t.id));
