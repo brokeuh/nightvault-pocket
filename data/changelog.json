@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 59,
+   "date": "2026-10-13",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: every CD of an album folds open on its own",
+   "items": [
+    "In an album with more CDs, each CD is its own block: its CD picture, \"CD 1\" / \"CD 2\", number of songs and length, and a play button for just that CD.",
+    "Tap a CD to fold its songs open or closed. They start folded; the CD that is playing is open.",
+    "The CD picture comes from a picture in that CD's folder or the Covers folder named like cd1 / disc 1, else from the picture inside its songs (the disc scan)."
+   ]
+  },
+  {
    "id": 58,
    "date": "2026-10-13",
    "where": [
