@@ -3,6 +3,28 @@
  "v": 1,
  "apps": [
   {
+   "id": "hub",
+   "name": "The Nightvault",
+   "desc": "The home screen with the app tiles, installing and updates",
+   "system": true,
+   "files": [
+    {
+     "path": "hub/index.html",
+     "size": 31274
+    },
+    {
+     "path": "hub/core.js",
+     "size": 7025
+    }
+   ],
+   "provides": [],
+   "uses": [],
+   "size": 38299,
+   "hash": "3b5352d5bc54",
+   "version": "2026.10.13.0717",
+   "updated": "2026-10-13"
+  },
+  {
    "id": "scanner",
    "name": "Scanner",
    "desc": "The full app: scan cards, binders, my cards, decks, prices",
