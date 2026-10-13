@@ -140,6 +140,7 @@ input[type=range].seek{width:100%;margin:16px 0 0;accent-color:var(--accent);hei
 .sec{font-size:12px;font-weight:700;letter-spacing:.6px;color:var(--dim2);margin:18px 0 6px;text-transform:uppercase}
 .more{display:block;width:100%;margin-top:10px}
 .mlist{display:flex;flex-direction:column;gap:8px}
+.bk .cdl{position:absolute;top:7px;right:7px;background:#0b0e13d9;color:#f1dc6b;font-size:11.5px;font-weight:800;letter-spacing:.3px;padding:3px 8px;border-radius:99px;border:1px solid #f1dc6b55;pointer-events:none}
 </style>
 </head>
 <body>
@@ -937,9 +938,23 @@ let MV = [{v:'home'}], CTX = [], CTXN = 300;
 
 /* ---------- library ---------- */
 async function musicLoad(){
-  TR = await dbAll('tracks'); STATS = {}; for(const s of await dbAll('mstats')) STATS[s.id] = s;
+  TR = await dbAll('tracks');
+  if(lsGet('nvMusic.v', 1) < 2 && TR.length) await musicMigrate2(); STATS = {}; for(const s of await dbAll('mstats')) STATS[s.id] = s;
   LISTS = await dbAll('lists'); ALCOV = new Set((await dbKeys('covers')).filter(k => String(k).startsWith('al:')).map(k => k.slice(3)));
   musicIndex() }
+/* v2: "Album (CD1)" and "Album (CD2)" become one album with discs; stats, playlists and covers move to the new keys */
+async function musicMigrate2(){
+  const keyMap = {}, alMap = {}, changed = [];
+  for(const t of TR){ const k = t.key, al = t.al; fixAlbum(t); if(t.key !== k) keyMap[k] = t.key; if(t.al !== al){ if(!alMap[al]) alMap[al] = t.al } if(t.key !== k || t.al !== al || !t.adir) changed.push(t) }
+  if(changed.length) await dbPutMany('tracks', changed);
+  const stats = await dbAll('mstats'), moved = [], dropped = [];
+  for(const s of stats){ const nk = keyMap[s.id]; if(!nk) continue; const o = stats.find(x => x.id === nk) || moved.find(x => x.id === nk);
+    if(o){ o.plays = (o.plays || []).concat(s.plays || []); o.fav = o.fav || s.fav; o.last = Math.max(o.last || 0, s.last || 0); if(!moved.includes(o)) moved.push(o) } else moved.push(Object.assign({}, s, {id:nk})); dropped.push(s.id) }
+  if(moved.length) await dbPutMany('mstats', moved); if(dropped.length) await dbDelMany('mstats', dropped);
+  const lists = await dbAll('lists'); for(const l of lists) l.items = [...new Set(l.items.map(k => keyMap[k] || k))]; if(lists.length) await dbPutMany('lists', lists);
+  const have = new Set((await dbKeys('covers')).map(String));
+  for(const [o, n] of Object.entries(alMap)){ if(have.has('al:' + o) && !have.has('al:' + n)){ const c = await dbGet('covers', 'al:' + o); if(c){ await dbPut('covers', {id:'al:' + n, blob:c.blob}); have.add('al:' + n) } } if(have.has('al:' + o) && o !== n) await dbDel('covers', 'al:' + o).catch(() => {}) }
+  lsSet('nvMusic.v', 2); L('music', `library updated: ${changed.length} songs, ${Object.keys(alMap).length} albums joined or renamed`) }
 function musicIndex(){
   TRID = {}; KEYTR = {}; ALBK = {}; ARTK = {};
   for(const t of TR){ TRID[t.id] = t; if(!KEYTR[t.key]) KEYTR[t.key] = t;
@@ -1027,8 +1042,8 @@ async function musicScan(items, folder){
   let removed = 0;
   if(folder){ const seen = new Set(audio.map(x => x.f.uri)), gone = TR.filter(t => t.tree === folder.tree && !seen.has(t.uri));
     if(gone.length){ removed = gone.length; await dbDelMany('tracks', gone.map(t => t.id)); const g = new Set(gone.map(t => t.id)); TR = TR.filter(t => !g.has(t.id)) } }
-  if(!fresh.length){ if(folder) scanDone(folder); closeSheet(); musicIndex(); drawM();
-    toast(audio.length || removed ? `No new songs${removed ? ` · ${plural(removed, 'song')} that are gone were removed` : ''}${bad ? ` · ${bad} can't play on a phone` : ''}` : bad ? `${bad} songs found, but this phone can't play their format (WMA, APE …)` : 'No songs found there', 5000); return }
+  if(!fresh.length){ if(folder) scanDone(folder); musicIndex(); const nc = await folderCovers(pics); closeSheet(); drawM();
+    toast(audio.length || removed ? `No new songs${nc ? ` · ${plural(nc, 'cover')} from the folder` : ''}${removed ? ` · ${plural(removed, 'song')} that are gone were removed` : ''}${bad ? ` · ${bad} can't play on a phone` : ''}` : bad ? `${bad} songs found, but this phone can't play their format (WMA, APE …)` : 'No songs found there', 5000); return }
   if(!folder){ const total = fresh.reduce((a, x) => a + x.f.size, 0);
     try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist() }catch(e){}
     try{ const e = await navigator.storage.estimate(); if(e && e.quota && e.quota - e.usage < total * 1.05){ toast(`Not enough space: ${mb(total)} needed, ${mb(e.quota - e.usage)} free`, 5000); return } }catch(e){} }
@@ -1049,12 +1064,61 @@ async function musicScan(items, folder){
       done++; if(done % 250 === 0) L('scan', `${done} of ${fresh.length} read, ${added} saved`);
       const p = $('#msp'), s = $('#mst'); if(p) p.style.width = (100 * done / fresh.length) + '%'; if(s) s.textContent = `${done} of ${fresh.length} · ${x.f.name}` } };
   await Promise.all([work(), work(), work(), work()]); await flush(); document.removeEventListener('visibilitychange', onHide);
-  /* albums without a picture in their songs: cover.jpg / folder.jpg / front.jpg next to them */
-  musicIndex();
-  for(const a of ALB){ if(ALCOV.has(a.key)) continue; const d = a.tracks[0].dir || '', ps = pics[d] || pics[d.replace(/\/[^\/|]*$/, '')] || []; if(!ps.length) continue;
-    let p = ps.find(x => /cover|folder|front|album/i.test(x.name)) || ps[0]; try{ if(p.uri) p = await p.blob(); await dbPut('covers', {id:'al:' + a.key, blob:p}); ALCOV.add(a.key) }catch(e){} }
+  /* album covers from the folder: front / cover / folder.jpg (also in a Covers / Scans / Artwork subfolder) win over the picture in the
+     songs, which is often a scan of the disc. Covers picked by hand or online (nvMusic.chosen) are never replaced. */
+  musicIndex(); const nc = await folderCovers(pics);
   L('scan', `done: ${added} added, ${failed} failed${me.stop ? ', stopped by you' : ''}`); SCAN = null; if(folder) scanDone(folder); else awake(false); closeSheet(); drawM();
-  toast(`${plural(added, 'song')} added${removed ? ` · ${removed} gone` : ''}${failed ? ` · ${failed} could not be read` : ''}${bad ? ` · ${bad} can't play on a phone (WMA, APE …)` : ''}${folder && folder.capped ? ' · folder has over 20,000 files: pick a smaller one' : ''}`, 6000) }
+  toast(`${plural(added, 'song')} added${nc ? ` · ${plural(nc, 'cover')} from the folders` : ''}${removed ? ` · ${removed} gone` : ''}${failed ? ` · ${failed} could not be read` : ''}${bad ? ` · ${bad} can't play on a phone (WMA, APE …)` : ''}${folder && folder.capped ? ' · folder has over 20,000 files: pick a smaller one' : ''}`, 6000) }
+
+const ART_DIR = /^(covers?|scans?|artwork|art|images?|pictures?|pics?)$/i, COVER_BAD = /back|\bcd\s*\d|^cd|disc|disk|inlay|tray|inside|booklet|label|matrix|spine|obi|small/i;
+const coverRank = n => { n = cleanName(n).toLowerCase(); if(COVER_BAD.test(n)) return 0; return /front/.test(n) ? 4 : /^cover|cover$/.test(n) ? 3 : /folder|albumart|cover/.test(n) ? 2 : 1 };
+async function folderCovers(pics){
+  const chosen = new Set(lsGet('nvMusic.chosen', [])), fc = new Set(lsGet('nvMusic.fcov', [])); let n = 0;
+  const subs = d => Object.keys(pics).filter(k => k.startsWith(d + '/') && ART_DIR.test(k.slice(d.length + 1)));
+  for(const a of ALB){ if(chosen.has(a.key) || fc.has(a.key)) continue;
+    const top = [a.tracks[0].adir || ''], cds = [...new Set(a.tracks.map(t => t.dir || ''))];
+    let best = null, br = 0;
+    for(const [dirs, bonus] of [[top, 1], [top.flatMap(subs), 1], [cds, 0], [cds.flatMap(subs), 0]]) for(const d of dirs) for(const p of pics[d] || []){ const r = coverRank(p.name); if(r && r * 2 + bonus > br){ br = r * 2 + bonus; best = p } }
+    if(!best || (br < 4 && ALCOV.has(a.key))) continue;   // only a plain picture without a cover name: keep the one from the songs
+    try{ const b = best.uri ? await best.blob() : best; await dbPut('covers', {id:'al:' + a.key, blob:b}); ALCOV.add(a.key); fc.add(a.key); n++;
+      if(ALURL[a.key]){ URL.revokeObjectURL(ALURL[a.key]); delete ALURL[a.key] } }catch(e){ LE('cover', 'could not read ' + best.name, e) } }
+  lsSet('nvMusic.fcov', [...fc]); if(n) L('cover', `${n} covers from the folders`); return n }
+const markChosen = k => { const c = new Set(lsGet('nvMusic.chosen', [])); c.add(k); lsSet('nvMusic.chosen', [...c]) };
+
+/* covers online: MusicBrainz finds the album, the Cover Art Archive has the front picture (both free, no account) */
+/* fetch from another website; inside the Android app fall back to Android's own connection (CapacitorHttp) if the web view blocks it */
+async function webGet(url, kind){
+  try{ const r = await fetch(url, kind === 'json' ? {headers:{Accept:'application/json'}} : {}); if(r.status === 404) throw Object.assign(new Error('not found'), {nf:true});
+    if(!r.ok) throw new Error('answered ' + r.status); return kind === 'json' ? r.json() : r.blob() }
+  catch(e){ const H = NATIVE && Capacitor.Plugins && Capacitor.Plugins.CapacitorHttp; if(e.nf || !H) throw e; LE('web', 'fetch failed, trying Android: ' + url, e);
+    const r = await H.get({url, headers:kind === 'json' ? {Accept:'application/json'} : {}, responseType:kind === 'json' ? 'json' : 'blob'});
+    if(r.status === 404) throw new Error('not found'); if(r.status >= 400) throw new Error('answered ' + r.status);
+    if(kind === 'json') return typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
+    const bin = atob(String(r.data).replace(/^data:[^,]*,/, '')), u = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], {type:'image/jpeg'}) } }
+async function mbFind(a){ const t = a.title.replace(/["\\]/g, ''), ar = a.aa.replace(/["\\]/g, '');
+  const q = `release:"${t}"` + (/^various/i.test(ar) || /unknown/i.test(ar) ? '' : ` AND artist:"${ar}"`);
+  return ((await webGet('https://musicbrainz.org/ws/2/release/?fmt=json&limit=12&query=' + encodeURIComponent(q), 'json')).releases || []) }
+async function caaBlob(id){ return webGet(`https://coverartarchive.org/release/${id}/front-500`, 'blob') }
+async function saveCover(a, blob){ await dbPut('covers', {id:'al:' + a.key, blob}); ALCOV.add(a.key); markChosen(a.key); if(ALURL[a.key]){ URL.revokeObjectURL(ALURL[a.key]); delete ALURL[a.key] } mArtKey = null }
+async function coverOnline(a){
+  sheet(`<h3>Covers for “${esc(a.title)}”</h3><div class="prog busy"><i></i></div><p class="muted small">Looking on MusicBrainz…</p>`, true);
+  let rel; try{ rel = await mbFind(a) }catch(e){ LE('cover', 'online search failed', e); closeSheet(); toast('Could not look online: ' + (e.message || e), 5000); return }
+  if(!rel.length){ closeSheet(); toast('Nothing found online for this album', 4000); return }
+  sheet(`<h3>Pick the cover</h3><p class="muted small" style="margin:0 0 8px">From MusicBrainz / Cover Art Archive. Albums without a picture there are hidden.</p><div class="grid" id="cogrid">${rel.map(x => `<div class="bk" data-rel="${x.id}"><div class="cv"><img src="https://coverartarchive.org/release/${x.id}/front-250" alt="" loading="lazy" onerror="this.closest('.bk').remove()"></div><div class="t">${esc(x.title)}</div><div class="a">${esc(((x['artist-credit'] || [])[0] || {}).name || '')}${x.date ? ' · ' + esc(x.date.slice(0, 4)) : ''}${x.country ? ' · ' + esc(x.country) : ''}</div></div>`).join('')}</div>
+    <button class="btn" style="width:100%;margin-top:10px" onclick="closeSheet()">Cancel</button>`);
+  $('#cogrid').onclick = async e => { const b = e.target.closest('[data-rel]'); if(!b) return; toast('Saving the cover…');
+    try{ await saveCover(a, await caaBlob(b.dataset.rel)); closeSheet(); drawM(); drawMP(true); syncMM(); toast('New cover saved') }catch(err){ LE('cover', 'download failed', err); toast('Could not get that picture: ' + (err.message || err), 5000) } } }
+/* all albums without a cover: only when MusicBrainz has an album with exactly that name (and artist) */
+async function coversOnlineAll(){
+  const todo = ALB.filter(a => !ALCOV.has(a.key) && a.title !== 'Unknown album'); if(!todo.length){ toast('Every album has a cover already'); return }
+  const me = {stop:false}; let i = 0, got = 0;
+  sheet(`<h3>Finding covers online…</h3><div class="prog"><i id="cop"></i></div><div class="muted small" id="cot" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">0 of ${todo.length}</div><p class="muted small">One album per second (MusicBrainz asks for that). Only albums with exactly the same name get a cover - pick the others by hand (album ⋯ → Find a cover online).</p><button class="btn" id="costop" style="width:100%">Stop</button>`, true);
+  $('#costop').onclick = () => { me.stop = true }; awake(true);
+  for(const a of todo){ if(me.stop) break; i++; $('#cot').textContent = `${i} of ${todo.length} · ${a.title} · ${got} found`; $('#cop').style.width = (100 * i / todo.length) + '%';
+    try{ const want = norm(a.title), va = /^various/i.test(a.aa), rel = (await mbFind(a)).filter(x => norm(x.title) === want && (va || norm(((x['artist-credit'] || [])[0] || {}).name) === norm(a.aa)));
+      for(const x of rel.slice(0, 3)){ try{ await saveCover(a, await caaBlob(x.id)); got++; break }catch(e){} } }catch(e){ LE('cover', 'online: ' + a.title, e) }
+    await new Promise(r => setTimeout(r, 1100)) }
+  awake(false); closeSheet(); drawM(); toast(`${got} of ${todo.length} covers found online`, 5000) }
 
 /* a song record from the tags; missing tags come from the path: Artist / Album / [CD 1 /] 01 - Title.ext */
 function makeTrack(x, info, folder, now){
@@ -1067,9 +1131,20 @@ function makeTrack(x, info, folder, now){
   const aa = t.albumartist || artist || 'Unknown artist';
   const tr = {id:uid(), title:t.title || ftitle, artist:artist || 'Unknown artist', aa, aaTag:!!t.albumartist, album, track:t.track || (m ? +m[1] : 0), disc, year:String(t.year || '').slice(0, 4), genre:t.genre || '',
     dur:info.dur || 0, name:x.f.name, type:MIME[ext(x.f.name)] || x.f.type || 'audio/mpeg', size:x.f.size, dir:(folder ? folder.tree + '|' : '') + dir, added:now};
-  /* songs of one album: by album artist when tagged, else by folder, so a compilation stays one album */
-  tr.al = t.albumartist ? norm(aa) + '|' + norm(album) : (dirs.length ? 'd:' + adir : 'a:' + norm(artist)) + '|' + norm(album);
   if(folder){ tr.uri = x.f.uri; tr.tree = folder.tree }
+  fixAlbum(tr); return tr }
+/* "Album (CD2)", "Album - CD 2", "Album [Disc 2 of 2]" → name "Album" + disc 2 */
+const DISC_TAIL = /\s*[-–:,]?\s*[(\[]?\s*(?:cd|disc|disk)\s*(\d{1,2})(?:\s*(?:of|\/)\s*\d{1,2})?\s*[)\]]?\s*$/i;
+function splitDisc(s){ s = String(s || ''); const m = s.match(DISC_TAIL); return m && m.index > 0 ? {name:s.slice(0, m.index).replace(/[\s\-–:,]+$/, ''), disc:+m[1]} : {name:s, disc:0} }
+/* album name, disc number, album folder and album key from a song's stored fields (also used to fix songs added before) */
+function fixAlbum(tr){
+  const a = splitDisc(tr.album); if(a.disc){ tr.album = a.name; if(!tr.disc) tr.disc = a.disc }
+  const path = tr.tree && tr.dir.startsWith(tr.tree + '|') ? tr.dir.slice(tr.tree.length + 1) : tr.dir || '', segs = path ? path.split('/') : [];
+  if(segs.length){ const l = segs[segs.length - 1]; if(DISC_RE.test(l)){ segs.pop(); if(!tr.disc) tr.disc = parseInt(l.replace(/\D+/g, '')) || 0 }
+    else { const d = splitDisc(l); if(d.disc){ segs[segs.length - 1] = d.name; if(!tr.disc) tr.disc = d.disc } } }
+  tr.adir = (tr.tree ? tr.tree + '|' : '') + segs.join('/');      // the album's folder (above CD1 / CD2)
+  /* songs of one album: by album artist when tagged, else by folder, so a compilation stays one album */
+  tr.al = tr.aaTag ? norm(tr.aa) + '|' + norm(tr.album) : (segs.length ? 'd:' + tr.adir : 'a:' + norm(tr.artist)) + '|' + norm(tr.album);
   tr.key = trKey(tr); return tr }
 
 /* ---------- screens ---------- */
@@ -1083,7 +1158,8 @@ function songRow(t, i, opt){ opt = opt || {}; const a = albumOf(t) || {key:t.al,
     <div class="n"><div>${esc(t.title)}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ''}</div>${opt.plays ? `<span class="r">${plays(t)}×</span>` : `<span class="r">${t.dur ? clock(t.dur) : ''}</span>`}<button class="x" data-menu="${t.id}" aria-label="More">${IC_DOTS}</button></div>` }
 function songList(ts, opt){ CTX = ts.map(t => t.id); const n = Math.min(ts.length, CTXN);
   return `<div class="songs">${ts.slice(0, n).map((t, i) => songRow(t, i, opt)).join('')}</div>${ts.length > n ? `<button class="btn more" data-moresongs="1">Show more (${ts.length - n} left)</button>` : ''}` }
-const albumGrid = als => `<div class="grid">${als.map(a => `<div class="bk" data-al="${esc(a.key)}">${alCover(a)}<div class="t">${esc(a.title)}</div><div class="a">${esc(a.aa)}${a.year ? ' · ' + esc(a.year) : ''}</div></div>`).join('')}</div>`;
+function discLabel(a){ const d = [...new Set(a.tracks.map(t => t.disc || 0))].filter(Boolean); return d.length > 1 ? `${d.length} CDs` : d.length === 1 && d[0] > 1 ? `CD ${d[0]}` : '' }
+const albumGrid = als => `<div class="grid">${als.map(a => `<div class="bk" data-al="${esc(a.key)}" style="position:relative">${alCover(a)}${discLabel(a) ? `<span class="cdl">${discLabel(a)}</span>` : ''}<div class="t">${esc(a.title)}</div><div class="a">${esc(a.aa)}${a.year ? ' · ' + esc(a.year) : ''}</div></div>`).join('')}</div>`;
 const playBar = (extra) => `<div class="mbar"><button class="btn primary" data-play="0" style="flex:1">${IC_PLAY.replace('<svg ', '<svg width="18" height="18" ')}Play</button><button class="btn" data-play="shuffle" style="flex:1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Shuffle</button>${extra || ''}</div>`;
 function favTracks(){ return Object.values(STATS).filter(s => s.fav && KEYTR[s.id]).sort((a, b) => (b.favAt || 0) - (a.favAt || 0)).map(s => KEYTR[s.id]) }
 function listTracks(l){ return l.items.map(k => KEYTR[k]).filter(Boolean) }
@@ -1175,11 +1251,11 @@ function songMenu(t){ if(!t) return; const v = mtop(), inList = v.v === 'list' &
     if(a === 'album'){ showMP(false); mGo({v:'album', key:t.al}) } if(a === 'artist'){ showMP(false); mGo({v:'artist', key:norm((albumOf(t) || {}).aa || t.aa) || 'unknown'}) } } }
 function albumMenu(a){ if(!a) return; const cp = a.tracks.filter(t => t.fid);
   sheet(`<h3>${esc(a.title)}</h3><div class="mlist"><button class="btn" data-a="next">Play next</button><button class="btn" data-a="queue">Add to the queue</button><button class="btn" data-a="list">Add to a playlist…</button>
-    <button class="btn" data-a="cover">Change the cover picture</button>${cp.length ? `<button class="btn danger" data-a="del">Remove from this device (${mb(cp.reduce((n, t) => n + t.size, 0))})</button>` : ''}</div>
+    <button class="btn" data-a="online">Find a cover online</button><button class="btn" data-a="cover">Change the cover picture (from the phone)</button>${cp.length ? `<button class="btn danger" data-a="del">Remove from this device (${mb(cp.reduce((n, t) => n + t.size, 0))})</button>` : ''}</div>
     ${cp.length < a.tracks.length ? '<p class="muted small" style="margin:10px 0 0">Songs from a folder on the phone stay as long as they are in that folder.</p>' : ''}<input type="file" id="mcf" accept="image/*" hidden>`);
-  $('#mcf').onchange = async e => { const f = e.target.files[0]; if(!f) return; await dbPut('covers', {id:'al:' + a.key, blob:f}); ALCOV.add(a.key); if(ALURL[a.key]){ URL.revokeObjectURL(ALURL[a.key]); delete ALURL[a.key] } mArtKey = null; closeSheet(); drawM(); drawMP(true); toast('New cover saved') };
+  $('#mcf').onchange = async e => { const f = e.target.files[0]; if(!f) return; await dbPut('covers', {id:'al:' + a.key, blob:f}); ALCOV.add(a.key); markChosen(a.key); if(ALURL[a.key]){ URL.revokeObjectURL(ALURL[a.key]); delete ALURL[a.key] } mArtKey = null; closeSheet(); drawM(); drawMP(true); toast('New cover saved') };
   $('.sheet').onclick = async e => { const b = e.target.closest('[data-a]'); if(!b) return; const k = b.dataset.a, ids = a.tracks.map(t => t.id);
-    if(k === 'cover'){ $('#mcf').click(); return } closeSheet();
+    if(k === 'cover'){ $('#mcf').click(); return } if(k === 'online'){ coverOnline(a); return } closeSheet();
     if(k === 'next') qAdd(ids, true); if(k === 'queue') qAdd(ids, false); if(k === 'list') addToList(a.tracks);
     if(k === 'del'){ const gone = new Set(cp.map(t => t.id)); if(curT() && gone.has(curT().id)){ au.pause(); au.removeAttribute('src'); au.load(); mLoadedId = null }
       for(const t of cp) await dbDel('files', t.fid).catch(() => {}); await dbDelMany('tracks', [...gone]); TR = TR.filter(t => !gone.has(t.id));
@@ -1350,8 +1426,10 @@ $('#msetbtn').onclick = () => {
   sheet(`<h3>Settings</h3>
     ${NvFiles ? '<h3 style="margin:4px 0">Music folders on this phone</h3><div id="mfldrs" class="muted small">…</div><button class="btn" id="mfadd" style="width:100%;margin-top:8px">Add a folder</button>' : ''}
     ${window.NVLOG ? `<div class="opt" style="margin-top:8px"><label for="mdbg">Debug mode<div class="muted small">Writes down everything that happens, with a bug button to send the log to Claude.</div></label><input type="checkbox" id="mdbg" ${NVLOG.on ? 'checked' : ''}></div>` : ''}
+    <button class="btn" id="mcovall" style="width:100%;margin-top:10px">Find missing covers online (${ALB.filter(a => !ALCOV.has(a.key)).length})</button>
     <p class="muted small" style="margin:12px 0 0">${plural(TR.length, 'song')} · ${plural(ALB.length, 'album')} · ${plural(ARTS.length, 'artist')}. Favourites, play counts and playlists are kept on this device (later also synced with the PC).</p>`);
   if($('#mdbg')) $('#mdbg').onchange = e => { e.target.checked ? NVLOG.enable() : NVLOG.disable() };
+  $('#mcovall').onclick = () => coversOnlineAll();
   if(NvFiles){ $('#mfadd').onclick = () => { closeSheet(); musicFolder() }; drawMFolders() } };
 async function drawMFolders(){ const el = $('#mfldrs'); if(!el) return; let fl = lsGet('nvMusic.folders', []);
   try{ const ok = new Set(((await NvFiles.folders()).folders || []).map(x => x.tree)); fl = fl.filter(x => ok.has(x.tree)); lsSet('nvMusic.folders', fl) }catch(e){}

@@ -3,6 +3,25 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 57,
+   "date": "2026-10-13",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: CD1 and CD2 in one album, better covers",
+   "items": [
+    "Albums split over CDs (\"Album (CD1)\", \"Album - CD 2\", \"Disc 2\", or folders called CD1 / CD2) are now one album, with Disc 1 / Disc 2 inside. The tile shows \"2 CDs\".",
+    "Your library is fixed by itself when you open Music; favourites, play counts and playlists come along.",
+    "Covers: the picture in the album folder (front, cover or folder.jpg - also in a Covers / Scans / Artwork folder) now wins over the picture inside the songs, which is often a scan of the CD. Pictures like cd1.jpg, back.jpg or inlay.jpg are never used as the cover.",
+    "To get the folder covers for music you already added: Settings → \"Look for changes\" next to your folder.",
+    "Album ⋯ → \"Find a cover online\": pick the right cover from MusicBrainz. Settings → \"Find missing covers online\" does it for all albums without a cover (only when the album name matches exactly)."
+   ]
+  },
+  {
    "id": 56,
    "date": "2026-10-13",
    "where": [
