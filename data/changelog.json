@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 62,
+   "date": "2026-10-13",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: the debug log says Music",
+   "items": [
+    "The debug log now names Music \"Music\" instead of \"Audiobooks\" (they are one app underneath)."
+   ]
+  },
+  {
    "id": 61,
    "date": "2026-10-13",
    "where": [
