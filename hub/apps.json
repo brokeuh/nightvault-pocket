@@ -212,16 +212,26 @@
    "name": "Audiobooks",
    "desc": "Audiobooks that remember where you were, at any speed",
    "color": "#13283d",
-   "soon": true,
-   "files": [],
+   "entry": "audio/?nv=hub&mode=audiobooks",
+   "files": [
+    {
+     "path": "audio/index.html",
+     "size": 66992
+    },
+    {
+     "path": "audio/manifest.webmanifest",
+     "size": 561
+    }
+   ],
+   "keepsData": "Your audiobooks and where you were stay on this device.",
    "provides": [
     "audiobooks"
    ],
    "uses": [],
-   "size": 0,
-   "hash": "e3b0c44298fc",
-   "version": "2026.10.12.1325",
-   "updated": "2026-10-12"
+   "size": 67553,
+   "hash": "2d033b74a35b",
+   "version": "2026.10.13.0701",
+   "updated": "2026-10-13"
   },
   {
    "id": "cinema",
