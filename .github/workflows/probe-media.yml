@@ -63,6 +63,7 @@ jobs:
                   off += sz
           boxes(0, size, 0, 6)
           PY
+          echo "--- Nightvault reader (data/probe/nvparse.js)" >> "$OUT"; node data/probe/nvparse.js media.bin >> "$OUT" 2>&1
           echo "--- ffprobe" >> "$OUT"
           ffprobe -v error -show_format -show_streams -show_chapters -of compact "media.bin" >> "$OUT" 2>&1 || true
           cat $LOG; head -40 "$OUT"
