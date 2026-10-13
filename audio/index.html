@@ -1038,20 +1038,22 @@ async function musicScan(items, folder){
   $('#mstop').onclick = () => { me.stop = true; $('#mstop').disabled = true; $('#mstop').textContent = 'Stopping…' };
   let done = 0, batch = [], added = 0, failed = 0, i = 0; const now = Date.now();
   const flush = async () => { if(!batch.length) return; const b = batch; batch = []; await dbPutMany('tracks', b); TR.push(...b); added += b.length };
-  const onHide = () => { if(document.hidden) flush().catch(() => {}) }; document.addEventListener('visibilitychange', onHide);
+  const onHide = () => { L('scan', document.hidden ? `app went to the background at ${done} of ${fresh.length}` : `app back at ${done} of ${fresh.length}`); if(document.hidden) flush().catch(() => {}) }; document.addEventListener('visibilitychange', onHide);
+  L('scan', `start: ${fresh.length} new songs (${audio.length} in the folder, ${bad} can't play)`, {folder:folder && folder.name, resume:!!lsGet('nvMusic.scan', null)});
   const work = async () => { while(i < fresh.length && !me.stop){ const x = fresh[i++];
       try{ const info = await fileInfo(x.f, true), t = makeTrack(x, info, folder, now);
         if(!folder){ t.fid = uid(); await dbPut('files', {id:t.fid, blob:x.f}) }
         if(info.tags.cover && !ALCOV.has(t.al)){ ALCOV.add(t.al); await dbPut('covers', {id:'al:' + t.al, blob:info.tags.cover}) }
         batch.push(t); if(batch.length >= 20) await flush() }
       catch(err){ failed++; LE('scan', 'could not add ' + x.f.name, err); if(err && err.name === 'QuotaExceededError'){ me.stop = true; toast('The phone is full', 5000) } }
-      done++; const p = $('#msp'), s = $('#mst'); if(p) p.style.width = (100 * done / fresh.length) + '%'; if(s) s.textContent = `${done} of ${fresh.length} · ${x.f.name}` } };
+      done++; if(done % 250 === 0) L('scan', `${done} of ${fresh.length} read, ${added} saved`);
+      const p = $('#msp'), s = $('#mst'); if(p) p.style.width = (100 * done / fresh.length) + '%'; if(s) s.textContent = `${done} of ${fresh.length} · ${x.f.name}` } };
   await Promise.all([work(), work(), work(), work()]); await flush(); document.removeEventListener('visibilitychange', onHide);
   /* albums without a picture in their songs: cover.jpg / folder.jpg / front.jpg next to them */
   musicIndex();
   for(const a of ALB){ if(ALCOV.has(a.key)) continue; const d = a.tracks[0].dir || '', ps = pics[d] || pics[d.replace(/\/[^\/|]*$/, '')] || []; if(!ps.length) continue;
     let p = ps.find(x => /cover|folder|front|album/i.test(x.name)) || ps[0]; try{ if(p.uri) p = await p.blob(); await dbPut('covers', {id:'al:' + a.key, blob:p}); ALCOV.add(a.key) }catch(e){} }
-  SCAN = null; if(folder) scanDone(folder); else awake(false); closeSheet(); drawM();
+  L('scan', `done: ${added} added, ${failed} failed${me.stop ? ', stopped by you' : ''}`); SCAN = null; if(folder) scanDone(folder); else awake(false); closeSheet(); drawM();
   toast(`${plural(added, 'song')} added${removed ? ` · ${removed} gone` : ''}${failed ? ` · ${failed} could not be read` : ''}${bad ? ` · ${bad} can't play on a phone (WMA, APE …)` : ''}${folder && folder.capped ? ' · folder has over 20,000 files: pick a smaller one' : ''}`, 6000) }
 
 /* a song record from the tags; missing tags come from the path: Artist / Album / [CD 1 /] 01 - Title.ext */
@@ -1365,7 +1367,7 @@ async function drawMFolders(){ const el = $('#mfldrs'); if(!el) return; let fl =
 async function musicStart(){
   await musicLoad();
   const sc = lsGet('nvMusic.scan', null);
-  if(sc && NvFiles && Date.now() - sc.at < 7 * 864e5) setTimeout(() => { const n = TR.filter(t => t.tree === sc.tree).length;
+  if(sc && NvFiles && Date.now() - sc.at < 7 * 864e5) setTimeout(() => { L('scan', 'adding was interrupted - offering to continue', sc); const n = TR.filter(t => t.tree === sc.tree).length;
     sheet(`<h3>Adding music was interrupted</h3><p class="muted small">Adding the folder “${esc(sc.name)}” stopped before it was done - probably the phone went to sleep or the app was closed. ${n ? plural(n, 'song') + ' from it are already in your library.' : ''} Continue where it stopped? Songs that are already in are skipped.</p>
       <div style="display:flex;gap:8px"><button class="btn" style="flex:1" id="scno">Not now</button><button class="btn primary" style="flex:2" id="scgo">Continue</button></div>`, true);
     $('#scno').onclick = () => { scanDone(sc); closeSheet() }; $('#scgo').onclick = () => { closeSheet(); musicFolder({tree:sc.tree, name:sc.name}, true) } }, 300);

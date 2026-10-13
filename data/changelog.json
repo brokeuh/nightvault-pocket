@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 56,
+   "date": "2026-10-13",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: debug log shows how far adding songs got",
+   "items": [
+    "With Debug mode on, Music now writes down when adding songs starts, how far it got (every 250 songs), when the app went to the background, and whether it was interrupted."
+   ]
+  },
+  {
    "id": 55,
    "date": "2026-10-13",
    "where": [
