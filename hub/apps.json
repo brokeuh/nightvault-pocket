@@ -242,7 +242,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 81454
+     "size": 81702
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -254,9 +254,9 @@
     "audiobooks"
    ],
    "uses": [],
-   "size": 82015,
-   "hash": "b3f02223a88d",
-   "version": "2026.10.13.0824",
+   "size": 82263,
+   "hash": "ad146c60ad5b",
+   "version": "2026.10.13.0849",
    "updated": "2026-10-13"
   },
   {
