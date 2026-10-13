@@ -1,5 +1,5 @@
-# Debug helper (owner's chats): downloads one media file and writes how it is built inside to tools/probe/<name>.txt
-# (atoms/boxes and where they sit, streams, chapters). Run by hand, or change tools/probe/request.txt (first line = URL or "librivox: <title words>").
+# Debug helper (owner's chats): downloads one media file and writes how it is built inside to data/probe/<name>.txt
+# (atoms/boxes and where they sit, streams, chapters). Run by hand, or change data/probe/request.txt (first line = URL or "librivox: <title words>").
 name: Look inside a media file
 
 on:
@@ -7,7 +7,7 @@ on:
     inputs:
       url: {description: "File URL, or librivox: title words", required: true}
   push:
-    paths: ["tools/probe/request.txt"]
+    paths: ["data/probe/request.txt"]
 
 permissions:
   contents: write
@@ -22,8 +22,8 @@ jobs:
         env:
           REQ: ${{ github.event.inputs.url }}
         run: |
-          set +e; mkdir -p tools/probe; LOG=tools/probe/last-run.txt; : > $LOG
-          [ -z "$REQ" ] && REQ=$(head -1 tools/probe/request.txt)
+          set +e; mkdir -p data/probe; LOG=data/probe/last-run.txt; : > $LOG
+          [ -z "$REQ" ] && REQ=$(head -1 data/probe/request.txt)
           URL="$REQ"; echo "request: $REQ" >> $LOG
           if [[ "$REQ" == librivox:* ]]; then
             T=$(python3 -c "import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1].strip()))" "${REQ#librivox:}")
@@ -42,7 +42,7 @@ jobs:
           echo "url: $URL" >> $LOG
           curl -sL -o media.bin "$URL" 2>>$LOG; ls -la media.bin >> $LOG
           NAME=$(basename "${URL%%\?*}")
-          OUT="tools/probe/${NAME}.txt"
+          OUT="data/probe/${NAME}.txt"
           python3 - media.bin "$URL" > "$OUT" <<'PY'
           import struct, sys
           p, url = sys.argv[1], sys.argv[2]
@@ -70,5 +70,5 @@ jobs:
         if: always()
         run: |
           git config user.name "card-bot"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tools/probe/*.txt; git commit -m "Media probe" || exit 0
+          git add data/probe/*.txt; git commit -m "Media probe" || exit 0
           for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done
