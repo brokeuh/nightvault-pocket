@@ -3,6 +3,17 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 46,
+   "date": "2026-10-13",
+   "where": [
+    "android"
+   ],
+   "title": "Audiobooks in the app list",
+   "items": [
+    "Audiobooks can now be installed from Apps in The Nightvault (the previous build still showed it as \"coming later\")."
+   ]
+  },
+  {
    "id": 45,
    "date": "2026-10-13",
    "where": [

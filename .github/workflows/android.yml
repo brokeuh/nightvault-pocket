@@ -39,6 +39,8 @@ jobs:
           npm install --no-audit --no-fund
           # the app is laid out like the website: The Nightvault (hub/) is the first screen, Pocket test is test/, plus Convert and Control.
           # Everything stays on the same address inside the app, so the collection saved by earlier versions is kept.
+          # always a fresh app list (the 'Update app list' job may not have finished when this build starts)
+          python3 ../hub/build_catalog.py
           mkdir -p www/test www/hub www/tools
           cp ../test/index.html www/test/index.html
           cp ../hub/index.html ../hub/core.js ../hub/apps.json ../hub/manifest.webmanifest www/hub/
