@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 60,
+   "date": "2026-10-13",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: Covers folders win, better online search",
+   "items": [
+    "A picture in a Covers / Scans folder (next to the songs or in the CD folder) now always wins over the CD picture inside the songs - also with a plain name like 01.jpg. Back, cd1, inlay and similar are still skipped.",
+    "Run Settings → \"Look for changes\" once to get these covers for music you already added.",
+    "\"Find a cover online\" also searches with loose words and with numbers as Roman numerals (Thunderdome 06 = Thunderdome VI)."
+   ]
+  },
+  {
    "id": 59,
    "date": "2026-10-13",
    "where": [

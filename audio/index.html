@@ -1086,8 +1086,9 @@ async function folderCovers(pics){
   for(const a of ALB){ if(chosen.has(a.key) || fc.has(a.key)) continue;
     const top = [a.tracks[0].adir || ''], cds = [...new Set(a.tracks.map(t => t.dir || ''))];
     let best = null, br = 0;
-    for(const [dirs, bonus] of [[top, 1], [top.flatMap(subs), 1], [cds, 0], [cds.flatMap(subs), 0]]) for(const d of dirs) for(const p of pics[d] || []){ const r = coverRank(p.name); if(r && r * 2 + bonus > br){ br = r * 2 + bonus; best = p } }
-    if(!best || (br < 4 && ALCOV.has(a.key))) continue;   // only a plain picture without a cover name: keep the one from the songs
+    for(const [dirs, bonus] of [[top, 1], [top.flatMap(subs), 3], [cds, 0], [cds.flatMap(subs), 2]]) for(const d of dirs) for(const p of pics[d] || []){ const r = coverRank(p.name); if(r && r * 2 + bonus > br){ br = r * 2 + bonus; best = p } }
+    if(!best || (br < 4 && ALCOV.has(a.key))) continue;   // a plain picture next to the songs (not in a Covers folder): keep the one from the songs
+    L('cover', `${a.title}: ${best.name} (score ${br})`);
     try{ const b = best.uri ? await best.blob() : best; await dbPut('covers', {id:'al:' + a.key, blob:b}); ALCOV.add(a.key); fc.add(a.key); n++;
       if(ALURL[a.key]){ URL.revokeObjectURL(ALURL[a.key]); delete ALURL[a.key] } }catch(e){ LE('cover', 'could not read ' + best.name, e) } }
   lsSet('nvMusic.fcov', [...fc]); if(n) L('cover', `${n} covers from the folders`); return n }
@@ -1124,9 +1125,19 @@ async function webGet(url, kind){
     if(r.status === 404) throw new Error('not found'); if(r.status >= 400) throw new Error('answered ' + r.status);
     if(kind === 'json') return typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
     const bin = atob(String(r.data).replace(/^data:[^,]*,/, '')), u = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], {type:'image/jpeg'}) } }
-async function mbFind(a){ const t = a.title.replace(/["\\]/g, ''), ar = a.aa.replace(/["\\]/g, '');
-  const q = `release:"${t}"` + (/^various/i.test(ar) || /unknown/i.test(ar) ? '' : ` AND artist:"${ar}"`);
-  return ((await webGet('https://musicbrainz.org/ws/2/release/?fmt=json&limit=12&query=' + encodeURIComponent(q), 'json')).releases || []) }
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI', 'XXII', 'XXIII', 'XXIV', 'XXV', 'XXVI', 'XXVII', 'XXVIII', 'XXIX', 'XXX'];
+const toRoman = s => s.replace(/\b0*(\d{1,2})\b/g, (m, n) => ROMAN[+n] || m);
+const fromRoman = s => s.replace(/\b([IVX]{1,6})\b/g, (m, r) => { const i = ROMAN.indexOf(r.toUpperCase()); return i > 0 ? String(i) : m });
+const titleKey = s => norm(fromRoman(String(s || '').toUpperCase() === String(s || '') ? s : s.replace(/\b[ivx]+\b/gi, x => x.toUpperCase()))).replace(/\b0+(\d)/g, '$1');
+/* MusicBrainz: the exact name first, then loose words, then with 06 ↔ VI; up to 15 different albums */
+async function mbFind(a){ const ar = a.aa.replace(/["\\]/g, ''), various = /^various/i.test(ar) || /unknown/i.test(ar);
+  const words = x => x.replace(/[^\p{L}\p{N}' ]+/gu, ' ').replace(/\s+/g, ' ').trim(), art = various ? '' : ` AND artist:(${words(ar)})`;
+  const tries = [`release:"${a.title.replace(/["\\]/g, '')}"` + (various ? '' : ` AND artist:"${ar}"`), `release:(${words(a.title)})` + art, `release:(${words(toRoman(a.title))})` + art, `release:(${words(fromRoman(a.title))})` + art];
+  const seen = new Set(), out = [];
+  for(const q of [...new Set(tries)]){ if(out.length >= 8) break;
+    try{ for(const x of (await webGet('https://musicbrainz.org/ws/2/release/?fmt=json&limit=12&query=' + encodeURIComponent(q), 'json')).releases || []) if(!seen.has(x.id)){ seen.add(x.id); out.push(x) } }catch(e){ LE('cover', 'MusicBrainz: ' + q, e); if(!out.length && q === tries[tries.length - 1]) throw e }
+    L('cover', `MusicBrainz “${q}”: ${out.length} so far`); await new Promise(r => setTimeout(r, 1000)) }
+  const want = titleKey(a.title); return out.sort((x, y) => (titleKey(y.title) === want) - (titleKey(x.title) === want)).slice(0, 15) }
 async function caaBlob(id){ return webGet(`https://coverartarchive.org/release/${id}/front-500`, 'blob') }
 async function saveCover(a, blob){ await dbPut('covers', {id:'al:' + a.key, blob}); ALCOV.add(a.key); markChosen(a.key); if(ALURL[a.key]){ URL.revokeObjectURL(ALURL[a.key]); delete ALURL[a.key] } mArtKey = null }
 async function coverOnline(a){
@@ -1141,10 +1152,10 @@ async function coverOnline(a){
 async function coversOnlineAll(){
   const todo = ALB.filter(a => !ALCOV.has(a.key) && a.title !== 'Unknown album'); if(!todo.length){ toast('Every album has a cover already'); return }
   const me = {stop:false}; let i = 0, got = 0;
-  sheet(`<h3>Finding covers online…</h3><div class="prog"><i id="cop"></i></div><div class="muted small" id="cot" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">0 of ${todo.length}</div><p class="muted small">One album per second (MusicBrainz asks for that). Only albums with exactly the same name get a cover - pick the others by hand (album ⋯ → Find a cover online).</p><button class="btn" id="costop" style="width:100%">Stop</button>`, true);
+  sheet(`<h3>Finding covers online…</h3><div class="prog"><i id="cop"></i></div><div class="muted small" id="cot" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">0 of ${todo.length}</div><p class="muted small">A few seconds per album (MusicBrainz asks to go slowly). Only albums with exactly the same name get a cover - pick the others by hand (album ⋯ → Find a cover online).</p><button class="btn" id="costop" style="width:100%">Stop</button>`, true);
   $('#costop').onclick = () => { me.stop = true }; awake(true);
   for(const a of todo){ if(me.stop) break; i++; $('#cot').textContent = `${i} of ${todo.length} · ${a.title} · ${got} found`; $('#cop').style.width = (100 * i / todo.length) + '%';
-    try{ const want = norm(a.title), va = /^various/i.test(a.aa), rel = (await mbFind(a)).filter(x => norm(x.title) === want && (va || norm(((x['artist-credit'] || [])[0] || {}).name) === norm(a.aa)));
+    try{ const want = titleKey(a.title), va = /^various/i.test(a.aa), rel = (await mbFind(a)).filter(x => titleKey(x.title) === want && (va || norm(((x['artist-credit'] || [])[0] || {}).name) === norm(a.aa)));
       for(const x of rel.slice(0, 3)){ try{ await saveCover(a, await caaBlob(x.id)); got++; break }catch(e){} } }catch(e){ LE('cover', 'online: ' + a.title, e) }
     await new Promise(r => setTimeout(r, 1100)) }
   awake(false); closeSheet(); drawM(); toast(`${got} of ${todo.length} covers found online`, 5000) }
@@ -1200,7 +1211,7 @@ async function discCoverUrl(a, d){ const k = 'cd:' + a.key + '#' + d; if(CDURL[k
       const p = [...own, ...top].find(x => re.test(cleanName(x.name))) || (ts[0].dir !== ts[0].adir ? own.find(x => /^(cd|disc|disk)/i.test(x.name)) : null);
       if(p) blob = await new LinkFile({uri:p.uri, name:p.name, size:p.size, type:''}).blob() }
     if(!blob){ const t = ts[0], f = t.uri ? new LinkFile({uri:t.uri, name:t.name, size:t.size, type:t.type}) : await dbGet('files', t.fid).then(x => x && x.blob && new File([x.blob], t.name, {type:t.type}));
-      if(f) blob = (await fileInfo(f, true)).tags.cover || null }
+      if(f) blob = (await fileInfo(f, true)).tags.cover || null; L('cover', `CD ${d} of ${a.title}: ${blob ? 'picture from the song ' + t.name : 'no picture in ' + t.name}`) }
     if(blob){ await dbPut('covers', {id:k, blob}); CDCOV.add(k); return CDURL[k] = URL.createObjectURL(blob) } }catch(e){ LE('cover', 'cd picture ' + a.title + ' ' + d, e) }
   return null }
 async function fillDiscCovers(a){ for(const el of document.querySelectorAll('#mbody [data-cdc]')){ const u = await discCoverUrl(a, +el.dataset.cdc); if(u && el.isConnected) el.innerHTML = `<img src="${u}" alt="">` } }
