@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 50,
+   "date": "2026-10-13",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub",
+    "audiobooks"
+   ],
+   "title": "Debug mode",
+   "items": [
+    "The Nightvault → bottom → \"Debug mode\" (or Audiobooks → Settings): the apps write down everything that happens.",
+    "A bug button then shows the log: \"Copy for Claude\" to paste it into a chat, \"Share\", or \"Send to GitHub\" - pick which app it is about and that app's chat can read it.",
+    "Android: the app's own Android messages can be added to the log too."
+   ]
+  },
+  {
    "id": 49,
    "date": "2026-10-13",
    "where": [

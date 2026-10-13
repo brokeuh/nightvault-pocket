@@ -8,6 +8,7 @@
 <link rel="icon" href="../favicon.svg">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<script src="../hub/nvlog.js"></script>
 <!-- Nightvault Audio (test): one app for Audiobooks (?mode=audiobooks, built) and Music (?mode=music, later), one shared player.
      Books are copied into the app (IndexedDB), so they play without internet. Plan: plans/audiobooks.md and plans/music.md (nightvault-src). -->
 <style>
@@ -171,6 +172,7 @@ function clock(s){ s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s /
 function hm(s){ s = Math.max(0, Math.round(s || 0)); const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h} h ${m} m` : `${Math.max(m, s > 0 ? 1 : 0)} m` }
 const speedTxt = v => (Math.round(v * 100) / 100).toString().replace(/\.?0+$/, '') + '×';
 let toastT = 0; function toast(m, ms){ const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms || 2600) }
+const L = (a, t, d) => { try{ window.NVLOG && NVLOG.log(a, t, d) }catch(e){} }, LE = (a, t, d) => { try{ window.NVLOG && NVLOG.error(a, t, d) }catch(e){} };
 const lsGet = (k, d) => { try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v) }catch(e){ return d } };
 const lsSet = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)) }catch(e){} };
 const S = Object.assign({back:15, fwd:30, smart:true, speed:1, sort:'recent', filter:'all'}, lsGet('nvAudio.settings', {}));
@@ -328,7 +330,7 @@ async function linkRead(f, a, z){
   if(LDIAG.fetchBad < 3 || LDIAG.fetchOK) try{ const r = await fetch(f.url, {headers:{Range:`bytes=${a}-${z - 1}`}, cache:'no-store'});
       if(r.ok){ const b = await r.arrayBuffer(); if(b.byteLength === z - a || (r.status === 206 && b.byteLength > 0)){ LDIAG.fetchOK++; return b } LDIAG.last = `address gave ${b.byteLength} bytes (status ${r.status}) for ${z - a}` }
       else LDIAG.last = 'address answered ' + r.status }catch(e){ LDIAG.last = 'address failed: ' + (e.message || e) }
-  LDIAG.fetchBad++;
+  LDIAG.fetchBad++; LE('read', 'address read failed, using the plugin', {file:f.name, a, z, why:LDIAG.last});
   const o = await NvFiles.read({uri:f.uri, offset:a, length:z - a}); LDIAG.plugin++;
   const bin = atob(o.data || ''), u8 = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return u8.buffer }
 
@@ -355,9 +357,10 @@ function probeDur(blob, type){ return new Promise(ok => { const a = new Audio(),
 
 async function fileInfo(f){
   const e = ext(f.name); let info = null;
-  try{ if(['m4a', 'm4b', 'mp4', 'aac'].includes(e)) info = await mp4Info(f); else if(e === 'mp3') info = await mp3Info(f) }catch(err){ info = null }
+  try{ if(['m4a', 'm4b', 'mp4', 'aac'].includes(e)) info = await mp4Info(f); else if(e === 'mp3') info = await mp3Info(f) }catch(err){ info = null; LE('tags', 'could not read ' + f.name, err) }
   info = info || {tags:{}, chapters:[], dur:0};
   if(!info.dur) info.dur = await probeDur(f, MIME[e]);
+  L('tags', f.name, {size:f.size, dur:info.dur, chapters:info.chapters.length, title:info.tags.title, album:info.tags.album, artist:info.tags.artist, cover:!!info.tags.cover});
   return info }
 
 /* ---------- library in memory ---------- */
@@ -488,7 +491,8 @@ async function linkFolder(f){
   try{ f = f || await NvFiles.pickFolder() }catch(e){ if(!/cancel|No folder/i.test(e.message || '')) toast(e.message || String(e)); return }
   const fl = lsGet('nvAudio.folders', []); if(!fl.some(x => x.tree === f.tree)){ fl.push({tree:f.tree, name:f.name}); lsSet('nvAudio.folders', fl) }
   sheet(`<h3>Looking in “${esc(f.name)}”…</h3><div class="prog"><i style="width:30%"></i></div>`, true);
-  let list; try{ list = (await NvFiles.list({tree:f.tree})).files || [] }catch(e){ closeSheet(); toast(e.message || String(e), 5000); return }
+  let list; try{ list = (await NvFiles.list({tree:f.tree})).files || [] }catch(e){ LE('folder', 'list failed', e); closeSheet(); toast(e.message || String(e), 5000); return }
+  L('folder', `“${f.name}”: ${list.length} files`, list.slice(0, 40).map(x => `${x.path} ${x.size} ${x.mime}`));
   const have = new Set(); for(const b of BOOKS) for(const p of b.parts) if(p.uri) have.add(p.uri);
   const root = f.name, files = list.filter(x => !have.has(x.uri)).map(x => new LinkFile({uri:x.uri, name:x.name, size:x.size, type:x.mime || MIME[ext(x.name)] || '', webkitRelativePath:x.path, rootLevel:x.path.split('/').length === 2}));
   if(!files.some(x => AUDIO_RE.test(x.name))){ closeSheet(); toast(list.length ? `No new audiobooks in “${root}”` : `“${root}” is empty`, 4000); return }
@@ -521,13 +525,15 @@ async function loadPart(i, off, play){
   const p = cur.parts[i]; if(!p) return;
   if(curPart !== i || !au.src){
     if(curUrl) URL.revokeObjectURL(curUrl); curUrl = null;
+    L('player', 'open part ' + (i + 1) + ': ' + p.name, {linked:!!p.uri, type:p.type, size:p.size, dur:p.dur, at:off});
     if(p.uri){ au.src = linkUrl(p.uri, p.name) }                  // played straight from the folder on the phone
     else { const rec = await dbGet('files', p.fid);
       if(!rec || !rec.blob){ toast('This part of the book is missing - add the book again'); return }
       curUrl = URL.createObjectURL(rec.blob.type ? rec.blob : new Blob([rec.blob], {type:p.type})); au.src = curUrl }
     curPart = i;
-    const loaded = await new Promise(ok => { let t = 0; const done = v => { clearTimeout(t); au.removeEventListener('loadedmetadata', yes); au.removeEventListener('error', no); ok(v) }, yes = () => done(true), no = () => done(false);
+    const t0 = Date.now(); const loaded = await new Promise(ok => { let t = 0; const done = v => { clearTimeout(t); au.removeEventListener('loadedmetadata', yes); au.removeEventListener('error', no); ok(v) }, yes = () => done(true), no = () => done(false);
       au.addEventListener('loadedmetadata', yes); au.addEventListener('error', no); t = setTimeout(() => done(false), p.uri ? 20000 : 30000) });
+    L('player', loaded ? `ready in ${Date.now() - t0} ms, length ${au.duration}` : 'did not get ready', {error:au.error && {code:au.error.code, msg:au.error.message}, network:au.networkState, ready:au.readyState});
     if(!loaded && p.uri && !au.error){ curPart = -1; au.removeAttribute('src'); au.load();
       sheet(`<h3>The book does not start</h3><p class="muted small">The file “${esc(p.name)}” could not be opened from the folder. Tap <b>Check the file</b> and send a screenshot to Claude.</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Close</button><button class="btn primary" style="flex:1" id="ck1">Check the file</button></div>`);
       $('#ck1').onclick = () => checkFile(p); return }
@@ -547,7 +553,7 @@ async function openBook(id, play){
   if(!cur || cur.id !== b.id){
     if(cur){ au.pause(); saveState(cur.id, true) }
     cur = b; curPart = -1; au.removeAttribute('src');
-    lsSet('nvAudio.last', b.id);
+    lsSet('nvAudio.last', b.id); L('book', 'open ' + b.title, {parts:b.parts.map(p => ({name:p.name, linked:!!p.uri, dur:p.dur, size:p.size})), chapters:(b.chapters || []).length, dur:b.dur});
     const s = st(b.id), {i, off} = partAt(b, s.finished ? 0 : s.pos || 0);
     if(s.finished){ s.finished = false; s.pos = 0 }
     await loadPart(i, off, false); artKey = null }
@@ -568,10 +574,12 @@ async function togglePlay(force){
     if(curPart < 0){ const {i, off} = partAt(cur, st(cur.id).pos || 0); await loadPart(i, off, false) }
     au.playbackRate = rate();
     if(curPart < 0) return;
-    await au.play().catch(e => { if(e && e.name !== 'AbortError') toast('Could not start playing: ' + (e.message || e)) });
+    L('player', 'play', {part:curPart, t:au.currentTime, ready:au.readyState, network:au.networkState});
+    await au.play().catch(e => { LE('player', 'play() failed', e); if(e && e.name !== 'AbortError') toast('Could not start playing: ' + (e.message || e)) });
   } else au.pause();
 }
 function finishBook(){ const s = st(cur.id); s.finished = true; s.pos = cur.dur; saveState(cur.id, true); au.pause(); drawPlayer(); toast('Finished: ' + cur.title) }
+for(const ev of ['loadstart', 'loadedmetadata', 'canplay', 'playing', 'waiting', 'stalled', 'suspend', 'pause', 'ended', 'error', 'abort', 'emptied']) au.addEventListener(ev, () => L('audio', ev, {t:Math.round(au.currentTime * 10) / 10, ready:au.readyState, network:au.networkState, err:au.error ? au.error.code + ' ' + au.error.message : undefined}));
 au.addEventListener('ended', async () => { if(!cur) return; if(curPart + 1 < cur.parts.length) await loadPart(curPart + 1, 0, true); else finishBook() });
 au.addEventListener('play', () => { pausedAt = 0; drawPP(); syncMedia(); sleepTick() });
 au.addEventListener('pause', () => { pausedAt = Date.now(); if(cur){ st(cur.id).pos = gpos(); saveState(cur.id, true) } drawPP(); syncMedia() });
@@ -735,11 +743,13 @@ $('#setbtn').onclick = () => {
     <div class="opt"><label for="sf">Skip forward</label><select id="sf">${[10, 15, 20, 30, 45, 60, 90].map(v => `<option ${v === S.fwd ? 'selected' : ''}>${v}</option>`).join('')}</select><span class="muted small">sec</span></div>
     <div class="opt"><label for="ss">Smart rewind<div class="muted small">After a pause, start a few seconds earlier (5 s after 1 minute, 15 s after 10 minutes, 30 s after an hour).</div></label><input type="checkbox" id="ss" ${S.smart ? 'checked' : ''}></div>
     <div class="opt"><label>Speed for new books</label><b>${speedTxt(S.speed || 1)}</b></div>
+    ${window.NVLOG ? `<div class="opt"><label for="dbg">Debug mode<div class="muted small">Writes down everything that happens, with a bug button to send the log to Claude.</div></label><input type="checkbox" id="dbg" ${NVLOG.on ? 'checked' : ''}></div>` : ''}
     ${NvFiles ? '<h3 style="margin:16px 0 4px">Folders on this phone</h3><div id="fldrs" class="muted small">…</div><button class="btn" id="fadd" style="width:100%;margin-top:8px">Add a folder</button>' : ''}`);
   if(NvFiles){ $('#fadd').onclick = () => { closeSheet(); linkFolder() }; drawFolders() }
   $('#sb').onchange = e => { S.back = +e.target.value; saveS(); $('#backn').textContent = S.back };
   $('#sf').onchange = e => { S.fwd = +e.target.value; saveS(); $('#fwdn').textContent = S.fwd };
-  $('#ss').onchange = e => { S.smart = e.target.checked; saveS() } };
+  $('#ss').onchange = e => { S.smart = e.target.checked; saveS() };
+  if($('#dbg')) $('#dbg').onchange = e => { e.target.checked ? NVLOG.enable() : NVLOG.disable() } };
 
 /* ---------- lock screen / notification controls ----------
    Browser: Media Session.  Android app: the NvMedia plugin (a media notification that also keeps playing with the screen off). */

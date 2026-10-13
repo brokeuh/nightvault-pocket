@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
 import android.util.Base64;
+import android.util.Log;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 
@@ -248,10 +249,13 @@ public class NvFilesPlugin extends Plugin {
             h.put("Content-Length", String.valueOf(len));
             if (partial) h.put("Content-Range", "bytes " + start + "-" + end + "/" + size);
             InputStream body = new Bounded(open(ctx, doc, start), len, null);
+            Log.d("NvFiles", "serve " + name + " " + (range == null ? "(no range)" : range) + " -> " + (partial ? 206 : 200) + " " + start + "-" + end + "/" + size + " " + mime);
             return new WebResourceResponse(mime, null, partial ? 206 : 200, partial ? "Partial Content" : "OK", h, body);
         } catch (SecurityException e) {
+            Log.w("NvFiles", "serve: no permission for " + path, e);
             return new WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", h, new java.io.ByteArrayInputStream("no permission".getBytes()));
         } catch (Exception e) {
+            Log.w("NvFiles", "serve failed for " + path, e);
             return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", h, new java.io.ByteArrayInputStream(("not found: " + e.getMessage()).getBytes()));
         }
     }

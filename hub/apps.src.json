@@ -8,7 +8,8 @@
       "system": true,
       "files": [
         "hub/index.html",
-        "hub/core.js"
+        "hub/core.js",
+        "hub/nvlog.js"
       ],
       "provides": [],
       "uses": []

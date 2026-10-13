@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="core.js"></script>
+<script src="nvlog.js"></script>
 <style>
 :root{--bg:#0b0e13;--pan:#151a22;--pan2:#10141b;--line:#232b36;--text:#e9edf2;--dim:#9aa7b5;--dim2:#8fa0b2;--accent:#5fe0b0;--accentd:#2a8f6a;--amber:#f1dc6b;--red:#ef8a8f}
 *{box-sizing:border-box}
@@ -91,7 +92,7 @@ a.app:active{transform:scale(.985)}a.app:hover{border-color:#33404f}
   <div id="cont"></div>
   <div class="head"><span>APPS</span><button class="lnk" id="arrange">Arrange</button></div>
   <div class="apps" id="tiles"></div>
-  <div class="foot"><button class="lnk" id="wnbtn">What's new</button> · <button class="lnk" id="chkbtn">Check for updates</button><div id="verline" style="margin-top:6px"></div>The Nightvault is a test. Each app also works on its own - nothing changes in them.</div>
+  <div class="foot"><button class="lnk" id="wnbtn">What's new</button> · <button class="lnk" id="chkbtn">Check for updates</button> · <button class="lnk" id="dbgbtn">Debug mode</button><div id="verline" style="margin-top:6px"></div>The Nightvault is a test. Each app also works on its own - nothing changes in them.</div>
 </div>
 
 <!-- the Apps screen: install, update, remove -->
@@ -257,6 +258,8 @@ async function whatsNew(force){
   $('#wnsheet').hidden = false }
 $('#wndone').onclick = () => $('#wnsheet').hidden = true;
 $('#wnbtn').onclick = () => whatsNew(true);
+const dbgLbl = () => $('#dbgbtn').textContent = 'Debug mode: ' + (NVLOG.on ? 'on' : 'off');
+$('#dbgbtn').onclick = () => { NVLOG.on ? NVLOG.disable() : NVLOG.enable(); dbgLbl(); toast(NVLOG.on ? 'Debug mode on: the bug button shows the log, in every Nightvault app' : 'Debug mode off') }; dbgLbl();
 $('#chkbtn').onclick = () => { UPD.skip = 0; set('nvHub.skipBuild', 0); checkUpdates(true) };
 setTimeout(() => checkUpdates(false), 1500);
 document.addEventListener('visibilitychange', () => { if(!document.hidden) checkUpdates(false) });
