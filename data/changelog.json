@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 52,
+   "date": "2026-10-13",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "audiobooks"
+   ],
+   "title": "Audiobooks: chapters of LibriVox books",
+   "items": [
+    "Chapters are now found in M4B files that keep their chapter names spread through the book (LibriVox books, for example).",
+    "For a book added before: ⋯ → \"Read the book info again\"."
+   ]
+  },
+  {
    "id": 51,
    "date": "2026-10-13",
    "where": [

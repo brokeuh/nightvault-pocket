@@ -248,10 +248,13 @@ async function mp4Info(blob){
       const offs = []; let si = 0;
       for(let c = 0; c < nc && si < ns; c++){ let per = 1; for(const [first, spc] of ent) if(c + 1 >= first) per = spc; let o = chunks[c]; for(let k = 0; k < per && si < ns; k++){ offs.push(o); o += sizes[si]; si++ } }
       if(offs.length && ts){ const lo = Math.min(...offs), hi = Math.max(...offs.map((o, i) => o + sizes[i]));
-        if(hi - lo < 4e6){ const b = new Uint8Array(await rd(blob, lo, hi)), dv = new DataView(b.buffer);
-          for(let i = 0; i < offs.length; i++){ const p = offs[i] - lo; if(p + 2 > b.length) continue; const len = dv.getUint16(p); let s = b.slice(p + 2, p + 2 + len);
-            const title = (s[0] === 0xfe && s[1] === 0xff) ? new TextDecoder('utf-16be').decode(s.slice(2)) : utf8.decode(s);
-            info.chapters.push({t:times[i] / ts, title:title.trim()}) } } } }
+        // the chapter names sit together (one read) or spread through the whole book, e.g. LibriVox (one small read each)
+        const near = hi - lo < 4e6, all = near ? new Uint8Array(await rd(blob, lo, hi)) : null;
+        for(let i = 0; i < offs.length && i < 2000; i++){
+          const b = near ? all.subarray(offs[i] - lo, offs[i] - lo + sizes[i]) : new Uint8Array(await rd(blob, offs[i], offs[i] + Math.min(sizes[i], 4096)));
+          if(b.length < 2) continue; const len = (b[0] << 8) | b[1], s = b.slice(2, 2 + len);
+          const title = (s[0] === 0xfe && s[1] === 0xff) ? new TextDecoder('utf-16be').decode(s.slice(2)) : utf8.decode(s);
+          info.chapters.push({t:times[i] / ts, title:title.trim()}) } } }
   }catch(e){ info.chapters = [] }
   // chapters: Nero chpl
   if(!info.chapters.length){ const ch = path(top, 'udta', 'chpl');
