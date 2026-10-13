@@ -1,0 +1,78 @@
+url https://archive.org/download/wild_north_2202_librivox/WildNorthLand_librivox.m4b
+size 232268916
+ftyp at 0 size 24
+moov at 24 size 5103093
+  mvhd at 32 size 108
+  trak at 140 size 5082128
+    tkhd at 148 size 92
+    mdia at 240 size 5082008
+      mdhd at 248 size 32
+      hdlr at 280 size 33
+      minf at 313 size 5081935
+        smhd at 321 size 16
+        dinf at 337 size 36
+          dref at 345 size 28
+        stbl at 373 size 5081875
+          stsd at 381 size 103
+          stts at 484 size 24
+            entries 1
+          stsz at 508 size 4968152
+            entries 0
+          stsc at 4968660 size 616
+            entries 50
+          stco at 4969276 size 112972
+            entries 28239
+    tref at 5082248 size 20
+  trak at 5082268 size 888
+    tkhd at 5082276 size 92
+    mdia at 5082368 size 788
+      mdhd at 5082376 size 32
+      hdlr at 5082408 size 33
+      minf at 5082441 size 715
+        gmhd at 5082449 size 76
+        dinf at 5082525 size 36
+          dref at 5082533 size 28
+        stbl at 5082561 size 595
+          stsd at 5082569 size 75
+          stts at 5082644 size 232
+            entries 27
+          stsz at 5082876 size 128
+            entries 0
+          stsc at 5083004 size 28
+            entries 1
+          stco at 5083032 size 124
+            entries 27
+  udta at 5083156 size 19961
+    meta at 5083164 size 19953
+mdat at 5103117 size 227165799
+--- ffprobe
+stream|index=0|codec_name=aac|codec_long_name=AAC (Advanced Audio Coding)|profile=LC|codec_type=audio|codec_tag_string=mp4a|codec_tag=0x6134706d|sample_fmt=fltp|sample_rate=44100|channels=1|channel_layout=mono|bits_per_sample=0|initial_padding=0|id=0x1|r_frame_rate=0/0|avg_frame_rate=0/0|time_base=1/44100|start_pts=0|start_time=0.000000|duration_ts=1271841792|duration=28839.949932|bit_rate=63013|max_bit_rate=N/A|bits_per_raw_sample=N/A|nb_frames=1242033|nb_read_frames=N/A|nb_read_packets=N/A|extradata_size=2|disposition:default=1|disposition:dub=0|disposition:original=0|disposition:comment=0|disposition:lyrics=0|disposition:karaoke=0|disposition:forced=0|disposition:hearing_impaired=0|disposition:visual_impaired=0|disposition:clean_effects=0|disposition:attached_pic=0|disposition:timed_thumbnails=0|disposition:non_diegetic=0|disposition:captions=0|disposition:descriptions=0|disposition:metadata=0|disposition:dependent=0|disposition:still_image=0|tag:creation_time=2022-02-11T02:28:52.000000Z|tag:language=und|tag:vendor_id=[0][0][0][0]
+stream|index=1|codec_name=bin_data|codec_long_name=binary data|profile=unknown|codec_type=data|codec_tag_string=text|codec_tag=0x74786574|id=0x2|r_frame_rate=0/0|avg_frame_rate=0/0|time_base=1/44100|start_pts=0|start_time=0.000000|duration_ts=1271841792|duration=28839.949932|bit_rate=N/A|max_bit_rate=N/A|bits_per_raw_sample=N/A|nb_frames=27|nb_read_frames=N/A|nb_read_packets=N/A|extradata_size=43|disposition:default=0|disposition:dub=0|disposition:original=0|disposition:comment=0|disposition:lyrics=0|disposition:karaoke=0|disposition:forced=0|disposition:hearing_impaired=0|disposition:visual_impaired=0|disposition:clean_effects=0|disposition:attached_pic=0|disposition:timed_thumbnails=0|disposition:non_diegetic=0|disposition:captions=0|disposition:descriptions=0|disposition:metadata=0|disposition:dependent=0|disposition:still_image=0|tag:creation_time=2022-02-11T02:29:22.000000Z|tag:language=und
+chapter|id=0|time_base=1/44100|start=0|start_time=0.000000|end=32369824|end_time=734.009615|tag:title=01 - Preface and Chapter 1
+chapter|id=1|time_base=1/44100|start=32369824|start_time=734.009615|end=45820132|end_time=1039.005261|tag:title=02 - Chapter 2
+chapter|id=2|time_base=1/44100|start=45820132|start_time=1039.005261|end=73294609|end_time=1662.009274|tag:title=03 - Chapter 3
+chapter|id=3|time_base=1/44100|start=73294609|start_time=1662.009274|end=130007223|end_time=2948.009592|tag:title=04 - Chapter 4
+chapter|id=4|time_base=1/44100|start=130007223|start_time=2948.009592|end=153556729|end_time=3482.011995|tag:title=05 - Chapter 5
+chapter|id=5|time_base=1/44100|start=153556729|start_time=3482.011995|end=172696574|end_time=3916.022086|tag:title=06 - Chapter 6
+chapter|id=6|time_base=1/44100|start=172696574|start_time=3916.022086|end=203081480|end_time=4605.022222|tag:title=07 - Chapter 7
+chapter|id=7|time_base=1/44100|start=203081480|start_time=4605.022222|end=250841062|end_time=5688.005941|tag:title=08 - Chapter 8
+chapter|id=8|time_base=1/44100|start=250841062|start_time=5688.005941|end=298866001|end_time=6777.006825|tag:title=09 - Chapter 9
+chapter|id=9|time_base=1/44100|start=298866001|start_time=6777.006825|end=344333555|end_time=7808.017120|tag:title=10 - Chapter 10
+chapter|id=10|time_base=1/44100|start=344333555|start_time=7808.017120|end=430416972|end_time=9760.022041|tag:title=11 - Chapter 11
+chapter|id=11|time_base=1/44100|start=430416972|start_time=9760.022041|end=502211305|end_time=11388.011451|tag:title=12 - Chapter 12
+chapter|id=12|time_base=1/44100|start=502211305|start_time=11388.011451|end=526025216|end_time=11928.009433|tag:title=13 - Chapter 13
+chapter|id=13|time_base=1/44100|start=526025216|start_time=11928.009433|end=582605302|end_time=13211.004580|tag:title=14 - Chapter 14
+chapter|id=14|time_base=1/44100|start=582605302|start_time=13211.004580|end=630982866|end_time=14308.001497|tag:title=15 - Chapter 15
+chapter|id=15|time_base=1/44100|start=630982866|start_time=14308.001497|end=702954313|end_time=15940.007098|tag:title=16 - Chapter 16
+chapter|id=16|time_base=1/44100|start=702954313|start_time=15940.007098|end=762048174|end_time=17280.003946|tag:title=17 - Chapter 17
+chapter|id=17|time_base=1/44100|start=762048174|start_time=17280.003946|end=832917461|end_time=18887.017256|tag:title=18 - Chapter 18
+chapter|id=18|time_base=1/44100|start=832917461|start_time=18887.017256|end=873048033|end_time=19797.007551|tag:title=19 - Chapter 19
+chapter|id=19|time_base=1/44100|start=873048033|start_time=19797.007551|end=912209206|end_time=20685.016009|tag:title=20 - Chapter 20
+chapter|id=20|time_base=1/44100|start=912209206|start_time=20685.016009|end=970023863|end_time=21996.005964|tag:title=21 - Chapter 21
+chapter|id=21|time_base=1/44100|start=970023863|start_time=21996.005964|end=1029735451|end_time=23350.010227|tag:title=22 - Chapter 22
+chapter|id=22|time_base=1/44100|start=1029735451|start_time=23350.010227|end=1086007127|end_time=24626.011950|tag:title=23 - Chapter 23
+chapter|id=23|time_base=1/44100|start=1086007127|start_time=24626.011950|end=1124726502|end_time=25504.002313|tag:title=24 - Chapter 24
+chapter|id=24|time_base=1/44100|start=1124726502|start_time=25504.002313|end=1148232257|end_time=26037.012630|tag:title=25 - Chapter 25
+chapter|id=25|time_base=1/44100|start=1148232257|start_time=26037.012630|end=1210501462|end_time=27449.012744|tag:title=26 - Chapter 26
+chapter|id=26|time_base=1/44100|start=1210501462|start_time=27449.012744|end=1271841792|end_time=28839.949932|tag:title=27 - Chapter 27
+format|filename=media.bin|nb_streams=2|nb_programs=0|format_name=mov,mp4,m4a,3gp,3g2,mj2|format_long_name=QuickTime / MOV|start_time=0.000000|duration=28839.949932|size=232268916|bit_rate=64429|probe_score=100|tag:major_brand=M4A|tag:minor_version=0|tag:compatible_brands=3gp5isom|tag:creation_time=2022-02-11T02:28:52.000000Z|tag:media_type=2|tag:encoder=Chapter and Verse V 1.5|tag:title=WildNorthLand_librivox|tag:artist=William Francis Butler|tag:album=The Wild North Land, The Story of a Winter Journey with Dogs across Northern North America|tag:comment=https://archive.org/details/wild_north_2202_librivox|tag:track=1|tag:Encoding Params=vers
