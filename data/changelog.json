@@ -3,6 +3,28 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 53,
+   "date": "2026-10-13",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music",
+    "hub"
+   ],
+   "title": "Music: first version",
+   "items": [
+    "New app in The Nightvault: Music. Open it from its tile (Apps → install it first if you don't see the tile).",
+    "Add → \"Use a folder on this phone\": pick your music folder. Nothing is copied - the songs play from there. (On the website the songs are copied into the app.)",
+    "Albums with big covers, Artists, Songs, Playlists and search. Albums, artists and covers come from the song tags, or from the folder names (Artist / Album / 01 Song) when tags are missing.",
+    "Now playing: big cover, shuffle, repeat (all or one song), queue, favourite heart, sleep timer. Swipe the cover to go to the next or previous song.",
+    "Your own playlists, plus Favourites, Most played, Recently played and Recently added.",
+    "Remembers what was playing and where. Controls on the lock screen, in the notification and on Bluetooth headphones.",
+    "Plays MP3, FLAC, M4A/AAC, OGG/Opus and WAV. WMA and APE files can't play on a phone - the app tells you how many it skipped."
+   ]
+  },
+  {
    "id": 52,
    "date": "2026-10-13",
    "where": [

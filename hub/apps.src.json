@@ -127,8 +127,12 @@
       "name": "Music",
       "desc": "Your music with big covers, albums and playlists",
       "color": "#2e1a3a",
-      "soon": true,
-      "files": [],
+      "entry": "audio/?nv=hub&mode=music",
+      "files": [
+        "audio/index.html",
+        "audio/manifest.webmanifest"
+      ],
+      "keepsData": "Your songs, favourites, play counts and playlists stay on this device.",
       "provides": [
         "music"
       ],
