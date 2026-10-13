@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 49,
+   "date": "2026-10-13",
+   "where": [
+    "android"
+   ],
+   "apps": [
+    "audiobooks"
+   ],
+   "title": "Audiobooks: books from a folder, second try",
+   "items": [
+    "Books from a folder on the phone are read in a safer way, with a second way to read them when the first one does not work.",
+    "If a book still does not start, a message appears with \"Check the file\": it shows what goes wrong - send a screenshot of it.",
+    "About this book → \"Read the book info again\" fills in the title, author, length and chapters of a book that was added without them."
+   ]
+  },
+  {
    "id": 48,
    "date": "2026-10-13",
    "where": [

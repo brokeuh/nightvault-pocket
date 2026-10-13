@@ -319,8 +319,34 @@ const b64url = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').re
 const linkUrl = (uri, name) => '/_nvfile_/' + b64url(uri) + '/' + encodeURIComponent(name);
 /* looks like a File to the tag readers: slice(a, b).arrayBuffer() reads only those bytes */
 class LinkFile{ constructor(o){ Object.assign(this, o); this.url = linkUrl(o.uri, o.name) }
-  slice(a, z){ const u = this.url; return {arrayBuffer:async () => { if(z <= a) return new ArrayBuffer(0); const r = await fetch(u, {headers:{Range:`bytes=${a}-${z - 1}`}, cache:'no-store'}); if(!r.ok) throw new Error('Cannot read ' + u); return r.arrayBuffer() }} }
+  slice(a, z){ const me = this; return {arrayBuffer:async () => { if(z <= a) return new ArrayBuffer(0); return linkRead(me, a, z) }} }
   async blob(){ return (await fetch(this.url, {cache:'no-store'})).blob() } }
+
+/* read bytes a..z of a file in a folder: through the /_nvfile_/ address, else straight from the plugin (base64) */
+const LDIAG = {fetchOK:0, fetchBad:0, plugin:0, last:''};
+async function linkRead(f, a, z){
+  if(LDIAG.fetchBad < 3 || LDIAG.fetchOK) try{ const r = await fetch(f.url, {headers:{Range:`bytes=${a}-${z - 1}`}, cache:'no-store'});
+      if(r.ok){ const b = await r.arrayBuffer(); if(b.byteLength === z - a || (r.status === 206 && b.byteLength > 0)){ LDIAG.fetchOK++; return b } LDIAG.last = `address gave ${b.byteLength} bytes (status ${r.status}) for ${z - a}` }
+      else LDIAG.last = 'address answered ' + r.status }catch(e){ LDIAG.last = 'address failed: ' + (e.message || e) }
+  LDIAG.fetchBad++;
+  const o = await NvFiles.read({uri:f.uri, offset:a, length:z - a}); LDIAG.plugin++;
+  const bin = atob(o.data || ''), u8 = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return u8.buffer }
+
+/* "Check the file": what works and what not, to send to the developer */
+async function checkFile(p){
+  sheet('<h3>Checking the file…</h3>', true); const out = [];
+  out.push('file: ' + p.name + ' · ' + mb(p.size || 0)); out.push('app: ' + (navigator.userAgent.match(/Chrome\/[\d.]+/) || [''])[0]);
+  try{ const r = await fetch(linkUrl(p.uri, p.name), {headers:{Range:'bytes=0-15'}, cache:'no-store'}); const b = new Uint8Array(await r.arrayBuffer());
+    out.push(`address: status ${r.status}, ${b.length} bytes, type ${r.headers.get('content-type')}, range ${r.headers.get('content-range')}, starts "${latin(b, 4, 8)}"`) }catch(e){ out.push('address: FAILED ' + (e.message || e)) }
+  try{ const o = await NvFiles.probe({uri:p.uri}); out.push('android: ' + JSON.stringify(o)) }catch(e){ out.push('android: FAILED ' + (e.message || e)) }
+  try{ const o = await NvFiles.read({uri:p.uri, offset:0, length:16}); out.push('direct read: ' + (o.data ? 'ok' : 'empty') + ', size ' + o.size) }catch(e){ out.push('direct read: FAILED ' + (e.message || e)) }
+  out.push(await new Promise(ok => { const a = new Audio(); let done = false; const fin = m => { if(done) return; done = true; a.removeAttribute('src'); a.load(); ok('player: ' + m) };
+    a.onloadedmetadata = () => fin('ok, ' + clock(a.duration)); a.onerror = () => fin('error ' + (a.error && a.error.code) + ' ' + ((a.error && a.error.message) || '')); setTimeout(() => fin('no answer after 12 s (network state ' + a.networkState + ')'), 12000); a.src = linkUrl(p.uri, p.name) }));
+  out.push('reads: ' + JSON.stringify(LDIAG));
+  const txt = out.join('\n');
+  sheet(`<h3>File check</h3><pre style="white-space:pre-wrap;font-size:11.5px;background:var(--pan2);padding:10px;border-radius:10px;max-height:50vh;overflow:auto">${esc(txt)}</pre>
+    <div style="display:flex;gap:8px"><button class="btn" style="flex:1" id="ckcopy">Copy text</button><button class="btn primary" style="flex:1" onclick="closeSheet()">OK</button></div><p class="muted small">Send a screenshot of this to Claude.</p>`);
+  $('#ckcopy').onclick = () => { try{ navigator.clipboard.writeText(txt); toast('Copied') }catch(e){} } }
 
 /* length of anything else: ask the browser */
 function probeDur(blob, type){ return new Promise(ok => { const a = new Audio(), u = blob.url || URL.createObjectURL(type ? new Blob([blob], {type}) : blob); let done = false;
@@ -500,9 +526,16 @@ async function loadPart(i, off, play){
       if(!rec || !rec.blob){ toast('This part of the book is missing - add the book again'); return }
       curUrl = URL.createObjectURL(rec.blob.type ? rec.blob : new Blob([rec.blob], {type:p.type})); au.src = curUrl }
     curPart = i;
-    await new Promise(ok => { const done = () => { au.removeEventListener('loadedmetadata', done); au.removeEventListener('error', done); ok() }; au.addEventListener('loadedmetadata', done); au.addEventListener('error', done) });
+    const loaded = await new Promise(ok => { let t = 0; const done = v => { clearTimeout(t); au.removeEventListener('loadedmetadata', yes); au.removeEventListener('error', no); ok(v) }, yes = () => done(true), no = () => done(false);
+      au.addEventListener('loadedmetadata', yes); au.addEventListener('error', no); t = setTimeout(() => done(false), p.uri ? 20000 : 30000) });
+    if(!loaded && p.uri && !au.error){ curPart = -1; au.removeAttribute('src'); au.load();
+      sheet(`<h3>The book does not start</h3><p class="muted small">The file “${esc(p.name)}” could not be opened from the folder. Tap <b>Check the file</b> and send a screenshot to Claude.</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Close</button><button class="btn primary" style="flex:1" id="ck1">Check the file</button></div>`);
+      $('#ck1').onclick = () => checkFile(p); return }
     if(au.error && p.uri){ const r = await fetch(linkUrl(p.uri, p.name), {headers:{Range:'bytes=0-0'}}).catch(() => null);
       if(!r || !r.ok){ toast(`“${p.name}” is not in the folder any more - was it moved or deleted? Add the book again.`, 6000); curPart = -1; return } }
+    if(au.error && p.uri){ curPart = -1;
+      sheet(`<h3>The book does not play</h3><p class="muted small">The player could not use “${esc(p.name)}” (error ${au.error.code}). Tap <b>Check the file</b> and send a screenshot to Claude.</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Close</button><button class="btn primary" style="flex:1" id="ck2">Check the file</button></div>`);
+      $('#ck2').onclick = () => checkFile(p); return }
     if(au.error){ toast(`This phone cannot play ${ext(p.name).toUpperCase()} files${p.type === 'audio/mp4' ? ' (try MP3)' : ''}`, 5000); return }
     if(isFinite(au.duration) && au.duration > 0 && Math.abs((p.dur || 0) - au.duration) > 1){ p.dur = au.duration; cur.dur = cur.parts.reduce((a, x) => a + (x.dur || 0), 0); dbPut('books', cur).catch(() => {}) } }
   try{ au.currentTime = off }catch(e){}
@@ -534,7 +567,8 @@ async function togglePlay(force){
     if(S.smart && pausedAt){ const away = (Date.now() - pausedAt) / 1000; const back = away > 3600 ? 30 : away > 600 ? 15 : away > 60 ? 5 : 0; if(back) await seekTo(gpos() - back, false) }
     if(curPart < 0){ const {i, off} = partAt(cur, st(cur.id).pos || 0); await loadPart(i, off, false) }
     au.playbackRate = rate();
-    await au.play().catch(e => toast('Could not start playing: ' + (e.message || e)));
+    if(curPart < 0) return;
+    await au.play().catch(e => { if(e && e.name !== 'AbortError') toast('Could not start playing: ' + (e.message || e)) });
   } else au.pause();
 }
 function finishBook(){ const s = st(cur.id); s.finished = true; s.pos = cur.dur; saveState(cur.id, true); au.pause(); drawPlayer(); toast('Finished: ' + cur.title) }
@@ -657,18 +691,42 @@ function bookSheet(id){
       <button class="btn" id="bcover">Change the cover picture</button>
       <button class="btn" id="bfin">${s.finished ? 'Mark as not finished' : 'Mark as finished'}</button>
       <button class="btn" id="bstart">Start again from the beginning</button>
+      <button class="btn" id="bread">Read the book info again</button>
+      ${b.linked ? '<button class="btn" id="bcheck">Check the file</button>' : ''}
       <button class="btn danger" id="bdel">${b.linked ? 'Remove from the shelf' : 'Remove from this device'}</button></div>
     <input type="file" id="bcf" accept="image/*" hidden>`);
   $('#bsave').onclick = async () => { b.title = $('#bt').value.trim() || b.title; b.author = $('#ba').value.trim(); b.narrator = $('#bn').value.trim(); await dbPut('books', b); closeSheet(); if(cur && cur.id === b.id) drawPlayer(true); $('#mini').dataset.id = ''; drawMini(); toast('Saved') };
   $('#bcover').onclick = () => $('#bcf').click();
   $('#bcf').onchange = async e => { const f = e.target.files[0]; if(!f) return; await dbPut('covers', {id:b.id, blob:f}); b.hasCover = true; await dbPut('books', b); if(COVERURL[b.id]){ URL.revokeObjectURL(COVERURL[b.id]); delete COVERURL[b.id] } artKey = null; $('#mini').dataset.id = ''; closeSheet(); if(cur && cur.id === b.id){ drawPlayer(true); syncMedia() } toast('New cover saved') };
   $('#bfin').onclick = async () => { s.finished = !s.finished; if(!s.finished && s.pos >= b.dur - 1) s.pos = 0; if(s.finished && cur && cur.id === b.id) au.pause(); await saveState(b.id, true); closeSheet(); drawPlayer(); toast(s.finished ? 'Marked as finished' : 'Marked as not finished') };
+  if($('#bcheck')) $('#bcheck').onclick = () => checkFile(b.parts[0]);
+  $('#bread').onclick = () => rereadBook(b);
   $('#bstart').onclick = async () => { s.finished = false; s.pos = 0; await saveState(b.id, true); closeSheet(); if(cur && cur.id === b.id) seekTo(0); toast('Back at the start') };
   $('#bdel').onclick = () => { sheet(`<h3>Remove "${esc(b.title)}"?</h3><p class="muted small">${b.linked ? `The book leaves the shelf, with its place and bookmarks. The files stay in the folder “${esc(b.linked.name)}”.` : `The copy on this device (${mb(b.size)}) and its place and bookmarks are removed. Your original files are not touched.`}</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Keep it</button><button class="btn primary" style="flex:1;background:#7a2a2f;border-color:#a3454b" id="bdel2">Remove</button></div>`);
     $('#bdel2').onclick = async () => { if(cur && cur.id === b.id){ au.pause(); au.removeAttribute('src'); au.load(); cur = null; curPart = -1; mediaStop(); showPlayer(false) }
       for(const p of b.parts) if(p.fid) await dbDel('files', p.fid).catch(() => {}); await dbDel('covers', b.id).catch(() => {}); await dbDel('state', b.id).catch(() => {}); await dbDel('books', b.id);
       BOOKS = BOOKS.filter(x => x.id !== b.id); delete STATE[b.id]; closeSheet(); drawLib(); drawMini(); toast('Removed') } };
 }
+
+/* read title, author, length, chapters and cover from the files again (e.g. after a fix) */
+async function rereadBook(b){
+  sheet('<h3>Reading the book info…</h3><div class="prog"><i id="rr"></i></div>', true);
+  try{ const items = [];
+    for(let i = 0; i < b.parts.length; i++){ const p = b.parts[i];
+      const f = p.uri ? new LinkFile({uri:p.uri, name:p.name, size:p.size, type:p.type}) : await dbGet('files', p.fid).then(r => !r || !r.blob ? null : r.blob instanceof File ? r.blob : new File([r.blob], p.name, {type:p.type}));
+      if(!f) throw new Error('part ' + (i + 1) + ' is missing');
+      items.push({p, info:await fileInfo(f)}); $('#rr').style.width = (100 * (i + 1) / b.parts.length) + '%' }
+    const t = items[0].info.tags; let t0 = 0; const chapters = [];
+    for(const it of items){ const d = it.info.dur || it.p.dur || 0; it.p.dur = d;
+      if(it.info.chapters.length) for(const c of it.info.chapters) chapters.push({t:t0 + c.t, title:c.title || `Chapter ${chapters.length + 1}`});
+      else if(items.length > 1) chapters.push({t:t0, title:it.p.title}); t0 += d }
+    b.chapters = chapters; b.dur = t0;
+    if(t.album || t.title) b.title = (items.length > 1 ? t.album : t.album || t.title) || b.title;
+    b.author = t.albumartist || t.artist || b.author; if(t.narrator || t.composer) b.narrator = t.narrator || t.composer;
+    const cover = items.map(i => i.info.tags.cover).find(Boolean); if(cover){ await dbPut('covers', {id:b.id, blob:cover}); b.hasCover = true; if(COVERURL[b.id]){ URL.revokeObjectURL(COVERURL[b.id]); delete COVERURL[b.id] } }
+    await dbPut('books', b); closeSheet(); $('#mini').dataset.id = ''; artKey = null; if(cur && cur.id === b.id){ curPart = -1; drawPlayer(true) } drawLib();
+    toast(`${b.title}: ${hm(b.dur)}, ${b.chapters.length} chapters`, 4000)
+  }catch(e){ closeSheet(); toast('Could not read the book: ' + (e.message || e), 5000) } }
 
 /* settings */
 $('#setbtn').onclick = () => {

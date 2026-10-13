@@ -135,6 +135,70 @@ public class NvFilesPlugin extends Plugin {
         call.resolve();
     }
 
+    /** a piece of a file, as base64 (for reading tags when the /_nvfile_/ address does not work) */
+    @PluginMethod
+    public void read(PluginCall call) {
+        String u = call.getString("uri");
+        long off = call.getLong("offset", 0L);
+        int len = (int) Math.min(call.getLong("length", 65536L), 16L * 1024 * 1024);
+        new Thread(() -> {
+            try (InputStream in = open(getContext(), Uri.parse(u), off)) {
+                byte[] b = new byte[Math.max(0, len)];
+                int n = 0, r;
+                while (n < len && (r = in.read(b, n, len - n)) > 0) n += r;
+                JSObject o = new JSObject();
+                o.put("data", Base64.encodeToString(b, 0, n, Base64.NO_WRAP));
+                o.put("size", sizeOf(getContext(), Uri.parse(u)));
+                call.resolve(o);
+            } catch (Exception e) { call.reject("Cannot read the file: " + e); }
+        }).start();
+    }
+
+    /** what Android says about one file (for the "Check the file" screen) */
+    @PluginMethod
+    public void probe(PluginCall call) {
+        Uri u = Uri.parse(call.getString("uri", ""));
+        JSObject o = new JSObject();
+        o.put("authority", u.getAuthority());
+        try { o.put("mime", getContext().getContentResolver().getType(u)); } catch (Exception e) { o.put("mimeError", e.toString()); }
+        o.put("size", sizeOf(getContext(), u));
+        try (ParcelFileDescriptor pfd = getContext().getContentResolver().openFileDescriptor(u, "r")) {
+            o.put("statSize", pfd == null ? -2 : pfd.getStatSize());
+        } catch (Exception e) { o.put("openError", e.toString()); }
+        try (InputStream in = getContext().getContentResolver().openInputStream(u)) {
+            byte[] b = new byte[12]; int n = in == null ? -1 : in.read(b);
+            o.put("firstBytes", n > 0 ? Base64.encodeToString(b, 0, n, Base64.NO_WRAP) : "");
+        } catch (Exception e) { o.put("streamError", e.toString()); }
+        o.put("serveHooked", served);
+        call.resolve(o);
+    }
+
+    static volatile int served = 0;    // how many /_nvfile_/ requests reached Android (shows whether the web view hook works)
+
+    static long sizeOf(Context ctx, Uri u) {
+        try (Cursor c = ctx.getContentResolver().query(u, new String[]{DocumentsContract.Document.COLUMN_SIZE}, null, null, null)) {
+            if (c != null && c.moveToFirst() && !c.isNull(0)) return c.getLong(0);
+        } catch (Exception e) {}
+        return -1;
+    }
+
+    /** the file from byte 'start': a real file when possible (fast jumps), else a stream that skips ahead */
+    static InputStream open(Context ctx, Uri u, long start) throws IOException {
+        ParcelFileDescriptor pfd = null;
+        try { pfd = ctx.getContentResolver().openFileDescriptor(u, "r"); } catch (Exception e) { pfd = null; }
+        if (pfd != null && pfd.getStatSize() >= 0) {
+            FileInputStream fis = new FileInputStream(pfd.getFileDescriptor());
+            try { if (start > 0) fis.getChannel().position(start); }
+            catch (Exception e) { long left = start; while (left > 0) { long k = fis.skip(left); if (k <= 0) break; left -= k; } }
+            return new Bounded(fis, Long.MAX_VALUE, pfd);
+        }
+        if (pfd != null) try { pfd.close(); } catch (Exception e) {}
+        InputStream in = ctx.getContentResolver().openInputStream(u);
+        if (in == null) throw new IOException("cannot open");
+        long left = start; while (left > 0) { long k = in.skip(left); if (k <= 0) break; left -= k; }
+        return in;
+    }
+
     /* ---------- serving the files to the page (called from MainActivity's web view client) ---------- */
 
     private static final Map<String, String> MIME = new HashMap<>();
@@ -161,9 +225,12 @@ public class NvFilesPlugin extends Plugin {
             String ext = name.contains(".") ? name.substring(name.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT) : "";
             String mime = MIME.containsKey(ext) ? MIME.get(ext) : ctx.getContentResolver().getType(doc);
             if (mime == null) mime = "application/octet-stream";
-            ParcelFileDescriptor pfd = ctx.getContentResolver().openFileDescriptor(doc, "r");
-            if (pfd == null) throw new IOException("cannot open");
-            long size = pfd.getStatSize();
+            served++;
+            long size;
+            try (ParcelFileDescriptor p0 = ctx.getContentResolver().openFileDescriptor(doc, "r")) { size = p0 == null ? -1 : p0.getStatSize(); }
+            catch (Exception e) { size = -1; }
+            if (size < 0) size = sizeOf(ctx, doc);
+            if (size < 0) throw new IOException("unknown size");
             long start = 0, end = size - 1;
             String range = null;
             for (Map.Entry<String, String> e : req.getRequestHeaders().entrySet()) if ("range".equalsIgnoreCase(e.getKey())) range = e.getValue();
@@ -173,17 +240,14 @@ public class NvFilesPlugin extends Plugin {
                 if (p[0].isEmpty()) { long n = Long.parseLong(p[1]); start = Math.max(0, size - n); }
                 else { start = Long.parseLong(p[0]); if (p.length > 1 && !p[1].isEmpty()) end = Math.min(Long.parseLong(p[1]), size - 1); }
                 if (start >= size) {
-                    pfd.close();
                     h.put("Content-Range", "bytes */" + size);
                     return new WebResourceResponse(mime, null, 416, "Range Not Satisfiable", h, new java.io.ByteArrayInputStream(new byte[0]));
                 }
             }
-            FileInputStream fis = new FileInputStream(pfd.getFileDescriptor());
-            if (start > 0) fis.getChannel().position(start);
             long len = Math.max(0, end - start + 1);
             h.put("Content-Length", String.valueOf(len));
             if (partial) h.put("Content-Range", "bytes " + start + "-" + end + "/" + size);
-            InputStream body = new Bounded(fis, len, pfd);
+            InputStream body = new Bounded(open(ctx, doc, start), len, null);
             return new WebResourceResponse(mime, null, partial ? 206 : 200, partial ? "Partial Content" : "OK", h, body);
         } catch (SecurityException e) {
             return new WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", h, new java.io.ByteArrayInputStream("no permission".getBytes()));
@@ -205,6 +269,6 @@ public class NvFilesPlugin extends Plugin {
             return n;
         }
         @Override public int available() throws IOException { return (int) Math.min(Integer.MAX_VALUE, left); }
-        @Override public void close() throws IOException { try { super.close(); } finally { try { pfd.close(); } catch (Exception e) {} } }
+        @Override public void close() throws IOException { try { super.close(); } finally { if (pfd != null) try { pfd.close(); } catch (Exception e) {} } }
     }
 }
