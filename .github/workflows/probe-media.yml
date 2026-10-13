@@ -27,8 +27,12 @@ jobs:
           URL="$REQ"; echo "request: $REQ" >> $LOG
           if [[ "$REQ" == librivox:* ]]; then
             T=$(python3 -c "import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1].strip()))" "${REQ#librivox:}")
-            curl -sL "https://librivox.org/api/feed/audiobooks/?title=%5E$T&format=json" -o lv.json; head -c 600 lv.json >> $LOG; echo >> $LOG
+            curl -sL "https://librivox.org/api/feed/audiobooks/?title=$T&format=json" -o lv.json; head -c 300 lv.json >> $LOG; echo >> $LOG
             ID=$(python3 -c "import json;b=json.load(open('lv.json'))['books'][0];print(b['url_iarchive'].rstrip('/').split('/')[-1])" 2>>$LOG)
+            if [ -z "$ID" ]; then
+              curl -sL "https://archive.org/advancedsearch.php?q=collection%3Alibrivoxaudio+AND+title%3A%28$T%29&fl%5B%5D=identifier&rows=3&output=json" -o ia.json; head -c 300 ia.json >> $LOG; echo >> $LOG
+              ID=$(python3 -c "import json;print(json.load(open('ia.json'))['response']['docs'][0]['identifier'])" 2>>$LOG)
+            fi
             echo "identifier: $ID" >> $LOG
             curl -sL "https://archive.org/metadata/$ID/files" -o files.json
             F=$(python3 -c "import json;fs=[f['name'] for f in json.load(open('files.json'))['result'] if f['name'].lower().endswith('.m4b')];print(fs[0])" 2>>$LOG)
