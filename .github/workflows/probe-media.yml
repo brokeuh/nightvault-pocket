@@ -22,18 +22,21 @@ jobs:
         env:
           REQ: ${{ github.event.inputs.url }}
         run: |
-          set -e
+          mkdir -p tools/probe; LOG=tools/probe/last-run.txt; : > $LOG
           [ -z "$REQ" ] && REQ=$(head -1 tools/probe/request.txt)
-          URL="$REQ"
+          URL="$REQ"; echo "request: $REQ" >> $LOG
           if [[ "$REQ" == librivox:* ]]; then
-            Q=$(python3 -c "import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))" "${REQ#librivox:}")
-            ID=$(curl -sL "https://archive.org/advancedsearch.php?q=collection%3Alibrivoxaudio+AND+title%3A($Q)&fl%5B%5D=identifier&rows=1&output=json" | python3 -c "import json,sys;print(json.load(sys.stdin)['response']['docs'][0]['identifier'])")
-            echo "identifier: $ID"
-            F=$(curl -sL "https://archive.org/metadata/$ID/files" | python3 -c "import json,sys;fs=[f['name'] for f in json.load(sys.stdin)['result'] if f['name'].lower().endswith('.m4b')];print(fs[0])")
+            T=$(python3 -c "import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1].strip()))" "${REQ#librivox:}")
+            curl -sL "https://librivox.org/api/feed/audiobooks/?title=%5E$T&format=json" -o lv.json; head -c 600 lv.json >> $LOG; echo >> $LOG
+            ID=$(python3 -c "import json;b=json.load(open('lv.json'))['books'][0];print(b['url_iarchive'].rstrip('/').split('/')[-1])" 2>>$LOG)
+            echo "identifier: $ID" >> $LOG
+            curl -sL "https://archive.org/metadata/$ID/files" -o files.json
+            F=$(python3 -c "import json;fs=[f['name'] for f in json.load(open('files.json'))['result'] if f['name'].lower().endswith('.m4b')];print(fs[0])" 2>>$LOG)
+            echo "m4b: $F" >> $LOG
             URL="https://archive.org/download/$ID/$F"
           fi
-          echo "url: $URL"
-          curl -sL -o media.bin "$URL"
+          echo "url: $URL" >> $LOG
+          curl -sL -o media.bin "$URL" 2>>$LOG; ls -la media.bin >> $LOG
           NAME=$(basename "${URL%%\?*}")
           OUT="tools/probe/${NAME}.txt"
           python3 - media.bin "$URL" > "$OUT" <<'PY'
@@ -58,8 +61,9 @@ jobs:
           PY
           echo "--- ffprobe" >> "$OUT"
           ffprobe -v error -show_format -show_streams -show_chapters -of compact "media.bin" >> "$OUT" 2>&1 || true
-          ls -la tools/probe; head -40 "$OUT"
+          cat $LOG; head -40 "$OUT"
       - name: Save
+        if: always()
         run: |
           git config user.name "card-bot"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add tools/probe/*.txt; git commit -m "Media probe" || exit 0
