@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 48,
+   "date": "2026-10-13",
+   "where": [
+    "android"
+   ],
+   "apps": [
+    "audiobooks"
+   ],
+   "title": "Audiobooks: play from a folder, no copy",
+   "items": [
+    "Add → \"Use a folder on this phone\": pick the folder with your audiobooks and they play from there - nothing is copied, so no extra space.",
+    "Every book folder inside it becomes a book; loose M4B/MP3 files directly in it are a book each. You check the list before anything is added.",
+    "Settings → Folders on this phone → \"Look for new books\" adds books you put in the folder later.",
+    "\"Copy files into the app\" is still there, for books you want to keep after deleting the originals."
+   ]
+  },
+  {
    "id": 47,
    "date": "2026-10-13",
    "where": [

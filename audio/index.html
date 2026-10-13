@@ -313,9 +313,18 @@ async function mp3Info(blob){
       break } }catch(e){}
   return out }
 
+/* ---------- files in a folder on the phone (Android app, NvFiles plugin): read and played where they are, not copied ---------- */
+let NvFiles = null; if(NATIVE) try{ NvFiles = Capacitor.registerPlugin('NvFiles') }catch(e){ NvFiles = null }
+const b64url = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const linkUrl = (uri, name) => '/_nvfile_/' + b64url(uri) + '/' + encodeURIComponent(name);
+/* looks like a File to the tag readers: slice(a, b).arrayBuffer() reads only those bytes */
+class LinkFile{ constructor(o){ Object.assign(this, o); this.url = linkUrl(o.uri, o.name) }
+  slice(a, z){ const u = this.url; return {arrayBuffer:async () => { if(z <= a) return new ArrayBuffer(0); const r = await fetch(u, {headers:{Range:`bytes=${a}-${z - 1}`}, cache:'no-store'}); if(!r.ok) throw new Error('Cannot read ' + u); return r.arrayBuffer() }} }
+  async blob(){ return (await fetch(this.url, {cache:'no-store'})).blob() } }
+
 /* length of anything else: ask the browser */
-function probeDur(blob, type){ return new Promise(ok => { const a = new Audio(), u = URL.createObjectURL(type ? new Blob([blob], {type}) : blob); let done = false;
-  const fin = d => { if(done) return; done = true; a.removeAttribute('src'); a.load(); URL.revokeObjectURL(u); ok(isFinite(d) ? d : 0) };
+function probeDur(blob, type){ return new Promise(ok => { const a = new Audio(), u = blob.url || URL.createObjectURL(type ? new Blob([blob], {type}) : blob); let done = false;
+  const fin = d => { if(done) return; done = true; a.removeAttribute('src'); a.load(); if(!blob.url) URL.revokeObjectURL(u); ok(isFinite(d) ? d : 0) };
   a.preload = 'metadata'; a.onloadedmetadata = () => fin(a.duration); a.onerror = () => fin(0); setTimeout(() => fin(a.duration), 12000); a.src = u }) }
 
 async function fileInfo(f){
@@ -342,7 +351,7 @@ const progress = b => { const s = STATE[b.id]; if(!s) return 0; if(s.finished) r
 async function drawLib(){
   const body = $('#libbody');
   if(!BOOKS.length){ body.innerHTML = `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
-    <h2 style="margin:8px 0 4px;font-size:18px">No audiobooks yet</h2><p class="muted small" style="margin:0 0 14px">Tap <b>Add</b> and pick the files of a book: one M4B, one long MP3/M4A, or all the MP3s of a book at once. They are copied into the app, so they play without internet.</p>
+    <h2 style="margin:8px 0 4px;font-size:18px">No audiobooks yet</h2><p class="muted small" style="margin:0 0 14px">${NvFiles ? 'Tap <b>Add</b> and pick the folder on this phone that holds your audiobooks: one M4B per book, one long MP3/M4A, or a folder of MP3s per book. Nothing is copied.' : 'Tap <b>Add</b> and pick the files of a book: one M4B, one long MP3/M4A, or all the MP3s of a book at once. They are copied into the app, so they play without internet.'}</p>
     <button class="btn primary" onclick="openAdd()">Add an audiobook</button></div>${await storeLine()}`; return }
   const q = (S.q || '').toLowerCase();
   let list = BOOKS.filter(b => { const s = STATE[b.id] || {}; const started = s.pos > 0 || s.finished;
@@ -365,7 +374,8 @@ async function drawLib(){
   $('#sort').value = S.sort; $('#sort').onchange = e => { S.sort = e.target.value; saveS(); drawLib() };
   if($('#q')) $('#q').oninput = e => { S.q = e.target.value; clearTimeout(drawLib.t); drawLib.t = setTimeout(() => { const pos = e.target.selectionStart; drawLib().then(() => { const i = $('#q'); if(i){ i.focus(); i.setSelectionRange(pos, pos) } }) }, 250) };
 }
-async function storeLine(){ let used = BOOKS.reduce((a, b) => a + (b.size || 0), 0), t = `${BOOKS.length} book${BOOKS.length === 1 ? '' : 's'} · ${mb(used)} on this device`;
+async function storeLine(){ const cp = BOOKS.filter(b => !b.linked), used = cp.reduce((a, b) => a + (b.size || 0), 0), ln = BOOKS.length - cp.length;
+  let t = `${BOOKS.length} book${BOOKS.length === 1 ? '' : 's'}${ln ? ` · ${ln} from folders` : ''}${cp.length ? ` · ${mb(used)} copied into the app` : ''}`;
   try{ const e = await navigator.storage.estimate(); if(e && e.quota) t += ` · ${mb(Math.max(0, e.quota - e.usage))} free for the app` }catch(e){}
   return `<div class="store">${t}</div>` }
 $('#libbody').addEventListener('click', e => { const f = e.target.closest('[data-filter]'); if(f){ S.filter = f.dataset.filter; saveS(); drawLib(); return }
@@ -375,8 +385,10 @@ $('#libbody').addEventListener('click', e => { const f = e.target.closest('[data
 function openAdd(){
   const dirOK = !NATIVE && 'webkitdirectory' in document.createElement('input') && !/Android|iPhone|iPad/i.test(navigator.userAgent);
   sheet(`<h3>Add audiobooks</h3>
-    <p class="muted small" style="margin:0 0 12px">Pick all the files of one book at once (or several books - you can sort them out next). Works with M4B (with chapters), M4A, MP3, AAC, OGG/Opus, FLAC and WAV. A picture (cover.jpg) picked along becomes the cover.</p>
-    <div style="display:flex;flex-direction:column;gap:8px"><button class="btn primary" id="pf">Pick files</button>${dirOK ? '<button class="btn" id="pd">Pick a folder (every book folder inside it)</button>' : ''}</div>`);
+    <p class="muted small" style="margin:0 0 12px">${NvFiles ? 'You check the books before anything is added.' : 'Pick all the files of one book at once (or several books - you can sort them out next).'} Works with M4B (with chapters), M4A, MP3, AAC, OGG/Opus, FLAC and WAV. A picture (cover.jpg) picked along becomes the cover.</p>
+    <div style="display:flex;flex-direction:column;gap:8px">${NvFiles ? '<button class="btn primary" id="pl">Use a folder on this phone</button><div class="muted small" style="margin:-2px 0 6px">Nothing is copied: the books play from that folder. Pick the folder that holds your audiobooks - every book folder inside it becomes a book.</div>' : ''}
+      <button class="btn ${NvFiles ? '' : 'primary'}" id="pf">${NvFiles ? 'Copy files into the app' : 'Pick files'}</button>${NvFiles ? '<div class="muted small" style="margin:-2px 0 0">Takes extra space, but the book stays even if you delete the original files.</div>' : ''}${dirOK ? '<button class="btn" id="pd">Pick a folder (every book folder inside it)</button>' : ''}</div>`);
+  if($('#pl')) $('#pl').onclick = () => { closeSheet(); linkFolder() };
   $('#pf').onclick = () => { closeSheet(); $('#pickfiles').value = ''; $('#pickfiles').click() };
   if($('#pd')) $('#pd').onclick = () => { closeSheet(); $('#pickdir').value = ''; $('#pickdir').click() };
 }
@@ -389,17 +401,17 @@ function folderOf(f){ const p = (f.webkitRelativePath || '').split('/'); p.pop()
 const cleanName = n => n.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim();
 
 let PENDING = null;
-async function review(files){
+async function review(files, opt){
   const audio = files.filter(f => AUDIO_RE.test(f.name) || (f.type || '').startsWith('audio/')), pics = files.filter(f => IMG_RE.test(f.name));
   if(!audio.length){ toast('No audio files among them'); return }
   sheet(`<h3>Reading ${audio.length} file${audio.length === 1 ? '' : 's'}…</h3><div class="prog"><i id="rp"></i></div>`, true);
   const items = [];
-  for(let i = 0; i < audio.length; i++){ const f = audio[i]; items.push({f, info:await fileInfo(f), dir:folderOf(f)}); const el = $('#rp'); if(el) el.style.width = (100 * (i + 1) / audio.length) + '%' }
-  PENDING = {items, pics, how:'auto'};
+  for(let i = 0; i < audio.length; i++){ const f = audio[i]; items.push({f, info:await fileInfo(f), dir:folderOf(f), root:!!f.rootLevel}); const el = $('#rp'); if(el) el.style.width = (100 * (i + 1) / audio.length) + '%' }
+  PENDING = Object.assign({items, pics, how:'auto'}, opt || {});
   drawReview() }
 /* sorted out: by folder when picked as a folder, else by album tag, else all one book */
 function makeGroups(){ const P0 = PENDING; if(P0.how === 'one') return [P0.items]; if(P0.how === 'each') return P0.items.map(i => [i]);
-  const auto = {}; for(const it of P0.items){ const k = it.dir || (it.info.tags.album ? 'album:' + it.info.tags.album.toLowerCase() : ''); (auto[k] = auto[k] || []).push(it) } return Object.values(auto) }
+  const auto = {}; for(const it of P0.items){ const k = it.root ? (it.info.tags.album ? 'album:' + it.info.tags.album.toLowerCase() : 'file:' + it.f.name) : it.dir || (it.info.tags.album ? 'album:' + it.info.tags.album.toLowerCase() : ''); (auto[k] = auto[k] || []).push(it) } return Object.values(auto) }
 function sortParts(g){ return g.slice().sort((a, b) => ((a.info.tags.disc || 0) - (b.info.tags.disc || 0)) || coll.compare(a.f.webkitRelativePath || '', b.f.webkitRelativePath || '') || ((a.info.tags.track || 0) - (b.info.tags.track || 0)) || coll.compare(a.f.name, b.f.name)) }
 function describe(g){ g = sortParts(g); const t = g[0].info.tags, dir = g[0].dir;
   const title = (g.length > 1 ? t.album || (dir ? dir.split('/').pop() : '') : t.album || t.title) || (dir ? dir.split('/').pop() : '') || cleanName(g[0].f.name);
@@ -410,39 +422,60 @@ function drawReview(){
   sheet(`<h3>${D.length === 1 ? 'Add this audiobook?' : `Add ${D.length} audiobooks?`}</h3>
     ${PENDING.items.length > 1 ? `<div class="chips" id="how">${[['auto', 'Sorted out'], ['one', 'All one book'], ['each', 'Each file a book']].map(([v, t]) => `<button class="chip ${PENDING.how === v ? 'on' : ''}" data-how="${v}">${t}</button>`).join('')}</div>` : ''}
     <div style="max-height:46vh;overflow:auto">${D.map((d, i) => `<div class="grp"><input type="text" data-ti="${i}" value="${esc(d.title)}" aria-label="Title" style="height:38px;font-weight:600"><div class="muted small" style="margin-top:6px">${esc(d.author || 'Unknown author')} · ${d.parts.length} file${d.parts.length === 1 ? '' : 's'} · ${d.chapters} chapter${d.chapters === 1 ? '' : 's'} · ${d.dur ? hm(d.dur) : 'length unknown'} · ${mb(d.size)}</div></div>`).join('')}</div>
-    <p class="muted small">${mb(total)} will be copied into the app.</p>
+    <p class="muted small">${PENDING.linked ? `Nothing is copied: ${D.length === 1 ? 'it plays' : 'they play'} from the folder “${esc(PENDING.linked.name)}” (${mb(total)}). Keep the files there.` : mb(total) + ' will be copied into the app.'}</p>
     <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="doadd">Add</button></div>`, true);
   const how = $('#how'); if(how) how.onclick = e => { const b = e.target.closest('[data-how]'); if(b){ PENDING.how = b.dataset.how; drawReview() } };
   $('#doadd').onclick = () => { D.forEach((d, i) => { const v = $(`[data-ti="${i}"]`).value.trim(); if(v) d.title = v }); addBooks(D) };
 }
 async function addBooks(D){
   try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist() }catch(e){}
-  const total = D.reduce((a, d) => a + d.size, 0); let done = 0;
-  try{ const e = await navigator.storage.estimate(); if(e && e.quota && e.quota - e.usage < total * 1.05){ toast(`Not enough space: ${mb(total)} needed, ${mb(e.quota - e.usage)} free`, 5000); return } }catch(e){}
-  sheet(`<h3>Copying into the app…</h3><div class="prog"><i id="cp"></i></div><div class="muted small" id="cpt"></div>`, true);
+  const total = D.reduce((a, d) => a + d.size, 0), linked = PENDING && PENDING.linked; let done = 0;
+  try{ const e = await navigator.storage.estimate(); if(!linked && e && e.quota && e.quota - e.usage < total * 1.05){ toast(`Not enough space: ${mb(total)} needed, ${mb(e.quota - e.usage)} free`, 5000); return } }catch(e){}
+  sheet(`<h3>${linked ? 'Adding…' : 'Copying into the app…'}</h3><div class="prog"><i id="cp"></i></div><div class="muted small" id="cpt"></div>`, true);
   let added = 0;
   for(const d of D){
     const id = uid(), parts = [], chapters = []; let t0 = 0;
     try{
       for(const it of d.parts){ const fid = uid(), e = ext(it.f.name);
         $('#cpt').textContent = `${d.title} · ${it.f.name}`;
-        await dbPut('files', {id:fid, blob:it.f});
+        if(!linked) await dbPut('files', {id:fid, blob:it.f});
         done += it.f.size; $('#cp').style.width = (100 * done / total) + '%';
         const dur = it.info.dur || 0, ttl = it.info.tags.title && d.parts.length > 1 ? it.info.tags.title : cleanName(it.f.name);
-        parts.push({fid, name:it.f.name, type:MIME[e] || it.f.type || 'audio/mpeg', size:it.f.size, dur, title:ttl});
+        parts.push(linked ? {uri:it.f.uri, name:it.f.name, type:MIME[e] || it.f.type || 'audio/mpeg', size:it.f.size, dur, title:ttl}
+          : {fid, name:it.f.name, type:MIME[e] || it.f.type || 'audio/mpeg', size:it.f.size, dur, title:ttl});
         if(it.info.chapters.length) for(const c of it.info.chapters){ if(c.t < dur || !dur) chapters.push({t:t0 + c.t, title:c.title || `Chapter ${chapters.length + 1}`}) }
         else if(d.parts.length > 1) chapters.push({t:t0, title:ttl});
         t0 += dur }
       let cover = d.parts.map(i => i.info.tags.cover).find(Boolean);
       if(!cover && PENDING && PENDING.pics.length){ const dir = d.parts[0].dir; const pics = PENDING.pics.filter(p => !dir || folderOf(p) === dir);
         cover = (pics.find(p => /cover|folder|front/i.test(p.name)) || pics[0]) || null }
+      if(cover && cover.uri) cover = await cover.blob().catch(() => null);
       if(cover) await dbPut('covers', {id, blob:cover});
-      const book = {id, kind:'audiobook', title:d.title, author:d.author, narrator:d.narrator, year:d.year, parts, chapters, dur:t0, size:d.size, added:Date.now(), hasCover:!!cover};
+      const book = {id, kind:'audiobook', title:d.title, author:d.author, narrator:d.narrator, year:d.year, parts, chapters, dur:t0, size:d.size, added:Date.now(), hasCover:!!cover, linked:linked ? {tree:linked.tree, name:linked.name} : null};
       await dbPut('books', book); BOOKS.push(book); added++;
-    }catch(err){ for(const p of parts) await dbDel('files', p.fid).catch(() => {}); closeSheet(); toast(`Could not copy "${d.title}": ${err && err.name === 'QuotaExceededError' ? 'the phone is full' : (err && err.message) || err}`, 6000); break }
+    }catch(err){ if(!linked) for(const p of parts) await dbDel('files', p.fid).catch(() => {}); closeSheet(); toast(`Could not copy "${d.title}": ${err && err.name === 'QuotaExceededError' ? 'the phone is full' : (err && err.message) || err}`, 6000); break }
   }
   PENDING = null; closeSheet(); if(added) toast(added === 1 ? 'Audiobook added' : `${added} audiobooks added`); drawLib();
 }
+
+async function linkFolder(f){
+  try{ f = f || await NvFiles.pickFolder() }catch(e){ if(!/cancel|No folder/i.test(e.message || '')) toast(e.message || String(e)); return }
+  const fl = lsGet('nvAudio.folders', []); if(!fl.some(x => x.tree === f.tree)){ fl.push({tree:f.tree, name:f.name}); lsSet('nvAudio.folders', fl) }
+  sheet(`<h3>Looking in “${esc(f.name)}”…</h3><div class="prog"><i style="width:30%"></i></div>`, true);
+  let list; try{ list = (await NvFiles.list({tree:f.tree})).files || [] }catch(e){ closeSheet(); toast(e.message || String(e), 5000); return }
+  const have = new Set(); for(const b of BOOKS) for(const p of b.parts) if(p.uri) have.add(p.uri);
+  const root = f.name, files = list.filter(x => !have.has(x.uri)).map(x => new LinkFile({uri:x.uri, name:x.name, size:x.size, type:x.mime || MIME[ext(x.name)] || '', webkitRelativePath:x.path, rootLevel:x.path.split('/').length === 2}));
+  if(!files.some(x => AUDIO_RE.test(x.name))){ closeSheet(); toast(list.length ? `No new audiobooks in “${root}”` : `“${root}” is empty`, 4000); return }
+  review(files, {linked:{tree:f.tree, name:root}}) }
+async function drawFolders(){
+  const el = $('#fldrs'); if(!el) return; let fl = lsGet('nvAudio.folders', []);
+  try{ const ok = new Set(((await NvFiles.folders()).folders || []).map(x => x.tree)); fl = fl.filter(x => ok.has(x.tree)); lsSet('nvAudio.folders', fl) }catch(e){}
+  el.innerHTML = fl.length ? fl.map((f, i) => `<div class="li" style="cursor:default"><div class="n"><div style="color:var(--text)">${esc(f.name)}</div><div>${BOOKS.filter(b => b.linked && b.linked.tree === f.tree).length} books</div></div><button class="btn sm" data-scan="${i}">Look for new books</button><button class="x" data-forget="${i}" aria-label="Forget this folder">✕</button></div>`).join('') : 'No folders yet.';
+  el.onclick = async e => { const s = e.target.closest('[data-scan]'), g = e.target.closest('[data-forget]');
+    if(s){ closeSheet(); linkFolder(fl[+s.dataset.scan]) }
+    if(g){ const f = fl[+g.dataset.forget], n = BOOKS.filter(b => b.linked && b.linked.tree === f.tree).length;
+      if(n){ toast(`${n} book${n === 1 ? '' : 's'} still play from “${f.name}” - remove them first`, 4500); return }
+      await NvFiles.forget({tree:f.tree}).catch(() => {}); lsSet('nvAudio.folders', fl.filter(x => x.tree !== f.tree)); drawFolders() } } }
 
 /* ---------- chapters and positions ---------- */
 function chaptersOf(b){ return b.chapters && b.chapters.length ? b.chapters : [{t:0, title:b.title}] }
@@ -460,12 +493,16 @@ const rate = () => cur ? (st(cur.id).speed || S.speed || 1) : 1;
 
 async function loadPart(i, off, play){
   const p = cur.parts[i]; if(!p) return;
-  if(curPart !== i || !au.src){ const rec = await dbGet('files', p.fid);
-    if(!rec || !rec.blob){ toast('This part of the book is missing - add the book again'); return }
-    if(curUrl) URL.revokeObjectURL(curUrl);
-    curUrl = URL.createObjectURL(rec.blob.type ? rec.blob : new Blob([rec.blob], {type:p.type})); curPart = i;
-    au.src = curUrl;
+  if(curPart !== i || !au.src){
+    if(curUrl) URL.revokeObjectURL(curUrl); curUrl = null;
+    if(p.uri){ au.src = linkUrl(p.uri, p.name) }                  // played straight from the folder on the phone
+    else { const rec = await dbGet('files', p.fid);
+      if(!rec || !rec.blob){ toast('This part of the book is missing - add the book again'); return }
+      curUrl = URL.createObjectURL(rec.blob.type ? rec.blob : new Blob([rec.blob], {type:p.type})); au.src = curUrl }
+    curPart = i;
     await new Promise(ok => { const done = () => { au.removeEventListener('loadedmetadata', done); au.removeEventListener('error', done); ok() }; au.addEventListener('loadedmetadata', done); au.addEventListener('error', done) });
+    if(au.error && p.uri){ const r = await fetch(linkUrl(p.uri, p.name), {headers:{Range:'bytes=0-0'}}).catch(() => null);
+      if(!r || !r.ok){ toast(`“${p.name}” is not in the folder any more - was it moved or deleted? Add the book again.`, 6000); curPart = -1; return } }
     if(au.error){ toast(`This phone cannot play ${ext(p.name).toUpperCase()} files${p.type === 'audio/mp4' ? ' (try MP3)' : ''}`, 5000); return }
     if(isFinite(au.duration) && au.duration > 0 && Math.abs((p.dur || 0) - au.duration) > 1){ p.dur = au.duration; cur.dur = cur.parts.reduce((a, x) => a + (x.dur || 0), 0); dbPut('books', cur).catch(() => {}) } }
   try{ au.currentTime = off }catch(e){}
@@ -614,22 +651,22 @@ function bookSheet(id){
     <div class="opt"><label>Title</label></div><input type="text" id="bt" value="${esc(b.title)}">
     <div class="opt"><label>Author</label></div><input type="text" id="ba" value="${esc(b.author || '')}">
     <div class="opt"><label>Read by</label></div><input type="text" id="bn" value="${esc(b.narrator || '')}">
-    <p class="muted small">${b.parts.length} file${b.parts.length === 1 ? '' : 's'} · ${(b.chapters || []).length} chapters · ${hm(b.dur)} · ${mb(b.size)}${b.year ? ' · ' + esc(b.year) : ''}<br>Added ${new Date(b.added).toLocaleDateString()}</p>
+    <p class="muted small">${b.linked ? 'Plays from the folder “' + esc(b.linked.name) + '” · ' : 'Copied into the app · '}${b.parts.length} file${b.parts.length === 1 ? '' : 's'} · ${(b.chapters || []).length} chapters · ${hm(b.dur)} · ${mb(b.size)}${b.year ? ' · ' + esc(b.year) : ''}<br>Added ${new Date(b.added).toLocaleDateString()}</p>
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="btn primary" id="bsave">Save</button>
       <button class="btn" id="bcover">Change the cover picture</button>
       <button class="btn" id="bfin">${s.finished ? 'Mark as not finished' : 'Mark as finished'}</button>
       <button class="btn" id="bstart">Start again from the beginning</button>
-      <button class="btn danger" id="bdel">Remove from this device</button></div>
+      <button class="btn danger" id="bdel">${b.linked ? 'Remove from the shelf' : 'Remove from this device'}</button></div>
     <input type="file" id="bcf" accept="image/*" hidden>`);
   $('#bsave').onclick = async () => { b.title = $('#bt').value.trim() || b.title; b.author = $('#ba').value.trim(); b.narrator = $('#bn').value.trim(); await dbPut('books', b); closeSheet(); if(cur && cur.id === b.id) drawPlayer(true); $('#mini').dataset.id = ''; drawMini(); toast('Saved') };
   $('#bcover').onclick = () => $('#bcf').click();
   $('#bcf').onchange = async e => { const f = e.target.files[0]; if(!f) return; await dbPut('covers', {id:b.id, blob:f}); b.hasCover = true; await dbPut('books', b); if(COVERURL[b.id]){ URL.revokeObjectURL(COVERURL[b.id]); delete COVERURL[b.id] } artKey = null; $('#mini').dataset.id = ''; closeSheet(); if(cur && cur.id === b.id){ drawPlayer(true); syncMedia() } toast('New cover saved') };
   $('#bfin').onclick = async () => { s.finished = !s.finished; if(!s.finished && s.pos >= b.dur - 1) s.pos = 0; if(s.finished && cur && cur.id === b.id) au.pause(); await saveState(b.id, true); closeSheet(); drawPlayer(); toast(s.finished ? 'Marked as finished' : 'Marked as not finished') };
   $('#bstart').onclick = async () => { s.finished = false; s.pos = 0; await saveState(b.id, true); closeSheet(); if(cur && cur.id === b.id) seekTo(0); toast('Back at the start') };
-  $('#bdel').onclick = () => { sheet(`<h3>Remove "${esc(b.title)}"?</h3><p class="muted small">The copy on this device (${mb(b.size)}) and its place and bookmarks are removed. Your original files are not touched.</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Keep it</button><button class="btn primary" style="flex:1;background:#7a2a2f;border-color:#a3454b" id="bdel2">Remove</button></div>`);
+  $('#bdel').onclick = () => { sheet(`<h3>Remove "${esc(b.title)}"?</h3><p class="muted small">${b.linked ? `The book leaves the shelf, with its place and bookmarks. The files stay in the folder “${esc(b.linked.name)}”.` : `The copy on this device (${mb(b.size)}) and its place and bookmarks are removed. Your original files are not touched.`}</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Keep it</button><button class="btn primary" style="flex:1;background:#7a2a2f;border-color:#a3454b" id="bdel2">Remove</button></div>`);
     $('#bdel2').onclick = async () => { if(cur && cur.id === b.id){ au.pause(); au.removeAttribute('src'); au.load(); cur = null; curPart = -1; mediaStop(); showPlayer(false) }
-      for(const p of b.parts) await dbDel('files', p.fid).catch(() => {}); await dbDel('covers', b.id).catch(() => {}); await dbDel('state', b.id).catch(() => {}); await dbDel('books', b.id);
+      for(const p of b.parts) if(p.fid) await dbDel('files', p.fid).catch(() => {}); await dbDel('covers', b.id).catch(() => {}); await dbDel('state', b.id).catch(() => {}); await dbDel('books', b.id);
       BOOKS = BOOKS.filter(x => x.id !== b.id); delete STATE[b.id]; closeSheet(); drawLib(); drawMini(); toast('Removed') } };
 }
 
@@ -639,7 +676,9 @@ $('#setbtn').onclick = () => {
     <div class="opt"><label for="sb">Skip back</label><select id="sb">${[5, 10, 15, 20, 30, 60].map(v => `<option ${v === S.back ? 'selected' : ''}>${v}</option>`).join('')}</select><span class="muted small">sec</span></div>
     <div class="opt"><label for="sf">Skip forward</label><select id="sf">${[10, 15, 20, 30, 45, 60, 90].map(v => `<option ${v === S.fwd ? 'selected' : ''}>${v}</option>`).join('')}</select><span class="muted small">sec</span></div>
     <div class="opt"><label for="ss">Smart rewind<div class="muted small">After a pause, start a few seconds earlier (5 s after 1 minute, 15 s after 10 minutes, 30 s after an hour).</div></label><input type="checkbox" id="ss" ${S.smart ? 'checked' : ''}></div>
-    <div class="opt"><label>Speed for new books</label><b>${speedTxt(S.speed || 1)}</b></div>`);
+    <div class="opt"><label>Speed for new books</label><b>${speedTxt(S.speed || 1)}</b></div>
+    ${NvFiles ? '<h3 style="margin:16px 0 4px">Folders on this phone</h3><div id="fldrs" class="muted small">…</div><button class="btn" id="fadd" style="width:100%;margin-top:8px">Add a folder</button>' : ''}`);
+  if(NvFiles){ $('#fadd').onclick = () => { closeSheet(); linkFolder() }; drawFolders() }
   $('#sb').onchange = e => { S.back = +e.target.value; saveS(); $('#backn').textContent = S.back };
   $('#sf').onchange = e => { S.fwd = +e.target.value; saveS(); $('#fwdn').textContent = S.fwd };
   $('#ss').onchange = e => { S.smart = e.target.checked; saveS() } };
