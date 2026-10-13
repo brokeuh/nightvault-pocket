@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 55,
+   "date": "2026-10-13",
+   "where": [
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: adding a big folder no longer stops when the phone sleeps",
+   "items": [
+    "While Music adds songs from a folder, the screen stays on, so the phone doesn't go to sleep and stop it.",
+    "If it is stopped anyway (phone locked, app closed), the songs read so far are kept, and the next time you open Music it asks \"Continue where it stopped?\" - it then skips the folder search and the songs that are already in."
+   ]
+  },
+  {
    "id": 54,
    "date": "2026-10-13",
    "where": [

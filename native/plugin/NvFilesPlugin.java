@@ -108,6 +108,19 @@ public class NvFilesPlugin extends Plugin {
         notifyListeners("listProgress", e);
     }
 
+    /** keeps the screen on while true (used while adding a big music folder, so the phone does not go to sleep and stop it) */
+    @PluginMethod
+    public void keepAwake(PluginCall call) {
+        boolean on = Boolean.TRUE.equals(call.getBoolean("on", true));
+        Activity a = getActivity();
+        if (a == null) { call.resolve(); return; }
+        a.runOnUiThread(() -> {
+            if (on) a.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            else a.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        });
+        call.resolve();
+    }
+
     /** stops a running list() - it then answers with stopped: true */
     @PluginMethod
     public void stopList(PluginCall call) { listStop = true; call.resolve(); }

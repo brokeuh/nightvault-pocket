@@ -252,9 +252,9 @@ const fromHub = () => { try{ return sessionStorage.getItem('nvHub') === '1' }cat
    covers : {id, blob}     files : {id, blob} */
 let DB = null;
 /* version 2 adds the music stores: tracks {id, key, title, artist, aa, album, al, ...}, lists {id, name, items:[track key]}, mstats {id:track key, fav, plays:[time]}.
-   Album covers for music sit in covers as 'al:<album key>'. */
-function openDB(){ return new Promise((ok, no) => { const r = indexedDB.open('nvAudio', 2);
-  r.onupgradeneeded = () => { const d = r.result; for(const s of ['books', 'state', 'covers', 'files', 'tracks', 'lists', 'mstats']) if(!d.objectStoreNames.contains(s)) d.createObjectStore(s, {keyPath:'id'}) };
+   Album covers for music sit in covers as 'al:<album key>'. Version 3 adds kv {id, ...} (e.g. the file list of a music folder being added). */
+function openDB(){ return new Promise((ok, no) => { const r = indexedDB.open('nvAudio', 3);
+  r.onupgradeneeded = () => { const d = r.result; for(const s of ['books', 'state', 'covers', 'files', 'tracks', 'lists', 'mstats', 'kv']) if(!d.objectStoreNames.contains(s)) d.createObjectStore(s, {keyPath:'id'}) };
   r.onblocked = () => toast('Close the other Nightvault Audio tab, then reload', 6000);
   r.onsuccess = () => ok(DB = r.result); r.onerror = () => no(r.error) }) }
 function tx(store, mode, fn){ return new Promise((ok, no) => { const t = DB.transaction(store, mode), st = t.objectStore(store); let res; const q = fn(st); if(q) q.onsuccess = () => res = q.result; t.oncomplete = () => ok(res); t.onerror = t.onabort = () => no(t.error || new Error('Storage error')) }) }
@@ -981,9 +981,19 @@ $('#maddbtn').onclick = musicAdd;
 $('#mpick').onchange = e => musicScan([...e.target.files].map(f => ({f, path:f.webkitRelativePath ? f.webkitRelativePath.split('/').slice(1).join('/') : f.name})), null);
 $('#mpickdir').onchange = $('#mpick').onchange;
 
-async function musicFolder(f){
+/* keep the screen on while adding music (Android stops the app when the phone goes to sleep) */
+let wakeS = null;
+async function awake(on){ try{ if(NvFiles && NvFiles.keepAwake) await NvFiles.keepAwake({on}) }catch(e){}
+  try{ if(on && !wakeS && navigator.wakeLock){ wakeS = await navigator.wakeLock.request('screen'); wakeS.addEventListener('release', () => { wakeS = null }) } else if(!on && wakeS){ await wakeS.release(); wakeS = null } }catch(e){} }
+document.addEventListener('visibilitychange', () => { if(!document.hidden && SCAN && !wakeS) awake(true) });
+/* a folder being added is remembered (localStorage nvMusic.scan + its file list in kv), so it can continue after an interruption */
+function scanDone(f){ lsSet('nvMusic.scan', null); awake(false); if(f) dbDel('kv', 'scanlist:' + f.tree).catch(() => {}) }
+async function musicFolder(f, resume){
   try{ f = f || await NvFiles.pickFolder() }catch(e){ if(!/cancel|No folder/i.test(e.message || '')) toast(e.message || String(e)); return }
   const fl = lsGet('nvMusic.folders', []); if(!fl.some(x => x.tree === f.tree)){ fl.push({tree:f.tree, name:f.name}); lsSet('nvMusic.folders', fl) }
+  lsSet('nvMusic.scan', {tree:f.tree, name:f.name, at:Date.now()}); awake(true);
+  if(resume){ const c = await dbGet('kv', 'scanlist:' + f.tree).catch(() => null);
+    if(c && c.files && Date.now() - c.at < 2 * 864e5){ L('folder', `continue with the saved list of ${c.files.length} files`); return musicFolderList(f, c.files) } }
   /* listing a big folder (an SD card) can take minutes: show what it is doing - songs found, folders looked at, the folder it is in, time */
   sheet(`<h3>Looking in “${esc(f.name)}”…</h3><div class="prog busy"><i></i></div><div class="small" id="mlst">Starting…</div>
     <div class="muted small" id="mlat" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">&nbsp;</div>
@@ -994,12 +1004,15 @@ async function musicFolder(f){
     if(last && last.at) $('#mlat').textContent = '\u200e' + last.at.split('/').slice(1).join(' / ') };
   const iv = setInterval(draw, 1000);
   try{ hl = await NvFiles.addListener('listProgress', e => { last = e; draw() }) }catch(e){}
-  $('#mlstop').onclick = () => { stopped = true; NvFiles.stopList().catch(() => {}); closeSheet(); toast('Stopped - nothing was added. Tip: pick the music folder itself, not the whole SD card.', 6000) };
+  $('#mlstop').onclick = () => { stopped = true; scanDone(f); NvFiles.stopList().catch(() => {}); closeSheet(); toast('Stopped - nothing was added. Tip: pick the music folder itself, not the whole SD card.', 6000) };
   let list, res;
-  try{ res = await NvFiles.list({tree:f.tree}) }catch(e){ if(!stopped){ LE('folder', 'list failed', e); closeSheet(); toast(e.message || String(e), 5000) } return }
+  try{ res = await NvFiles.list({tree:f.tree}) }catch(e){ if(!stopped){ scanDone(f); LE('folder', 'list failed', e); closeSheet(); toast(e.message || String(e), 5000) } return }
   finally{ clearInterval(iv); try{ hl && hl.remove() }catch(e){} }
   if(stopped || res.stopped) return;
   list = res.files || []; L('folder', `listed in ${Math.round((Date.now() - t0) / 1000)} s`);
+  await dbPut('kv', {id:'scanlist:' + f.tree, at:Date.now(), files:list}).catch(e => LE('folder', 'could not keep the list', e));
+  return musicFolderList(f, list) }
+function musicFolderList(f, list){
   L('folder', `music “${f.name}”: ${list.length} files`, list.slice(0, 30).map(x => `${x.path} ${x.size}`));
   const items = list.map(x => ({f:new LinkFile({uri:x.uri, name:x.name, size:x.size, type:x.mime || MIME[ext(x.name)] || ''}), path:x.path.split('/').slice(1).join('/')}));
   musicScan(items, {tree:f.tree, name:f.name, capped:list.length >= 20000}) }
@@ -1014,30 +1027,31 @@ async function musicScan(items, folder){
   let removed = 0;
   if(folder){ const seen = new Set(audio.map(x => x.f.uri)), gone = TR.filter(t => t.tree === folder.tree && !seen.has(t.uri));
     if(gone.length){ removed = gone.length; await dbDelMany('tracks', gone.map(t => t.id)); const g = new Set(gone.map(t => t.id)); TR = TR.filter(t => !g.has(t.id)) } }
-  if(!fresh.length){ closeSheet(); musicIndex(); drawM();
+  if(!fresh.length){ if(folder) scanDone(folder); closeSheet(); musicIndex(); drawM();
     toast(audio.length || removed ? `No new songs${removed ? ` · ${plural(removed, 'song')} that are gone were removed` : ''}${bad ? ` · ${bad} can't play on a phone` : ''}` : bad ? `${bad} songs found, but this phone can't play their format (WMA, APE …)` : 'No songs found there', 5000); return }
   if(!folder){ const total = fresh.reduce((a, x) => a + x.f.size, 0);
     try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist() }catch(e){}
     try{ const e = await navigator.storage.estimate(); if(e && e.quota && e.quota - e.usage < total * 1.05){ toast(`Not enough space: ${mb(total)} needed, ${mb(e.quota - e.usage)} free`, 5000); return } }catch(e){} }
-  SCAN = {stop:false}; const me = SCAN;
+  SCAN = {stop:false}; const me = SCAN; awake(true);
   sheet(`<h3>${folder ? 'Reading your songs…' : 'Copying songs into the app…'}</h3><div class="prog"><i id="msp"></i></div><div class="muted small" id="mst" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">0 of ${fresh.length} · starting…</div>
-    <button class="btn" id="mstop" style="width:100%;margin-top:12px">Stop (keep what is read so far)</button>`, true);
+    <p class="muted small">The screen stays on while songs are added. If it is stopped anyway, Music offers to continue next time.</p><button class="btn" id="mstop" style="width:100%">Stop (keep what is read so far)</button>`, true);
   $('#mstop').onclick = () => { me.stop = true; $('#mstop').disabled = true; $('#mstop').textContent = 'Stopping…' };
   let done = 0, batch = [], added = 0, failed = 0, i = 0; const now = Date.now();
   const flush = async () => { if(!batch.length) return; const b = batch; batch = []; await dbPutMany('tracks', b); TR.push(...b); added += b.length };
+  const onHide = () => { if(document.hidden) flush().catch(() => {}) }; document.addEventListener('visibilitychange', onHide);
   const work = async () => { while(i < fresh.length && !me.stop){ const x = fresh[i++];
       try{ const info = await fileInfo(x.f, true), t = makeTrack(x, info, folder, now);
         if(!folder){ t.fid = uid(); await dbPut('files', {id:t.fid, blob:x.f}) }
         if(info.tags.cover && !ALCOV.has(t.al)){ ALCOV.add(t.al); await dbPut('covers', {id:'al:' + t.al, blob:info.tags.cover}) }
-        batch.push(t); if(batch.length >= 40) await flush() }
+        batch.push(t); if(batch.length >= 20) await flush() }
       catch(err){ failed++; LE('scan', 'could not add ' + x.f.name, err); if(err && err.name === 'QuotaExceededError'){ me.stop = true; toast('The phone is full', 5000) } }
       done++; const p = $('#msp'), s = $('#mst'); if(p) p.style.width = (100 * done / fresh.length) + '%'; if(s) s.textContent = `${done} of ${fresh.length} · ${x.f.name}` } };
-  await Promise.all([work(), work(), work(), work()]); await flush();
+  await Promise.all([work(), work(), work(), work()]); await flush(); document.removeEventListener('visibilitychange', onHide);
   /* albums without a picture in their songs: cover.jpg / folder.jpg / front.jpg next to them */
   musicIndex();
   for(const a of ALB){ if(ALCOV.has(a.key)) continue; const d = a.tracks[0].dir || '', ps = pics[d] || pics[d.replace(/\/[^\/|]*$/, '')] || []; if(!ps.length) continue;
     let p = ps.find(x => /cover|folder|front|album/i.test(x.name)) || ps[0]; try{ if(p.uri) p = await p.blob(); await dbPut('covers', {id:'al:' + a.key, blob:p}); ALCOV.add(a.key) }catch(e){} }
-  SCAN = null; closeSheet(); drawM();
+  SCAN = null; if(folder) scanDone(folder); else awake(false); closeSheet(); drawM();
   toast(`${plural(added, 'song')} added${removed ? ` · ${removed} gone` : ''}${failed ? ` · ${failed} could not be read` : ''}${bad ? ` · ${bad} can't play on a phone (WMA, APE …)` : ''}${folder && folder.capped ? ' · folder has over 20,000 files: pick a smaller one' : ''}`, 6000) }
 
 /* a song record from the tags; missing tags come from the path: Artist / Album / [CD 1 /] 01 - Title.ext */
@@ -1350,6 +1364,11 @@ async function drawMFolders(){ const el = $('#mfldrs'); if(!el) return; let fl =
 
 async function musicStart(){
   await musicLoad();
+  const sc = lsGet('nvMusic.scan', null);
+  if(sc && NvFiles && Date.now() - sc.at < 7 * 864e5) setTimeout(() => { const n = TR.filter(t => t.tree === sc.tree).length;
+    sheet(`<h3>Adding music was interrupted</h3><p class="muted small">Adding the folder “${esc(sc.name)}” stopped before it was done - probably the phone went to sleep or the app was closed. ${n ? plural(n, 'song') + ' from it are already in your library.' : ''} Continue where it stopped? Songs that are already in are skipped.</p>
+      <div style="display:flex;gap:8px"><button class="btn" style="flex:1" id="scno">Not now</button><button class="btn primary" style="flex:2" id="scgo">Continue</button></div>`, true);
+    $('#scno').onclick = () => { scanDone(sc); closeSheet() }; $('#scgo').onclick = () => { closeSheet(); musicFolder({tree:sc.tree, name:sc.name}, true) } }, 300);
   Q.list = (Q.list || []).filter(id => TRID[id]); Q.orig = (Q.orig || []).filter(id => TRID[id]); if(Q.pos >= Q.list.length) Q.pos = 0;
   drawM() }
 
