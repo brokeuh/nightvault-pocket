@@ -45,6 +45,47 @@ moov at 24 size 5103093
   udta at 5083156 size 19961
     meta at 5083164 size 19953
 mdat at 5103117 size 227165799
+--- Nightvault reader (data/probe/nvparse.js)
+{
+ "dur": 28839.949931972787,
+ "tags": [
+  "title",
+  "artist",
+  "album",
+  "track",
+  "cover"
+ ],
+ "title": "The Wild North Land, The Story of a Winter Journey with Dogs across Northern North America",
+ "chapters": 27,
+ "first": [
+  {
+   "t": 0,
+   "title": "01 - Preface and Chapter 1"
+  },
+  {
+   "t": 734.0096145124717,
+   "title": "02 - Chapter 2"
+  },
+  {
+   "t": 1039.0052607709752,
+   "title": "03 - Chapter 3"
+  },
+  {
+   "t": 1662.0092743764171,
+   "title": "04 - Chapter 4"
+  }
+ ],
+ "last": [
+  {
+   "t": 26037.01263038549,
+   "title": "26 - Chapter 26"
+  },
+  {
+   "t": 27449.01274376417,
+   "title": "27 - Chapter 27"
+  }
+ ]
+}
 --- ffprobe
 stream|index=0|codec_name=aac|codec_long_name=AAC (Advanced Audio Coding)|profile=LC|codec_type=audio|codec_tag_string=mp4a|codec_tag=0x6134706d|sample_fmt=fltp|sample_rate=44100|channels=1|channel_layout=mono|bits_per_sample=0|initial_padding=0|id=0x1|r_frame_rate=0/0|avg_frame_rate=0/0|time_base=1/44100|start_pts=0|start_time=0.000000|duration_ts=1271841792|duration=28839.949932|bit_rate=63013|max_bit_rate=N/A|bits_per_raw_sample=N/A|nb_frames=1242033|nb_read_frames=N/A|nb_read_packets=N/A|extradata_size=2|disposition:default=1|disposition:dub=0|disposition:original=0|disposition:comment=0|disposition:lyrics=0|disposition:karaoke=0|disposition:forced=0|disposition:hearing_impaired=0|disposition:visual_impaired=0|disposition:clean_effects=0|disposition:attached_pic=0|disposition:timed_thumbnails=0|disposition:non_diegetic=0|disposition:captions=0|disposition:descriptions=0|disposition:metadata=0|disposition:dependent=0|disposition:still_image=0|tag:creation_time=2022-02-11T02:28:52.000000Z|tag:language=und|tag:vendor_id=[0][0][0][0]
 stream|index=1|codec_name=bin_data|codec_long_name=binary data|profile=unknown|codec_type=data|codec_tag_string=text|codec_tag=0x74786574|id=0x2|r_frame_rate=0/0|avg_frame_rate=0/0|time_base=1/44100|start_pts=0|start_time=0.000000|duration_ts=1271841792|duration=28839.949932|bit_rate=N/A|max_bit_rate=N/A|bits_per_raw_sample=N/A|nb_frames=27|nb_read_frames=N/A|nb_read_packets=N/A|extradata_size=43|disposition:default=0|disposition:dub=0|disposition:original=0|disposition:comment=0|disposition:lyrics=0|disposition:karaoke=0|disposition:forced=0|disposition:hearing_impaired=0|disposition:visual_impaired=0|disposition:clean_effects=0|disposition:attached_pic=0|disposition:timed_thumbnails=0|disposition:non_diegetic=0|disposition:captions=0|disposition:descriptions=0|disposition:metadata=0|disposition:dependent=0|disposition:still_image=0|tag:creation_time=2022-02-11T02:29:22.000000Z|tag:language=und
