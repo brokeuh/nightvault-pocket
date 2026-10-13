@@ -1,4 +1,4 @@
-request: librivox: Across America by Motor-cycle
+request: librivox: Across America
 {"error":"Audiobooks could not be found"}
 Traceback (most recent call last):
   File "<string>", line 1, in <module>
