@@ -3,6 +3,25 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 63,
+   "date": "2026-10-14",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: artist and series tiles, totals",
+   "items": [
+    "Albums now come in groups: all albums of one artist (e.g. Avril Lavigne) in one tile, and compilation series like Thunderdome (Thunderdome 06, IV, 2001, \"Various - Thunderdome 2003\" …) in one tile. The tile shows how many albums are inside.",
+    "Make your own group with \"+ Group\": every album with that word in its name or artist goes in that tile.",
+    "Inside a group, an artist or an album: number of albums, songs, total length and GB, with Play and Shuffle for all of it. The Albums page shows the totals of your whole library at the top.",
+    "\"Grouped\" / \"All albums\" next to the sort menu switches the groups off.",
+    "CD numbers in the middle of an album name are recognised too: \"Thunderdome 2008 (CD1) - Early Rave\" and \"(CD2) - Hardcore\" become one album, with the CD names shown on the CD blocks. Your library is fixed by itself."
+   ]
+  },
+  {
    "id": 62,
    "date": "2026-10-13",
    "where": [

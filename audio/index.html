@@ -147,6 +147,10 @@ input[type=range].seek{width:100%;margin:16px 0 0;accent-color:var(--accent);hei
 .cdh b{font-size:15.5px;color:#f1dc6b}.cdh .n{flex:1;min-width:0}.cdh .s{font-size:12.5px;color:var(--dim)}
 .cdh .chev{display:inline-block;font-size:22px;color:var(--dim);transition:transform .15s;width:18px;text-align:center}.cdh.on .chev{transform:rotate(90deg)}
 .cdlist{padding:2px 0 4px 8px}
+.mtot{font-size:13px;color:var(--dim2);margin:0 2px 6px}
+.bk.stack .cv,.stack .gcv{box-shadow:5px -5px 0 -1px #2a3442,10px -10px 0 -2px #1c2430}
+.bk.stack{padding-top:10px;padding-right:10px}.stack .gcv{width:min(36vw,150px);margin:10px 10px 0 0}
+.bk .cdl.grp{color:#7fe3ff;border-color:#7fe3ff55;top:17px;right:17px}
 .bk .cdl{position:absolute;top:7px;right:7px;background:#0b0e13d9;color:#f1dc6b;font-size:11.5px;font-weight:800;letter-spacing:.3px;padding:3px 8px;border-radius:99px;border:1px solid #f1dc6b55;pointer-events:none}
 </style>
 </head>
@@ -947,7 +951,7 @@ let MV = [{v:'home'}], CTX = [], CTXN = 300;
 /* ---------- library ---------- */
 async function musicLoad(){
   TR = await dbAll('tracks');
-  if(lsGet('nvMusic.v', 1) < 2 && TR.length) await musicMigrate2(); STATS = {}; for(const s of await dbAll('mstats')) STATS[s.id] = s;
+  if(lsGet('nvMusic.v', 1) < 3 && TR.length) await musicMigrate2(); STATS = {}; for(const s of await dbAll('mstats')) STATS[s.id] = s;
   LISTS = await dbAll('lists'); const ck = (await dbKeys('covers')).map(String); ALCOV = new Set(ck.filter(k => k.startsWith('al:')).map(k => k.slice(3))); CDCOV = new Set(ck.filter(k => k.startsWith('cd:')));
   musicIndex() }
 /* v2: "Album (CD1)" and "Album (CD2)" become one album with discs; stats, playlists and covers move to the new keys */
@@ -962,7 +966,7 @@ async function musicMigrate2(){
   const lists = await dbAll('lists'); for(const l of lists) l.items = [...new Set(l.items.map(k => keyMap[k] || k))]; if(lists.length) await dbPutMany('lists', lists);
   const have = new Set((await dbKeys('covers')).map(String));
   for(const [o, n] of Object.entries(alMap)){ if(have.has('al:' + o) && !have.has('al:' + n)){ const c = await dbGet('covers', 'al:' + o); if(c){ await dbPut('covers', {id:'al:' + n, blob:c.blob}); have.add('al:' + n) } } if(have.has('al:' + o) && o !== n) await dbDel('covers', 'al:' + o).catch(() => {}) }
-  lsSet('nvMusic.v', 2); L('music', `library updated: ${changed.length} songs, ${Object.keys(alMap).length} albums joined or renamed`) }
+  lsSet('nvMusic.v', 3); L('music', `library updated: ${changed.length} songs, ${Object.keys(alMap).length} albums joined or renamed`) }
 function musicIndex(){
   TRID = {}; KEYTR = {}; ALBK = {}; ARTK = {};
   for(const t of TR){ TRID[t.id] = t; if(!KEYTR[t.key]) KEYTR[t.key] = t;
@@ -1178,10 +1182,16 @@ function makeTrack(x, info, folder, now){
   fixAlbum(tr); return tr }
 /* "Album (CD2)", "Album - CD 2", "Album [Disc 2 of 2]" → name "Album" + disc 2 */
 const DISC_TAIL = /\s*[-–:,]?\s*[(\[]?\s*(?:cd|disc|disk)\s*(\d{1,2})(?:\s*(?:of|\/)\s*\d{1,2})?\s*[)\]]?\s*$/i;
-function splitDisc(s){ s = String(s || ''); const m = s.match(DISC_TAIL); return m && m.index > 0 ? {name:s.slice(0, m.index).replace(/[\s\-–:,]+$/, ''), disc:+m[1]} : {name:s, disc:0} }
+/* also in the middle: "Thunderdome 2001 (CD1) (Light Grey)" → "Thunderdome 2001 (Light Grey)" CD 1; "Thunderdome 2008 (CD1) - Early Rave" → "Thunderdome 2008" CD 1 "Early Rave" */
+const DISC_MID = /\s*[(\[]\s*(?:cd|disc|disk)\s*(\d{1,2})(?:\s*(?:of|\/)\s*\d{1,2})?\s*[)\]]\s*/i;
+function splitDisc(s){ s = String(s || ''); let m = s.match(DISC_TAIL); if(m && m.index > 0) return {name:s.slice(0, m.index).replace(/[\s\-–:,]+$/, ''), disc:+m[1]};
+  m = s.match(DISC_MID); if(m && m.index > 0){ const before = s.slice(0, m.index).trim(), after = s.slice(m.index + m[0].length).trim();
+    if(/^[-–:]/.test(after)) return {name:before.replace(/[\s\-–:,]+$/, ''), disc:+m[1], sub:after.replace(/^[-–:]\s*/, '')};
+    return {name:(before + ' ' + after).trim(), disc:+m[1]} }
+  return {name:s, disc:0} }
 /* album name, disc number, album folder and album key from a song's stored fields (also used to fix songs added before) */
 function fixAlbum(tr){
-  const a = splitDisc(tr.album); if(a.disc){ tr.album = a.name; if(!tr.disc) tr.disc = a.disc }
+  const a = splitDisc(tr.album); if(a.disc){ tr.album = a.name; if(!tr.disc) tr.disc = a.disc; if(a.sub) tr.discName = a.sub }
   const path = tr.tree && tr.dir.startsWith(tr.tree + '|') ? tr.dir.slice(tr.tree.length + 1) : tr.dir || '', segs = path ? path.split('/') : [];
   if(segs.length){ const l = segs[segs.length - 1]; if(DISC_RE.test(l)){ segs.pop(); if(!tr.disc) tr.disc = parseInt(l.replace(/\D+/g, '')) || 0 }
     else { const d = splitDisc(l); if(d.disc){ segs[segs.length - 1] = d.name; if(!tr.disc) tr.disc = d.disc } } }
@@ -1201,6 +1211,31 @@ function songRow(t, i, opt){ opt = opt || {}; const a = albumOf(t) || {key:t.al,
     <div class="n"><div>${esc(t.title)}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ''}</div>${opt.plays ? `<span class="r">${plays(t)}×</span>` : `<span class="r">${t.dur ? clock(t.dur) : ''}</span>`}<button class="x" data-menu="${t.id}" aria-label="More">${IC_DOTS}</button></div>` }
 function songList(ts, opt){ CTX = ts.map(t => t.id); const n = Math.min(ts.length, CTXN);
   return `<div class="songs">${ts.slice(0, n).map((t, i) => songRow(t, i, opt)).join('')}</div>${ts.length > n ? `<button class="btn more" data-moresongs="1">Show more (${ts.length - n} left)</button>` : ''}` }
+/* ---------- groups: an artist's albums, a compilation series (Thunderdome …) or a group you made, as one tile ---------- */
+const VARIOUS_RE = /^(various( artists)?|va|v\.a\.|diverse|verschillende( artiesten)?|compilation|unknown artist)$/i;
+/* the series name of an album: "Thunderdome 06 - From Hell…", "Thunderdome IV - …", "Various - Thunderdome 2003 Green" → "Thunderdome" */
+function seriesName(title){ let t = String(title || '').replace(/^\s*(various( artists)?|va)\s*[-–:]\s*/i, '');
+  const m = t.match(/^(.*?)(?=\s*(?:\d|[-–:(\[]|$))/); let k = (m ? m[1] : t).replace(/[\s!.,'’]+$/, '');
+  k = k.replace(/(\s+\b(?:vol(?:ume)?|part|pt|chapter|episode|edition)\.?)+$/i, '').replace(/(\s+\b[IVXLC]{1,6}\b)+$/, '').trim();
+  return norm(k).length >= 3 ? k : '' }
+function buildGroups(als){
+  const own = lsGet('nvMusic.groups', []), G = {}, put = (key, name, kind, a) => { (G[key] = G[key] || {key, name, kind, albums:[]}).albums.push(a) };
+  for(const a of als){ const hay = norm(a.title + ' ' + a.aa), c = own.find(g => norm(g.name) && hay.includes(norm(g.name)));
+    if(c){ put('c:' + norm(c.name), c.name, 'own', a); continue }
+    const various = VARIOUS_RE.test(a.aa.trim()), sn = seriesName(a.title);
+    if(various && sn) put('s:' + norm(sn), sn, 'series', a); else put('a:' + (norm(a.aa) || 'unknown'), a.aa, 'artist', a) }
+  const groups = [], singles = [];
+  for(const g of Object.values(G)){ if(g.albums.length > 1 || g.kind === 'own') groups.push(g); else singles.push(g.albums[0]) }
+  return {groups, singles} }
+const totals = ts => ({songs:ts.length, dur:ts.reduce((n, t) => n + (t.dur || 0), 0), size:ts.reduce((n, t) => n + (t.size || 0), 0)});
+const longTime = s => s >= 172800 ? `${Math.floor(s / 86400)} days ${Math.round((s % 86400) / 3600)} h` : hm(s);
+const totalsLine = (ts, extra) => { const x = totals(ts); return [extra, plural(x.songs, 'song').replace(/^\d+/, n => (+n).toLocaleString()), x.dur ? longTime(x.dur) : '', x.size ? mb(x.size) : ''].filter(Boolean).join(' · ') };
+const grpCover = g => { const a = g.albums.find(x => ALCOV.has(x.key)) || g.albums[0]; return alCover(Object.assign({}, a, {title:g.name, aa:''})) };
+const groupTile = g => `<div class="bk stack" data-grp="${esc(g.key)}" style="position:relative">${grpCover(g)}<span class="cdl grp">${plural(g.albums.length, 'album')}</span><div class="t">${esc(g.name)}</div><div class="a">${g.kind === 'artist' ? 'Artist' : g.kind === 'series' ? 'Series' : 'Your group'} · ${plural(g.albums.reduce((n, a) => n + a.tracks.length, 0), 'song')}</div></div>`;
+function newGroup(){ sheet(`<h3>New group</h3><p class="muted small" style="margin:0 0 8px">Every album with this word in its name or artist goes into one tile, for example <b>Thunderdome</b> or <b>Now That's What I Call Music</b>.</p><input type="text" id="gname" placeholder="Name" maxlength="60"><div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="gmake">Make the group</button></div>`);
+  setTimeout(() => { const i = $('#gname'); if(i) i.focus() }, 50);
+  $('#gmake').onclick = () => { const n = $('#gname').value.trim(); if(!n) return; const g = lsGet('nvMusic.groups', []); if(!g.some(x => norm(x.name) === norm(n))) g.push({name:n}); lsSet('nvMusic.groups', g);
+    const cnt = buildGroups(ALB).groups.find(x => x.key === 'c:' + norm(n)); closeSheet(); MS.algroup = true; saveMS(); drawM(); toast(`Group “${n}”: ${plural(cnt ? cnt.albums.length : 0, 'album')}`) } }
 function discLabel(a){ const d = [...new Set(a.tracks.map(t => t.disc || 0))].filter(Boolean); return d.length > 1 ? `${d.length} CDs` : d.length === 1 && d[0] > 1 ? `CD ${d[0]}` : '' }
 /* CD pictures inside an album: a picture in the CD's folder named cd1 / disc 1 …, else the picture inside that CD's songs (often a disc scan) */
 let CDOPEN = {}, CDCOV = new Set(), CDTRY = new Set(), CDURL = {};
@@ -1245,7 +1280,12 @@ function drawM(){
     else {
       h += `<div class="mtabs">${[['albums', 'Albums'], ['artists', 'Artists'], ['songs', 'Songs'], ['lists', 'Playlists']].map(([k, t]) => `<button class="chip ${MS.tab === k ? 'on' : ''}" data-tab="${k}">${t}</button>`).join('')}</div>`;
       if(MS.tab === 'albums'){ const als = ALB.slice().sort(MS.alsort === 'title' ? (a, b) => coll.compare(norm(a.title), norm(b.title)) : MS.alsort === 'added' ? (a, b) => b.added - a.added : MS.alsort === 'year' ? (a, b) => (b.year || '0').localeCompare(a.year || '0') || coll.compare(a.title, b.title) : (a, b) => coll.compare(norm(a.aa), norm(b.aa)) || (a.year || '').localeCompare(b.year || '') || coll.compare(a.title, b.title));
-        h += `<div class="mbar"><span class="muted small" style="flex:1">${plural(ALB.length, 'album')}</span><select id="mals" aria-label="Sort">${[['artist', 'Artist'], ['title', 'Title'], ['added', 'Recently added'], ['year', 'Year']].map(([k, t]) => `<option value="${k}" ${MS.alsort === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>${albumGrid(als)}` }
+        h += `<div class="mtot">${totalsLine(TR, plural(ALB.length, 'album'))}</div>`;
+        h += `<div class="mbar"><select id="malg" aria-label="Groups"><option value="1" ${MS.algroup !== false ? 'selected' : ''}>Grouped</option><option value="0" ${MS.algroup === false ? 'selected' : ''}>All albums</option></select><select id="mals" aria-label="Sort">${[['artist', 'Artist'], ['title', 'Title'], ['added', 'Recently added'], ['year', 'Year']].map(([k, t]) => `<option value="${k}" ${MS.alsort === k ? 'selected' : ''}>${t}</option>`).join('')}</select><span style="flex:1"></span><button class="btn sm" id="mnewgrp">+ Group</button></div>`;
+        if(MS.algroup === false) h += albumGrid(als);
+        else { const {groups, singles} = buildGroups(als), sk = x => x.albums ? {title:x.name, aa:x.name, added:Math.max(...x.albums.map(a => a.added)), year:x.albums.map(a => a.year).filter(Boolean).sort()[0] || ''} : x;
+          const items = [...groups, ...singles].sort((p, q) => { const a = sk(p), b = sk(q); return MS.alsort === 'title' ? coll.compare(norm(a.title), norm(b.title)) : MS.alsort === 'added' ? b.added - a.added : MS.alsort === 'year' ? (b.year || '0').localeCompare(a.year || '0') || coll.compare(a.title, b.title) : coll.compare(norm(a.aa), norm(b.aa)) || coll.compare(norm(a.title), norm(b.title)) });
+          h += `<div class="grid">${items.map(x => x.albums ? groupTile(x) : albumGrid([x]).replace(/^<div class="grid">|<\/div>$/g, '')).join('')}</div>` } }
       if(MS.tab === 'artists') h += `<div class="mbar"><span class="muted small">${plural(ARTS.length, 'artist')}</span></div>${ARTS.map(artistRow).join('')}`;
       if(MS.tab === 'songs'){ const sg = TR.slice().sort(MS.sgsort === 'artist' ? (a, b) => coll.compare(norm(a.artist), norm(b.artist)) || coll.compare(a.al, b.al) || (a.track || 0) - (b.track || 0) : MS.sgsort === 'added' ? (a, b) => b.added - a.added : (a, b) => coll.compare(norm(a.title), norm(b.title)));
         h += playBar(`<select id="msgs" aria-label="Sort">${[['title', 'Title'], ['artist', 'Artist'], ['added', 'Added']].map(([k, t]) => `<option value="${k}" ${MS.sgsort === k ? 'selected' : ''}>${t}</option>`).join('')}</select>`) + songList(sg) }
@@ -1260,21 +1300,25 @@ function drawM(){
     h += musicStore() }
   if(v.v === 'album'){ const a = ALBK[v.key]; if(!a){ MV.pop(); return drawM() }
     const discs = new Set(a.tracks.map(t => t.disc || 0)).size > 1; CTX = a.tracks.map(t => t.id);
-    h += `<div class="alhead">${alCover(a)}<div style="min-width:0"><b>${esc(a.title)}</b><div class="lnk" data-artist="${esc(norm(a.aa) || 'unknown')}">${esc(a.aa)}</div><div class="muted small">${[a.year, plural(a.tracks.length, 'song'), hm(a.dur)].filter(Boolean).join(' · ')}</div></div></div>`;
+    h += `<div class="alhead">${alCover(a)}<div style="min-width:0"><b>${esc(a.title)}</b><div class="lnk" data-artist="${esc(norm(a.aa) || 'unknown')}">${esc(a.aa)}</div><div class="muted small">${[a.year, plural(a.tracks.length, 'song'), hm(a.dur), mb(a.tracks.reduce((n, t) => n + (t.size || 0), 0))].filter(Boolean).join(' · ')}</div></div></div>`;
     h += playBar(`<button class="ib" data-almenu="${esc(a.key)}" aria-label="More for this album">${IC_DOTS}</button>`);
     if(!discs) h += '<div class="songs">' + a.tracks.map((t, i) => songRow(t, i, {album:true})).join('') + '</div>';
     else { /* one block per CD: its own picture, "CD 2", songs and length, its own play button; folded, the playing CD open */
       const ct = curT(), open = CDOPEN[a.key] || (CDOPEN[a.key] = new Set(ct && ct.al === a.key ? [ct.disc || 0] : []));
       const byD = []; a.tracks.forEach((t, i) => { const d = t.disc || 0; let g = byD.find(x => x.d === d); if(!g) byD.push(g = {d, rows:[]}); g.rows.push([t, i]) });
       h += '<div class="songs">' + byD.map(g => { const on = open.has(g.d), dur = g.rows.reduce((n, [t]) => n + (t.dur || 0), 0);
-        return `<div class="cdh ${on ? 'on' : ''}" data-cd="${g.d}"><span class="cdcv" data-cdc="${g.d}">${IC_DISC}</span><div class="n"><div><b>${g.d ? 'CD ' + g.d : 'Other songs'}</b></div><div class="s">${plural(g.rows.length, 'song')}${dur ? ' · ' + hm(dur) : ''}</div></div>
+        return `<div class="cdh ${on ? 'on' : ''}" data-cd="${g.d}"><span class="cdcv" data-cdc="${g.d}">${IC_DISC}</span><div class="n"><div><b>${g.d ? 'CD ' + g.d : 'Other songs'}</b>${g.rows[0][0].discName ? ` <span class="small" style="color:var(--text)">· ${esc(g.rows[0][0].discName)}</span>` : ''}</div><div class="s">${plural(g.rows.length, 'song')}${dur ? ' · ' + hm(dur) : ''}</div></div>
           <button class="ib" data-cdplay="${g.d}" aria-label="Play this CD" style="border-radius:50%;background:var(--accentd);border:0;color:#fff">${IC_PLAY}</button><span class="chev">›</span></div>
           <div class="cdlist" ${on ? '' : 'hidden'}>${g.rows.map(([t, i]) => songRow(t, i, {album:true})).join('')}</div>` }).join('') + '</div>';
       setTimeout(() => fillDiscCovers(a), 0) } }
+  if(v.v === 'group'){ const g = buildGroups(ALB).groups.find(x => x.key === v.key); if(!g){ MV.pop(); return drawM() }
+    const als = g.albums.slice().sort((a, b) => (a.year || '').localeCompare(b.year || '') || coll.compare(a.title, b.title)), all = als.flatMap(a => a.tracks);
+    h += `<div class="alhead"><div class="stack" style="flex:none">${grpCover(g).replace('class="cv ', 'class="cv gcv ')}</div><div style="min-width:0"><b>${esc(g.name)}</b><div class="muted small">${g.kind === 'artist' ? 'Artist' : g.kind === 'series' ? 'Series' : 'Your group'}</div><div class="muted small">${totalsLine(all, plural(als.length, 'album'))}</div></div></div>`;
+    h += playBar(g.kind === 'own' ? `<button class="ib" data-grpmenu="${esc(g.name)}" aria-label="More for this group">${IC_DOTS}</button>` : '') + albumGrid(als); CTX = all.map(t => t.id) }
   if(v.v === 'artist'){ const ar = ARTK[v.key]; if(!ar){ MV.pop(); return drawM() }
     const als = ar.albums.slice().sort((a, b) => (a.year || '').localeCompare(b.year || '') || coll.compare(a.title, b.title)), own = new Set(als.map(a => a.key));
     const also = TR.filter(t => !own.has(t.al) && norm(t.artist) === ar.key), all = als.flatMap(a => a.tracks).concat(also);
-    h += `<div class="alhead"><span class="av" style="width:72px;height:72px;font-size:28px;background:hsl(${hue(ar.name)} 40% 28%)">${esc((ar.name.match(/\p{L}|\p{N}/u) || ['?'])[0].toUpperCase())}</span><div><b>${esc(ar.name)}</b><div class="muted small">${plural(als.length, 'album')} · ${plural(all.length, 'song')}</div></div></div>`;
+    h += `<div class="alhead"><span class="av" style="width:72px;height:72px;font-size:28px;background:hsl(${hue(ar.name)} 40% 28%)">${esc((ar.name.match(/\p{L}|\p{N}/u) || ['?'])[0].toUpperCase())}</span><div><b>${esc(ar.name)}</b><div class="muted small">${totalsLine(all, plural(als.length, 'album'))}</div></div></div>`;
     h += playBar() + albumGrid(als);
     if(also.length) h += `<div class="sec">Also on other albums</div>${also.map((t, i) => songRow(t, als.reduce((n, a) => n + a.tracks.length, 0) + i)).join('')}`;
     CTX = all.map(t => t.id) }
@@ -1286,12 +1330,14 @@ function drawM(){
   body.innerHTML = h; lazyCovers(body); drawMMini();
   const mq = $('#mq'); if(mq){ mq.oninput = e => { MS.q = e.target.value; saveMS(); clearTimeout(drawM.t); drawM.t = setTimeout(() => { const p = e.target.selectionStart; CTXN = 300; drawM(); const i = $('#mq'); if(i){ i.focus(); try{ i.setSelectionRange(p, p) }catch(x){} } }, 250) } }
   if($('#mals')) $('#mals').onchange = e => { MS.alsort = e.target.value; saveMS(); drawM() };
+  if($('#malg')) $('#malg').onchange = e => { MS.algroup = e.target.value === '1'; saveMS(); drawM() };
+  if($('#mnewgrp')) $('#mnewgrp').onclick = () => newGroup();
   if($('#msgs')) $('#msgs').onchange = e => { MS.sgsort = e.target.value; saveMS(); drawM() };
   if($('#mnewlist')) $('#mnewlist').onclick = () => newList();
 }
 function artistRow(ar){ return `<div class="li" data-artist="${esc(ar.key)}"><span class="av" style="background:hsl(${hue(ar.name)} 40% 28%)">${esc((ar.name.match(/\p{L}|\p{N}/u) || ['?'])[0].toUpperCase())}</span><div class="n"><div>${esc(ar.name)}</div><div class="s">${plural(ar.albums.length, 'album')} · ${plural(ar.n, 'song')}</div></div></div>` }
 function musicStore(){ const cp = TR.filter(t => t.fid), used = cp.reduce((a, t) => a + (t.size || 0), 0);
-  return `<div class="store">${plural(TR.length, 'song')} · ${plural(ALB.length, 'album')}${cp.length ? ` · ${mb(used)} copied into the app` : ''}</div>` }
+  return `<div class="store">${totalsLine(TR, plural(ALB.length, 'album'))}${cp.length ? ` · ${mb(used)} copied into the app` : ''}</div>` }
 $('#mbody').addEventListener('click', e => {
   const tb = e.target.closest('[data-tab]'); if(tb){ MS.tab = tb.dataset.tab; saveMS(); CTXN = 300; drawM(); return }
   const mn = e.target.closest('[data-menu]'); if(mn){ e.stopPropagation(); songMenu(TRID[mn.dataset.menu]); return }
@@ -1303,6 +1349,10 @@ $('#mbody').addEventListener('click', e => {
     cd.classList.toggle('on', o.has(d)); cd.nextElementSibling.hidden = !o.has(d); return }
   const pl = e.target.closest('[data-play]'); if(pl){ playList(CTX, null, pl.dataset.play === 'shuffle'); return }
   const sg = e.target.closest('[data-ctx]'); if(sg){ playList(CTX, +sg.dataset.ctx); return }
+  const gr = e.target.closest('[data-grp]'); if(gr){ mGo({v:'group', key:gr.dataset.grp}); return }
+  const gm = e.target.closest('[data-grpmenu]'); if(gm){ const n = gm.dataset.grpmenu;
+    sheet(`<h3>Group “${esc(n)}”</h3><div class="mlist"><button class="btn danger" id="gdel">Remove this group</button></div><p class="muted small" style="margin:10px 0 0">The albums stay - they just show as separate tiles again (or in their artist's tile).</p>`);
+    $('#gdel').onclick = () => { lsSet('nvMusic.groups', lsGet('nvMusic.groups', []).filter(x => norm(x.name) !== norm(n))); closeSheet(); musicBack(); toast('Group removed') }; return }
   const al = e.target.closest('[data-al]'); if(al){ mGo({v:'album', key:al.dataset.al}); return }
   const ar = e.target.closest('[data-artist]'); if(ar){ mGo({v:'artist', key:ar.dataset.artist}); return }
   const li = e.target.closest('[data-list]'); if(li){ mGo({v:'list', id:li.dataset.list}); return } });
