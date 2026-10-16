@@ -230,7 +230,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 221432
+     "size": 221497
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -242,9 +242,9 @@
     "music"
    ],
    "uses": [],
-   "size": 221993,
-   "hash": "b708dfbed096",
-   "version": "2026.10.16.1331",
+   "size": 222058,
+   "hash": "2b438432d24f",
+   "version": "2026.10.16.1333",
    "updated": "2026-10-16"
   },
   {
@@ -256,7 +256,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 221432
+     "size": 221497
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -268,9 +268,9 @@
     "audiobooks"
    ],
    "uses": [],
-   "size": 221993,
-   "hash": "b708dfbed096",
-   "version": "2026.10.16.1331",
+   "size": 222058,
+   "hash": "2b438432d24f",
+   "version": "2026.10.16.1333",
    "updated": "2026-10-16"
   },
   {
