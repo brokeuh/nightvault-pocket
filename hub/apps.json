@@ -10,7 +10,7 @@
    "files": [
     {
      "path": "hub/index.html",
-     "size": 31661
+     "size": 37580
     },
     {
      "path": "hub/core.js",
@@ -19,14 +19,18 @@
     {
      "path": "hub/nvlog.js",
      "size": 11808
+    },
+    {
+     "path": "hub/nvpc.js",
+     "size": 5871
     }
    ],
    "provides": [],
    "uses": [],
-   "size": 50494,
-   "hash": "eed6c5403cd6",
-   "version": "2026.10.13.0824",
-   "updated": "2026-10-13"
+   "size": 62284,
+   "hash": "1bcb3b54a940",
+   "version": "2026.10.16.0634",
+   "updated": "2026-10-16"
   },
   {
    "id": "scanner",
@@ -226,7 +230,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 181148
+     "size": 205354
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -238,10 +242,10 @@
     "music"
    ],
    "uses": [],
-   "size": 181709,
-   "hash": "2402325f334c",
-   "version": "2026.10.14.0634",
-   "updated": "2026-10-14"
+   "size": 205915,
+   "hash": "5e9ac562e88c",
+   "version": "2026.10.16.0634",
+   "updated": "2026-10-16"
   },
   {
    "id": "audiobooks",
@@ -252,7 +256,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 181148
+     "size": 205354
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -264,10 +268,10 @@
     "audiobooks"
    ],
    "uses": [],
-   "size": 181709,
-   "hash": "2402325f334c",
-   "version": "2026.10.14.0634",
-   "updated": "2026-10-14"
+   "size": 205915,
+   "hash": "5e9ac562e88c",
+   "version": "2026.10.16.0634",
+   "updated": "2026-10-16"
   },
   {
    "id": "cinema",
