@@ -16,12 +16,14 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NvMediaPlugin.class);
         registerPlugin(NvFilesPlugin.class);
         registerPlugin(NvLogPlugin.class);
+        registerPlugin(NvPcPlugin.class);
         super.onCreate(savedInstanceState);
         // files in folders the owner picked (NvFiles) are played straight from there, with byte ranges for seeking
         bridge.setWebViewClient(new BridgeWebViewClient(bridge) {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 WebResourceResponse r = NvFilesPlugin.serve(getApplicationContext(), request);
+                if (r == null) r = NvPcPlugin.serve(getApplicationContext(), request);       // the paired PC on the home network (Take with me)
                 return r != null ? r : super.shouldInterceptRequest(view, request);
             }
         });

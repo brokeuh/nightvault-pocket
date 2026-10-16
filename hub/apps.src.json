@@ -9,7 +9,8 @@
       "files": [
         "hub/index.html",
         "hub/core.js",
-        "hub/nvlog.js"
+        "hub/nvlog.js",
+        "hub/nvpc.js"
       ],
       "provides": [],
       "uses": []

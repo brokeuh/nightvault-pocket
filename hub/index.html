@@ -12,6 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="core.js"></script>
 <script src="nvlog.js"></script>
+<script src="nvpc.js"></script>
 <style>
 :root{--bg:#0b0e13;--pan:#151a22;--pan2:#10141b;--line:#232b36;--text:#e9edf2;--dim:#9aa7b5;--dim2:#8fa0b2;--accent:#5fe0b0;--accentd:#2a8f6a;--amber:#f1dc6b;--red:#ef8a8f}
 *{box-sizing:border-box}
@@ -65,6 +66,8 @@ a.app:active{transform:scale(.985)}a.app:hover{border-color:#33404f}
 .upd b{display:block;font-size:15px}.upd .meta{margin-top:3px;font-size:12.5px;color:#b9c7d6}.upd .bar{margin-top:10px}
 .upd .acts{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
 .clog{padding:12px 0;border-bottom:1px solid var(--line)}.clog:last-child{border-bottom:0}.clog .clh{display:flex;justify-content:space-between;gap:10px}.clog .clh span{font-size:12px;color:var(--dim2);flex:none}
+.fld{width:100%;height:48px;border-radius:14px;border:1px solid var(--line);background:var(--pan2);color:var(--text);padding:0 14px;font:inherit;font-size:16px;margin-top:6px}
+.pcst{display:inline-flex;align-items:center;gap:6px;font-size:13px}.pcst i{width:9px;height:9px;border-radius:50%;background:#6f7d8c;display:inline-block}.pcst.ok i{background:var(--accent)}.pcst.no i{background:var(--red)}
 .clog ul{margin:6px 0 0;padding-left:18px;color:#c9d3de;font-size:13.5px}.clog .for{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.4px}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222a33;border:1px solid var(--line);padding:10px 14px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9;max-width:90vw}
 #toast.on{opacity:1}
@@ -86,6 +89,7 @@ a.app:active{transform:scale(.985)}a.app:hover{border-color:#33404f}
   <div class="top">
     <div class="logo" id="lg2"></div>
     <div style="flex:1;min-width:0"><div class="word">THE NIGHTVAULT</div><div class="sub">Your apps · test version</div></div>
+    <button class="ib" id="pcbtn" aria-label="My PC and downloads" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></svg></button>
     <button class="ib" id="appsbtn" aria-label="Apps"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><path d="M17 14v6M14 17h6" stroke-linecap="round"></path></svg></button>
   </div>
   <div id="upd"></div>
@@ -107,12 +111,17 @@ a.app:active{transform:scale(.985)}a.app:hover{border-color:#33404f}
   <p class="meta" style="margin:4px 0 8px">Only the news for The Nightvault and the apps on this device.</p>
   <div id="wnlist"></div>
 </div></div>
+<!-- My PC: pairing with the Nightvault PC app (Phone access) and the offline copies of all apps (Take with me, nvpc.js) -->
+<div class="sheet" id="pcsheet" hidden><div>
+  <div class="top"><button class="btn sm" id="pcdone">Done</button><div style="flex:1;text-align:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;margin-right:64px">My PC</div></div>
+  <div id="pcbody"></div>
+</div></div>
 <div id="toast"></div>
 
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const mb = n => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+const mb = n => n >= 1073741824 ? (n / 1073741824).toFixed(1) + ' GB' : n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
 const get = (k, d) => { try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v) }catch(e){ return d } };
 const set = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)) }catch(e){} };
 const toast = t => { const el = $('#toast'); el.textContent = t; el.className = 'on'; clearTimeout(toast.t); toast.t = setTimeout(() => el.className = '', 3500) };
@@ -272,8 +281,48 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden) check
   if(!get('nvHub.setupDone', null) && !Object.keys(NV.installed()).length) setup(); else home();
 })();
 /* Android app: the hub is the first screen; back closes the Apps screen, otherwise the app goes to the background */
+/* ---------- My PC (Take with me) ---------- */
+const APPNAME = {music:'Music', audiobooks:'Audiobooks', bookcase:'Bookcase', cinema:'Cinema'};
+if(window.NVPC && NVPC.native) $('#pcbtn').hidden = false;
+$('#pcbtn').onclick = () => { $('#pcsheet').hidden = false; drawPc() };
+$('#pcdone').onclick = () => { $('#pcsheet').hidden = true };
+async function drawPc(){
+  const el = $('#pcbody'), pc = NVPC.pc;
+  let h = '';
+  if(!pc){ h += `<p class="meta" style="font-size:14px;margin:6px 0 14px">Play and save music (later also audiobooks, books and films) from your own PC over your home Wi-Fi.</p>
+    <div class="row" style="display:block"><b>1. On the PC</b><div class="meta" style="margin-top:4px">Open Nightvault on the PC > <b>Settings</b> > <b>Phone access</b> > <b>Switch on</b>. It shows an address and a code.</div></div>
+    <div class="row" style="display:block"><b>2. Here</b> <span class="meta">(the phone must be on the same Wi-Fi)</span>
+      <input class="fld" id="pcaddr" placeholder="Address, like 192.168.1.20" inputmode="url" autocomplete="off">
+      <input class="fld" id="pccode" placeholder="Code, like ABCD-2345" autocapitalize="characters" autocomplete="off">
+      <button class="btn primary" id="pcgo" style="width:100%;margin-top:10px">Connect</button></div>` }
+  else { h += `<div class="row" style="display:block"><div style="display:flex;align-items:center;gap:10px"><b style="flex:1">${esc(pc.name)}</b><span class="pcst" id="pcst"><i></i>Checking…</span></div>
+      <div class="meta" style="margin-top:4px">${esc(pc.base.replace(/^http:\/\//, ''))} · paired ${new Date(pc.at).toLocaleDateString()}</div>
+      <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" id="pcchk">Check again</button><button class="btn sm" id="pcforget">Forget this PC</button></div></div>
+      <p class="meta">Music shows the PC's albums with a small PC sign; they play when the phone is home with the PC on.</p>` }
+  const off = NVPC.offline.all(), tot = off.reduce((n, x) => n + (x.size || 0), 0);
+  h += `<div class="sec">OFFLINE COPIES${off.length ? ' · ' + mb(tot) : ''}</div>`;
+  if(!off.length) h += '<p class="meta">Nothing saved for offline yet. In Music: an album > ⋯ > Save to phone.</p>';
+  else { const apps = [...new Set(off.map(x => x.app))];
+    for(const ap of apps){ const l = off.filter(x => x.app === ap); h += `<div class="meta" style="margin:10px 0 6px;font-weight:700">${esc(APPNAME[ap] || ap)} · ${mb(l.reduce((n, x) => n + (x.size || 0), 0))}</div>`;
+      h += l.map(x => `<div class="row"><div style="flex:1;min-width:0"><b style="font-size:14.5px">${esc(x.title)}</b><div class="meta">${x.n ? x.n + ' files · ' : ''}${mb(x.size || 0)} · ${new Date(x.at).toLocaleDateString()}</div></div>
+        <button class="btn sm" data-keep="${esc(ap)}|${esc(x.id)}">Keep</button><button class="btn sm" data-rm="${esc(ap)}|${esc(x.id)}">Remove</button></div>`).join('') }
+    h += `<button class="btn" id="pcrmall" style="width:100%;margin-top:6px">Remove all offline copies (${mb(tot)})</button>
+      <p class="meta">Remove frees the space on the phone - the files on the PC stay. Keep: it stays on the phone for good and leaves this list.</p>` }
+  el.innerHTML = h;
+  if($('#pcgo')) $('#pcgo').onclick = async () => { const b = $('#pcgo'); b.disabled = true; b.textContent = 'Connecting…';
+    try{ const p = await NVPC.pair($('#pcaddr').value, $('#pccode').value); toast('Connected to ' + p.name); drawPc() }catch(e){ toast(e.message); b.disabled = false; b.textContent = 'Connect' } };
+  if($('#pcforget')) $('#pcforget').onclick = async () => { await NVPC.forget(); toast('This PC is forgotten'); drawPc() };
+  if($('#pcchk')) $('#pcchk').onclick = () => pcState(true);
+  if($('#pcrmall')) $('#pcrmall').onclick = async () => { for(const x of NVPC.offline.all()) await NVPC.offline.remove(x.app, x.id); toast('Offline copies removed'); drawPc() };
+  el.onclick = async e => { const k = e.target.closest('[data-keep]'), r = e.target.closest('[data-rm]');
+    if(k){ const [ap, id] = k.dataset.keep.split('|'); NVPC.offline.keep(ap, id); toast('Kept on this phone'); drawPc() }
+    if(r){ const [ap, id] = r.dataset.rm.split('|'); await NVPC.offline.remove(ap, id); toast('Removed from the phone'); drawPc() } };
+  if(pc) pcState(false) }
+async function pcState(force){ const el = $('#pcst'); if(!el) return; el.className = 'pcst'; el.innerHTML = '<i></i>Checking…';
+  const ok = await NVPC.reachable(force); if(!$('#pcst')) return; el.className = 'pcst ' + (ok ? 'ok' : 'no'); el.innerHTML = '<i></i>' + (ok ? 'Connected' : 'Not reachable') }
+
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(!$('#wnsheet').hidden){ $('#wndone').click(); return } if(!$('#appsheet').hidden){ $('#appsdone').click(); return } if(arranging){ $('#arrange').click(); return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
+  A.addListener('backButton', () => { if(!$('#pcsheet').hidden){ $('#pcdone').click(); return } if(!$('#wnsheet').hidden){ $('#wndone').click(); return } if(!$('#appsheet').hidden){ $('#appsdone').click(); return } if(arranging){ $('#arrange').click(); return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 window.addEventListener('pageshow', e => { if(e.persisted && CAT.length && !$('#home').hidden) home() });
 </script>
 </body>

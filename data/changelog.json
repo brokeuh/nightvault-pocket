@@ -3,6 +3,30 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 64,
+   "date": "2026-10-16",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music",
+    "hub"
+   ],
+   "title": "Take with me: music from your PC, and save it to the phone",
+   "items": [
+    "The Nightvault > My PC (computer button at the top): connect to the Nightvault PC app over your home Wi-Fi. On the PC: Settings > Phone access > Switch on, then type its address and code here.",
+    "Music shows the PC's albums with a small PC sign, in the same library. Albums that are already on the phone show once, and the phone copy plays. When you are away from home, PC songs are greyed out.",
+    "\"All / On this phone / On my PC\" next to the sort menu shows just one side.",
+    "Album (or group, or playlist) > Save to phone: as an offline copy in the app, or as real files in your music folder (e.g. on the SD card) - kept for good. WMA/APE are converted to MP3 by the PC.",
+    "Album ⋯ > \"Keep on this phone\" turns an offline copy into a normal phone album. The Nightvault > My PC lists all offline copies with their size, to remove or keep.",
+    "Album ⋯ > \"Put in a group…\": move an album into a group tile (or a new one), or take it out to its own tile; \"Back to automatic\" undoes it.",
+    "Group ⋯ > \"Choose the tile cover\": one of the covers inside, a random one, changing covers, or a picture from the phone.",
+    "\"Sort by\" on every page: artists, playlists, inside groups and artists, inside playlists and in search results.",
+    "\"Various\" and \"Various artists\" are now one artist."
+   ]
+  },
+  {
    "id": 63,
    "date": "2026-10-14",
    "where": [

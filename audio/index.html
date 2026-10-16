@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <script>/* the debug log names the app after the title: set it before nvlog.js starts */ if(/[?&]mode=music(&|$)/.test(location.search)) document.title = 'Nightvault Music'</script>
 <script src="../hub/nvlog.js"></script>
+<script src="../hub/nvpc.js"></script>
 <!-- Nightvault Audio (test): one app for Audiobooks (?mode=audiobooks, built) and Music (?mode=music, later), one shared player.
      Books are copied into the app (IndexedDB), so they play without internet. Plan: plans/audiobooks.md and plans/music.md (nightvault-src). -->
 <style>
@@ -127,7 +128,7 @@ input[type=range].seek{width:100%;margin:16px 0 0;accent-color:var(--accent);hei
 #mplayer .ctl .rep1{position:relative}#mplayer .ctl .rep1:after{content:'1';position:absolute;top:9px;right:9px;font-size:10px;font-weight:800;background:var(--accent);color:#08251b;border-radius:99px;width:14px;height:14px;line-height:14px;text-align:center}
 .mtabs{display:flex;gap:6px;overflow-x:auto;margin:4px 0 8px;scrollbar-width:none}.mtabs::-webkit-scrollbar{display:none}
 .mtabs .chip{flex:none}
-.mbar{display:flex;gap:8px;align-items:center;margin:4px 0 10px}
+.mbar{display:flex;gap:8px;align-items:center;margin:4px 0 10px;flex-wrap:wrap}.mbar select{max-width:46%}
 .li .th{width:44px;height:44px;border-radius:8px;flex:none}.li .th .ph{font-size:8px;padding:4px}.li .th .ph span{display:none}
 .li .no{width:26px;text-align:right;color:var(--dim);font-size:13px;font-variant-numeric:tabular-nums;flex:none}
 .li.cur .n div:first-child,.li.cur .no{color:var(--accent)}
@@ -151,6 +152,11 @@ input[type=range].seek{width:100%;margin:16px 0 0;accent-color:var(--accent);hei
 .bk.stack .cv,.stack .gcv{box-shadow:5px -5px 0 -1px #2a3442,10px -10px 0 -2px #1c2430}
 .bk.stack{padding-top:10px;padding-right:10px}.stack .gcv{width:min(36vw,150px);margin:10px 10px 0 0}
 .bk .cdl.grp{color:#7fe3ff;border-color:#7fe3ff55;top:17px;right:17px}
+.bk .pcb{position:absolute;left:7px;top:7px;background:#0b0e13d9;color:#9fd0ff;font-size:10.5px;font-weight:800;letter-spacing:.5px;padding:3px 7px;border-radius:7px;border:1px solid #9fd0ff55;pointer-events:none}
+.bk.stack .pcb{top:17px;left:7px}
+.pcs{font-size:9.5px;font-weight:800;letter-spacing:.4px;color:#9fd0ff;border:1px solid #9fd0ff66;border-radius:5px;padding:0 4px;margin-right:6px;vertical-align:1px}
+.pcoff{opacity:.42}
+.pcdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6f7d8c;margin-right:6px;vertical-align:0}.pcdot.ok{background:var(--accent)}.pcdot.no{background:var(--red)}
 .bk .cdl{position:absolute;top:7px;right:7px;background:#0b0e13d9;color:#f1dc6b;font-size:11.5px;font-weight:800;letter-spacing:.3px;padding:3px 8px;border-radius:99px;border:1px solid #f1dc6b55;pointer-events:none}
 </style>
 </head>
@@ -945,14 +951,14 @@ const IC_HEART = on => `<svg viewBox="0 0 24 24" fill="${on ? 'currentColor' : '
 const IC_REP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>';
 const IC_DOTS = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
 
-let TR = [], TRID = {}, KEYTR = {}, STATS = {}, LISTS = [], ALB = [], ALBK = {}, ARTS = [], ARTK = {}, ALCOV = new Set(), ALURL = {};
+let VIS = [], PCT = [], PCON = null, PCSTATE = '', TR = [], TRID = {}, KEYTR = {}, STATS = {}, LISTS = [], ALB = [], ALBK = {}, ARTS = [], ARTK = {}, ALCOV = new Set(), ALURL = {};
 let MV = [{v:'home'}], CTX = [], CTXN = 300;
 
 /* ---------- library ---------- */
 async function musicLoad(){
   TR = await dbAll('tracks');
   if(lsGet('nvMusic.v', 1) < 3 && TR.length) await musicMigrate2(); STATS = {}; for(const s of await dbAll('mstats')) STATS[s.id] = s;
-  LISTS = await dbAll('lists'); const ck = (await dbKeys('covers')).map(String); ALCOV = new Set(ck.filter(k => k.startsWith('al:')).map(k => k.slice(3))); CDCOV = new Set(ck.filter(k => k.startsWith('cd:')));
+  LISTS = await dbAll('lists'); await pcFromCache(); const ck = (await dbKeys('covers')).map(String); ALCOV = new Set(ck.filter(k => k.startsWith('al:')).map(k => k.slice(3)));   // also 'grp:<group key>' for a group's own tile picture CDCOV = new Set(ck.filter(k => k.startsWith('cd:')));
   musicIndex() }
 /* v2: "Album (CD1)" and "Album (CD2)" become one album with discs; stats, playlists and covers move to the new keys */
 async function musicMigrate2(){
@@ -967,17 +973,42 @@ async function musicMigrate2(){
   const have = new Set((await dbKeys('covers')).map(String));
   for(const [o, n] of Object.entries(alMap)){ if(have.has('al:' + o) && !have.has('al:' + n)){ const c = await dbGet('covers', 'al:' + o); if(c){ await dbPut('covers', {id:'al:' + n, blob:c.blob}); have.add('al:' + n) } } if(have.has('al:' + o) && o !== n) await dbDel('covers', 'al:' + o).catch(() => {}) }
   lsSet('nvMusic.v', 3); L('music', `library updated: ${changed.length} songs, ${Object.keys(alMap).length} albums joined or renamed`) }
+/* ---------- Take with me: the PC's music (Nightvault PC app > Phone access; shared part ../hub/nvpc.js) ----------
+   PC songs are joined into the same library. A PC song that is also on the phone (same song key, or same title + album) is not shown:
+   the phone copy plays (offline). MS.src = 'all' | 'phone' | 'pc' filters. PC songs: id 'pc:<id>', t.pc = the PC's file id. */
+const looseKey = t => norm(t.title) + '|' + norm(t.album);
+function visibleTracks(){ const f = window.NVPC && NVPC.pc ? MS.src || 'all' : 'phone';
+  if(f === 'phone' || !PCT.length) return TR; if(f === 'pc') return PCT;
+  const keys = new Set(TR.map(t => t.key)), loose = new Set(TR.map(looseKey));
+  return TR.concat(PCT.filter(t => !keys.has(t.key) && !loose.has(looseKey(t)))) }
+function pcTrack(x){ const f = {name:x.name, size:x.size, type:MIME[x.ext] || '', uri:'pc:' + x.id};
+  const t = makeTrack({f, path:(x.dir ? x.dir + '/' : '') + x.name}, {tags:{title:x.title, artist:x.artist, albumartist:x.albumartist, album:x.album, track:x.track, disc:x.disc, year:x.year, genre:x.genre}, dur:x.dur}, {tree:'pc'}, 0);
+  t.id = 'pc:' + x.id; t.pc = x.id; t.conv = !!x.conv; t.pcov = x.cover; delete t.uri; if(t.conv) t.type = 'audio/mpeg'; return t }
+async function pcFromCache(){ if(!window.NVPC || !NVPC.pc){ PCT = []; return } const c = await dbGet('kv', 'pc:music').catch(() => null); PCT = c && c.items ? c.items.map(pcTrack) : [] }
+/* is the PC there? then get its newest list (it builds the list in the background the first time) */
+async function pcRefresh(fresh){
+  if(!window.NVPC || !NVPC.pc) return; PCSTATE = 'checking'; drawPcLine();
+  PCON = await NVPC.reachable(!!fresh); if(!PCON){ PCSTATE = 'off'; drawPcLine(); markPcOff(); L('pc', 'PC not reachable'); return }
+  try{ const j = await NVPC.list('music', (d, n) => { PCSTATE = `getting the list ready on the PC: ${d} of ${n}`; drawPcLine() }, fresh);
+    await dbPut('kv', {id:'pc:music', at:Date.now(), items:j.items}).catch(() => {}); PCT = j.items.map(pcTrack); PCSTATE = 'on';
+    L('pc', `PC list: ${PCT.length} songs`); musicIndex(); drawM() }
+  catch(e){ LE('pc', 'PC list failed', e); PCSTATE = 'error: ' + (e.message || e); drawPcLine() } }
+function drawPcLine(){ const el = $('#mpcline'); if(!el) return; const n = PCT.length;
+  el.innerHTML = !window.NVPC || !NVPC.pc ? '' : `<span class="pcdot ${PCON ? 'ok' : PCON === false ? 'no' : ''}"></span>${esc(NVPC.pc.name)}: ${PCSTATE === 'off' ? 'not reachable - PC songs are greyed out' : PCSTATE === 'checking' ? 'checking…' : PCSTATE.startsWith('getting') || PCSTATE.startsWith('error') ? esc(PCSTATE) : plural(n, 'song').replace(/^\d+/, x => (+x).toLocaleString()) + ' on the PC'}` }
+function markPcOff(){ document.querySelectorAll('#mbody [data-pconly]').forEach(e => e.classList.toggle('pcoff', PCON === false)) }
 function musicIndex(){
-  TRID = {}; KEYTR = {}; ALBK = {}; ARTK = {};
-  for(const t of TR){ TRID[t.id] = t; if(!KEYTR[t.key]) KEYTR[t.key] = t;
+  TRID = {}; KEYTR = {}; ALBK = {}; ARTK = {}; VIS = visibleTracks();
+  for(const t of VIS){ TRID[t.id] = t; if(!KEYTR[t.key]) KEYTR[t.key] = t;
     const a = ALBK[t.al] || (ALBK[t.al] = {key:t.al, title:t.album || 'Unknown album', tracks:[], artists:new Set(), aa:'', year:'', dur:0, added:0});
-    a.tracks.push(t); a.artists.add(t.artist || t.aa); if(t.aaTag) a.aa = t.aa; if(t.year && !a.year) a.year = t.year; a.dur += t.dur || 0; a.added = Math.max(a.added, t.added || 0) }
+    a.tracks.push(t); a.artists.add(t.artist || t.aa); if(t.aaTag) a.aa = t.aa; if(t.pcov && !a.pcov) a.pcov = t.pcov; if(t.year && !a.year) a.year = t.year; a.dur += t.dur || 0; a.added = Math.max(a.added, t.added || 0) }
   ALB = Object.values(ALBK);
-  for(const a of ALB){ if(!a.aa) a.aa = a.artists.size === 1 ? [...a.artists][0] || 'Unknown artist' : 'Various artists';
+  for(const a of ALB){ a.pconly = a.tracks.every(t => t.pc); if(!a.aa) a.aa = a.artists.size === 1 ? [...a.artists][0] || 'Unknown artist' : 'Various artists';
     a.tracks.sort((x, y) => ((x.disc || 0) - (y.disc || 0)) || ((x.track || 0) - (y.track || 0)) || coll.compare(x.name, y.name));
-    const k = norm(a.aa) || 'unknown'; const ar = ARTK[k] || (ARTK[k] = {key:k, name:a.aa, albums:[], n:0}); ar.albums.push(a); ar.n += a.tracks.length }
+    const va = VARIOUS_RE.test(a.aa.trim()) && !/unknown/i.test(a.aa), k = va ? 'various artists' : norm(a.aa) || 'unknown';   // "Various", "VA", "Various Artists" = one artist
+    const ar = ARTK[k] || (ARTK[k] = {key:k, name:va ? 'Various artists' : a.aa, albums:[], n:0}); ar.albums.push(a); ar.n += a.tracks.length }
   ARTS = Object.values(ARTK).sort((x, y) => coll.compare(x.key, y.key)) }
 const albumOf = t => ALBK[t.al];
+const artistKey = n => VARIOUS_RE.test(String(n || '').trim()) && !/unknown/i.test(n) ? 'various artists' : norm(n) || 'unknown';
 const stat = key => STATS[key] || (STATS[key] = {id:key, fav:false, plays:[], last:0});
 const isFav = t => !!(t && STATS[t.key] && STATS[t.key].fav);
 async function toggleFav(t){ if(!t) return; const s = stat(t.key); s.fav = !s.fav; s.favAt = Date.now(); await dbPut('mstats', s).catch(() => {}); toast(s.fav ? 'Added to Favourites' : 'Removed from Favourites'); drawMP(); if(MV[MV.length - 1].v === 'list') drawM() }
@@ -985,12 +1016,13 @@ function countPlay(t){ if(!t) return; const s = stat(t.key); s.plays.push(Date.n
 const plays = t => (STATS[t.key] && STATS[t.key].plays.length) || 0;
 
 /* album covers: one picture per album, loaded when it scrolls into view */
-async function alUrl(al){ if(ALURL[al]) return ALURL[al]; if(!ALCOV.has(al)) return null;
+async function alUrl(al){ if(ALURL[al]) return ALURL[al];
+  if(!ALCOV.has(al)){ const a = ALBK[al]; return a && a.pcov && window.NVPC ? NVPC.url('/nv/cover?id=' + a.pcov) : null }
   const c = await dbGet('covers', 'al:' + al).catch(() => null); return c && c.blob ? (ALURL[al] = URL.createObjectURL(c.blob)) : null }
 function alCover(a, cls){ const h = hue(a.title + a.aa), u = ALURL[a.key];
-  return `<div class="cv ${cls || ''}" ${!u && ALCOV.has(a.key) ? `data-alc="${esc(a.key)}"` : ''}>${u ? `<img src="${u}" alt="">` : `<div class="ph" style="--c1:hsl(${h} 45% 30%);--c2:hsl(${(h + 50) % 360} 50% 15%)">${esc(a.title)}<span>${esc(a.aa)}</span></div>`}</div>` }
+  return `<div class="cv ${cls || ''}" ${!u && (ALCOV.has(a.key) || (ALBK[a.key] && ALBK[a.key].pcov)) ? `data-alc="${esc(a.key)}"` : ''}>${u ? `<img src="${u}" alt="">` : `<div class="ph" style="--c1:hsl(${h} 45% 30%);--c2:hsl(${(h + 50) % 360} 50% 15%)">${esc(a.title)}<span>${esc(a.aa)}</span></div>`}</div>` }
 const covIO = 'IntersectionObserver' in window ? new IntersectionObserver(es => { for(const e of es) if(e.isIntersecting){ covIO.unobserve(e.target); fillCover(e.target) } }, {rootMargin:'400px'}) : null;
-async function fillCover(el){ const u = await alUrl(el.dataset.alc); if(u){ el.innerHTML = `<img src="${u}" alt="">`; el.removeAttribute('data-alc') } }
+async function fillCover(el){ const u = await alUrl(el.dataset.alc); if(u){ const ph = el.innerHTML; el.removeAttribute('data-alc'); const img = new Image(); img.alt = ''; img.onload = () => { el.innerHTML = ''; el.appendChild(img) }; img.onerror = () => { el.innerHTML = ph }; img.src = u } }
 function lazyCovers(root){ root.querySelectorAll('[data-alc]').forEach(el => covIO ? covIO.observe(el) : fillCover(el)) }
 
 /* ---------- adding music: a folder on the phone (nothing copied) or files copied into the app ---------- */
@@ -1207,8 +1239,8 @@ function musicBack(){ if(!$('#mplayer').hidden){ showMP(false); return true } if
   if(MS.q){ MS.q = ''; saveMS(); drawM(); return true } return false }
 $('#mvback').onclick = () => musicBack();
 function songRow(t, i, opt){ opt = opt || {}; const a = albumOf(t) || {key:t.al, title:t.album, aa:t.aa}; const sub = opt.album ? (t.artist !== a.aa ? t.artist : '') : `${t.artist}${t.album ? ' · ' + t.album : ''}`;
-  return `<div class="li sg ${curT() && curT().id === t.id ? 'cur' : ''}" data-ctx="${i}" data-id="${t.id}">${opt.album ? `<span class="no">${t.track || ''}</span>` : `<span class="th">${alCover(a)}</span>`}
-    <div class="n"><div>${esc(t.title)}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ''}</div>${opt.plays ? `<span class="r">${plays(t)}×</span>` : `<span class="r">${t.dur ? clock(t.dur) : ''}</span>`}<button class="x" data-menu="${t.id}" aria-label="More">${IC_DOTS}</button></div>` }
+  return `<div class="li sg ${curT() && curT().id === t.id ? 'cur' : ''} ${t.pc && PCON === false ? 'pcoff' : ''}" data-ctx="${i}" data-id="${t.id}" ${t.pc ? 'data-pconly="1"' : ''}>${opt.album ? `<span class="no">${t.track || ''}</span>` : `<span class="th">${alCover(a)}</span>`}
+    <div class="n"><div>${t.pc ? '<span class="pcs">PC</span>' : ''}${esc(t.title)}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ''}</div>${opt.plays ? `<span class="r">${plays(t)}×</span>` : `<span class="r">${t.dur ? clock(t.dur) : ''}</span>`}<button class="x" data-menu="${t.id}" aria-label="More">${IC_DOTS}</button></div>` }
 function songList(ts, opt){ CTX = ts.map(t => t.id); const n = Math.min(ts.length, CTXN);
   return `<div class="songs">${ts.slice(0, n).map((t, i) => songRow(t, i, opt)).join('')}</div>${ts.length > n ? `<button class="btn more" data-moresongs="1">Show more (${ts.length - n} left)</button>` : ''}` }
 /* ---------- groups: an artist's albums, a compilation series (Thunderdome …) or a group you made, as one tile ---------- */
@@ -1219,18 +1251,83 @@ function seriesName(title){ let t = String(title || '').replace(/^\s*(various( a
   k = k.replace(/(\s+\b(?:vol(?:ume)?|part|pt|chapter|episode|edition)\.?)+$/i, '').replace(/(\s+\b[IVXLC]{1,6}\b)+$/, '').trim();
   return norm(k).length >= 3 ? k : '' }
 function buildGroups(als){
-  const own = lsGet('nvMusic.groups', []), G = {}, put = (key, name, kind, a) => { (G[key] = G[key] || {key, name, kind, albums:[]}).albums.push(a) };
-  for(const a of als){ const hay = norm(a.title + ' ' + a.aa), c = own.find(g => norm(g.name) && hay.includes(norm(g.name)));
+  const own = lsGet('nvMusic.groups', []), ov = lsGet('nvMusic.albumGroup', {}), G = {}, alone = [], put = (key, name, kind, a) => { (G[key] = G[key] || {key, name, kind, albums:[]}).albums.push(a) };
+  for(const g of own) if(g.name) G['c:' + norm(g.name)] = G['c:' + norm(g.name)] || {key:'c:' + norm(g.name), name:g.name, kind:'own', albums:[]};
+  for(const a of als){ const o = ov[a.key];
+    if(o === 'none'){ alone.push(a); continue }
+    if(o && o.key){ put(o.key, o.name, o.kind, a); continue }
+    const hay = norm(a.title + ' ' + a.aa), c = own.find(g => norm(g.name) && hay.includes(norm(g.name)));
     if(c){ put('c:' + norm(c.name), c.name, 'own', a); continue }
     const various = VARIOUS_RE.test(a.aa.trim()), sn = seriesName(a.title);
     if(various && sn) put('s:' + norm(sn), sn, 'series', a); else put('a:' + (norm(a.aa) || 'unknown'), a.aa, 'artist', a) }
-  const groups = [], singles = [];
-  for(const g of Object.values(G)){ if(g.albums.length > 1 || g.kind === 'own') groups.push(g); else singles.push(g.albums[0]) }
+  const groups = [], singles = alone.slice();
+  for(const g of Object.values(G)){ if(g.albums.length > 1 || (g.kind === 'own' && g.albums.length)) groups.push(g); else if(g.albums.length) singles.push(g.albums[0]) }
   return {groups, singles} }
+const groupOf = a => buildGroups(ALB).groups.find(g => g.albums.includes(a)) || null;
+function setAlbumGroup(keys, g){ const ov = lsGet('nvMusic.albumGroup', {}); for(const k of keys){ if(g === undefined) delete ov[k]; else ov[k] = g } lsSet('nvMusic.albumGroup', ov) }
+/* album ⋯ → "Put in a group…": one of the group tiles, or a new one */
+function groupPicker(a){ const cur = groupOf(a), gs = buildGroups(ALB).groups.filter(g => !cur || g.key !== cur.key).sort((x, y) => coll.compare(x.name, y.name)), ov = lsGet('nvMusic.albumGroup', {});
+  sheet(`<h3>Put “${esc(a.title)}” in a group</h3>${cur ? `<p class="muted small" style="margin:0 0 8px">Now in “${esc(cur.name)}”.</p>` : ''}
+    <div style="display:flex;gap:8px"><input type="text" id="gpn" placeholder="New group name" maxlength="60"><button class="btn primary" id="gpmake">Make</button></div>
+    <div style="margin-top:10px">${gs.map(g => `<div class="li" data-gp="${esc(g.key)}"><span class="th">${grpCover(g)}</span><div class="n"><div>${esc(g.name)}</div><div class="s">${plural(g.albums.length, 'album')}</div></div></div>`).join('') || '<p class="muted small">No group tiles yet.</p>'}</div>
+    <div class="mlist" style="margin-top:10px">${cur ? '<button class="btn" id="gpout">Take it out of its group (its own tile)</button>' : ''}${ov[a.key] ? '<button class="btn" id="gpauto">Back to automatic</button>' : ''}</div>`);
+  const done = m => { closeSheet(); drawM(); toast(m) };
+  $('#gpmake').onclick = () => { const n = $('#gpn').value.trim(); if(!n) return; const l = lsGet('nvMusic.groups', []); if(!l.some(x => norm(x.name) === norm(n))) l.push({name:n}); lsSet('nvMusic.groups', l);
+    setAlbumGroup([a.key], {key:'c:' + norm(n), name:n, kind:'own'}); done(`Put in “${n}”`) };
+  if($('#gpout')) $('#gpout').onclick = () => { setAlbumGroup([a.key], 'none'); done('Now on its own tile') };
+  if($('#gpauto')) $('#gpauto').onclick = () => { setAlbumGroup([a.key]); done('Back to automatic') };
+  $('.sheet').addEventListener('click', e => { const r = e.target.closest('[data-gp]'); if(!r) return; const g = buildGroups(ALB).groups.find(x => x.key === r.dataset.gp);
+    if(g){ setAlbumGroup([a.key], {key:g.key, name:g.name, kind:g.kind}); done(`Put in “${g.name}”`) } }) }
+/* the same small "sort" menu on every page; each page remembers its own choice */
+const SORTS = {artists:[['name', 'Name'], ['albums', 'Most albums'], ['songs', 'Most songs'], ['plays', 'Most played']],
+  lists:[['name', 'Name'], ['new', 'Newest'], ['size', 'Most songs']],
+  inside:[['year', 'Year'], ['title', 'Title'], ['added', 'Recently added'], ['plays', 'Most played']],
+  playlist:[['order', 'Playlist order'], ['title', 'Title'], ['artist', 'Artist'], ['plays', 'Most played'], ['added', 'Recently added']],
+  search:[['title', 'Title'], ['artist', 'Artist'], ['plays', 'Most played']]};
+const sortOf = page => (MS.sort || {})[page] || SORTS[page][0][0];
+const sortSel = page => `<select data-sort="${page}" aria-label="Sort">${SORTS[page].map(([k, t]) => `<option value="${k}" ${sortOf(page) === k ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+const alPlays = a => a.tracks.reduce((n, t) => n + plays(t), 0);
+function sortAlbums(als, page){ const k = sortOf(page); return als.slice().sort(k === 'title' ? (a, b) => coll.compare(norm(a.title), norm(b.title)) : k === 'added' ? (a, b) => b.added - a.added : k === 'plays' ? (a, b) => alPlays(b) - alPlays(a) : (a, b) => (a.year || '').localeCompare(b.year || '') || coll.compare(a.title, b.title)) }
+function sortSongs(ts, page){ const k = sortOf(page); if(k === 'order') return ts;
+  return ts.slice().sort(k === 'artist' ? (a, b) => coll.compare(norm(a.artist), norm(b.artist)) || coll.compare(a.al, b.al) || (a.track || 0) - (b.track || 0) : k === 'plays' ? (a, b) => plays(b) - plays(a) : k === 'added' ? (a, b) => (b.added || 0) - (a.added || 0) : (a, b) => coll.compare(norm(a.title), norm(b.title))) }
+const srcSelect = () => window.NVPC && NVPC.pc ? `<select id="msrc" aria-label="Show">${[['all', 'All'], ['phone', 'On this phone'], ['pc', 'On my PC']].map(([k, t]) => `<option value="${k}" ${(MS.src || 'all') === k ? 'selected' : ''}>${t}</option>`).join('')}</select>` : '';
 const totals = ts => ({songs:ts.length, dur:ts.reduce((n, t) => n + (t.dur || 0), 0), size:ts.reduce((n, t) => n + (t.size || 0), 0)});
 const longTime = s => s >= 172800 ? `${Math.floor(s / 86400)} days ${Math.round((s % 86400) / 3600)} h` : hm(s);
 const totalsLine = (ts, extra) => { const x = totals(ts); return [extra, plural(x.songs, 'song').replace(/^\d+/, n => (+n).toLocaleString()), x.dur ? longTime(x.dur) : '', x.size ? mb(x.size) : ''].filter(Boolean).join(' · ') };
-const grpCover = g => { const a = g.albums.find(x => ALCOV.has(x.key)) || g.albums[0]; return alCover(Object.assign({}, a, {title:g.name, aa:''})) };
+const RNDCOV = {};
+const withCover = g => g.albums.filter(x => ALCOV.has(x.key) || x.pcov);
+function grpCover(g){ const c = lsGet('nvMusic.groupCover', {})[g.key] || {}, wc = withCover(g); let a = null;
+  if(c.t === 'pic' && ALCOV.has('grp:' + g.key)) return alCover({key:'grp:' + g.key, title:g.name, aa:''});
+  if(c.t === 'album') a = g.albums.find(x => x.key === c.al);
+  if(c.t === 'random' && wc.length) a = wc.find(x => x.key === RNDCOV[g.key]) || (wc[Math.floor(Math.random() * wc.length)]), RNDCOV[g.key] = a.key;
+  a = a || wc[0] || g.albums[0];
+  const html = alCover(Object.assign({}, a, {title:g.name, aa:''}));
+  return c.t === 'cycle' && wc.length > 1 ? html.replace('<div class="cv ', `<div data-cycle="${esc(g.key)}" class="cv `) : html }
+/* "Changing": the tiles on screen show the covers inside one after another (every 4 s, paused when the app is in the background) */
+const CYCI = {};
+setInterval(async () => { if(document.hidden || MODE !== 'music') return;
+  for(const el of document.querySelectorAll('#mbody [data-cycle]')){ const r = el.getBoundingClientRect(); if(r.bottom < 0 || r.top > innerHeight) continue;
+    const g = buildGroups(ALB).groups.find(x => x.key === el.dataset.cycle); if(!g) continue; const wc = withCover(g); if(wc.length < 2) continue;
+    CYCI[g.key] = ((CYCI[g.key] || 0) + 1) % wc.length; const u = await alUrl(wc[CYCI[g.key]].key); if(!u) continue;
+    let img = el.querySelector('img'); if(!img){ el.innerHTML = ''; img = new Image(); img.alt = ''; el.appendChild(img) }
+    img.style.transition = 'opacity .5s'; img.style.opacity = 0; setTimeout(() => { img.src = u; img.onload = () => img.style.opacity = 1 }, 450) } }, 4000);
+function groupMenu(g){ if(!g) return;
+  sheet(`<h3>${esc(g.name)}</h3><div class="mlist"><button class="btn" id="gcov">Choose the tile cover</button>${g.kind === 'own' ? '<button class="btn danger" id="gdel">Remove this group</button>' : ''}</div>
+    ${g.kind === 'own' ? '<p class="muted small" style="margin:10px 0 0">Removing the group keeps the albums - they show as separate tiles again (or in their artist\'s tile).</p>' : ''}`);
+  $('#gcov').onclick = () => groupCoverSheet(g);
+  if($('#gdel')) $('#gdel').onclick = () => { lsSet('nvMusic.groups', lsGet('nvMusic.groups', []).filter(x => norm(x.name) !== norm(g.name)));
+    const ov = lsGet('nvMusic.albumGroup', {}); for(const k of Object.keys(ov)) if(ov[k] && ov[k].key === g.key) delete ov[k]; lsSet('nvMusic.albumGroup', ov); closeSheet(); musicBack(); toast('Group removed') } }
+function groupCoverSheet(g){ const c = lsGet('nvMusic.groupCover', {})[g.key] || {}, wc = withCover(g);
+  const save = v => { const all = lsGet('nvMusic.groupCover', {}); if(v) all[g.key] = v; else delete all[g.key]; lsSet('nvMusic.groupCover', all); delete RNDCOV[g.key]; closeSheet(); drawM(); toast('Tile cover saved') };
+  sheet(`<h3>Tile cover for “${esc(g.name)}”</h3>
+    <div class="chips"><button class="chip ${!c.t ? 'on' : ''}" data-gc="">The first album</button><button class="chip ${c.t === 'random' ? 'on' : ''}" data-gc="random">A random one</button><button class="chip ${c.t === 'cycle' ? 'on' : ''}" data-gc="cycle">Changing (one after another)</button><button class="chip ${c.t === 'pic' ? 'on' : ''}" data-gc="pic">A picture from the phone</button></div>
+    <div class="sec">Or pick one</div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(96px,1fr))">${wc.map(a => `<div class="bk" data-gca="${esc(a.key)}" style="${c.t === 'album' && c.al === a.key ? 'outline:2px solid var(--accent);border-radius:14px' : ''}">${alCover(a)}<div class="a">${esc(a.title)}</div></div>`).join('') || '<p class="muted small">No covers in this group yet.</p>'}</div>`);
+  lazyCovers($('.sheet'));
+  $('.sheet').onclick = e => { const b = e.target.closest('[data-gc]'), al = e.target.closest('[data-gca]');
+    if(al) return save({t:'album', al:al.dataset.gca});
+    if(!b) return; const t = b.dataset.gc;
+    if(t === 'pic'){ const inp = $('#mcover'); inp.value = ''; inp.onchange = async ev => { const f = ev.target.files[0]; if(!f) return; await dbPut('covers', {id:'al:grp:' + g.key, blob:f}); ALCOV.add('grp:' + g.key); if(ALURL['grp:' + g.key]){ URL.revokeObjectURL(ALURL['grp:' + g.key]); delete ALURL['grp:' + g.key] } save({t:'pic'}) }; inp.click(); return }
+    save(t ? {t} : null) } }
 const groupTile = g => `<div class="bk stack" data-grp="${esc(g.key)}" style="position:relative">${grpCover(g)}<span class="cdl grp">${plural(g.albums.length, 'album')}</span><div class="t">${esc(g.name)}</div><div class="a">${g.kind === 'artist' ? 'Artist' : g.kind === 'series' ? 'Series' : 'Your group'} · ${plural(g.albums.reduce((n, a) => n + a.tracks.length, 0), 'song')}</div></div>`;
 function newGroup(){ sheet(`<h3>New group</h3><p class="muted small" style="margin:0 0 8px">Every album with this word in its name or artist goes into one tile, for example <b>Thunderdome</b> or <b>Now That's What I Call Music</b>.</p><input type="text" id="gname" placeholder="Name" maxlength="60"><div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="gmake">Make the group</button></div>`);
   setTimeout(() => { const i = $('#gname'); if(i) i.focus() }, 50);
@@ -1253,54 +1350,57 @@ async function discCoverUrl(a, d){ const k = 'cd:' + a.key + '#' + d; if(CDURL[k
     if(blob){ await dbPut('covers', {id:k, blob}); CDCOV.add(k); return CDURL[k] = URL.createObjectURL(blob) } }catch(e){ LE('cover', 'cd picture ' + a.title + ' ' + d, e) }
   return null }
 async function fillDiscCovers(a){ for(const el of document.querySelectorAll('#mbody [data-cdc]')){ const u = await discCoverUrl(a, +el.dataset.cdc); if(u && el.isConnected) el.innerHTML = `<img src="${u}" alt="">` } }
-const albumGrid = als => `<div class="grid">${als.map(a => `<div class="bk" data-al="${esc(a.key)}" style="position:relative">${alCover(a)}${discLabel(a) ? `<span class="cdl">${discLabel(a)}</span>` : ''}<div class="t">${esc(a.title)}</div><div class="a">${esc(a.aa)}${a.year ? ' · ' + esc(a.year) : ''}</div></div>`).join('')}</div>`;
+const albumGrid = als => `<div class="grid">${als.map(a => `<div class="bk ${a.pconly && PCON === false ? 'pcoff' : ''}" data-al="${esc(a.key)}" ${a.pconly ? 'data-pconly="1"' : ''} style="position:relative">${alCover(a)}${discLabel(a) ? `<span class="cdl">${discLabel(a)}</span>` : ''}${a.pconly ? '<span class="pcb">PC</span>' : ''}<div class="t">${esc(a.title)}</div><div class="a">${esc(a.aa)}${a.year ? ' · ' + esc(a.year) : ''}</div></div>`).join('')}</div>`;
 const playBar = (extra) => `<div class="mbar"><button class="btn primary" data-play="0" style="flex:1">${IC_PLAY.replace('<svg ', '<svg width="18" height="18" ')}Play</button><button class="btn" data-play="shuffle" style="flex:1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Shuffle</button>${extra || ''}</div>`;
 function favTracks(){ return Object.values(STATS).filter(s => s.fav && KEYTR[s.id]).sort((a, b) => (b.favAt || 0) - (a.favAt || 0)).map(s => KEYTR[s.id]) }
 function listTracks(l){ return l.items.map(k => KEYTR[k]).filter(Boolean) }
 function autoList(id){ if(id === 'fav') return {name:'Favourites', tracks:favTracks(), auto:true};
-  if(id === 'top') return {name:'Most played', tracks:TR.filter(t => plays(t)).sort((a, b) => plays(b) - plays(a)).slice(0, 100), auto:true, plays:true};
-  if(id === 'recent') return {name:'Recently played', tracks:TR.filter(t => STATS[t.key] && STATS[t.key].last).sort((a, b) => STATS[b.key].last - STATS[a.key].last).slice(0, 100), auto:true};
-  if(id === 'new') return {name:'Recently added', tracks:TR.slice().sort((a, b) => (b.added - a.added) || coll.compare(a.al, b.al) || ((a.disc || 0) - (b.disc || 0)) || ((a.track || 0) - (b.track || 0))).slice(0, 200), auto:true};
+  if(id === 'top') return {name:'Most played', tracks:VIS.filter(t => plays(t)).sort((a, b) => plays(b) - plays(a)).slice(0, 100), auto:true, plays:true};
+  if(id === 'recent') return {name:'Recently played', tracks:VIS.filter(t => STATS[t.key] && STATS[t.key].last).sort((a, b) => STATS[b.key].last - STATS[a.key].last).slice(0, 100), auto:true};
+  if(id === 'new') return {name:'Recently added', tracks:VIS.slice().sort((a, b) => (b.added - a.added) || coll.compare(a.al, b.al) || ((a.disc || 0) - (b.disc || 0)) || ((a.track || 0) - (b.track || 0))).slice(0, 200), auto:true};
   const l = LISTS.find(x => x.id === id); return l && {name:l.name, tracks:listTracks(l), list:l, missing:l.items.length - listTracks(l).length} }
 
 function drawM(){
   const v = mtop(), body = $('#mbody'); $('#mvback').hidden = MV.length < 2; let h = '';
   $('#mtitle').textContent = MV.length < 2 ? 'Music' : '';
-  if(!TR.length && v.v === 'home'){ body.innerHTML = `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+  if(!VIS.length && v.v === 'home'){ body.innerHTML = `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
     <h2 style="margin:8px 0 4px;font-size:18px">No music yet</h2><p class="muted small" style="margin:0 0 14px">${NvFiles ? 'Tap <b>Add</b> and pick your music folder on this phone. Nothing is copied: the songs play from there.' : 'Tap <b>Add</b> and pick songs (or a whole folder). They are copied into the app.'}</p>
-    <button class="btn primary" onclick="musicAdd()">Add music</button></div>`; drawMMini(); return }
+    <button class="btn primary" onclick="musicAdd()">Add music</button>${window.NVPC && NVPC.native && !NVPC.pc ? '<p class="muted small" style="margin:14px 0 0">Music on your PC? The Nightvault > <b>My PC</b> connects to it over your home Wi-Fi.</p>' : ''}</div><div class="mtot" id="mpcline"></div>`; drawMMini(); drawPcLine(); return }
   if(v.v === 'home'){
     h += `<input type="search" id="mq" placeholder="Search songs, albums, artists" value="${esc(MS.q)}" style="margin:2px 0 8px">`;
     const q = norm(MS.q);
-    if(q){ const ar = ARTS.filter(a => norm(a.name).includes(q)).slice(0, 8), al = ALB.filter(a => norm(a.title + ' ' + a.aa).includes(q)).slice(0, 24), sg = TR.filter(t => norm(t.title + ' ' + t.artist + ' ' + t.album).includes(q)).sort((a, b) => coll.compare(a.title, b.title));
+    if(q){ const ar = ARTS.filter(a => norm(a.name).includes(q)).slice(0, 8), al = ALB.filter(a => norm(a.title + ' ' + a.aa).includes(q)).slice(0, 24), sg = VIS.filter(t => norm(t.title + ' ' + t.artist + ' ' + t.album).includes(q)).sort((a, b) => coll.compare(a.title, b.title));
       if(!ar.length && !al.length && !sg.length) h += '<p class="muted" style="text-align:center;margin-top:30px">Nothing found.</p>';
       if(ar.length) h += `<div class="sec">Artists</div>${ar.map(artistRow).join('')}`;
       if(al.length) h += `<div class="sec">Albums</div>${albumGrid(al)}`;
-      if(sg.length) h += `<div class="sec">Songs</div>${songList(sg)}` }
+      if(sg.length) h += `<div class="mbar" style="margin-top:14px"><span class="sec" style="flex:1;margin:0">Songs</span>${sortSel('search')}</div>${songList(sortSongs(sg, 'search'))}` }
     else {
       h += `<div class="mtabs">${[['albums', 'Albums'], ['artists', 'Artists'], ['songs', 'Songs'], ['lists', 'Playlists']].map(([k, t]) => `<button class="chip ${MS.tab === k ? 'on' : ''}" data-tab="${k}">${t}</button>`).join('')}</div>`;
       if(MS.tab === 'albums'){ const als = ALB.slice().sort(MS.alsort === 'title' ? (a, b) => coll.compare(norm(a.title), norm(b.title)) : MS.alsort === 'added' ? (a, b) => b.added - a.added : MS.alsort === 'year' ? (a, b) => (b.year || '0').localeCompare(a.year || '0') || coll.compare(a.title, b.title) : (a, b) => coll.compare(norm(a.aa), norm(b.aa)) || (a.year || '').localeCompare(b.year || '') || coll.compare(a.title, b.title));
-        h += `<div class="mtot">${totalsLine(TR, plural(ALB.length, 'album'))}</div>`;
-        h += `<div class="mbar"><select id="malg" aria-label="Groups"><option value="1" ${MS.algroup !== false ? 'selected' : ''}>Grouped</option><option value="0" ${MS.algroup === false ? 'selected' : ''}>All albums</option></select><select id="mals" aria-label="Sort">${[['artist', 'Artist'], ['title', 'Title'], ['added', 'Recently added'], ['year', 'Year']].map(([k, t]) => `<option value="${k}" ${MS.alsort === k ? 'selected' : ''}>${t}</option>`).join('')}</select><span style="flex:1"></span><button class="btn sm" id="mnewgrp">+ Group</button></div>`;
+        h += `<div class="mtot">${totalsLine(VIS, plural(ALB.length, 'album'))}</div><div class="mtot" id="mpcline"></div>`;
+        h += `<div class="mbar"><select id="malg" aria-label="Groups"><option value="1" ${MS.algroup !== false ? 'selected' : ''}>Grouped</option><option value="0" ${MS.algroup === false ? 'selected' : ''}>All albums</option></select><select id="mals" aria-label="Sort">${[['artist', 'Artist'], ['title', 'Title'], ['added', 'Recently added'], ['year', 'Year']].map(([k, t]) => `<option value="${k}" ${MS.alsort === k ? 'selected' : ''}>${t}</option>`).join('')}</select>${srcSelect()}<span style="flex:1"></span><button class="btn sm" id="mnewgrp">+ Group</button></div>`;
         if(MS.algroup === false) h += albumGrid(als);
         else { const {groups, singles} = buildGroups(als), sk = x => x.albums ? {title:x.name, aa:x.name, added:Math.max(...x.albums.map(a => a.added)), year:x.albums.map(a => a.year).filter(Boolean).sort()[0] || ''} : x;
           const items = [...groups, ...singles].sort((p, q) => { const a = sk(p), b = sk(q); return MS.alsort === 'title' ? coll.compare(norm(a.title), norm(b.title)) : MS.alsort === 'added' ? b.added - a.added : MS.alsort === 'year' ? (b.year || '0').localeCompare(a.year || '0') || coll.compare(a.title, b.title) : coll.compare(norm(a.aa), norm(b.aa)) || coll.compare(norm(a.title), norm(b.title)) });
           h += `<div class="grid">${items.map(x => x.albums ? groupTile(x) : albumGrid([x]).replace(/^<div class="grid">|<\/div>$/g, '')).join('')}</div>` } }
-      if(MS.tab === 'artists') h += `<div class="mbar"><span class="muted small">${plural(ARTS.length, 'artist')}</span></div>${ARTS.map(artistRow).join('')}`;
-      if(MS.tab === 'songs'){ const sg = TR.slice().sort(MS.sgsort === 'artist' ? (a, b) => coll.compare(norm(a.artist), norm(b.artist)) || coll.compare(a.al, b.al) || (a.track || 0) - (b.track || 0) : MS.sgsort === 'added' ? (a, b) => b.added - a.added : (a, b) => coll.compare(norm(a.title), norm(b.title)));
-        h += playBar(`<select id="msgs" aria-label="Sort">${[['title', 'Title'], ['artist', 'Artist'], ['added', 'Added']].map(([k, t]) => `<option value="${k}" ${MS.sgsort === k ? 'selected' : ''}>${t}</option>`).join('')}</select>`) + songList(sg) }
+      if(MS.tab === 'artists'){ const k = sortOf('artists'), arPlays = ar => ar.albums.reduce((n, a) => n + alPlays(a), 0);
+        const ars = ARTS.slice().sort(k === 'albums' ? (a, b) => b.albums.length - a.albums.length || coll.compare(a.key, b.key) : k === 'songs' ? (a, b) => b.n - a.n || coll.compare(a.key, b.key) : k === 'plays' ? (a, b) => arPlays(b) - arPlays(a) || coll.compare(a.key, b.key) : (a, b) => coll.compare(a.key, b.key));
+        h += `<div class="mbar"><span class="muted small" style="flex:1">${plural(ARTS.length, 'artist')}</span>${sortSel('artists')}</div>${ars.map(artistRow).join('')}` }
+      if(MS.tab === 'songs'){ const sg = VIS.slice().sort(MS.sgsort === 'artist' ? (a, b) => coll.compare(norm(a.artist), norm(b.artist)) || coll.compare(a.al, b.al) || (a.track || 0) - (b.track || 0) : MS.sgsort === 'added' ? (a, b) => b.added - a.added : (a, b) => coll.compare(norm(a.title), norm(b.title)));
+        h += `<div class="mtot" id="mpcline"></div>` + playBar(srcSelect() + `<select id="msgs" aria-label="Sort">${[['title', 'Title'], ['artist', 'Artist'], ['added', 'Added']].map(([k, t]) => `<option value="${k}" ${MS.sgsort === k ? 'selected' : ''}>${t}</option>`).join('')}</select>`) + songList(sg) }
       if(MS.tab === 'lists'){ const row = (id, name, n, ic) => `<div class="li" data-list="${id}"><span class="av" style="border-radius:10px;background:${ic[1]}">${ic[0]}</span><div class="n"><div>${esc(name)}</div><div class="s">${plural(n, 'song')}</div></div></div>`;
-        h += `<div class="mbar"><span style="flex:1"></span><button class="btn sm" id="mnewlist">+ New playlist</button></div>`;
+        h += `<div class="mbar">${sortSel('lists')}<span style="flex:1"></span><button class="btn sm" id="mnewlist">+ New playlist</button></div>`;
         h += row('fav', 'Favourites', favTracks().length, [IC_HEART(true).replace('<svg ', '<svg width="22" height="22" '), '#5a2140']);
-        h += row('top', 'Most played', Math.min(100, TR.filter(t => plays(t)).length), ['★', '#3a3216']);
-        h += row('recent', 'Recently played', Math.min(100, TR.filter(t => STATS[t.key] && STATS[t.key].last).length), ['↺', '#13283d']);
-        h += row('new', 'Recently added', Math.min(200, TR.length), ['+', '#173a30']);
-        for(const l of LISTS.slice().sort((a, b) => coll.compare(a.name, b.name))) h += row(l.id, l.name, listTracks(l).length, ['♪', `hsl(${hue(l.name)} 40% 26%)`]);
+        h += row('top', 'Most played', Math.min(100, VIS.filter(t => plays(t)).length), ['★', '#3a3216']);
+        h += row('recent', 'Recently played', Math.min(100, VIS.filter(t => STATS[t.key] && STATS[t.key].last).length), ['↺', '#13283d']);
+        h += row('new', 'Recently added', Math.min(200, VIS.length), ['+', '#173a30']);
+        const lk = sortOf('lists');
+        for(const l of LISTS.slice().sort(lk === 'new' ? (a, b) => (b.created || 0) - (a.created || 0) : lk === 'size' ? (a, b) => b.items.length - a.items.length : (a, b) => coll.compare(a.name, b.name))) h += row(l.id, l.name, listTracks(l).length, ['♪', `hsl(${hue(l.name)} 40% 26%)`]);
         if(!LISTS.length) h += '<p class="muted small" style="margin-top:12px">Make your own playlists with <b>+ New playlist</b>, or tap ⋯ next to a song → Add to a playlist.</p>' } }
     h += musicStore() }
   if(v.v === 'album'){ const a = ALBK[v.key]; if(!a){ MV.pop(); return drawM() }
     const discs = new Set(a.tracks.map(t => t.disc || 0)).size > 1; CTX = a.tracks.map(t => t.id);
-    h += `<div class="alhead">${alCover(a)}<div style="min-width:0"><b>${esc(a.title)}</b><div class="lnk" data-artist="${esc(norm(a.aa) || 'unknown')}">${esc(a.aa)}</div><div class="muted small">${[a.year, plural(a.tracks.length, 'song'), hm(a.dur), mb(a.tracks.reduce((n, t) => n + (t.size || 0), 0))].filter(Boolean).join(' · ')}</div></div></div>`;
+    h += `<div class="alhead">${alCover(a)}<div style="min-width:0"><b>${esc(a.title)}</b><div class="lnk" data-artist="${esc(artistKey(a.aa))}">${esc(a.aa)}</div><div class="muted small">${[a.year, plural(a.tracks.length, 'song'), hm(a.dur), mb(a.tracks.reduce((n, t) => n + (t.size || 0), 0))].filter(Boolean).join(' · ')}</div></div></div>`;
     h += playBar(`<button class="ib" data-almenu="${esc(a.key)}" aria-label="More for this album">${IC_DOTS}</button>`);
     if(!discs) h += '<div class="songs">' + a.tracks.map((t, i) => songRow(t, i, {album:true})).join('') + '</div>';
     else { /* one block per CD: its own picture, "CD 2", songs and length, its own play button; folded, the playing CD open */
@@ -1312,32 +1412,36 @@ function drawM(){
           <div class="cdlist" ${on ? '' : 'hidden'}>${g.rows.map(([t, i]) => songRow(t, i, {album:true})).join('')}</div>` }).join('') + '</div>';
       setTimeout(() => fillDiscCovers(a), 0) } }
   if(v.v === 'group'){ const g = buildGroups(ALB).groups.find(x => x.key === v.key); if(!g){ MV.pop(); return drawM() }
-    const als = g.albums.slice().sort((a, b) => (a.year || '').localeCompare(b.year || '') || coll.compare(a.title, b.title)), all = als.flatMap(a => a.tracks);
+    const als = sortAlbums(g.albums, 'inside'), all = als.flatMap(a => a.tracks);
     h += `<div class="alhead"><div class="stack" style="flex:none">${grpCover(g).replace('class="cv ', 'class="cv gcv ')}</div><div style="min-width:0"><b>${esc(g.name)}</b><div class="muted small">${g.kind === 'artist' ? 'Artist' : g.kind === 'series' ? 'Series' : 'Your group'}</div><div class="muted small">${totalsLine(all, plural(als.length, 'album'))}</div></div></div>`;
-    h += playBar(g.kind === 'own' ? `<button class="ib" data-grpmenu="${esc(g.name)}" aria-label="More for this group">${IC_DOTS}</button>` : '') + albumGrid(als); CTX = all.map(t => t.id) }
+    h += playBar((all.some(t => t.pc) ? `<button class="btn sm" data-saveall="1" style="height:44px">Save to phone</button>` : '') + `<button class="ib" data-grpmenu="${esc(g.key)}" aria-label="More for this group">${IC_DOTS}</button>`) + `<div class="mbar"><span class="muted small" style="flex:1">Albums</span>${sortSel('inside')}</div>` + albumGrid(als); CTX = all.map(t => t.id) }
   if(v.v === 'artist'){ const ar = ARTK[v.key]; if(!ar){ MV.pop(); return drawM() }
-    const als = ar.albums.slice().sort((a, b) => (a.year || '').localeCompare(b.year || '') || coll.compare(a.title, b.title)), own = new Set(als.map(a => a.key));
-    const also = TR.filter(t => !own.has(t.al) && norm(t.artist) === ar.key), all = als.flatMap(a => a.tracks).concat(also);
+    const als = sortAlbums(ar.albums, 'inside'), own = new Set(als.map(a => a.key));
+    const also = VIS.filter(t => !own.has(t.al) && norm(t.artist) === ar.key), all = als.flatMap(a => a.tracks).concat(also);
     h += `<div class="alhead"><span class="av" style="width:72px;height:72px;font-size:28px;background:hsl(${hue(ar.name)} 40% 28%)">${esc((ar.name.match(/\p{L}|\p{N}/u) || ['?'])[0].toUpperCase())}</span><div><b>${esc(ar.name)}</b><div class="muted small">${totalsLine(all, plural(als.length, 'album'))}</div></div></div>`;
-    h += playBar() + albumGrid(als);
+    h += playBar() + `<div class="mbar"><span class="muted small" style="flex:1">Albums</span>${sortSel('inside')}</div>` + albumGrid(als);
     if(also.length) h += `<div class="sec">Also on other albums</div>${also.map((t, i) => songRow(t, als.reduce((n, a) => n + a.tracks.length, 0) + i)).join('')}`;
     CTX = all.map(t => t.id) }
   if(v.v === 'list'){ const L0 = autoList(v.id); if(!L0){ MV.pop(); return drawM() }
     const dur = L0.tracks.reduce((a, t) => a + (t.dur || 0), 0);
     h += `<div class="alhead" style="align-items:center"><span class="av" style="width:72px;height:72px;border-radius:16px;font-size:28px;background:${v.id === 'fav' ? '#5a2140' : `hsl(${hue(L0.name)} 40% 26%)`}">${v.id === 'fav' ? IC_HEART(true).replace('<svg ', '<svg width="34" height="34" ') : '♪'}</span><div><b>${esc(L0.name)}</b><div class="muted small">${plural(L0.tracks.length, 'song')}${dur ? ' · ' + hm(dur) : ''}${L0.missing ? ` · ${L0.missing} not on this device` : ''}</div></div></div>`;
-    h += playBar(L0.list ? `<button class="ib" data-lsmenu="${L0.list.id}" aria-label="More for this playlist">${IC_DOTS}</button>` : '');
-    h += L0.tracks.length ? songList(L0.tracks, {plays:L0.plays}) : `<p class="muted small" style="margin-top:12px">${v.id === 'fav' ? 'Tap the heart in the player, or ⋯ next to a song, to add favourites.' : 'No songs yet. Tap ⋯ next to a song → Add to a playlist.'}</p>` }
+    h += playBar((L0.tracks.some(t => t.pc) ? `<button class="btn sm" data-saveall="1" style="height:44px">Save to phone</button>` : '') + (L0.list ? `<button class="ib" data-lsmenu="${L0.list.id}" aria-label="More for this playlist">${IC_DOTS}</button>` : ''));
+    if(L0.tracks.length) h += `<div class="mbar"><span class="muted small" style="flex:1">Songs</span>${sortSel('playlist')}</div>`;
+    h += L0.tracks.length ? songList(sortSongs(L0.tracks, 'playlist'), {plays:L0.plays}) : `<p class="muted small" style="margin-top:12px">${v.id === 'fav' ? 'Tap the heart in the player, or ⋯ next to a song, to add favourites.' : 'No songs yet. Tap ⋯ next to a song → Add to a playlist.'}</p>` }
   body.innerHTML = h; lazyCovers(body); drawMMini();
   const mq = $('#mq'); if(mq){ mq.oninput = e => { MS.q = e.target.value; saveMS(); clearTimeout(drawM.t); drawM.t = setTimeout(() => { const p = e.target.selectionStart; CTXN = 300; drawM(); const i = $('#mq'); if(i){ i.focus(); try{ i.setSelectionRange(p, p) }catch(x){} } }, 250) } }
   if($('#mals')) $('#mals').onchange = e => { MS.alsort = e.target.value; saveMS(); drawM() };
   if($('#malg')) $('#malg').onchange = e => { MS.algroup = e.target.value === '1'; saveMS(); drawM() };
+  body.querySelectorAll('[data-sort]').forEach(el => el.onchange = e => { MS.sort = Object.assign({}, MS.sort, {[el.dataset.sort]:e.target.value}); saveMS(); const y = scrollY; drawM(); scrollTo(0, y) });
+  if($('#msrc')) $('#msrc').onchange = e => { MS.src = e.target.value; saveMS(); musicIndex(); drawM() };
+  drawPcLine();
   if($('#mnewgrp')) $('#mnewgrp').onclick = () => newGroup();
   if($('#msgs')) $('#msgs').onchange = e => { MS.sgsort = e.target.value; saveMS(); drawM() };
   if($('#mnewlist')) $('#mnewlist').onclick = () => newList();
 }
 function artistRow(ar){ return `<div class="li" data-artist="${esc(ar.key)}"><span class="av" style="background:hsl(${hue(ar.name)} 40% 28%)">${esc((ar.name.match(/\p{L}|\p{N}/u) || ['?'])[0].toUpperCase())}</span><div class="n"><div>${esc(ar.name)}</div><div class="s">${plural(ar.albums.length, 'album')} · ${plural(ar.n, 'song')}</div></div></div>` }
 function musicStore(){ const cp = TR.filter(t => t.fid), used = cp.reduce((a, t) => a + (t.size || 0), 0);
-  return `<div class="store">${totalsLine(TR, plural(ALB.length, 'album'))}${cp.length ? ` · ${mb(used)} copied into the app` : ''}</div>` }
+  return `<div class="store">${totalsLine(VIS, plural(ALB.length, 'album'))}${cp.length ? ` · ${mb(used)} copied into the app` : ''}</div>` }
 $('#mbody').addEventListener('click', e => {
   const tb = e.target.closest('[data-tab]'); if(tb){ MS.tab = tb.dataset.tab; saveMS(); CTXN = 300; drawM(); return }
   const mn = e.target.closest('[data-menu]'); if(mn){ e.stopPropagation(); songMenu(TRID[mn.dataset.menu]); return }
@@ -1347,12 +1451,11 @@ $('#mbody').addEventListener('click', e => {
   const cp = e.target.closest('[data-cdplay]'); if(cp){ const a = ALBK[mtop().key]; if(a) playList(a.tracks.filter(t => (t.disc || 0) === +cp.dataset.cdplay).map(t => t.id), 0, false); return }
   const cd = e.target.closest('[data-cd]'); if(cd){ const a = ALBK[mtop().key], d = +cd.dataset.cd, o = CDOPEN[a.key] || (CDOPEN[a.key] = new Set()); o.has(d) ? o.delete(d) : o.add(d);
     cd.classList.toggle('on', o.has(d)); cd.nextElementSibling.hidden = !o.has(d); return }
+  const sa = e.target.closest('[data-saveall]'); if(sa){ const v = mtop(), ts = CTX.map(id => TRID[id]).filter(Boolean); saveOffline(ts, v.v === 'group' ? (buildGroups(ALB).groups.find(x => x.key === v.key) || {}).name : v.v === 'list' ? (autoList(v.id) || {}).name : 'Songs'); return }
   const pl = e.target.closest('[data-play]'); if(pl){ playList(CTX, null, pl.dataset.play === 'shuffle'); return }
   const sg = e.target.closest('[data-ctx]'); if(sg){ playList(CTX, +sg.dataset.ctx); return }
   const gr = e.target.closest('[data-grp]'); if(gr){ mGo({v:'group', key:gr.dataset.grp}); return }
-  const gm = e.target.closest('[data-grpmenu]'); if(gm){ const n = gm.dataset.grpmenu;
-    sheet(`<h3>Group “${esc(n)}”</h3><div class="mlist"><button class="btn danger" id="gdel">Remove this group</button></div><p class="muted small" style="margin:10px 0 0">The albums stay - they just show as separate tiles again (or in their artist's tile).</p>`);
-    $('#gdel').onclick = () => { lsSet('nvMusic.groups', lsGet('nvMusic.groups', []).filter(x => norm(x.name) !== norm(n))); closeSheet(); musicBack(); toast('Group removed') }; return }
+  const gm = e.target.closest('[data-grpmenu]'); if(gm){ groupMenu(buildGroups(ALB).groups.find(x => x.key === gm.dataset.grpmenu)); return }
   const al = e.target.closest('[data-al]'); if(al){ mGo({v:'album', key:al.dataset.al}); return }
   const ar = e.target.closest('[data-artist]'); if(ar){ mGo({v:'artist', key:ar.dataset.artist}); return }
   const li = e.target.closest('[data-list]'); if(li){ mGo({v:'list', id:li.dataset.list}); return } });
@@ -1368,16 +1471,21 @@ function songMenu(t){ if(!t) return; const v = mtop(), inList = v.v === 'list' &
   $('.sheet').onclick = async e => { const b = e.target.closest('[data-a]'); if(!b) return; const a = b.dataset.a; closeSheet();
     if(a === 'next') qAdd([t.id], true); if(a === 'queue') qAdd([t.id], false); if(a === 'fav') toggleFav(t); if(a === 'list') addToList([t]);
     if(a === 'unlist'){ const k = inList.items.indexOf(t.key); if(k >= 0){ inList.items.splice(k, 1); inList.updated = Date.now(); await dbPut('lists', inList); drawM(); toast('Removed from ' + inList.name) } }
-    if(a === 'album'){ showMP(false); mGo({v:'album', key:t.al}) } if(a === 'artist'){ showMP(false); mGo({v:'artist', key:norm((albumOf(t) || {}).aa || t.aa) || 'unknown'}) } } }
-function albumMenu(a){ if(!a) return; const cp = a.tracks.filter(t => t.fid);
+    if(a === 'album'){ showMP(false); mGo({v:'album', key:t.al}) } if(a === 'artist'){ showMP(false); mGo({v:'artist', key:artistKey((albumOf(t) || {}).aa || t.aa)}) } } }
+function albumMenu(a){ if(!a) return; const cp = a.tracks.filter(t => t.fid && !t.offline), pcs = a.tracks.filter(t => t.pc), offs = offlineOf(a.tracks);
   sheet(`<h3>${esc(a.title)}</h3><div class="mlist"><button class="btn" data-a="next">Play next</button><button class="btn" data-a="queue">Add to the queue</button><button class="btn" data-a="list">Add to a playlist…</button>
+    ${pcs.length ? `<button class="btn primary" data-a="save">Save to phone (${mb(pcs.reduce((n, t) => n + (t.size || 0), 0))})</button>` : ''}
+    ${offs.length ? '<button class="btn" data-a="keep">Keep on this phone (for good)</button><button class="btn danger" data-a="unsave">Remove the offline copy</button>' : ''}
+    <button class="btn" data-a="group">Put in a group…</button>
     <button class="btn" data-a="online">Find a cover online</button><button class="btn" data-a="cover">Change the cover picture</button>${cp.length ? `<button class="btn danger" data-a="del">Remove from this device (${mb(cp.reduce((n, t) => n + t.size, 0))})</button>` : ''}</div>
     ${cp.length < a.tracks.length ? '<p class="muted small" style="margin:10px 0 0">Songs from a folder on the phone stay as long as they are in that folder.</p>' : ''}`);
   $('.sheet').onclick = async e => { const b = e.target.closest('[data-a]'); if(!b) return; const k = b.dataset.a, ids = a.tracks.map(t => t.id);
-    if(k === 'cover'){ if(a.tracks.some(t => t.tree)) coverPicker(a); else coverFile(a); return } if(k === 'online'){ coverOnline(a); return } closeSheet();
+    if(k === 'cover'){ if(a.tracks.some(t => t.tree && t.tree !== 'pc')) coverPicker(a); else coverFile(a); return } if(k === 'online'){ coverOnline(a); return }
+    if(k === 'save'){ saveOffline(a.tracks, a.title); return } if(k === 'group'){ groupPicker(a); return } closeSheet();
+    if(k === 'keep'){ keepOffline(a.tracks); return } if(k === 'unsave'){ removeOffline(a.tracks); return }
     if(k === 'next') qAdd(ids, true); if(k === 'queue') qAdd(ids, false); if(k === 'list') addToList(a.tracks);
     if(k === 'del'){ const gone = new Set(cp.map(t => t.id)); if(curT() && gone.has(curT().id)){ au.pause(); au.removeAttribute('src'); au.load(); mLoadedId = null }
-      for(const t of cp) await dbDel('files', t.fid).catch(() => {}); await dbDelMany('tracks', [...gone]); TR = TR.filter(t => !gone.has(t.id));
+      for(const t of cp) await dbDel('files', t.fid).catch(() => {}); await dbDelMany('tracks', [...gone]); TR = TR.filter(t => !gone.has(t.id)); pruneOffline();
       Q.list = Q.list.filter(id => !gone.has(id)); Q.orig = Q.orig.filter(id => !gone.has(id)); Q.pos = Math.min(Q.pos, Math.max(0, Q.list.length - 1)); saveQ();
       musicIndex(); if(!ALBK[a.key]) MV = MV.filter(v => !(v.v === 'album' && v.key === a.key)); if(!MV.length) MV = [{v:'home'}]; drawM(); drawMP(true); toast('Removed') } } }
 function listMenu(l){ if(!l) return;
@@ -1394,6 +1502,57 @@ function addToList(ts){ const go = async l => { const have = new Set(l.items); l
   sheet(`<h3>Add to a playlist</h3>${LISTS.length ? LISTS.slice().sort((a, b) => coll.compare(a.name, b.name)).map(l => `<div class="li" data-l="${l.id}"><div class="n"><div>${esc(l.name)}</div><div class="s">${plural(l.items.length, 'song')}</div></div></div>`).join('') : '<p class="muted small">No playlists yet.</p>'}<button class="btn primary" id="lnew" style="width:100%;margin-top:10px">+ New playlist</button>`);
   $('#lnew').onclick = () => newList(go);
   $('.sheet').addEventListener('click', e => { const r = e.target.closest('[data-l]'); if(r) go(LISTS.find(l => l.id === r.dataset.l)) }) }
+
+/* ---------- Save to phone (Take with me) ----------
+   'app': copies inside the app = temporary offline copies (one shared list in The Nightvault > My PC, "Remove" frees the space).
+   'folder': real files in one of the music folders on the phone (e.g. the SD card), in the same Artist/Album folders as on the PC - kept for good.
+   A saved song is a normal phone song with the same song key, so the PC copy is no longer shown (no doubles). */
+const NvPcP = NATIVE ? (() => { try{ return Capacitor.registerPlugin('NvPc') }catch(e){ return null } })() : null;
+const offlineOf = ts => { const ids = new Set(ts.map(t => t.key)); return TR.filter(t => t.offline && ids.has(t.key)) };
+function pruneOffline(){ if(!window.NVPC) return; const have = new Set(TR.map(t => t.id)); for(const r of NVPC.offline.of('music')){ const ids = ((r.del || []).find(d => d.store === 'tracks') || {}).ids || []; if(!ids.some(id => have.has(id))) NVPC.offline.keep('music', r.id) } }
+async function saveOffline(ts, title){
+  const pcs = ts.filter(t => t.pc); if(!pcs.length){ toast('These songs are already on the phone'); return }
+  if(!window.NVPC || !NVPC.native){ toast('Saving from the PC works in the Nightvault Android app'); return }
+  if(!(await NVPC.reachable(true))){ PCON = false; markPcOff(); toast('Your PC is not reachable - at home with Nightvault running on the PC?', 4500); return }
+  const size = pcs.reduce((n, t) => n + (t.size || 0), 0), fl = NvFiles ? lsGet('nvMusic.folders', []) : []; let free = '';
+  try{ const e = await navigator.storage.estimate(); if(e && e.quota) free = ` · ${mb(Math.max(0, e.quota - e.usage))} free for the app` }catch(e){}
+  sheet(`<h3>Save “${esc(title || 'these songs')}” to the phone</h3><p class="muted small" style="margin:0 0 10px">${plural(pcs.length, 'song')} · ${mb(size)}${free}${pcs.some(t => t.conv) ? ' · WMA/APE songs are converted to MP3 by the PC' : ''}</p>
+    <div class="mlist"><button class="btn primary" data-where="app">As an offline copy in the app</button><div class="muted small" style="margin:-2px 0 6px">For a trip: remove it again any time (The Nightvault > My PC shows all offline copies).</div>
+    ${fl.map((f, i) => `<button class="btn" data-where="${i}">Into the music folder “${esc(f.name)}” (keep for good)</button>`).join('')}${fl.length ? '<div class="muted small" style="margin:-2px 0 0">As normal files in the same Artist / Album folders as on the PC.</div>' : ''}</div>`);
+  $('.sheet').onclick = e => { const b = e.target.closest('[data-where]'); if(!b) return; const w = b.dataset.where; doSave(pcs, title, w === 'app' ? null : fl[+w]) } }
+async function doSave(pcs, title, folder){
+  const me = {stop:false}, total = pcs.reduce((n, t) => n + (t.size || 0), 0), now = Date.now(), recId = 'save:' + uid();
+  let done = 0, bytes = 0, failed = 0; const fids = [], ids = [], made = [];
+  sheet(`<h3>Saving to the phone…</h3><div class="prog"><i id="svp"></i></div><div class="muted small" id="svt" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">starting…</div><p class="muted small">The screen stays on while it saves.</p><button class="btn" id="svstop" style="width:100%">Stop (keep what is saved)</button>`, true);
+  $('#svstop').onclick = () => { me.stop = true; $('#svstop').disabled = true; $('#svstop').textContent = 'Stopping…' }; awake(true);
+  let hl = null; if(folder && NvPcP) try{ hl = await NvPcP.addListener('saveProgress', e => { const p = $('#svp'); if(p && total) p.style.width = (100 * (bytes + (e.done || 0)) / total) + '%' }) }catch(e){}
+  const covers = new Set();
+  for(const t of pcs){ if(me.stop) break;
+    const name = t.conv ? t.name.replace(/\.[^.]+$/, '') + '.mp3' : t.name, path = (t.conv ? '/nv/stream?id=' : '/nv/file?id=') + t.pc, type = t.conv ? 'audio/mpeg' : t.type;
+    const el = $('#svt'); if(el) el.textContent = `${done + 1} of ${pcs.length} · ${t.title}`;
+    try{ const nt = Object.assign({}, t, {id:uid(), name, type, added:now}); delete nt.pc; delete nt.conv; delete nt.pcov; delete nt.tree;
+      if(folder){ const rel = (t.dir || '').replace(/^pc\|/, ''), o = await NvPcP.saveToFolder({tree:folder.tree, folder:rel, name, path, mime:type});
+        nt.uri = o.uri; nt.tree = folder.tree; nt.size = o.size || t.size; nt.saved = now;
+        if(t.pcov && !covers.has(t.pcov)){ covers.add(t.pcov); NvPcP.saveToFolder({tree:folder.tree, folder:rel, name:'cover.jpg', path:'/nv/cover?id=' + t.pcov, mime:'image/jpeg'}).catch(() => {}) } }
+      else { const r = await fetch(NVPC.url(path)); if(!r.ok) throw new Error('the PC answered ' + r.status); const blob = await r.blob();
+        const fid = uid(); await dbPut('files', {id:fid, blob:blob.type ? blob : new Blob([blob], {type})}); nt.fid = fid; nt.size = blob.size; nt.offline = recId; fids.push(fid) }
+      await dbPut('tracks', nt); TR.push(nt); ids.push(nt.id); made.push(nt); bytes += nt.size || 0
+      /* the album cover comes along */
+      if(!ALCOV.has(t.al) && t.pcov){ try{ const r = await fetch(NVPC.url('/nv/cover?id=' + t.pcov)); if(r.ok){ await dbPut('covers', {id:'al:' + t.al, blob:await r.blob()}); ALCOV.add(t.al) } }catch(e){} } }
+    catch(err){ failed++; LE('save', 'could not save ' + t.name, err); if(/QuotaExceeded|full/i.test(String(err && (err.name + err.message)))){ me.stop = true; toast('The phone is full', 5000) } }
+    done++; const p = $('#svp'); if(p) p.style.width = (100 * done / pcs.length) + '%' }
+  try{ hl && hl.remove() }catch(e){} awake(false);
+  if(!folder && ids.length) NVPC.offline.add({app:'music', id:recId, title:title || made[0].album || 'Songs', size:bytes, n:ids.length, del:[{db:'nvAudio', store:'files', ids:fids}, {db:'nvAudio', store:'tracks', ids}]});
+  L('save', `saved ${ids.length} of ${pcs.length}${folder ? ' into ' + folder.name : ' as offline copy'}`, {failed});
+  musicIndex(); closeSheet(); drawM(); toast(`${plural(ids.length, 'song')} saved to the phone${failed ? ` · ${failed} failed` : ''}${me.stop && ids.length < pcs.length ? ' · stopped' : ''}`, 5000) }
+async function keepOffline(ts){ const offs = offlineOf(ts); if(!offs.length) return; const recs = new Set(offs.map(t => t.offline));
+  for(const t of offs){ delete t.offline; t.kept = Date.now() } await dbPutMany('tracks', offs); for(const r of recs) NVPC.offline.keep('music', r);
+  musicIndex(); drawM(); toast('Kept on this phone - it is no longer an offline copy') }
+async function removeOffline(ts){ const offs = offlineOf(ts); if(!offs.length) return; const gone = new Set(offs.map(t => t.id));
+  if(curT() && gone.has(curT().id)){ au.pause(); au.removeAttribute('src'); au.load(); mLoadedId = null }
+  for(const t of offs) await dbDel('files', t.fid).catch(() => {}); await dbDelMany('tracks', [...gone]); TR = TR.filter(t => !gone.has(t.id)); pruneOffline();
+  Q.list = Q.list.filter(id => !gone.has(id)); Q.orig = Q.orig.filter(id => !gone.has(id)); Q.pos = Math.min(Q.pos, Math.max(0, Q.list.length - 1)); saveQ();
+  musicIndex(); drawM(); toast('Offline copy removed - it plays from the PC again when you are home') }
 
 /* ---------- the queue and the player ---------- */
 let Q = Object.assign({list:[], orig:[], pos:0, shuffle:false, repeat:'off', t:0}, lsGet('nvMusic.queue', {}));
@@ -1412,7 +1571,9 @@ function qAdd(ids, next){ ids = ids.filter(id => TRID[id]); if(!ids.length) retu
 async function mLoad(play, at){
   const t = curT(), tok = ++mTok; if(!t){ au.pause(); drawMP(true); return false }
   if(mUrl){ URL.revokeObjectURL(mUrl); mUrl = null }
-  if(t.uri) au.src = linkUrl(t.uri, t.name);
+  if(t.pc){ if(PCON === false && !(await NVPC.reachable(true))){ PCON = false; markPcOff(); toast('Your PC is not reachable - at home with Nightvault running on the PC?', 4000); return mSkipBad(play) }
+    au.src = NVPC.url((t.conv ? '/nv/stream?id=' : '/nv/file?id=') + t.pc) }
+  else if(t.uri) au.src = linkUrl(t.uri, t.name);
   else { const rec = await dbGet('files', t.fid).catch(() => null); if(tok !== mTok) return false;
     if(!rec || !rec.blob){ toast(`“${t.title}” is missing - add it again`); return mSkipBad(play) }
     mUrl = URL.createObjectURL(rec.blob.type ? rec.blob : new Blob([rec.blob], {type:t.type})); au.src = mUrl }
@@ -1422,7 +1583,8 @@ async function mLoad(play, at){
     au.addEventListener('loadedmetadata', y); au.addEventListener('error', n); tm = setTimeout(() => done(false), 20000) });
   if(tok !== mTok) return false;
   if(!ok || au.error){ LE('music', 'cannot play ' + t.name, {err:au.error && au.error.code, network:au.networkState});
-    toast(au.error && au.error.code === 4 ? `This phone can't play “${t.title}” (${ext(t.name).toUpperCase()})` : `“${t.title}” does not play - is the file still there?`, 4000); return mSkipBad(play) }
+    if(t.pc){ PCON = await NVPC.reachable(true); markPcOff() }
+    toast(t.pc && !PCON ? 'Your PC is not reachable - at home with Nightvault running on the PC?' : au.error && au.error.code === 4 ? `This phone can't play “${t.title}” (${ext(t.name).toUpperCase()})` : `“${t.title}” does not play - is the file still there?`, 4000); return mSkipBad(play) }
   mErr = 0;
   if(at) try{ au.currentTime = at }catch(e){}
   if(isFinite(au.duration) && au.duration > 0 && Math.abs((t.dur || 0) - au.duration) > 1){ t.dur = au.duration; dbPut('tracks', t).catch(() => {}) }
@@ -1545,10 +1707,13 @@ $('#msetbtn').onclick = () => {
   sheet(`<h3>Settings</h3>
     ${NvFiles ? '<h3 style="margin:4px 0">Music folders on this phone</h3><div id="mfldrs" class="muted small">…</div><button class="btn" id="mfadd" style="width:100%;margin-top:8px">Add a folder</button>' : ''}
     ${window.NVLOG ? `<div class="opt" style="margin-top:8px"><label for="mdbg">Debug mode<div class="muted small">Writes down everything that happens, with a bug button to send the log to Claude.</div></label><input type="checkbox" id="mdbg" ${NVLOG.on ? 'checked' : ''}></div>` : ''}
+    ${window.NVPC && NVPC.native ? `<h3 style="margin:16px 0 4px">My PC</h3>${NVPC.pc ? `<div class="muted small" id="mpcline2"></div><button class="btn" id="mpcref" style="width:100%;margin-top:8px">Get the PC's newest list</button>` : '<div class="muted small">Not connected. The Nightvault > <b>My PC</b> connects to the Nightvault PC app over your home Wi-Fi.</div>'}
+      <a class="btn" href="../hub/index.html" style="width:100%;margin-top:8px;text-decoration:none">The Nightvault > My PC (pair, offline copies)</a>` : ''}
     <button class="btn" id="mcovall" style="width:100%;margin-top:10px">Find missing covers online (${ALB.filter(a => !ALCOV.has(a.key)).length})</button>
-    <p class="muted small" style="margin:12px 0 0">${plural(TR.length, 'song')} · ${plural(ALB.length, 'album')} · ${plural(ARTS.length, 'artist')}. Favourites, play counts and playlists are kept on this device (later also synced with the PC).</p>`);
+    <p class="muted small" style="margin:12px 0 0">${plural(VIS.length, 'song')} · ${plural(ALB.length, 'album')} · ${plural(ARTS.length, 'artist')}. Favourites, play counts and playlists are kept on this device (later also synced with the PC).</p>`);
   if($('#mdbg')) $('#mdbg').onchange = e => { e.target.checked ? NVLOG.enable() : NVLOG.disable() };
   $('#mcovall').onclick = () => coversOnlineAll();
+  if($('#mpcline2')){ $('#mpcline2').id = 'mpcline'; drawPcLine() } if($('#mpcref')) $('#mpcref').onclick = () => { closeSheet(); pcRefresh(true) };
   if(NvFiles){ $('#mfadd').onclick = () => { closeSheet(); musicFolder() }; drawMFolders() } };
 async function drawMFolders(){ const el = $('#mfldrs'); if(!el) return; let fl = lsGet('nvMusic.folders', []);
   try{ const ok = new Set(((await NvFiles.folders()).folders || []).map(x => x.tree)); fl = fl.filter(x => ok.has(x.tree)); lsSet('nvMusic.folders', fl) }catch(e){}
@@ -1569,7 +1734,7 @@ async function musicStart(){
       <div style="display:flex;gap:8px"><button class="btn" style="flex:1" id="scno">Not now</button><button class="btn primary" style="flex:2" id="scgo">Continue</button></div>`, true);
     $('#scno').onclick = () => { scanDone(sc); closeSheet() }; $('#scgo').onclick = () => { closeSheet(); musicFolder({tree:sc.tree, name:sc.name}, true) } }, 300);
   Q.list = (Q.list || []).filter(id => TRID[id]); Q.orig = (Q.orig || []).filter(id => TRID[id]); if(Q.pos >= Q.list.length) Q.pos = 0;
-  drawM() }
+  drawM(); pruneOffline(); pcRefresh(false) }
 
 /* ---------- start ---------- */
 (async () => {
@@ -1581,7 +1746,7 @@ async function musicStart(){
   const lastId = lsGet('nvAudio.last', null); if(lastId && BOOKS.find(b => b.id === lastId) && !(STATE[lastId] || {}).finished){ const b = BOOKS.find(x => x.id === lastId); cur = b; curPart = -1; drawMini(); drawLib() }
 })();
 window.NVAUDIO = {get cur(){ return cur }, get books(){ return BOOKS }, state:st, gpos, seekTo, openBook, togglePlay, mp4Info, mp3Info, flacInfo, oggInfo, wavInfo, fileInfo, review, au,
-  music:{get Q(){ return Q }, get tracks(){ return TR }, get albums(){ return ALB }, get artists(){ return ARTS }, get lists(){ return LISTS }, get stats(){ return STATS }, curT, playList, qAdd, mNext, mPrev, mPlay, mSeek, toggleShuffle, cycleRepeat, toggleFav, musicScan, makeTrack, drawM, mGo, musicBack}};
+  music:{get Q(){ return Q }, get tracks(){ return TR }, get vis(){ return VIS }, get pct(){ return PCT }, get pcon(){ return PCON }, pcRefresh, saveOffline, doSave, keepOffline, removeOffline, buildGroups, groupOf, setAlbumGroup, get albums(){ return ALB }, get artists(){ return ARTS }, get lists(){ return LISTS }, get stats(){ return STATS }, curT, playList, qAdd, mNext, mPrev, mPlay, mSeek, toggleShuffle, cycleRepeat, toggleFav, musicScan, makeTrack, drawM, mGo, musicBack}};
 </script>
 </body>
 </html>
