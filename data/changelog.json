@@ -3,6 +3,25 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 69,
+   "date": "2026-10-16",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: rename groups, undo, a backup of your groups, search inside groups",
+   "items": [
+    "Rename a group: group ⋯ → Rename. Your own group keeps everything in it; for an artist or series tile only the name on the tile changes.",
+    "Undo: after moving, adding, taking out, removing or renaming, the message at the bottom has an Undo button for a few seconds.",
+    "A backup of your groups: Settings → Your groups → Save my groups (to Google Drive, mail …) and Load from a file. Your groups, groups inside groups, albums you placed by hand, tile covers and pins come back on a new phone.",
+    "Search looks inside groups: matching groups show as tiles, and every album found says where it is (like “in Star Wars › Episode I”).",
+    "Behind the scenes: the group logic is now one shared part of The Nightvault, so the other apps get exactly the same groups later."
+   ]
+  },
+  {
    "id": 68,
    "date": "2026-10-16",
    "where": [

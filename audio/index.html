@@ -11,6 +11,7 @@
 <script>/* the debug log names the app after the title: set it before nvlog.js starts */ if(/[?&]mode=music(&|$)/.test(location.search)) document.title = 'Nightvault Music'</script>
 <script src="../hub/nvlog.js"></script>
 <script src="../hub/nvpc.js"></script>
+<script src="../hub/nvgroups.js"></script>
 <!-- Nightvault Audio (test): one app for Audiobooks (?mode=audiobooks, built) and Music (?mode=music, later), one shared player.
      Books are copied into the app (IndexedDB), so they play without internet. Plan: plans/audiobooks.md and plans/music.md (nightvault-src). -->
 <style>
@@ -1259,32 +1260,21 @@ function seriesName(title){ let t = String(title || '').replace(/^\s*(various( a
   const m = t.match(/^(.*?)(?=\s*(?:\d|[-–:(\[]|$))/); let k = (m ? m[1] : t).replace(/[\s!.,'’]+$/, '');
   k = k.replace(/(\s+\b(?:vol(?:ume)?|part|pt|chapter|episode|edition)\.?)+$/i, '').replace(/(\s+\b[IVXLC]{1,6}\b)+$/, '').trim();
   return norm(k).length >= 3 ? k : '' }
-function buildGroups(als){
-  const own = lsGet('nvMusic.groups', []), ov = lsGet('nvMusic.albumGroup', {}), G = {}, alone = [], put = (key, name, kind, a) => { (G[key] = G[key] || {key, name, kind, albums:[]}).albums.push(a) };
-  for(const g of own) if(g.name) G['c:' + norm(g.name)] = G['c:' + norm(g.name)] || {key:'c:' + norm(g.name), name:g.name, kind:'own', albums:[]};
-  const ownBy = own.filter(g => norm(g.name)).sort((x, y) => norm(y.name).length - norm(x.name).length);
-  for(const a of als){ const o = ov[a.key];
-    if(o === 'none'){ alone.push(a); continue }
-    if(o && o.key){ put(o.key, o.name, o.kind, a); continue }
-    const hay = ' ' + norm(a.title + ' ' + a.aa) + ' ', c = ownBy.find(g => hay.includes(' ' + norm(g.name) + ' '));   // whole words; the longest group name wins
-    if(c){ put('c:' + norm(c.name), c.name, 'own', a); continue }
-    const various = VARIOUS_RE.test(a.aa.trim()), sn = seriesName(a.title);
-    if(various && sn) put('s:' + norm(sn), sn, 'series', a); else put('a:' + (norm(a.aa) || 'unknown'), a.aa, 'artist', a) }
-  /* a group can sit inside another group (Star Wars > Episode I > its CDs): nvMusic.groupParent {groupKey: parentKey} */
-  const par = lsGet('nvMusic.groupParent', {}), hasKids = new Set(Object.values(par));
-  const groups = [], singles = alone.slice();
-  for(const g of Object.values(G)){ if(g.albums.length > 1 || g.kind === 'own' || par[g.key] || hasKids.has(g.key)) groups.push(g); else if(g.albums.length) singles.push(g.albums[0]) }
-  const byKey = Object.fromEntries(groups.map(g => [g.key, g]));
-  for(const g of groups){ g.kids = []; g.parent = byKey[par[g.key]] && par[g.key] !== g.key ? par[g.key] : null }
-  for(const g of groups) if(g.parent){ let p = byKey[g.parent], n = 0; while(p && p.parent && n++ < 20) p = byKey[p.parent]; if(n >= 20) g.parent = null; else byKey[g.parent].kids.push(g) }
-  for(const g of groups) g.all = groupAlbums(g);
-  return {groups, singles} }
-/* every album in a group and in the groups inside it */
-function groupAlbums(g, seen){ seen = seen || new Set(); if(seen.has(g.key)) return []; seen.add(g.key); return g.albums.concat(...(g.kids || []).map(k => groupAlbums(k, seen))) }
-const groupPath = (g, gs) => { const by = Object.fromEntries(gs.map(x => [x.key, x])), out = [g.name]; let p = by[g.parent], n = 0; while(p && n++ < 20){ out.unshift(p.name); p = by[p.parent] } return out.join(' › ') };
-function setParent(key, parent){ const par = lsGet('nvMusic.groupParent', {}); if(parent) par[key] = parent; else delete par[key]; lsSet('nvMusic.groupParent', par) }
-function ownGroup(name){ const l = lsGet('nvMusic.groups', []); if(!l.some(x => norm(x.name) === norm(name))) l.push({name}); lsSet('nvMusic.groups', l); return {key:'c:' + norm(name), name, kind:'own'} }
+/* the group logic itself is shared by all apps: ../hub/nvgroups.js (NVGROUPS) - Music keeps its old storage names (nvMusic.groups, .albumGroup …) */
+const GR = NVGROUPS.make({prefix:'nvMusic', app:'music', title:'Music', itemsKey:'albumGroup', norm, key:a => a.key, hay:a => a.title + ' ' + a.aa,
+  kinds:{artist:'Artist', series:'Series'},
+  auto:a => { const sn = seriesName(a.title); return VARIOUS_RE.test(a.aa.trim()) && sn ? {key:'s:' + norm(sn), name:sn, kind:'series'} : {key:'a:' + (norm(a.aa) || 'unknown'), name:a.aa, kind:'artist'} },
+  /* a renamed group: its own picture (covers store al:grp:<key>) moves with it */
+  onRekey:async (from, to) => { if(!ALCOV.has('grp:' + from)) return; const c = await dbGet('covers', 'al:grp:' + from).catch(() => null); if(!c) return;
+    await dbPut('covers', {id:'al:grp:' + to, blob:c.blob}); ALCOV.add('grp:' + to); drawM() }});
+function buildGroups(als){ const r = GR.build(als); for(const g of r.groups) g.albums = g.items; return r }
+const groupAlbums = g => GR.all(g);
+const groupPath = (g, gs) => GR.path(g, gs);
+const setParent = (key, parent) => GR.setParent(key, parent);
+const ownGroup = name => GR.own(name);
 const groupOf = a => buildGroups(ALB).groups.find(g => g.albums.includes(a)) || null;
+/* a change to the groups, with "Undo" in the message */
+const grChange = (fn, msg) => { GR.change(fn); GR.undoToast(msg, () => { selEnd(true); drawM() }) };
 /* group ⋯ → "Add albums…": every album, searchable, tick several and add them to this group */
 function addAlbumsSheet(g){ const gs = buildGroups(ALB).groups, where = {}; for(const x of gs) for(const a of x.albums) where[a.key] = x;
   const pick = new Set(); let q = '';
@@ -1296,7 +1286,7 @@ function addAlbumsSheet(g){ const gs = buildGroups(ALB).groups, where = {}; for(
     <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="aago" disabled>Add</button></div>`, true);
   $('#aaq').oninput = e => { q = e.target.value; draw() };
   $('#aalist').onchange = e => { const c = e.target.closest('[data-aa]'); if(!c) return; c.checked ? pick.add(c.dataset.aa) : pick.delete(c.dataset.aa); $('#aago').textContent = pick.size ? `Add ${plural(pick.size, 'album')}` : 'Add'; $('#aago').disabled = !pick.size };
-  $('#aago').onclick = () => { setAlbumGroup([...pick], {key:g.key, name:g.name, kind:g.kind}); closeSheet(); drawM(); toast(`${plural(pick.size, 'album')} added to “${g.name}”`) };
+  $('#aago').onclick = () => { grChange(() => setAlbumGroup([...pick], g), `${plural(pick.size, 'album')} added to “${g.name}”`); closeSheet(); drawM() };
   draw() }
 /* group ⋯ → "New group inside" / "Put this group inside…" */
 function newSubGroup(g){ sheet(`<h3>New group inside “${esc(g.name)}”</h3><input type="text" id="sgn" placeholder="Name, like Episode I or The Mandalorian" maxlength="60"><div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="sgmake">Make it</button></div>`);
@@ -1306,23 +1296,22 @@ function moveGroupSheet(g){ const gs = buildGroups(ALB).groups, bad = new Set(gr
   const opts = gs.filter(x => !bad.has(x.key)).sort((x, y) => coll.compare(groupPath(x, gs), groupPath(y, gs)));
   sheet(`<h3>Put “${esc(g.name)}” inside…</h3>${g.parent ? '<button class="btn" id="mgtop" style="width:100%;margin-bottom:8px">Back on the main page</button>' : ''}
     ${opts.map(x => `<div class="li" data-mg="${esc(x.key)}"><span class="th">${grpCover(x)}</span><div class="n"><div>${esc(groupPath(x, gs))}</div><div class="s">${plural(x.all.length, 'album')}</div></div></div>`).join('') || '<p class="muted small">No other groups yet. Make one with “+ Group” on the Albums page.</p>'}`);
-  if($('#mgtop')) $('#mgtop').onclick = () => { setParent(g.key, null); closeSheet(); drawM(); toast('Back on the main page') };
-  $('.sheet').addEventListener('click', e => { const r = e.target.closest('[data-mg]'); if(!r) return; const t = gs.find(x => x.key === r.dataset.mg); setParent(g.key, t.key); closeSheet(); drawM(); toast(`Now inside “${t.name}”`) }) }
-const groupKeysInside = (g, gs) => { const out = []; const walk = k => { for(const x of gs) if(x.parent === k && !out.includes(x.key)){ out.push(x.key); walk(x.key) } }; walk(g.key); return out };
-function setAlbumGroup(keys, g){ const ov = lsGet('nvMusic.albumGroup', {}); for(const k of keys){ if(g === undefined) delete ov[k]; else ov[k] = g } lsSet('nvMusic.albumGroup', ov) }
+  if($('#mgtop')) $('#mgtop').onclick = () => { grChange(() => setParent(g.key, null), `“${g.name}” is back on the main page`); closeSheet(); drawM() };
+  $('.sheet').addEventListener('click', e => { const r = e.target.closest('[data-mg]'); if(!r) return; const t = gs.find(x => x.key === r.dataset.mg); grChange(() => setParent(g.key, t.key), `“${g.name}” is now inside “${t.name}”`); closeSheet(); drawM() }) }
+const groupKeysInside = (g, gs) => GR.inside(g, gs);
+const setAlbumGroup = (keys, g) => GR.put(keys, g);
 /* album ⋯ → "Put in a group…": one of the group tiles, or a new one */
-function groupPicker(a){ const cur = groupOf(a), gs = buildGroups(ALB).groups.filter(g => !cur || g.key !== cur.key).sort((x, y) => coll.compare(x.name, y.name)), ov = lsGet('nvMusic.albumGroup', {});
+function groupPicker(a){ const cur = groupOf(a), gs = buildGroups(ALB).groups.filter(g => !cur || g.key !== cur.key).sort((x, y) => coll.compare(x.name, y.name)), ov = GR.read('items');
   sheet(`<h3>Put “${esc(a.title)}” in a group</h3>${cur ? `<p class="muted small" style="margin:0 0 8px">Now in “${esc(cur.name)}”.</p>` : ''}
     <div style="display:flex;gap:8px"><input type="text" id="gpn" placeholder="New group name" maxlength="60"><button class="btn primary" id="gpmake">Make</button></div>
     <div style="margin-top:10px">${gs.map(g => `<div class="li" data-gp="${esc(g.key)}"><span class="th">${grpCover(g)}</span><div class="n"><div>${esc(groupPath(g, gs))}</div><div class="s">${plural(g.albums.length, 'album')}</div></div></div>`).join('') || '<p class="muted small">No group tiles yet.</p>'}</div>
     <div class="mlist" style="margin-top:10px">${cur ? '<button class="btn" id="gpout">Take it out of its group (its own tile)</button>' : ''}${ov[a.key] ? '<button class="btn" id="gpauto">Back to automatic</button>' : ''}</div>`);
-  const done = m => { closeSheet(); drawM(); toast(m) };
-  $('#gpmake').onclick = () => { const n = $('#gpn').value.trim(); if(!n) return; const l = lsGet('nvMusic.groups', []); if(!l.some(x => norm(x.name) === norm(n))) l.push({name:n}); lsSet('nvMusic.groups', l);
-    setAlbumGroup([a.key], {key:'c:' + norm(n), name:n, kind:'own'}); done(`Put in “${n}”`) };
-  if($('#gpout')) $('#gpout').onclick = () => { setAlbumGroup([a.key], 'none'); done('Now on its own tile') };
-  if($('#gpauto')) $('#gpauto').onclick = () => { setAlbumGroup([a.key]); done('Back to automatic') };
+  const done = (fn, m) => { grChange(fn, m); closeSheet(); drawM() };
+  $('#gpmake').onclick = () => { const n = $('#gpn').value.trim(); if(!n) return; done(() => setAlbumGroup([a.key], ownGroup(n)), `Put in “${n}”`) };
+  if($('#gpout')) $('#gpout').onclick = () => done(() => setAlbumGroup([a.key], 'none'), 'Now on its own tile');
+  if($('#gpauto')) $('#gpauto').onclick = () => done(() => setAlbumGroup([a.key]), 'Back to automatic');
   $('.sheet').addEventListener('click', e => { const r = e.target.closest('[data-gp]'); if(!r) return; const g = buildGroups(ALB).groups.find(x => x.key === r.dataset.gp);
-    if(g){ setAlbumGroup([a.key], {key:g.key, name:g.name, kind:g.kind}); done(`Put in “${g.name}”`) } }) }
+    if(g) done(() => setAlbumGroup([a.key], g), `Put in “${g.name}”`) }) }
 /* the same small "sort" menu on every page; each page remembers its own choice */
 const SORTS = {artists:[['name', 'Name'], ['albums', 'Most albums'], ['songs', 'Most songs'], ['plays', 'Most played']],
   lists:[['name', 'Name'], ['new', 'Newest'], ['size', 'Most songs']],
@@ -1341,7 +1330,7 @@ const longTime = s => s >= 172800 ? `${Math.floor(s / 86400)} days ${Math.round(
 const totalsLine = (ts, extra) => { const x = totals(ts); return [extra, plural(x.songs, 'song').replace(/^\d+/, n => (+n).toLocaleString()), x.dur ? longTime(x.dur) : '', x.size ? mb(x.size) : ''].filter(Boolean).join(' · ') };
 const RNDCOV = {};
 const withCover = g => (g.all || g.albums).filter(x => ALCOV.has(x.key) || x.pcov);
-function grpCover(g){ const c = lsGet('nvMusic.groupCover', {})[g.key] || {}, wc = withCover(g); let a = null;
+function grpCover(g){ const c = GR.cover(g.key), wc = withCover(g); let a = null;
   if(c.t === 'pic' && ALCOV.has('grp:' + g.key)) return alCover({key:'grp:' + g.key, title:g.name, aa:''});
   if(c.t === 'album') a = (g.all || g.albums).find(x => x.key === c.al) || ALBK[c.al];   // also an album in a group inside it
   if(c.t === 'random' && wc.length) a = wc.find(x => x.key === RNDCOV[g.key]) || (wc[Math.floor(Math.random() * wc.length)]), RNDCOV[g.key] = a.key;
@@ -1358,14 +1347,21 @@ setInterval(async () => { if(document.hidden || MODE !== 'music') return;
     let img = el.querySelector('img'); if(!img){ el.innerHTML = ''; img = new Image(); img.alt = ''; el.appendChild(img) }
     img.style.transition = 'opacity .5s'; img.style.opacity = 0; setTimeout(() => { img.src = u; img.onload = () => img.style.opacity = 1 }, 450) } }, 4000);
 function groupMenu(g){ if(!g) return;
-  sheet(`<h3>${esc(g.name)}</h3><div class="mlist"><button class="btn primary" id="gadd">Add albums…</button><button class="btn" id="gsub">New group inside</button><button class="btn" id="gmove">Put this group inside another group…</button><button class="btn" id="gcov">Choose the tile cover</button><button class="btn" id="gpin">${isPinned('gr:' + g.key) ? '★ Unpin from the top' : '★ Pin to the top'}</button>${g.kind === 'own' ? '<button class="btn danger" id="gdel">Remove this group</button>' : ''}</div>
+  sheet(`<h3>${esc(g.name)}</h3><div class="mlist"><button class="btn primary" id="gadd">Add albums…</button><button class="btn" id="gsub">New group inside</button><button class="btn" id="gmove">Put this group inside another group…</button><button class="btn" id="gren">Rename</button><button class="btn" id="gcov">Choose the tile cover</button><button class="btn" id="gpin">${isPinned('gr:' + g.key) ? '★ Unpin from the top' : '★ Pin to the top'}</button>${g.kind === 'own' ? '<button class="btn danger" id="gdel">Remove this group</button>' : ''}</div>
     ${g.kind === 'own' ? '<p class="muted small" style="margin:10px 0 0">Removing the group keeps the albums - they show as separate tiles again (or in their artist\'s tile).</p>' : ''}`);
-  $('#gcov').onclick = () => groupCoverSheet(g); $('#gpin').onclick = () => { const on = !isPinned('gr:' + g.key); togglePin(['gr:' + g.key], on); closeSheet(); drawM(); toast(on ? 'Pinned: it shows first' : 'Unpinned') }; $('#gadd').onclick = () => addAlbumsSheet(g); $('#gsub').onclick = () => newSubGroup(g); $('#gmove').onclick = () => moveGroupSheet(g);
-  if($('#gdel')) $('#gdel').onclick = () => { lsSet('nvMusic.groups', lsGet('nvMusic.groups', []).filter(x => norm(x.name) !== norm(g.name)));
-    const ov = lsGet('nvMusic.albumGroup', {}); for(const k of Object.keys(ov)) if(ov[k] && ov[k].key === g.key) delete ov[k]; lsSet('nvMusic.albumGroup', ov);
-    const par = lsGet('nvMusic.groupParent', {}); for(const k of Object.keys(par)) if(par[k] === g.key){ if(g.parent) par[k] = g.parent; else delete par[k] } delete par[g.key]; lsSet('nvMusic.groupParent', par); closeSheet(); musicBack(); toast('Group removed') } }
-function groupCoverSheet(g){ const c = lsGet('nvMusic.groupCover', {})[g.key] || {}, wc = withCover(g);
-  const save = v => { const all = lsGet('nvMusic.groupCover', {}); if(v) all[g.key] = v; else delete all[g.key]; lsSet('nvMusic.groupCover', all); delete RNDCOV[g.key]; closeSheet(); drawM(); toast('Tile cover saved') };
+  $('#gcov').onclick = () => groupCoverSheet(g); $('#gpin').onclick = () => { const on = !isPinned('gr:' + g.key); togglePin(['gr:' + g.key], on); closeSheet(); drawM(); toast(on ? 'Pinned: it shows first' : 'Unpinned') }; $('#gadd').onclick = () => addAlbumsSheet(g); $('#gsub').onclick = () => newSubGroup(g); $('#gmove').onclick = () => moveGroupSheet(g); $('#gren').onclick = () => renameGroup(g);
+  if($('#gdel')) $('#gdel').onclick = () => { closeSheet(); if(mtop().v === 'group' && mtop().key === g.key) MV.pop(); grChange(() => GR.remove(g), `Group “${g.name}” removed`); drawM() } }
+/* group ⋯ → "Rename": your own group gets the new name (its albums stay in it); an artist or series tile only shows another name */
+function renameGroup(g){ sheet(`<h3>Rename “${esc(g.name)}”</h3><input type="text" id="grn" value="${esc(g.name)}" maxlength="60">${g.kind !== 'own' ? '<p class="muted small" style="margin:8px 0 0">Only the name on the tile changes - it keeps finding this ' + (g.kind === 'artist' ? 'artist\'s' : 'series\'') + ' albums by itself.</p>' : ''}
+    <p class="muted small" id="grerr" style="margin:8px 0 0;color:#e88"></p><div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="grgo">Rename</button></div>`);
+  setTimeout(() => { const i = $('#grn'); if(i){ i.focus(); i.select() } }, 50);
+  const go = () => { const n = $('#grn').value.trim(); let err = ''; GR.change(() => { err = GR.rename(g, n) });
+    if(err){ GR.undo(); $('#grerr').textContent = err; return }
+    const v = mtop(); if(v.v === 'group' && v.key === g.key && g.kind === 'own') v.key = 'c:' + norm(n);
+    closeSheet(); drawM(); if(n !== g.name) GR.undoToast(`Renamed to “${n}”`, drawM) };
+  $('#grgo').onclick = go; $('#grn').onkeydown = e => { if(e.key === 'Enter') go() } }
+function groupCoverSheet(g){ const c = GR.cover(g.key), wc = withCover(g);
+  const save = v => { GR.setCover(g.key, v); delete RNDCOV[g.key]; closeSheet(); drawM(); toast('Tile cover saved') };
   sheet(`<h3>Tile cover for “${esc(g.name)}”</h3>
     <div class="chips"><button class="chip ${!c.t ? 'on' : ''}" data-gc="">The first album</button><button class="chip ${c.t === 'random' ? 'on' : ''}" data-gc="random">A random one</button><button class="chip ${c.t === 'cycle' ? 'on' : ''}" data-gc="cycle">Changing (one after another)</button><button class="chip ${c.t === 'pic' ? 'on' : ''}" data-gc="pic">A picture from the phone</button></div>
     <div class="sec">Or pick one</div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(96px,1fr))">${wc.map(a => `<div class="bk" data-gca="${esc(a.key)}" style="${c.t === 'album' && c.al === a.key ? 'outline:2px solid var(--accent);border-radius:14px' : ''}">${alCover(a)}<div class="a">${esc(a.title)}</div></div>`).join('') || '<p class="muted small">No covers in this group yet.</p>'}</div>`);
@@ -1376,18 +1372,16 @@ function groupCoverSheet(g){ const c = lsGet('nvMusic.groupCover', {})[g.key] ||
     if(t === 'pic'){ const inp = $('#mcover'); inp.value = ''; inp.onchange = async ev => { const f = ev.target.files[0]; if(!f) return; await dbPut('covers', {id:'al:grp:' + g.key, blob:f}); ALCOV.add('grp:' + g.key); if(ALURL['grp:' + g.key]){ URL.revokeObjectURL(ALURL['grp:' + g.key]); delete ALURL['grp:' + g.key] } save({t:'pic'}) }; inp.click(); return }
     save(t ? {t} : null) } }
 const groupTile = g => { const all = g.all || g.albums, k = (g.kids || []).length;
-  return `<div class="bk stack" data-grp="${esc(g.key)}" style="position:relative">${grpCover(g)}${isPinned('gr:' + g.key) ? PINB : ''}<span class="cdl grp">${k ? plural(k, 'group') + ' · ' : ''}${all.length ? plural(all.length, 'album') : 'empty'}</span><div class="t">${esc(g.name)}</div><div class="a">${g.kind === 'artist' ? 'Artist' : g.kind === 'series' ? 'Series' : 'Your group'} · ${plural(all.reduce((n, a) => n + a.tracks.length, 0), 'song')}</div></div>` };
+  return `<div class="bk stack" data-grp="${esc(g.key)}" style="position:relative">${grpCover(g)}${isPinned('gr:' + g.key) ? PINB : ''}<span class="cdl grp">${k ? plural(k, 'group') + ' · ' : ''}${all.length ? plural(all.length, 'album') : 'empty'}</span><div class="t">${esc(g.name)}</div><div class="a">${GR.label(g)} · ${plural(all.reduce((n, a) => n + a.tracks.length, 0), 'song')}</div></div>` };
 function newGroup(){ sheet(`<h3>New group</h3><p class="muted small" style="margin:0 0 8px">Every album with this word in its name or artist goes into one tile, for example <b>Thunderdome</b> or <b>Now That's What I Call Music</b>.</p><input type="text" id="gname" placeholder="Name" maxlength="60"><div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="gmake">Make the group</button></div>`);
   setTimeout(() => { const i = $('#gname'); if(i) i.focus() }, 50);
-  $('#gmake').onclick = () => { const n = $('#gname').value.trim(); if(!n) return; const g = lsGet('nvMusic.groups', []); if(!g.some(x => norm(x.name) === norm(n))) g.push({name:n}); lsSet('nvMusic.groups', g);
+  $('#gmake').onclick = () => { const n = $('#gname').value.trim(); if(!n) return; ownGroup(n);
     const cnt = buildGroups(ALB).groups.find(x => x.key === 'c:' + norm(n)); closeSheet(); MS.algroup = true; saveMS(); drawM(); toast(`Group “${n}”: ${plural(cnt ? cnt.albums.length : 0, 'album')}`) } }
 /* ---------- pinned tiles: always first on the page they are on (nvMusic.pinned = ['al:<key>' | 'gr:<key>', …], in pin order) ---------- */
-const pins = () => lsGet('nvMusic.pinned', []);
-const isPinned = id => pins().includes(id);
-function togglePin(ids, on){ let l = pins(); for(const id of ids){ const has = l.includes(id), want = on === undefined ? !has : on; if(want && !has) l.push(id); if(!want && has) l = l.filter(x => x !== id) } lsSet('nvMusic.pinned', l) }
-/* pinned first (in the order they were pinned), the rest keeps its order */
-function pinFirst(items, idOf){ const l = pins(); if(!l.length) return items; const at = new Map(l.map((x, i) => [x, i]));
-  return items.map((x, i) => [x, i]).sort((p, q) => { const a = at.has(idOf(p[0])) ? at.get(idOf(p[0])) : 1e9, b = at.has(idOf(q[0])) ? at.get(idOf(q[0])) : 1e9; return a - b || p[1] - q[1] }).map(x => x[0]) }
+const pins = () => GR.pins();
+const isPinned = id => GR.isPinned(id);
+const togglePin = (ids, on) => GR.togglePin(ids, on);
+const pinFirst = (items, idOf) => GR.pinFirst(items, idOf);
 const PINB = '<span class="pinb" title="Pinned">★</span>';
 function discLabel(a){ const d = [...new Set(a.tracks.map(t => t.disc || 0))].filter(Boolean); return d.length > 1 ? `${d.length} CDs` : d.length === 1 && d[0] > 1 ? `CD ${d[0]}` : '' }
 /* CD pictures inside an album: a picture in the CD's folder named cd1 / disc 1 …, else the picture inside that CD's songs (often a disc scan) */
@@ -1406,7 +1400,7 @@ async function discCoverUrl(a, d){ const k = 'cd:' + a.key + '#' + d; if(CDURL[k
     if(blob){ await dbPut('covers', {id:k, blob}); CDCOV.add(k); return CDURL[k] = URL.createObjectURL(blob) } }catch(e){ LE('cover', 'cd picture ' + a.title + ' ' + d, e) }
   return null }
 async function fillDiscCovers(a){ for(const el of document.querySelectorAll('#mbody [data-cdc]')){ const u = await discCoverUrl(a, +el.dataset.cdc); if(u && el.isConnected) el.innerHTML = `<img src="${u}" alt="">` } }
-const albumGrid = als => `<div class="grid">${pinFirst(als, a => 'al:' + a.key).map(a => `<div class="bk ${a.pconly && PCON === false ? 'pcoff' : ''}" data-al="${esc(a.key)}" ${a.pconly ? 'data-pconly="1"' : ''} style="position:relative">${alCover(a)}${discLabel(a) ? `<span class="cdl">${discLabel(a)}</span>` : ''}${a.pconly ? '<span class="pcb">PC</span>' : ''}${isPinned('al:' + a.key) ? PINB : ''}<div class="t">${esc(a.title)}</div><div class="a">${esc(a.aa)}${a.year ? ' · ' + esc(a.year) : ''}</div></div>`).join('')}</div>`;
+const albumGrid = (als, where) => `<div class="grid">${pinFirst(als, a => 'al:' + a.key).map(a => `<div class="bk ${a.pconly && PCON === false ? 'pcoff' : ''}" data-al="${esc(a.key)}" ${a.pconly ? 'data-pconly="1"' : ''} style="position:relative">${alCover(a)}${discLabel(a) ? `<span class="cdl">${discLabel(a)}</span>` : ''}${a.pconly ? '<span class="pcb">PC</span>' : ''}${isPinned('al:' + a.key) ? PINB : ''}<div class="t">${esc(a.title)}</div><div class="a">${where && where[a.key] ? 'in ' + esc(where[a.key]) : esc(a.aa) + (a.year ? ' · ' + esc(a.year) : '')}</div></div>`).join('')}</div>`;
 const playBar = (extra) => `<div class="mbar"><button class="btn primary" data-play="0" style="flex:1">${IC_PLAY.replace('<svg ', '<svg width="18" height="18" ')}Play</button><button class="btn" data-play="shuffle" style="flex:1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Shuffle</button>${extra || ''}</div>`;
 function favTracks(){ return Object.values(STATS).filter(s => s.fav && KEYTR[s.id]).sort((a, b) => (b.favAt || 0) - (a.favAt || 0)).map(s => KEYTR[s.id]) }
 function listTracks(l){ return l.items.map(k => KEYTR[k]).filter(Boolean) }
@@ -1426,9 +1420,13 @@ function drawM(){
     h += `<input type="search" id="mq" placeholder="Search songs, albums, artists" value="${esc(MS.q)}" style="margin:2px 0 8px">`;
     const q = norm(MS.q);
     if(q){ const ar = ARTS.filter(a => norm(a.name).includes(q)).slice(0, 8), al = ALB.filter(a => norm(a.title + ' ' + a.aa).includes(q)).slice(0, 24), sg = VIS.filter(t => norm(t.title + ' ' + t.artist + ' ' + t.album).includes(q)).sort((a, b) => coll.compare(a.title, b.title));
-      if(!ar.length && !al.length && !sg.length) h += '<p class="muted" style="text-align:center;margin-top:30px">Nothing found.</p>';
+      /* search also looks inside groups: groups by name, and every album says which group (inside which group) it is in */
+      const {groups:gs} = buildGroups(ALB), gm = gs.filter(g => norm(g.name).includes(q) && (g.kind === 'own' || g.all.length > 1)).sort((x, y) => coll.compare(groupPath(x, gs), groupPath(y, gs))).slice(0, 12), where = {};
+      for(const g of gs) for(const a of g.albums) where[a.key] = groupPath(g, gs);
+      if(!ar.length && !al.length && !sg.length && !gm.length) h += '<p class="muted" style="text-align:center;margin-top:30px">Nothing found.</p>';
+      if(gm.length) h += `<div class="sec">Groups</div><div class="grid">${gm.map(g => groupTile(g).replace('<div class="t">', g.parent ? `<div class="t" title="${esc(groupPath(g, gs))}">` : '<div class="t">').replace(/<div class="a">[^<]*<\/div>/, g.parent ? `<div class="a">in ${esc(groupPath(gs.find(x => x.key === g.parent), gs))}</div>` : '$&')).join('')}</div>`;
       if(ar.length) h += `<div class="sec">Artists</div>${ar.map(artistRow).join('')}`;
-      if(al.length) h += `<div class="sec">Albums</div>${albumGrid(al)}`;
+      if(al.length) h += `<div class="sec">Albums</div>${albumGrid(al, where)}`;
       if(sg.length) h += `<div class="mbar" style="margin-top:14px"><span class="sec" style="flex:1;margin:0">Songs</span>${sortSel('search')}</div>${songList(sortSongs(sg, 'search'))}` }
     else {
       h += `<div class="mtabs">${[['albums', 'Albums'], ['artists', 'Artists'], ['songs', 'Songs'], ['lists', 'Playlists']].map(([k, t]) => `<button class="chip ${MS.tab === k ? 'on' : ''}" data-tab="${k}">${t}</button>`).join('')}</div>`;
@@ -1470,7 +1468,7 @@ function drawM(){
   if(v.v === 'group'){ const g = buildGroups(ALB).groups.find(x => x.key === v.key); if(!g){ MV.pop(); return drawM() }
     const als = sortAlbums(g.albums, 'inside'), all = g.all.flatMap(a => a.tracks), kids = (g.kids || []).slice().sort((x, y) => coll.compare(norm(x.name), norm(y.name)));
     const up = g.parent && buildGroups(ALB).groups.find(x => x.key === g.parent);
-    h += `<div class="alhead"><div class="stack" style="flex:none">${grpCover(g).replace('class="cv ', 'class="cv gcv ')}</div><div style="min-width:0"><b>${esc(g.name)}</b><div class="muted small">${up ? 'In ' + esc(up.name) : g.kind === 'artist' ? 'Artist' : g.kind === 'series' ? 'Series' : 'Your group'}</div><div class="muted small">${totalsLine(all, (kids.length ? plural(kids.length, 'group') + ' · ' : '') + plural(g.all.length, 'album'))}</div></div></div>`;
+    h += `<div class="alhead"><div class="stack" style="flex:none">${grpCover(g).replace('class="cv ', 'class="cv gcv ')}</div><div style="min-width:0"><b>${esc(g.name)}</b><div class="muted small">${up ? 'In ' + esc(up.name) : GR.label(g)}</div><div class="muted small">${totalsLine(all, (kids.length ? plural(kids.length, 'group') + ' · ' : '') + plural(g.all.length, 'album'))}</div></div></div>`;
     h += playBar((all.some(t => t.pc) ? `<button class="btn sm" data-saveall="1" style="height:44px">Save to phone</button>` : '') + `<button class="ib" data-grpmenu="${esc(g.key)}" aria-label="More for this group">${IC_DOTS}</button>`) + (kids.length ? `<div class="sec">Groups</div><div class="grid">${pinFirst(kids, x => 'gr:' + x.key).map(groupTile).join('')}</div>` : '')
       + (als.length || kids.length ? `<div class="mbar" style="margin-top:12px"><span class="muted small" style="flex:1">${als.length ? 'Albums' : ''}</span><button class="btn sm" data-selstart="1">Select</button>${als.length ? sortSel('inside') : ''}</div>` : '')
       + (als.length ? '' + albumGrid(als) : `<p class="muted small" style="margin-top:12px">${kids.length ? '' : 'No albums here yet. '}⋯ → <b>Add albums…</b> picks albums for this group${kids.length ? '' : ', or <b>New group inside</b> makes groups in it'}.</p>`); CTX = all.map(t => t.id) }
@@ -1521,14 +1519,15 @@ function selMoveSheet(){ const {gs, als, grs} = selItems(), bad = new Set(grs.fl
     <button class="btn" id="smtop" style="width:100%;margin-top:10px">The main page (own tiles)</button>
     <div style="margin-top:8px">${opts.map(x => `<div class="li" data-sm="${esc(x.key)}"><span class="th">${grpCover(x)}</span><div class="n"><div>${esc(groupPath(x, gs))}</div><div class="s">${plural(x.all.length, 'album')}</div></div></div>`).join('')}</div>`);
   lazyCovers($('.sheet'));
-  const go = (target, label) => { if(target){ setAlbumGroup(als, {key:target.key, name:target.name, kind:target.kind}); for(const k of grs) setParent(k, target.key) } else { setAlbumGroup(als, 'none'); for(const k of grs) setParent(k, null) }
-    const n = SEL.size; closeSheet(); selEnd(true); drawM(); toast(`${plural(n, 'tile')} moved to ${label}`) };
-  $('#smmake').onclick = () => { const n = $('#smn').value.trim(); if(!n) return; const g = ownGroup(n); const cur = mtop(); if(cur.v === 'group' && !bad.has(cur.key)) setParent(g.key, cur.key); go(g, `“${n}”`) };
+  const move = target => { if(target){ setAlbumGroup(als, target); for(const k of grs) setParent(k, target.key) } else { setAlbumGroup(als, 'none'); for(const k of grs) setParent(k, null) } };
+  const go = (target, label, first) => { const n = SEL.size; grChange(() => { if(first) first(); move(target) }, `${plural(n, 'tile')} moved to ${label}`); closeSheet(); selEnd(true); drawM() };
+  $('#smmake').onclick = () => { const n = $('#smn').value.trim(); if(!n) return; const cur = mtop(); let g = null;
+    go({key:'c:' + norm(n), name:n, kind:'own'}, `“${n}”`, () => { g = ownGroup(n); if(cur.v === 'group' && !bad.has(cur.key)) setParent(g.key, cur.key) }) };
   $('#smtop').onclick = () => go(null, 'the main page');
   $('.sheet').addEventListener('click', e => { const r = e.target.closest('[data-sm]'); if(!r) return; const t = gs.find(x => x.key === r.dataset.sm); if(t) go(t, `“${t.name}”`) }) }
 function selTakeOut(){ const {gs, als, grs} = selItems(), cur = gs.find(x => x.key === mtop().key), up = cur && cur.parent ? gs.find(x => x.key === cur.parent) : null;
-  if(up) setAlbumGroup(als, {key:up.key, name:up.name, kind:up.kind}); else setAlbumGroup(als, 'none');
-  for(const k of grs) setParent(k, up ? up.key : null); const n = SEL.size; selEnd(true); drawM(); toast(`${plural(n, 'tile')} taken out${up ? ' to “' + up.name + '”' : ' to the main page'}`) }
+  const n = SEL.size; grChange(() => { if(up) setAlbumGroup(als, up); else setAlbumGroup(als, 'none'); for(const k of grs) setParent(k, up ? up.key : null) }, `${plural(n, 'tile')} taken out${up ? ' to “' + up.name + '”' : ' to the main page'}`);
+  selEnd(true); drawM() }
 /* long-press a tile: start selecting */
 $('#mbody').addEventListener('pointerdown', e => { const el = e.target.closest('.grid > .bk'); if(!el || !selId(el)) return; const x = e.clientX, y = e.clientY;
   clearTimeout(selPress && selPress.t); selPress = {x, y, t:setTimeout(() => { selSkipClick = true; if(navigator.vibrate) try{ navigator.vibrate(25) }catch(er){} if(!SEL) selStart(selId(el)); else { const id = selId(el); SEL.has(id) ? SEL.delete(id) : SEL.add(id); selDraw() } }, 520)} });
@@ -1806,10 +1805,18 @@ $('#msetbtn').onclick = () => {
     ${window.NVLOG ? `<div class="opt" style="margin-top:8px"><label for="mdbg">Debug mode<div class="muted small">Writes down everything that happens, with a bug button to send the log to Claude.</div></label><input type="checkbox" id="mdbg" ${NVLOG.on ? 'checked' : ''}></div>` : ''}
     ${window.NVPC && NVPC.native ? `<h3 style="margin:16px 0 4px">My PC</h3>${NVPC.pc ? `<div class="muted small" id="mpcline2"></div><button class="btn" id="mpcref" style="width:100%;margin-top:8px">Get the PC's newest list</button>` : '<div class="muted small">Not connected. The Nightvault > <b>My PC</b> connects to the Nightvault PC app over your home Wi-Fi.</div>'}
       <a class="btn" href="../hub/index.html" style="width:100%;margin-top:8px;text-decoration:none">The Nightvault > My PC (pair, offline copies)</a>` : ''}
+    <h3 style="margin:16px 0 4px">Your groups</h3><div class="muted small">Your groups, groups inside groups, albums you placed by hand, tile covers and pins are kept on this phone. Save a file now and then (Google Drive, mail …) so a new phone or a cleared app gets them back.${lsGet('nvMusic.groupsSaved', 0) ? ' Last saved ' + new Date(lsGet('nvMusic.groupsSaved', 0)).toLocaleDateString() + '.' : ''}</div>
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="btn" id="mgsave" style="flex:1">Save my groups</button><button class="btn" id="mgload" style="flex:1">Load from a file</button></div>
     <button class="btn" id="mcovall" style="width:100%;margin-top:10px">Find missing covers online (${ALB.filter(a => !ALCOV.has(a.key)).length})</button>
     <p class="muted small" style="margin:12px 0 0">${plural(VIS.length, 'song')} · ${plural(ALB.length, 'album')} · ${plural(ARTS.length, 'artist')}. Favourites, play counts and playlists are kept on this device (later also synced with the PC).</p>`);
   if($('#mdbg')) $('#mdbg').onchange = e => { e.target.checked ? NVLOG.enable() : NVLOG.disable() };
   $('#mcovall').onclick = () => coversOnlineAll();
+  $('#mgsave').onclick = async () => { try{ const r = await GR.saveBackup(); if(r !== 'cancelled'){ lsSet('nvMusic.groupsSaved', Date.now()); closeSheet(); toast(r === 'shared' ? 'Groups file ready - keep it somewhere safe' : 'Groups file saved to your downloads') } }catch(e){ toast('Could not save the file: ' + (e.message || e), 4000) } };
+  $('#mgload').onclick = async () => { const t = await GR.pickFile(); if(t == null) return; const c = GR.checkBackup(t);
+    if(!c.ok){ toast(c.msg, 4000); return }
+    sheet(`<h3>Put your groups back?</h3><p class="muted small">${esc(c.msg)}</p><p class="muted small">This replaces the groups on this phone (your music itself is not touched). Changed your mind afterwards? Tap <b>Undo</b>.</p>
+      <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="mgok">Put them back</button></div>`);
+    $('#mgok').onclick = () => { GR.applyBackup(c.d); closeSheet(); MV = [{v:'home'}]; MS.tab = 'albums'; saveMS(); drawM(); GR.undoToast('Groups put back from the file', drawM) } };
   if($('#mpcline2')){ $('#mpcline2').id = 'mpcline'; drawPcLine() } if($('#mpcref')) $('#mpcref').onclick = () => { closeSheet(); pcRefresh(true) };
   if(NvFiles){ $('#mfadd').onclick = () => { closeSheet(); musicFolder() }; drawMFolders() } };
 async function drawMFolders(){ const el = $('#mfldrs'); if(!el) return; let fl = lsGet('nvMusic.folders', []);
@@ -1843,7 +1850,7 @@ async function musicStart(){
   const lastId = lsGet('nvAudio.last', null); if(lastId && BOOKS.find(b => b.id === lastId) && !(STATE[lastId] || {}).finished){ const b = BOOKS.find(x => x.id === lastId); cur = b; curPart = -1; drawMini(); drawLib() }
 })();
 window.NVAUDIO = {get cur(){ return cur }, get books(){ return BOOKS }, state:st, gpos, seekTo, openBook, togglePlay, mp4Info, mp3Info, flacInfo, oggInfo, wavInfo, fileInfo, review, au,
-  music:{get Q(){ return Q }, get tracks(){ return TR }, get vis(){ return VIS }, get pct(){ return PCT }, get pcon(){ return PCON }, pcRefresh, saveOffline, doSave, keepOffline, removeOffline, buildGroups, groupOf, setAlbumGroup, setParent, togglePin, get albums(){ return ALB }, get artists(){ return ARTS }, get lists(){ return LISTS }, get stats(){ return STATS }, curT, playList, qAdd, mNext, mPrev, mPlay, mSeek, toggleShuffle, cycleRepeat, toggleFav, musicScan, makeTrack, drawM, mGo, musicBack}};
+  music:{get Q(){ return Q }, get tracks(){ return TR }, get vis(){ return VIS }, get pct(){ return PCT }, get pcon(){ return PCON }, pcRefresh, saveOffline, doSave, keepOffline, removeOffline, buildGroups, groupOf, setAlbumGroup, setParent, togglePin, GR, get albums(){ return ALB }, get artists(){ return ARTS }, get lists(){ return LISTS }, get stats(){ return STATS }, curT, playList, qAdd, mNext, mPrev, mPlay, mSeek, toggleShuffle, cycleRepeat, toggleFav, musicScan, makeTrack, drawM, mGo, musicBack}};
 </script>
 </body>
 </html>

@@ -10,7 +10,8 @@
         "hub/index.html",
         "hub/core.js",
         "hub/nvlog.js",
-        "hub/nvpc.js"
+        "hub/nvpc.js",
+        "hub/nvgroups.js"
       ],
       "provides": [],
       "uses": []
