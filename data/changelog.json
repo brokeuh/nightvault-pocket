@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 65,
+   "date": "2026-10-16",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: groups inside groups, and add albums from a list",
+   "items": [
+    "A group can hold other groups: for example a STAR WARS tile with \"Episode I\", \"The Mandalorian\" and game music inside, each with its own albums. Group ⋯ > \"New group inside\", or \"Put this group inside another group…\".",
+    "Group ⋯ > \"Add albums…\": a searchable list of all your albums - tick several and add them at once. It shows which group each album is in now. Works for your own groups and for artist tiles.",
+    "A tile shows what is inside (\"2 groups · 6 albums\"); Play, Shuffle, Save to phone and the totals go over everything inside.",
+    "A group name now matches whole words only, and the longest name wins (\"Star Wars Episode I\" before \"Star Wars\")."
+   ]
+  },
+  {
    "id": 64,
    "date": "2026-10-16",
    "where": [
