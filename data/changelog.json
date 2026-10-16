@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 67,
+   "date": "2026-10-16",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: pin tiles to the top",
+   "items": [
+    "Album ⋯ or group ⋯ > \"★ Pin to the top\": the tile always shows first, on the main page, inside a group or on an artist page - whatever the sort order. A small gold star marks it.",
+    "Pin several at once: select them (long-press) and tap ★ in the bar at the bottom.",
+    "Tap \"Unpin from the top\" (or ★ again) to put it back in its normal place."
+   ]
+  },
+  {
    "id": 66,
    "date": "2026-10-16",
    "where": [

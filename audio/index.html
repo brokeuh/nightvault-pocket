@@ -163,6 +163,9 @@ body.selecting #mmini{display:none}
 .bk.sel .cv{outline:3px solid var(--accent);outline-offset:-3px;transform:scale(.94)}
 .bk.sel::after{content:'✓';position:absolute;right:8px;bottom:44px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#08251b;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px}
 .bk{-webkit-touch-callout:none;user-select:none}
+.pinb{position:absolute;left:7px;top:7px;width:24px;height:24px;border-radius:50%;background:#0b0e13d9;border:1px solid #f1dc6b88;color:#f1dc6b;font-size:13px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.bk.stack .pinb{top:17px}
+.bk:has(.pinb) .pcb{left:36px}
 .bk .cdl{position:absolute;top:7px;right:7px;background:#0b0e13d9;color:#f1dc6b;font-size:11.5px;font-weight:800;letter-spacing:.3px;padding:3px 8px;border-radius:99px;border:1px solid #f1dc6b55;pointer-events:none}
 </style>
 </head>
@@ -1355,9 +1358,9 @@ setInterval(async () => { if(document.hidden || MODE !== 'music') return;
     let img = el.querySelector('img'); if(!img){ el.innerHTML = ''; img = new Image(); img.alt = ''; el.appendChild(img) }
     img.style.transition = 'opacity .5s'; img.style.opacity = 0; setTimeout(() => { img.src = u; img.onload = () => img.style.opacity = 1 }, 450) } }, 4000);
 function groupMenu(g){ if(!g) return;
-  sheet(`<h3>${esc(g.name)}</h3><div class="mlist"><button class="btn primary" id="gadd">Add albums…</button><button class="btn" id="gsub">New group inside</button><button class="btn" id="gmove">Put this group inside another group…</button><button class="btn" id="gcov">Choose the tile cover</button>${g.kind === 'own' ? '<button class="btn danger" id="gdel">Remove this group</button>' : ''}</div>
+  sheet(`<h3>${esc(g.name)}</h3><div class="mlist"><button class="btn primary" id="gadd">Add albums…</button><button class="btn" id="gsub">New group inside</button><button class="btn" id="gmove">Put this group inside another group…</button><button class="btn" id="gcov">Choose the tile cover</button><button class="btn" id="gpin">${isPinned('gr:' + g.key) ? '★ Unpin from the top' : '★ Pin to the top'}</button>${g.kind === 'own' ? '<button class="btn danger" id="gdel">Remove this group</button>' : ''}</div>
     ${g.kind === 'own' ? '<p class="muted small" style="margin:10px 0 0">Removing the group keeps the albums - they show as separate tiles again (or in their artist\'s tile).</p>' : ''}`);
-  $('#gcov').onclick = () => groupCoverSheet(g); $('#gadd').onclick = () => addAlbumsSheet(g); $('#gsub').onclick = () => newSubGroup(g); $('#gmove').onclick = () => moveGroupSheet(g);
+  $('#gcov').onclick = () => groupCoverSheet(g); $('#gpin').onclick = () => { const on = !isPinned('gr:' + g.key); togglePin(['gr:' + g.key], on); closeSheet(); drawM(); toast(on ? 'Pinned: it shows first' : 'Unpinned') }; $('#gadd').onclick = () => addAlbumsSheet(g); $('#gsub').onclick = () => newSubGroup(g); $('#gmove').onclick = () => moveGroupSheet(g);
   if($('#gdel')) $('#gdel').onclick = () => { lsSet('nvMusic.groups', lsGet('nvMusic.groups', []).filter(x => norm(x.name) !== norm(g.name)));
     const ov = lsGet('nvMusic.albumGroup', {}); for(const k of Object.keys(ov)) if(ov[k] && ov[k].key === g.key) delete ov[k]; lsSet('nvMusic.albumGroup', ov);
     const par = lsGet('nvMusic.groupParent', {}); for(const k of Object.keys(par)) if(par[k] === g.key){ if(g.parent) par[k] = g.parent; else delete par[k] } delete par[g.key]; lsSet('nvMusic.groupParent', par); closeSheet(); musicBack(); toast('Group removed') } }
@@ -1373,11 +1376,19 @@ function groupCoverSheet(g){ const c = lsGet('nvMusic.groupCover', {})[g.key] ||
     if(t === 'pic'){ const inp = $('#mcover'); inp.value = ''; inp.onchange = async ev => { const f = ev.target.files[0]; if(!f) return; await dbPut('covers', {id:'al:grp:' + g.key, blob:f}); ALCOV.add('grp:' + g.key); if(ALURL['grp:' + g.key]){ URL.revokeObjectURL(ALURL['grp:' + g.key]); delete ALURL['grp:' + g.key] } save({t:'pic'}) }; inp.click(); return }
     save(t ? {t} : null) } }
 const groupTile = g => { const all = g.all || g.albums, k = (g.kids || []).length;
-  return `<div class="bk stack" data-grp="${esc(g.key)}" style="position:relative">${grpCover(g)}<span class="cdl grp">${k ? plural(k, 'group') + ' · ' : ''}${all.length ? plural(all.length, 'album') : 'empty'}</span><div class="t">${esc(g.name)}</div><div class="a">${g.kind === 'artist' ? 'Artist' : g.kind === 'series' ? 'Series' : 'Your group'} · ${plural(all.reduce((n, a) => n + a.tracks.length, 0), 'song')}</div></div>` };
+  return `<div class="bk stack" data-grp="${esc(g.key)}" style="position:relative">${grpCover(g)}${isPinned('gr:' + g.key) ? PINB : ''}<span class="cdl grp">${k ? plural(k, 'group') + ' · ' : ''}${all.length ? plural(all.length, 'album') : 'empty'}</span><div class="t">${esc(g.name)}</div><div class="a">${g.kind === 'artist' ? 'Artist' : g.kind === 'series' ? 'Series' : 'Your group'} · ${plural(all.reduce((n, a) => n + a.tracks.length, 0), 'song')}</div></div>` };
 function newGroup(){ sheet(`<h3>New group</h3><p class="muted small" style="margin:0 0 8px">Every album with this word in its name or artist goes into one tile, for example <b>Thunderdome</b> or <b>Now That's What I Call Music</b>.</p><input type="text" id="gname" placeholder="Name" maxlength="60"><div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="gmake">Make the group</button></div>`);
   setTimeout(() => { const i = $('#gname'); if(i) i.focus() }, 50);
   $('#gmake').onclick = () => { const n = $('#gname').value.trim(); if(!n) return; const g = lsGet('nvMusic.groups', []); if(!g.some(x => norm(x.name) === norm(n))) g.push({name:n}); lsSet('nvMusic.groups', g);
     const cnt = buildGroups(ALB).groups.find(x => x.key === 'c:' + norm(n)); closeSheet(); MS.algroup = true; saveMS(); drawM(); toast(`Group “${n}”: ${plural(cnt ? cnt.albums.length : 0, 'album')}`) } }
+/* ---------- pinned tiles: always first on the page they are on (nvMusic.pinned = ['al:<key>' | 'gr:<key>', …], in pin order) ---------- */
+const pins = () => lsGet('nvMusic.pinned', []);
+const isPinned = id => pins().includes(id);
+function togglePin(ids, on){ let l = pins(); for(const id of ids){ const has = l.includes(id), want = on === undefined ? !has : on; if(want && !has) l.push(id); if(!want && has) l = l.filter(x => x !== id) } lsSet('nvMusic.pinned', l) }
+/* pinned first (in the order they were pinned), the rest keeps its order */
+function pinFirst(items, idOf){ const l = pins(); if(!l.length) return items; const at = new Map(l.map((x, i) => [x, i]));
+  return items.map((x, i) => [x, i]).sort((p, q) => { const a = at.has(idOf(p[0])) ? at.get(idOf(p[0])) : 1e9, b = at.has(idOf(q[0])) ? at.get(idOf(q[0])) : 1e9; return a - b || p[1] - q[1] }).map(x => x[0]) }
+const PINB = '<span class="pinb" title="Pinned">★</span>';
 function discLabel(a){ const d = [...new Set(a.tracks.map(t => t.disc || 0))].filter(Boolean); return d.length > 1 ? `${d.length} CDs` : d.length === 1 && d[0] > 1 ? `CD ${d[0]}` : '' }
 /* CD pictures inside an album: a picture in the CD's folder named cd1 / disc 1 …, else the picture inside that CD's songs (often a disc scan) */
 let CDOPEN = {}, CDCOV = new Set(), CDTRY = new Set(), CDURL = {};
@@ -1395,7 +1406,7 @@ async function discCoverUrl(a, d){ const k = 'cd:' + a.key + '#' + d; if(CDURL[k
     if(blob){ await dbPut('covers', {id:k, blob}); CDCOV.add(k); return CDURL[k] = URL.createObjectURL(blob) } }catch(e){ LE('cover', 'cd picture ' + a.title + ' ' + d, e) }
   return null }
 async function fillDiscCovers(a){ for(const el of document.querySelectorAll('#mbody [data-cdc]')){ const u = await discCoverUrl(a, +el.dataset.cdc); if(u && el.isConnected) el.innerHTML = `<img src="${u}" alt="">` } }
-const albumGrid = als => `<div class="grid">${als.map(a => `<div class="bk ${a.pconly && PCON === false ? 'pcoff' : ''}" data-al="${esc(a.key)}" ${a.pconly ? 'data-pconly="1"' : ''} style="position:relative">${alCover(a)}${discLabel(a) ? `<span class="cdl">${discLabel(a)}</span>` : ''}${a.pconly ? '<span class="pcb">PC</span>' : ''}<div class="t">${esc(a.title)}</div><div class="a">${esc(a.aa)}${a.year ? ' · ' + esc(a.year) : ''}</div></div>`).join('')}</div>`;
+const albumGrid = als => `<div class="grid">${pinFirst(als, a => 'al:' + a.key).map(a => `<div class="bk ${a.pconly && PCON === false ? 'pcoff' : ''}" data-al="${esc(a.key)}" ${a.pconly ? 'data-pconly="1"' : ''} style="position:relative">${alCover(a)}${discLabel(a) ? `<span class="cdl">${discLabel(a)}</span>` : ''}${a.pconly ? '<span class="pcb">PC</span>' : ''}${isPinned('al:' + a.key) ? PINB : ''}<div class="t">${esc(a.title)}</div><div class="a">${esc(a.aa)}${a.year ? ' · ' + esc(a.year) : ''}</div></div>`).join('')}</div>`;
 const playBar = (extra) => `<div class="mbar"><button class="btn primary" data-play="0" style="flex:1">${IC_PLAY.replace('<svg ', '<svg width="18" height="18" ')}Play</button><button class="btn" data-play="shuffle" style="flex:1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Shuffle</button>${extra || ''}</div>`;
 function favTracks(){ return Object.values(STATS).filter(s => s.fav && KEYTR[s.id]).sort((a, b) => (b.favAt || 0) - (a.favAt || 0)).map(s => KEYTR[s.id]) }
 function listTracks(l){ return l.items.map(k => KEYTR[k]).filter(Boolean) }
@@ -1427,7 +1438,7 @@ function drawM(){
         if(MS.algroup === false) h += albumGrid(als);
         else { const {groups, singles} = buildGroups(als), sk = x => x.albums ? {title:x.name, aa:x.name, added:Math.max(0, ...x.all.map(a => a.added)), year:x.all.map(a => a.year).filter(Boolean).sort()[0] || ''} : x;
           const items = [...groups.filter(g => !g.parent), ...singles].sort((p, q) => { const a = sk(p), b = sk(q); return MS.alsort === 'title' ? coll.compare(norm(a.title), norm(b.title)) : MS.alsort === 'added' ? b.added - a.added : MS.alsort === 'year' ? (b.year || '0').localeCompare(a.year || '0') || coll.compare(a.title, b.title) : coll.compare(norm(a.aa), norm(b.aa)) || coll.compare(norm(a.title), norm(b.title)) });
-          h += `<div class="grid">${items.map(x => x.albums ? groupTile(x) : albumGrid([x]).replace(/^<div class="grid">|<\/div>$/g, '')).join('')}</div>` } }
+          h += `<div class="grid">${pinFirst(items, x => (x.albums ? 'gr:' : 'al:') + x.key).map(x => x.albums ? groupTile(x) : albumGrid([x]).replace(/^<div class="grid">|<\/div>$/g, '')).join('')}</div>` } }
       if(MS.tab === 'artists'){ const k = sortOf('artists'), arPlays = ar => ar.albums.reduce((n, a) => n + alPlays(a), 0);
         const ars = ARTS.slice().sort(k === 'albums' ? (a, b) => b.albums.length - a.albums.length || coll.compare(a.key, b.key) : k === 'songs' ? (a, b) => b.n - a.n || coll.compare(a.key, b.key) : k === 'plays' ? (a, b) => arPlays(b) - arPlays(a) || coll.compare(a.key, b.key) : (a, b) => coll.compare(a.key, b.key));
         h += `<div class="mbar"><span class="muted small" style="flex:1">${plural(ARTS.length, 'artist')}</span>${sortSel('artists')}</div>${ars.map(artistRow).join('')}` }
@@ -1460,7 +1471,7 @@ function drawM(){
     const als = sortAlbums(g.albums, 'inside'), all = g.all.flatMap(a => a.tracks), kids = (g.kids || []).slice().sort((x, y) => coll.compare(norm(x.name), norm(y.name)));
     const up = g.parent && buildGroups(ALB).groups.find(x => x.key === g.parent);
     h += `<div class="alhead"><div class="stack" style="flex:none">${grpCover(g).replace('class="cv ', 'class="cv gcv ')}</div><div style="min-width:0"><b>${esc(g.name)}</b><div class="muted small">${up ? 'In ' + esc(up.name) : g.kind === 'artist' ? 'Artist' : g.kind === 'series' ? 'Series' : 'Your group'}</div><div class="muted small">${totalsLine(all, (kids.length ? plural(kids.length, 'group') + ' · ' : '') + plural(g.all.length, 'album'))}</div></div></div>`;
-    h += playBar((all.some(t => t.pc) ? `<button class="btn sm" data-saveall="1" style="height:44px">Save to phone</button>` : '') + `<button class="ib" data-grpmenu="${esc(g.key)}" aria-label="More for this group">${IC_DOTS}</button>`) + (kids.length ? `<div class="sec">Groups</div><div class="grid">${kids.map(groupTile).join('')}</div>` : '')
+    h += playBar((all.some(t => t.pc) ? `<button class="btn sm" data-saveall="1" style="height:44px">Save to phone</button>` : '') + `<button class="ib" data-grpmenu="${esc(g.key)}" aria-label="More for this group">${IC_DOTS}</button>`) + (kids.length ? `<div class="sec">Groups</div><div class="grid">${pinFirst(kids, x => 'gr:' + x.key).map(groupTile).join('')}</div>` : '')
       + (als.length || kids.length ? `<div class="mbar" style="margin-top:12px"><span class="muted small" style="flex:1">${als.length ? 'Albums' : ''}</span><button class="btn sm" data-selstart="1">Select</button>${als.length ? sortSel('inside') : ''}</div>` : '')
       + (als.length ? '' + albumGrid(als) : `<p class="muted small" style="margin-top:12px">${kids.length ? '' : 'No albums here yet. '}⋯ → <b>Add albums…</b> picks albums for this group${kids.length ? '' : ', or <b>New group inside</b> makes groups in it'}.</p>`); CTX = all.map(t => t.id) }
   if(v.v === 'artist'){ const ar = ARTK[v.key]; if(!ar){ MV.pop(); return drawM() }
@@ -1501,8 +1512,8 @@ function selDraw(){ document.querySelectorAll('#mbody .grid > .bk').forEach(el =
   document.body.classList.add('selecting');
   if(!bar){ bar = document.createElement('div'); bar.id = 'msel'; document.body.appendChild(bar) }
   const inGroup = mtop().v === 'group';
-  bar.innerHTML = `<b style="flex:1">${SEL.size ? plural(SEL.size, 'tile') + ' selected' : 'Tap tiles to select them'}</b><button class="btn sm primary" id="selmove" ${SEL.size ? '' : 'disabled'}>Move to…</button>${inGroup ? `<button class="btn sm" id="selout" ${SEL.size ? '' : 'disabled'}>Take out</button>` : ''}<button class="btn sm" id="selx">Cancel</button>`;
-  $('#selx').onclick = () => selEnd(); $('#selmove').onclick = () => selMoveSheet(); if($('#selout')) $('#selout').onclick = () => selTakeOut() }
+  bar.innerHTML = `<b style="flex:1">${SEL.size ? plural(SEL.size, 'tile') + ' selected' : 'Tap tiles to select them'}</b><button class="btn sm primary" id="selmove" ${SEL.size ? '' : 'disabled'}>Move to…</button><button class="btn sm" id="selpin" ${SEL.size ? '' : 'disabled'} title="Pin to the top">★</button>${inGroup ? `<button class="btn sm" id="selout" ${SEL.size ? '' : 'disabled'}>Take out</button>` : ''}<button class="btn sm" id="selx">Cancel</button>`;
+  $('#selx').onclick = () => selEnd(); $('#selpin').onclick = () => { const ids = [...SEL], on = !ids.every(isPinned); togglePin(ids, on); const n = ids.length; selEnd(true); drawM(); toast(on ? `${plural(n, 'tile')} pinned to the top` : `${plural(n, 'tile')} unpinned`) }; $('#selmove').onclick = () => selMoveSheet(); if($('#selout')) $('#selout').onclick = () => selTakeOut() }
 function selItems(){ const gs = buildGroups(ALB).groups; return {gs, als:[...SEL].filter(x => x.startsWith('al:')).map(x => x.slice(3)), grs:[...SEL].filter(x => x.startsWith('gr:')).map(x => x.slice(3))} }
 function selMoveSheet(){ const {gs, als, grs} = selItems(), bad = new Set(grs.flatMap(k => { const g = gs.find(x => x.key === k); return g ? groupKeysInside(g, gs).concat(k) : [k] }));
   const opts = gs.filter(x => !bad.has(x.key)).sort((x, y) => coll.compare(groupPath(x, gs), groupPath(y, gs)));
@@ -1561,12 +1572,13 @@ function albumMenu(a){ if(!a) return; const cp = a.tracks.filter(t => t.fid && !
   sheet(`<h3>${esc(a.title)}</h3><div class="mlist"><button class="btn" data-a="next">Play next</button><button class="btn" data-a="queue">Add to the queue</button><button class="btn" data-a="list">Add to a playlist…</button>
     ${pcs.length ? `<button class="btn primary" data-a="save">Save to phone (${mb(pcs.reduce((n, t) => n + (t.size || 0), 0))})</button>` : ''}
     ${offs.length ? '<button class="btn" data-a="keep">Keep on this phone (for good)</button><button class="btn danger" data-a="unsave">Remove the offline copy</button>' : ''}
-    <button class="btn" data-a="group">Put in a group…</button>
+    <button class="btn" data-a="group">Put in a group…</button><button class="btn" data-a="pin">${isPinned('al:' + a.key) ? '★ Unpin from the top' : '★ Pin to the top'}</button>
     <button class="btn" data-a="online">Find a cover online</button><button class="btn" data-a="cover">Change the cover picture</button>${cp.length ? `<button class="btn danger" data-a="del">Remove from this device (${mb(cp.reduce((n, t) => n + t.size, 0))})</button>` : ''}</div>
     ${cp.length < a.tracks.length ? '<p class="muted small" style="margin:10px 0 0">Songs from a folder on the phone stay as long as they are in that folder.</p>' : ''}`);
   $('.sheet').onclick = async e => { const b = e.target.closest('[data-a]'); if(!b) return; const k = b.dataset.a, ids = a.tracks.map(t => t.id);
     if(k === 'cover'){ if(a.tracks.some(t => t.tree && t.tree !== 'pc')) coverPicker(a); else coverFile(a); return } if(k === 'online'){ coverOnline(a); return }
     if(k === 'save'){ saveOffline(a.tracks, a.title); return } if(k === 'group'){ groupPicker(a); return } closeSheet();
+    if(k === 'pin'){ const on = !isPinned('al:' + a.key); togglePin(['al:' + a.key], on); drawM(); toast(on ? 'Pinned: it shows first' : 'Unpinned'); return }
     if(k === 'keep'){ keepOffline(a.tracks); return } if(k === 'unsave'){ removeOffline(a.tracks); return }
     if(k === 'next') qAdd(ids, true); if(k === 'queue') qAdd(ids, false); if(k === 'list') addToList(a.tracks);
     if(k === 'del'){ const gone = new Set(cp.map(t => t.id)); if(curT() && gone.has(curT().id)){ au.pause(); au.removeAttribute('src'); au.load(); mLoadedId = null }
@@ -1831,7 +1843,7 @@ async function musicStart(){
   const lastId = lsGet('nvAudio.last', null); if(lastId && BOOKS.find(b => b.id === lastId) && !(STATE[lastId] || {}).finished){ const b = BOOKS.find(x => x.id === lastId); cur = b; curPart = -1; drawMini(); drawLib() }
 })();
 window.NVAUDIO = {get cur(){ return cur }, get books(){ return BOOKS }, state:st, gpos, seekTo, openBook, togglePlay, mp4Info, mp3Info, flacInfo, oggInfo, wavInfo, fileInfo, review, au,
-  music:{get Q(){ return Q }, get tracks(){ return TR }, get vis(){ return VIS }, get pct(){ return PCT }, get pcon(){ return PCON }, pcRefresh, saveOffline, doSave, keepOffline, removeOffline, buildGroups, groupOf, setAlbumGroup, setParent, get albums(){ return ALB }, get artists(){ return ARTS }, get lists(){ return LISTS }, get stats(){ return STATS }, curT, playList, qAdd, mNext, mPrev, mPlay, mSeek, toggleShuffle, cycleRepeat, toggleFav, musicScan, makeTrack, drawM, mGo, musicBack}};
+  music:{get Q(){ return Q }, get tracks(){ return TR }, get vis(){ return VIS }, get pct(){ return PCT }, get pcon(){ return PCON }, pcRefresh, saveOffline, doSave, keepOffline, removeOffline, buildGroups, groupOf, setAlbumGroup, setParent, togglePin, get albums(){ return ALB }, get artists(){ return ARTS }, get lists(){ return LISTS }, get stats(){ return STATS }, curT, playList, qAdd, mNext, mPrev, mPlay, mSeek, toggleShuffle, cycleRepeat, toggleFav, musicScan, makeTrack, drawM, mGo, musicBack}};
 </script>
 </body>
 </html>
