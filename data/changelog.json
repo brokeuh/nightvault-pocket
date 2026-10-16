@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 68,
+   "date": "2026-10-16",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: fix - choosing the cover of a group with groups inside",
+   "items": [
+    "Fixed: for a group with other groups inside (like Star Wars), tapping a cover under \"Choose the tile cover\" did nothing when that album sat in one of the groups inside. It now becomes the tile cover."
+   ]
+  },
+  {
    "id": 67,
    "date": "2026-10-16",
    "where": [

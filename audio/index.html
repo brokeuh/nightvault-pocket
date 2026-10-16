@@ -1343,7 +1343,7 @@ const RNDCOV = {};
 const withCover = g => (g.all || g.albums).filter(x => ALCOV.has(x.key) || x.pcov);
 function grpCover(g){ const c = lsGet('nvMusic.groupCover', {})[g.key] || {}, wc = withCover(g); let a = null;
   if(c.t === 'pic' && ALCOV.has('grp:' + g.key)) return alCover({key:'grp:' + g.key, title:g.name, aa:''});
-  if(c.t === 'album') a = g.albums.find(x => x.key === c.al);
+  if(c.t === 'album') a = (g.all || g.albums).find(x => x.key === c.al) || ALBK[c.al];   // also an album in a group inside it
   if(c.t === 'random' && wc.length) a = wc.find(x => x.key === RNDCOV[g.key]) || (wc[Math.floor(Math.random() * wc.length)]), RNDCOV[g.key] = a.key;
   a = a || wc[0] || (g.all || g.albums)[0];
   if(!a) return alCover({key:'empty:' + g.key, title:g.name, aa:''});
