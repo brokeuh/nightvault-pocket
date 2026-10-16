@@ -157,6 +157,12 @@ input[type=range].seek{width:100%;margin:16px 0 0;accent-color:var(--accent);hei
 .pcs{font-size:9.5px;font-weight:800;letter-spacing:.4px;color:#9fd0ff;border:1px solid #9fd0ff66;border-radius:5px;padding:0 4px;margin-right:6px;vertical-align:1px}
 .pcoff{opacity:.42}
 .pcdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6f7d8c;margin-right:6px;vertical-align:0}.pcdot.ok{background:var(--accent)}.pcdot.no{background:var(--red)}
+#msel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(620px,calc(100% - 20px));display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:16px;background:#1b2a26f5;border:1px solid #2e6b55;box-shadow:0 8px 30px #0009;z-index:7;font-size:14px}
+body.selecting #mmini{display:none}
+.bk.selmode{cursor:pointer}.bk.selmode .cv{transition:transform .12s}
+.bk.sel .cv{outline:3px solid var(--accent);outline-offset:-3px;transform:scale(.94)}
+.bk.sel::after{content:'✓';position:absolute;right:8px;bottom:44px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#08251b;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px}
+.bk{-webkit-touch-callout:none;user-select:none}
 .bk .cdl{position:absolute;top:7px;right:7px;background:#0b0e13d9;color:#f1dc6b;font-size:11.5px;font-weight:800;letter-spacing:.3px;padding:3px 8px;border-radius:99px;border:1px solid #f1dc6b55;pointer-events:none}
 </style>
 </head>
@@ -1234,8 +1240,8 @@ function fixAlbum(tr){
 
 /* ---------- screens ---------- */
 const mtop = () => MV[MV.length - 1];
-function mGo(v){ MV.push(v); CTXN = 300; drawM(); scrollTo(0, 0) }
-function musicBack(){ if(!$('#mplayer').hidden){ showMP(false); return true } if(MV.length > 1){ MV.pop(); drawM(); return true }
+function mGo(v){ selEnd(true); MV.push(v); CTXN = 300; drawM(); scrollTo(0, 0) }
+function musicBack(){ if(!$('#mplayer').hidden){ showMP(false); return true } if(SEL){ selEnd(); return true } if(MV.length > 1){ MV.pop(); drawM(); return true }
   if(MS.q){ MS.q = ''; saveMS(); drawM(); return true } return false }
 $('#mvback').onclick = () => musicBack();
 function songRow(t, i, opt){ opt = opt || {}; const a = albumOf(t) || {key:t.al, title:t.album, aa:t.aa}; const sub = opt.album ? (t.artist !== a.aa ? t.artist : '') : `${t.artist}${t.album ? ' · ' + t.album : ''}`;
@@ -1417,7 +1423,7 @@ function drawM(){
       h += `<div class="mtabs">${[['albums', 'Albums'], ['artists', 'Artists'], ['songs', 'Songs'], ['lists', 'Playlists']].map(([k, t]) => `<button class="chip ${MS.tab === k ? 'on' : ''}" data-tab="${k}">${t}</button>`).join('')}</div>`;
       if(MS.tab === 'albums'){ const als = ALB.slice().sort(MS.alsort === 'title' ? (a, b) => coll.compare(norm(a.title), norm(b.title)) : MS.alsort === 'added' ? (a, b) => b.added - a.added : MS.alsort === 'year' ? (a, b) => (b.year || '0').localeCompare(a.year || '0') || coll.compare(a.title, b.title) : (a, b) => coll.compare(norm(a.aa), norm(b.aa)) || (a.year || '').localeCompare(b.year || '') || coll.compare(a.title, b.title));
         h += `<div class="mtot">${totalsLine(VIS, plural(ALB.length, 'album'))}</div><div class="mtot" id="mpcline"></div>`;
-        h += `<div class="mbar"><select id="malg" aria-label="Groups"><option value="1" ${MS.algroup !== false ? 'selected' : ''}>Grouped</option><option value="0" ${MS.algroup === false ? 'selected' : ''}>All albums</option></select><select id="mals" aria-label="Sort">${[['artist', 'Artist'], ['title', 'Title'], ['added', 'Recently added'], ['year', 'Year']].map(([k, t]) => `<option value="${k}" ${MS.alsort === k ? 'selected' : ''}>${t}</option>`).join('')}</select>${srcSelect()}<span style="flex:1"></span><button class="btn sm" id="mnewgrp">+ Group</button></div>`;
+        h += `<div class="mbar"><select id="malg" aria-label="Groups"><option value="1" ${MS.algroup !== false ? 'selected' : ''}>Grouped</option><option value="0" ${MS.algroup === false ? 'selected' : ''}>All albums</option></select><select id="mals" aria-label="Sort">${[['artist', 'Artist'], ['title', 'Title'], ['added', 'Recently added'], ['year', 'Year']].map(([k, t]) => `<option value="${k}" ${MS.alsort === k ? 'selected' : ''}>${t}</option>`).join('')}</select>${srcSelect()}<span style="flex:1"></span><button class="btn sm" data-selstart="1">Select</button><button class="btn sm" id="mnewgrp">+ Group</button></div>`;
         if(MS.algroup === false) h += albumGrid(als);
         else { const {groups, singles} = buildGroups(als), sk = x => x.albums ? {title:x.name, aa:x.name, added:Math.max(0, ...x.all.map(a => a.added)), year:x.all.map(a => a.year).filter(Boolean).sort()[0] || ''} : x;
           const items = [...groups.filter(g => !g.parent), ...singles].sort((p, q) => { const a = sk(p), b = sk(q); return MS.alsort === 'title' ? coll.compare(norm(a.title), norm(b.title)) : MS.alsort === 'added' ? b.added - a.added : MS.alsort === 'year' ? (b.year || '0').localeCompare(a.year || '0') || coll.compare(a.title, b.title) : coll.compare(norm(a.aa), norm(b.aa)) || coll.compare(norm(a.title), norm(b.title)) });
@@ -1455,7 +1461,8 @@ function drawM(){
     const up = g.parent && buildGroups(ALB).groups.find(x => x.key === g.parent);
     h += `<div class="alhead"><div class="stack" style="flex:none">${grpCover(g).replace('class="cv ', 'class="cv gcv ')}</div><div style="min-width:0"><b>${esc(g.name)}</b><div class="muted small">${up ? 'In ' + esc(up.name) : g.kind === 'artist' ? 'Artist' : g.kind === 'series' ? 'Series' : 'Your group'}</div><div class="muted small">${totalsLine(all, (kids.length ? plural(kids.length, 'group') + ' · ' : '') + plural(g.all.length, 'album'))}</div></div></div>`;
     h += playBar((all.some(t => t.pc) ? `<button class="btn sm" data-saveall="1" style="height:44px">Save to phone</button>` : '') + `<button class="ib" data-grpmenu="${esc(g.key)}" aria-label="More for this group">${IC_DOTS}</button>`) + (kids.length ? `<div class="sec">Groups</div><div class="grid">${kids.map(groupTile).join('')}</div>` : '')
-      + (als.length ? `<div class="mbar" style="margin-top:12px"><span class="muted small" style="flex:1">Albums</span>${sortSel('inside')}</div>` + albumGrid(als) : `<p class="muted small" style="margin-top:12px">${kids.length ? '' : 'No albums here yet. '}⋯ → <b>Add albums…</b> picks albums for this group${kids.length ? '' : ', or <b>New group inside</b> makes groups in it'}.</p>`); CTX = all.map(t => t.id) }
+      + (als.length || kids.length ? `<div class="mbar" style="margin-top:12px"><span class="muted small" style="flex:1">${als.length ? 'Albums' : ''}</span><button class="btn sm" data-selstart="1">Select</button>${als.length ? sortSel('inside') : ''}</div>` : '')
+      + (als.length ? '' + albumGrid(als) : `<p class="muted small" style="margin-top:12px">${kids.length ? '' : 'No albums here yet. '}⋯ → <b>Add albums…</b> picks albums for this group${kids.length ? '' : ', or <b>New group inside</b> makes groups in it'}.</p>`); CTX = all.map(t => t.id) }
   if(v.v === 'artist'){ const ar = ARTK[v.key]; if(!ar){ MV.pop(); return drawM() }
     const als = sortAlbums(ar.albums, 'inside'), own = new Set(als.map(a => a.key));
     const also = VIS.filter(t => !own.has(t.al) && norm(t.artist) === ar.key), all = als.flatMap(a => a.tracks).concat(also);
@@ -1469,7 +1476,7 @@ function drawM(){
     h += playBar((L0.tracks.some(t => t.pc) ? `<button class="btn sm" data-saveall="1" style="height:44px">Save to phone</button>` : '') + (L0.list ? `<button class="ib" data-lsmenu="${L0.list.id}" aria-label="More for this playlist">${IC_DOTS}</button>` : ''));
     if(L0.tracks.length) h += `<div class="mbar"><span class="muted small" style="flex:1">Songs</span>${sortSel('playlist')}</div>`;
     h += L0.tracks.length ? songList(sortSongs(L0.tracks, 'playlist'), {plays:L0.plays}) : `<p class="muted small" style="margin-top:12px">${v.id === 'fav' ? 'Tap the heart in the player, or ⋯ next to a song, to add favourites.' : 'No songs yet. Tap ⋯ next to a song → Add to a playlist.'}</p>` }
-  body.innerHTML = h; lazyCovers(body); drawMMini();
+  body.innerHTML = h; lazyCovers(body); drawMMini(); selDraw();
   const mq = $('#mq'); if(mq){ mq.oninput = e => { MS.q = e.target.value; saveMS(); clearTimeout(drawM.t); drawM.t = setTimeout(() => { const p = e.target.selectionStart; CTXN = 300; drawM(); const i = $('#mq'); if(i){ i.focus(); try{ i.setSelectionRange(p, p) }catch(x){} } }, 250) } }
   if($('#mals')) $('#mals').onchange = e => { MS.alsort = e.target.value; saveMS(); drawM() };
   if($('#malg')) $('#malg').onchange = e => { MS.algroup = e.target.value === '1'; saveMS(); drawM() };
@@ -1483,7 +1490,44 @@ function drawM(){
 function artistRow(ar){ return `<div class="li" data-artist="${esc(ar.key)}"><span class="av" style="background:hsl(${hue(ar.name)} 40% 28%)">${esc((ar.name.match(/\p{L}|\p{N}/u) || ['?'])[0].toUpperCase())}</span><div class="n"><div>${esc(ar.name)}</div><div class="s">${plural(ar.albums.length, 'album')} · ${plural(ar.n, 'song')}</div></div></div>` }
 function musicStore(){ const cp = TR.filter(t => t.fid), used = cp.reduce((a, t) => a + (t.size || 0), 0);
   return `<div class="store">${totalsLine(VIS, plural(ALB.length, 'album'))}${cp.length ? ` · ${mb(used)} copied into the app` : ''}</div>` }
+/* ---------- select several tiles (long-press a tile, or "Select") and move them at once ----------
+   SEL = Set of 'al:<album key>' / 'gr:<group key>'; works on the main page and inside a group */
+let SEL = null, selPress = null, selSkipClick = false;
+const selId = el => el.dataset.al ? 'al:' + el.dataset.al : el.dataset.grp ? 'gr:' + el.dataset.grp : null;
+function selStart(id){ SEL = new Set(id ? [id] : []); selDraw() }
+function selEnd(quiet){ if(!SEL) return; SEL = null; if(!quiet) selDraw(); else { const b = $('#msel'); if(b) b.remove() } }
+function selDraw(){ document.querySelectorAll('#mbody .grid > .bk').forEach(el => { const id = selId(el); el.classList.toggle('sel', !!(SEL && id && SEL.has(id))); el.classList.toggle('selmode', !!SEL) });
+  let bar = $('#msel'); if(!SEL){ if(bar) bar.remove(); document.body.classList.remove('selecting'); return }
+  document.body.classList.add('selecting');
+  if(!bar){ bar = document.createElement('div'); bar.id = 'msel'; document.body.appendChild(bar) }
+  const inGroup = mtop().v === 'group';
+  bar.innerHTML = `<b style="flex:1">${SEL.size ? plural(SEL.size, 'tile') + ' selected' : 'Tap tiles to select them'}</b><button class="btn sm primary" id="selmove" ${SEL.size ? '' : 'disabled'}>Move to…</button>${inGroup ? `<button class="btn sm" id="selout" ${SEL.size ? '' : 'disabled'}>Take out</button>` : ''}<button class="btn sm" id="selx">Cancel</button>`;
+  $('#selx').onclick = () => selEnd(); $('#selmove').onclick = () => selMoveSheet(); if($('#selout')) $('#selout').onclick = () => selTakeOut() }
+function selItems(){ const gs = buildGroups(ALB).groups; return {gs, als:[...SEL].filter(x => x.startsWith('al:')).map(x => x.slice(3)), grs:[...SEL].filter(x => x.startsWith('gr:')).map(x => x.slice(3))} }
+function selMoveSheet(){ const {gs, als, grs} = selItems(), bad = new Set(grs.flatMap(k => { const g = gs.find(x => x.key === k); return g ? groupKeysInside(g, gs).concat(k) : [k] }));
+  const opts = gs.filter(x => !bad.has(x.key)).sort((x, y) => coll.compare(groupPath(x, gs), groupPath(y, gs)));
+  sheet(`<h3>Move ${plural(SEL.size, 'tile')} to…</h3><div style="display:flex;gap:8px"><input type="text" id="smn" placeholder="New group name" maxlength="60"><button class="btn primary" id="smmake">Make</button></div>
+    <button class="btn" id="smtop" style="width:100%;margin-top:10px">The main page (own tiles)</button>
+    <div style="margin-top:8px">${opts.map(x => `<div class="li" data-sm="${esc(x.key)}"><span class="th">${grpCover(x)}</span><div class="n"><div>${esc(groupPath(x, gs))}</div><div class="s">${plural(x.all.length, 'album')}</div></div></div>`).join('')}</div>`);
+  lazyCovers($('.sheet'));
+  const go = (target, label) => { if(target){ setAlbumGroup(als, {key:target.key, name:target.name, kind:target.kind}); for(const k of grs) setParent(k, target.key) } else { setAlbumGroup(als, 'none'); for(const k of grs) setParent(k, null) }
+    const n = SEL.size; closeSheet(); selEnd(true); drawM(); toast(`${plural(n, 'tile')} moved to ${label}`) };
+  $('#smmake').onclick = () => { const n = $('#smn').value.trim(); if(!n) return; const g = ownGroup(n); const cur = mtop(); if(cur.v === 'group' && !bad.has(cur.key)) setParent(g.key, cur.key); go(g, `“${n}”`) };
+  $('#smtop').onclick = () => go(null, 'the main page');
+  $('.sheet').addEventListener('click', e => { const r = e.target.closest('[data-sm]'); if(!r) return; const t = gs.find(x => x.key === r.dataset.sm); if(t) go(t, `“${t.name}”`) }) }
+function selTakeOut(){ const {gs, als, grs} = selItems(), cur = gs.find(x => x.key === mtop().key), up = cur && cur.parent ? gs.find(x => x.key === cur.parent) : null;
+  if(up) setAlbumGroup(als, {key:up.key, name:up.name, kind:up.kind}); else setAlbumGroup(als, 'none');
+  for(const k of grs) setParent(k, up ? up.key : null); const n = SEL.size; selEnd(true); drawM(); toast(`${plural(n, 'tile')} taken out${up ? ' to “' + up.name + '”' : ' to the main page'}`) }
+/* long-press a tile: start selecting */
+$('#mbody').addEventListener('pointerdown', e => { const el = e.target.closest('.grid > .bk'); if(!el || !selId(el)) return; const x = e.clientX, y = e.clientY;
+  clearTimeout(selPress && selPress.t); selPress = {x, y, t:setTimeout(() => { selSkipClick = true; if(navigator.vibrate) try{ navigator.vibrate(25) }catch(er){} if(!SEL) selStart(selId(el)); else { const id = selId(el); SEL.has(id) ? SEL.delete(id) : SEL.add(id); selDraw() } }, 520)} });
+for(const ev of ['pointerup', 'pointercancel', 'pointerleave']) $('#mbody').addEventListener(ev, () => { if(selPress) clearTimeout(selPress.t) });
+$('#mbody').addEventListener('pointermove', e => { if(selPress && (Math.abs(e.clientX - selPress.x) > 10 || Math.abs(e.clientY - selPress.y) > 10)) clearTimeout(selPress.t) });
+$('#mbody').addEventListener('contextmenu', e => { if(e.target.closest('.grid > .bk')) e.preventDefault() });
 $('#mbody').addEventListener('click', e => {
+  if(selSkipClick){ selSkipClick = false; e.preventDefault(); e.stopPropagation(); return }
+  if(e.target.closest('[data-selstart]')){ SEL ? selEnd() : selStart(); return }
+  if(SEL){ const el = e.target.closest('.grid > .bk'); if(el && selId(el)){ const id = selId(el); SEL.has(id) ? SEL.delete(id) : SEL.add(id); selDraw(); return } }
   const tb = e.target.closest('[data-tab]'); if(tb){ MS.tab = tb.dataset.tab; saveMS(); CTXN = 300; drawM(); return }
   const mn = e.target.closest('[data-menu]'); if(mn){ e.stopPropagation(); songMenu(TRID[mn.dataset.menu]); return }
   const am = e.target.closest('[data-almenu]'); if(am){ albumMenu(ALBK[am.dataset.almenu]); return }

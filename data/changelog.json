@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 66,
+   "date": "2026-10-16",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: select several tiles and move them at once",
+   "items": [
+    "Long-press a tile (or tap \"Select\") and tap more tiles - albums and groups together. They get a tick.",
+    "The bar at the bottom: \"Move to…\" puts them all in a group, a new group or back on the main page. Inside a group, \"Take out\" moves them one level up.",
+    "Cancel or the back button ends selecting."
+   ]
+  },
+  {
    "id": 65,
    "date": "2026-10-16",
    "where": [
