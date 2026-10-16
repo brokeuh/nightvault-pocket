@@ -23,13 +23,17 @@
     {
      "path": "hub/nvpc.js",
      "size": 5871
+    },
+    {
+     "path": "hub/nvgroups.js",
+     "size": 14397
     }
    ],
    "provides": [],
    "uses": [],
-   "size": 62284,
-   "hash": "1bcb3b54a940",
-   "version": "2026.10.16.0634",
+   "size": 76681,
+   "hash": "a03d485d346c",
+   "version": "2026.10.16.1416",
    "updated": "2026-10-16"
   },
   {
@@ -230,7 +234,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 221497
+     "size": 222399
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -242,9 +246,9 @@
     "music"
    ],
    "uses": [],
-   "size": 222058,
-   "hash": "2b438432d24f",
-   "version": "2026.10.16.1333",
+   "size": 222960,
+   "hash": "a49d54754282",
+   "version": "2026.10.16.1416",
    "updated": "2026-10-16"
   },
   {
@@ -256,7 +260,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 221497
+     "size": 222399
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -268,9 +272,9 @@
     "audiobooks"
    ],
    "uses": [],
-   "size": 222058,
-   "hash": "2b438432d24f",
-   "version": "2026.10.16.1333",
+   "size": 222960,
+   "hash": "a49d54754282",
+   "version": "2026.10.16.1416",
    "updated": "2026-10-16"
   },
   {
