@@ -1,0 +1,41 @@
+# One-time (or when updating): copies the PDF reader (pdf.js, Mozilla) and the RAR reader for CBR comics (node-unrar-js, WebAssembly)
+# into books/lib, so Nightvault Bookcase works without any other website and offline.
+name: Update Bookcase libraries
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Fetch the libraries
+        run: |
+          set -e
+          mkdir -p /tmp/v && cd /tmp/v
+          npm pack pdfjs-dist@4.10.38 node-unrar-js@2.0.2
+          L=$GITHUB_WORKSPACE/books/lib
+          rm -rf "$L"; mkdir -p "$L/pdfjs" "$L/unrar"
+          mkdir pdf rar; tar xzf pdfjs-dist-*.tgz -C pdf --strip-components 1; tar xzf node-unrar-js-*.tgz -C rar --strip-components 1
+          cp pdf/legacy/build/pdf.min.mjs pdf/legacy/build/pdf.worker.min.mjs "$L/pdfjs/"
+          cp -r pdf/standard_fonts pdf/cmaps "$L/pdfjs/"
+          cp pdf/LICENSE "$L/pdfjs/LICENSE.txt" 2>/dev/null || true
+          cp -r rar/esm/. "$L/unrar/"
+          cp rar/LICENSE "$L/unrar/LICENSE.txt" 2>/dev/null || true
+          echo "pdfjs-dist $(node -p "require('./pdf/package.json').version")" > "$L/VERSIONS.txt"
+          echo "node-unrar-js $(node -p "require('./rar/package.json').version")" >> "$L/VERSIONS.txt"
+          cat "$L/VERSIONS.txt"; find "$L" -maxdepth 3 -not -path '*/cmaps/*' -not -path '*/standard_fonts/*' | sort; du -sh "$L"/*/ "$L"/pdfjs/*
+          head -c 1500 "$L/unrar/index.js" || true
+      - name: Save
+        run: |
+          git config user.name "card-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add books/lib
+          if git diff --cached --quiet; then echo "Nothing changed."; else git commit -m "Update Bookcase libraries"; git pull --rebase -q || true; git push; fi
