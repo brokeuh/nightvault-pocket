@@ -399,6 +399,7 @@ async function scan(items, shelf, folder, notyet){
   await Promise.all([work(), work()]);
   SCAN = null; awake(false); closeSheet(); draw();
   L('add', `${added} added, ${failed} failed`, errs.slice(0, 20));
+  { regroup(); const nb = BOOKS.filter(b => b.shelf === shelf && b.added === now); L('add', 'publishers', nb.map(b => `${b.name} → ${pubSource(b).p || '-'} (${pubSource(b).how || 'none'})`).slice(0, 200)) }
   toast(`${plural(added, 'book')} added${removed ? ` · ${removed} gone` : ''}${failed ? ` · ${failed} could not be read` : ''}${notyet ? ` · ${notyet} in a format not supported yet` : ''}`, 6000);
   if(failed) setTimeout(() => sheet(`<h3>${plural(failed, 'file')} could not be read</h3><div style="max-height:46vh;overflow:auto;font-size:12.5px" class="muted">${errs.slice(0, 60).map(esc).join('<br>')}</div><button class="btn primary" style="width:100%;margin-top:12px" id="errok">OK</button>`), 400), setTimeout(() => { const b = $('#errok'); if(b) b.onclick = closeSheet }, 500) }
 async function lookAgain(f){ if(!NvFiles) return; await addFolder(f.shelf, {tree:f.tree, name:f.name}) }
@@ -421,7 +422,25 @@ const cleanPub = p => { p = String(p || '').trim(); for(const [re, n] of PUB_ALI
 /* Marvel/Spider-Man/x.cbz → Marvel; DC/Watchmen.cbz → DC too, but only when that folder also holds series folders (tops) – a folder like 'Loose' is no publisher */
 const pubFolder = (dir, tops) => { const seg = String(dir || '').split('/').filter(Boolean), ok = seg.length >= 2 || (seg.length === 1 && tops && tops.has(seg[0])); return ok ? seg[0].replace(/[([][^)\]]*[)\]]/g, '').trim() : '' };
 const pubTops = dirs => new Set(dirs.map(d => String(d || '').split('/').filter(Boolean)).filter(x => x.length >= 2).map(x => x[0]));
-const publisherOf = b => cleanPub(b.publisher || b.pubDir || '');
+/* where a book's publisher comes from, in this order: the file / edited by hand → the folder → another book of the same series that
+   has one ("learned", so the next weekly pack fills in by itself) → a well-known series or character in the name ("guessed", shown as such) */
+const KNOWN_PUB = {
+  Marvel:'spider man|spider gwen|spider woman|spider boy|avengers|x men|x force|x factor|uncanny|wolverine|deadpool|hulk|she hulk|thor|iron man|ironheart|captain america|captain marvel|fantastic four|daredevil|venom|carnage|black panther|doctor strange|ms marvel|moon knight|punisher|guardians of the galaxy|thunderbolts|black widow|hawkeye|ghost rider|silver surfer|scarlet witch|loki|magneto|psylocke|gambit|jean grey|new mutants|namor|elektra|kraven|eternals|inhumans|emma frost|squirrel girl|miles morales|ultimates|marvel',
+  DC:'batman|superman|wonder woman|flash|green lantern|green arrow|aquaman|justice league|justice society|nightwing|batgirl|batwoman|harley quinn|catwoman|joker|poison ivy|teen titans|titans|supergirl|superboy|detective comics|action comics|shazam|suicide squad|zatanna|hawkgirl|martian manhunter|red hood|birds of prey|deathstroke|black adam|blue beetle|booster gold|swamp thing|constantine|hellblazer|lobo|power girl|gotham|arkham|dceased|jsa|jla|dc',
+  Image:'spawn|saga|invincible|walking dead|geiger|monstress|radiant black',
+  'Dark Horse':'hellboy|bprd|b p r d|umbrella academy',
+  IDW:'teenage mutant ninja turtles|tmnt|sonic the hedgehog',
+  'BOOM! Studios':'something is killing the children|house of slaughter|power rangers'};
+const KNOWN_RE = Object.entries(KNOWN_PUB).map(([p, w]) => [p, new RegExp('(^| )(' + w + ')( |$)')]);
+const guessPub = name => { const n = ' ' + norm(name) + ' '; for(const [p, re] of KNOWN_RE) if(re.test(n.trim())) return p; return '' };
+let PUBLEARN = null;   // series → publisher, from the books that have one (rebuilt with the groups)
+function pubLearn(){ if(PUBLEARN) return PUBLEARN; const c = {};
+  for(const b of BOOKS){ const p = cleanPub(b.publisher || b.pubDir); if(!p || !b.series) continue; const k = norm(b.series); (c[k] = c[k] || {})[p] = (c[k][p] || 0) + 1 }
+  PUBLEARN = {}; for(const [k, ps] of Object.entries(c)) PUBLEARN[k] = Object.keys(ps).sort((a, b) => ps[b] - ps[a])[0]; return PUBLEARN }
+function pubSource(b){ if(b.publisher) return {p:cleanPub(b.publisher), how:'file'}; if(b.pubDir) return {p:cleanPub(b.pubDir), how:'folder'};
+  const l = b.series && pubLearn()[norm(b.series)]; if(l) return {p:l, how:'series'};
+  const g = guessPub(b.series || b.title || b.name); if(g) return {p:g, how:'guess'}; return {p:'', how:''} }
+const publisherOf = b => pubSource(b).p;
 function withPublishers(sh, r){
   if(!shelfOf(sh).byPub) return r;
   const G = grOf(sh), par = G.read('parent'), ov = G.read('items'), lab = G.read('label'), have = Object.fromEntries(r.groups.map(g => [g.key, g])), made = {};
@@ -440,7 +459,7 @@ function withPublishers(sh, r){
   for(const g of r.groups) g.all = G.all(g);
   return r }
 let GROUPCACHE = {};
-const regroup = () => { GROUPCACHE = {} };
+const regroup = () => { GROUPCACHE = {}; PUBLEARN = null };
 /* "on the main page" by hand: remembered as '_top', so a series doesn't go back into its publisher tile by itself */
 const toTop = (G, key) => { const par = G.read('parent'); par[key] = '_top'; G.write('parent', par) };
 const grChange = (sh, fn, msg) => { const G = grOf(sh); G.change(fn); regroup(); G.undoToast(msg, () => { regroup(); selEnd(true); draw() }) };
@@ -497,8 +516,8 @@ function sortTiles(list, k){ return list.slice().sort(k === 'title' ? (a, b) => 
   : k === 'read' ? (a, b) => lastRead(b) - lastRead(a) || coll.compare(nameOf(a), nameOf(b)) : k === 'added' ? (a, b) => addedAt(b) - addedAt(a)
   : k === 'writer' ? (a, b) => coll.compare(norm(a.items ? (a.all[0] || {}).writer : a.writer) || 'zzz', norm(b.items ? (b.all[0] || {}).writer : b.writer) || 'zzz') || coll.compare(nameOf(a), nameOf(b))
   : (a, b) => coll.compare(norm(nameOf(a)), norm(nameOf(b))) || seriesOrder(a.items ? {} : a, b.items ? {} : b)) }
-const FILTERS = [['all', 'All'], ['reading', 'Reading'], ['new', 'Not started'], ['done', 'Finished']];
-const passFilter = (b, f) => f === 'reading' ? started(b) && !(STATE[b.id] || {}).finished : f === 'new' ? !started(b) : f === 'done' ? !!(STATE[b.id] || {}).finished : true;
+const FILTERS = [['all', 'All'], ['reading', 'Reading'], ['new', 'Not started'], ['done', 'Finished']], FILTER_NOPUB = ['nopub', 'No publisher'];
+const passFilter = (b, f) => f === 'nopub' ? !publisherOf(b) : f === 'reading' ? started(b) && !(STATE[b.id] || {}).finished : f === 'new' ? !started(b) : f === 'done' ? !!(STATE[b.id] || {}).finished : true;
 
 function draw(){
   const v = cur(), body = $('#body'); $('#vback').hidden = V.length < 2; $('#addbtn').hidden = !(v.v === 'shelf' || v.v === 'group');
@@ -527,7 +546,7 @@ function draw(){
       if(gm.length) h += `<div class="sec">Groups</div><div class="grid">${gm.map(g => groupTile(s.id, g).replace(/<div class="a">[^<]*<\/div>/, g.parent ? `<div class="a">in ${esc(G.path(gs.find(x => x.key === g.parent), gs))}</div>` : '$&')).join('')}</div>`;
       if(bm.length) h += `<div class="sec">Books</div><div class="grid">${bm.slice(0, 300).map(b => bookTile(b).replace(/<div class="a">[^<]*<\/div>/, where[b.id] ? `<div class="a">in ${esc(where[b.id])}</div>` : '$&')).join('')}</div>` }
     else { const lastS = all.filter(b => started(b) && !STATE[b.id].finished).sort((a, b) => STATE[b.id].last - STATE[a.id].last)[0]; if(lastS && f === 'all') h += contCard(lastS);
-      h += `<div class="chips">${FILTERS.map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-filter="${k}">${t}</button>`).join('')}</div>`;
+      h += `<div class="chips">${FILTERS.concat(s.byPub && all.some(b => !publisherOf(b)) ? [[FILTER_NOPUB[0], `${FILTER_NOPUB[1]} (${all.filter(b => !publisherOf(b)).length})`]] : []).map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-filter="${k}">${t}</button>`).join('')}</div>`;
       const grouped = S.grouped[s.id] !== false;
       h += `<div class="mbar"><select id="grouped" aria-label="Groups"><option value="1" ${grouped ? 'selected' : ''}>Grouped</option><option value="0" ${!grouped ? 'selected' : ''}>All books</option></select>${sortSel('shelf', 'shelf:' + s.id)}<span style="flex:1"></span><button class="btn sm" data-selstart="1">Select</button><button class="btn sm" id="newgrp">+ Group</button></div>`;
       const vis = all.filter(b => passFilter(b, f)), k = sortOf('shelf', 'shelf:' + s.id);
@@ -594,7 +613,7 @@ function drawBook(id){ const b = BK[id]; if(!b){ V.pop(); return draw() }
   const s = STATE[b.id], p = progress(b), g = groupOfBook(b), prev = nextInSeries(b, -1), next = nextInSeries(b, 1), sh = shelfOf(b.shelf);
   $('#vtitle').textContent = ''; document.title = dispTitle(b) + ' · Bookcase';
   const where = b.src.kind === 'link' ? 'In a folder on this phone' : 'Copied into the app';
-  const facts = [['Publisher', esc(publisherOf(b))], ['Series', b.series ? `<span class="lnk" data-gotogrp2="1">${esc(b.series)}</span>${b.vol ? ' · ' + esc(b.vol) : ''}` : ''], ['Writer', esc(b.writer)], ['Artist', esc(b.artist)], ['Year', esc(b.year)],
+  const facts = [['Publisher', (() => { const x = pubSource(b); return x.p ? esc(x.p) + ({folder:' <span class="muted">· from the folder</span>', series:' <span class="muted">· like the rest of this series</span>', guess:' <span class="muted">· guessed from the name – fix it with Edit details</span>'}[x.how] || '') : '' })()], ['Series', b.series ? `<span class="lnk" data-gotogrp2="1">${esc(b.series)}</span>${b.vol ? ' · ' + esc(b.vol) : ''}` : ''], ['Writer', esc(b.writer)], ['Artist', esc(b.artist)], ['Year', esc(b.year)],
     ['Pages', b.pages ? String(b.pages) : ''], ['Reading', b.rtl ? 'Right to left (manga)' : b.rtl === false ? 'Left to right' : ''], ['File', `${esc((b.fmt || '').toUpperCase())}${b.size ? ' · ' + mb(b.size) : ''}`], ['Where', where + (b.dir ? ` · <span class="muted">${esc(b.dir)}</span>` : '')], ['Shelf', esc(sh.name)]].filter(x => x[1]);
   const nx = (x, lbl) => x ? `<div class="nx" data-book="${esc(x.id)}">${coverHTML(x)}<div class="n"><small>${lbl}</small><div>${esc(x.vol || x.title)}</div></div></div>` : '<div></div>';
   let h = `<div class="alhead" style="align-items:flex-start">${coverHTML(b)}<div style="min-width:0;flex:1"><b>${esc(b.series && b.title && norm(b.title) !== norm(b.series) ? b.title : dispTitle(b))}</b>
@@ -725,7 +744,8 @@ function selDraw(){ document.querySelectorAll('#body .grid > .bk').forEach(el =>
   let bar = $('#msel'); if(!SEL){ if(bar) bar.remove(); return }
   if(!bar){ bar = document.createElement('div'); bar.id = 'msel'; document.body.appendChild(bar) }
   const inGroup = cur().v === 'group', n = SEL.size;
-  bar.innerHTML = `<b style="flex:1">${n ? plural(n, 'tile') + ' selected' : 'Tap tiles to select them'}</b><button class="btn sm primary" id="selmove" ${n ? '' : 'disabled'}>Move to…</button><button class="btn sm" id="selmore" ${n ? '' : 'disabled'}>${IC_DOTS}</button>${inGroup ? `<button class="btn sm" id="selout" ${n ? '' : 'disabled'}>Take out</button>` : ''}<button class="btn sm" id="selx">Cancel</button>`;
+  bar.innerHTML = `<b style="flex:1">${n ? plural(n, 'tile') + ' selected' : 'Tap tiles to select them'}</b><button class="btn sm primary" id="selmove" ${n ? '' : 'disabled'}>Move to…</button><button class="btn sm" id="selmore" ${n ? '' : 'disabled'}>${IC_DOTS}</button>${inGroup ? `<button class="btn sm" id="selout" ${n ? '' : 'disabled'}>Take out</button>` : ''}<button class="btn sm" id="selall">All</button><button class="btn sm" id="selx">Cancel</button>`;
+  $('#selall').onclick = () => { document.querySelectorAll('#body .grid > .bk').forEach(el => { const id = el.dataset.book ? 'it:' + el.dataset.book : el.dataset.grp ? 'gr:' + el.dataset.grp : null; if(id) SEL.add(id) }); selDraw() };
   $('#selx').onclick = () => selEnd(); $('#selmove').onclick = selMoveSheet; $('#selmore').onclick = selMore; if($('#selout')) $('#selout').onclick = selTakeOut }
 function selParts(){ const sh = cur().shelf, gs = groupsOf(sh).groups, its = [...SEL].filter(x => x.startsWith('it:')).map(x => x.slice(3)), grs = [...SEL].filter(x => x.startsWith('gr:')).map(x => x.slice(3));
   const books = [...new Set(its.concat(...grs.map(k => (gs.find(g => g.key === k) || {all:[]}).all.map(b => b.id))))];
@@ -744,11 +764,21 @@ function selMoveSheet(){ const {sh, gs, its, grs} = selParts(), G = grOf(sh), ba
 function selTakeOut(){ const {sh, gs, its, grs} = selParts(), G = grOf(sh), here = gs.find(x => x.key === cur().key), up = here && here.parent ? gs.find(x => x.key === here.parent) : null, n = SEL.size;
   grChange(sh, () => { G.put(its, up || 'none'); for(const k of grs) up ? G.setParent(k, up.key) : toTop(G, k) }, `${plural(n, 'tile')} taken out${up ? ' to “' + up.name + '”' : ' to the main page'}`); selEnd(true); draw() }
 function selMore(){ const {sh, books} = selParts(), G = grOf(sh), ids = [...SEL], allPinned = ids.every(x => G.isPinned(x));
-  sheet(`<h3>${plural(ids.length, 'tile')} · ${plural(books.length, 'book')}</h3><div class="mlist"><button class="btn" id="smpin">${allPinned ? '★ Unpin' : '★ Pin to the top'}</button><button class="btn" id="smread">Mark as read</button><button class="btn" id="smunread">Mark as not read</button><button class="btn" id="smshelf">Move to another shelf…</button><button class="btn danger" id="smdel">Remove from Bookcase</button></div>`);
+  sheet(`<h3>${plural(ids.length, 'tile')} · ${plural(books.length, 'book')}</h3><div class="mlist"><button class="btn" id="smpin">${allPinned ? '★ Unpin' : '★ Pin to the top'}</button><button class="btn" id="smread">Mark as read</button><button class="btn" id="smunread">Mark as not read</button><button class="btn" id="smpub">Set the publisher…</button><button class="btn" id="smshelf">Move to another shelf…</button><button class="btn danger" id="smdel">Remove from Bookcase</button></div>`);
   $('#smpin').onclick = () => { G.togglePin(ids, !allPinned); closeSheet(); selEnd(true); draw() };
   const mark = on => { for(const id of books){ const x = st(id); x.finished = on; if(on){ x.last = x.last || Date.now(); x.page = Math.max(0, (x.pages || BK[id].pages || 1) - 1) } else x.page = 0; saveState(id, true) } closeSheet(); selEnd(true); draw() };
   $('#smread').onclick = () => mark(true); $('#smunread').onclick = () => mark(false);
+  $('#smpub').onclick = () => setPublisher(books);
   $('#smshelf').onclick = () => shelfPicker(books); $('#smdel').onclick = () => removeBooks(books) }
+/* "Set the publisher…": type one, or tap one you already have */
+function setPublisher(ids){ const known = [...new Set(BOOKS.map(publisherOf).filter(Boolean).concat(Object.keys(KNOWN_PUB)))].sort(coll.compare);
+  sheet(`<h3>Publisher for ${plural(ids.length, 'book')}</h3><div style="display:flex;gap:8px"><input type="text" id="spn" placeholder="Publisher, like Marvel" maxlength="60"><button class="btn primary" id="spok">Set</button></div>
+    <div class="chips" style="margin-top:10px">${known.map(p => `<button class="chip" data-pub="${esc(p)}">${esc(p)}</button>`).join('')}</div>
+    <button class="btn" id="spclear" style="width:100%;margin-top:6px">Clear (find it by itself again)</button>`);
+  const go = async p => { for(const id of ids){ const b = BK[id]; if(!b) continue; b.publisher = p; await dbPut('books', b) } regroup(); closeSheet(); selEnd(true); draw(); toast(p ? `${plural(ids.length, 'book')} set to ${p}` : 'Publisher cleared') };
+  $('#spok').onclick = () => { const p = $('#spn').value.trim(); if(p) go(p) }; $('#spn').onkeydown = e => { if(e.key === 'Enter' && e.target.value.trim()) go(e.target.value.trim()) };
+  $('#spclear').onclick = () => go('');
+  $('.sheet').addEventListener('click', e => { const c = e.target.closest('[data-pub]'); if(c) go(c.dataset.pub) }) }
 
 /* =====================================================================================================================
    THE READER – one reader for every shelf. Pages (CBZ, CBR, PDF, picture folders, picture EPUBs) here; text EPUBs below.

@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 75,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: publishers for comics that don't say",
+   "items": [
+    "Many comics (like those in a weekly pack) have no publisher inside the file. Bookcase now fills it in anyway: from another issue of the same series that does have one, or from well-known series and characters (Batman → DC, Spider-Man → Marvel, Saga → Image …).",
+    "The comic's page tells you where it came from, for example \"guessed from the name\" - fix it with Edit details if it is wrong.",
+    "New on the Comics shelf: a \"No publisher\" filter. Tap Select → All → ⋯ → \"Set the publisher…\" to give many comics their publisher at once."
+   ]
+  },
+  {
    "id": 74,
    "date": "2026-10-19",
    "where": [
