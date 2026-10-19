@@ -211,19 +211,69 @@
   {
    "id": "bookcase",
    "name": "Bookcase",
-   "desc": "Books, manga, comics and rulebooks on shelves, with one reader",
+   "desc": "Comics, manga, books and rulebooks on shelves, with one reader",
    "color": "#3a2816",
-   "soon": true,
-   "files": [],
+   "files": [
+    {
+     "path": "books/index.html",
+     "size": 21128
+    },
+    {
+     "path": "books/app.js",
+     "size": 137167
+    },
+    {
+     "path": "books/manifest.webmanifest",
+     "size": 550
+    },
+    {
+     "path": "books/lib/pdfjs/pdf.min.js",
+     "size": 398237
+    },
+    {
+     "path": "books/lib/pdfjs/pdf.worker.min.js",
+     "size": 1417586
+    },
+    {
+     "path": "books/lib/unrar/index.esm.js",
+     "size": 450
+    },
+    {
+     "path": "books/lib/unrar/js/Extractor.js",
+     "size": 6674
+    },
+    {
+     "path": "books/lib/unrar/js/ExtractorData.js",
+     "size": 2939
+    },
+    {
+     "path": "books/lib/unrar/js/ExtractorData.helper.js",
+     "size": 1693
+    },
+    {
+     "path": "books/lib/unrar/js/unrar.js",
+     "size": 66872
+    },
+    {
+     "path": "books/lib/unrar/js/unrar.singleton.js",
+     "size": 280
+    },
+    {
+     "path": "books/lib/unrar/js/unrar.wasm",
+     "size": 207593
+    }
+   ],
    "provides": [
     "reader",
     "books"
    ],
    "uses": [],
-   "size": 0,
-   "hash": "e3b0c44298fc",
-   "version": "2026.10.12.1325",
-   "updated": "2026-10-12"
+   "entry": "books/?nv=hub",
+   "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted.",
+   "size": 2261169,
+   "hash": "af72e64398a5",
+   "version": "2026.10.19.0904",
+   "updated": "2026-10-19"
   },
   {
    "id": "music",

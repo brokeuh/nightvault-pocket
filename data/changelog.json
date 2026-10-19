@@ -3,6 +3,25 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 70,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "New: Nightvault Bookcase",
+   "items": [
+    "A new app in The Nightvault: Bookcase. It opens on shelves - Comics, Manga, Books, Rulebooks, RPG and Colouring books - and you can make your own shelves.",
+    "Add books from a folder on your phone (nothing is copied) or copy them into the app. It reads CBZ, CBR, PDF, EPUB and folders of pictures, also with WebP and AVIF pages.",
+    "Series are bundled behind one tile by themselves, in the right order. Groups, groups inside groups, pins and moving work just like in Music.",
+    "One reader for everything: it remembers your page, turn pages by tapping the edges or swiping (right to left for manga), pinch or double-tap to zoom, two pages side by side on a wide screen, night mode, bookmarks, contents, search inside PDFs, and the next volume at the end.",
+    "Print the whole book, one page or a range of pages (on Android you can also choose Save as PDF)."
+   ]
+  },
+  {
    "id": 69,
    "date": "2026-10-16",
    "where": [

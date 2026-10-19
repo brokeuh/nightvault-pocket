@@ -24,11 +24,15 @@ jobs:
           L=$GITHUB_WORKSPACE/books/lib
           rm -rf "$L"; mkdir -p "$L/pdfjs" "$L/unrar"
           mkdir pdf rar; tar xzf pdfjs-dist-*.tgz -C pdf --strip-components 1; tar xzf node-unrar-js-*.tgz -C rar --strip-components 1
-          cp pdf/legacy/build/pdf.min.mjs pdf/legacy/build/pdf.worker.min.mjs "$L/pdfjs/"
+          # .js names: the Android app's own server may not know the .mjs type (modules then refuse to load)
+          cp pdf/legacy/build/pdf.min.mjs "$L/pdfjs/pdf.min.js"; cp pdf/legacy/build/pdf.worker.min.mjs "$L/pdfjs/pdf.worker.min.js"
           cp -r pdf/standard_fonts pdf/cmaps "$L/pdfjs/"
           cp pdf/LICENSE "$L/pdfjs/LICENSE.txt" 2>/dev/null || true
           cp -r rar/esm/. "$L/unrar/"
           cp rar/LICENSE "$L/unrar/LICENSE.txt" 2>/dev/null || true
+          # browsers need the .js ending in imports; the Node-only files (reading from disk) are not needed
+          sed -i -E "s#from '(\./[^']+)';#from '\1.js';#" "$L/unrar/index.esm.js" "$L/unrar/js/ExtractorData.js" "$L/unrar/js/unrar.singleton.js"
+          rm -f "$L/unrar/index.js" "$L/unrar/index.js.map" "$L/unrar/index.d.ts" "$L"/unrar/js/ExtractorFile.*
           echo "pdfjs-dist $(node -p "require('./pdf/package.json').version")" > "$L/VERSIONS.txt"
           echo "node-unrar-js $(node -p "require('./rar/package.json').version")" >> "$L/VERSIONS.txt"
           cat "$L/VERSIONS.txt"; find "$L" -maxdepth 3 -not -path '*/cmaps/*' -not -path '*/standard_fonts/*' | sort; du -sh "$L"/*/ "$L"/pdfjs/*

@@ -1,6 +1,6 @@
-import { ExtractorData } from './js/ExtractorData';
-import { getUnrar } from './js/unrar.singleton';
-export * from './js/Extractor';
+import { ExtractorData } from './js/ExtractorData.js';
+import { getUnrar } from './js/unrar.singleton.js';
+export * from './js/Extractor.js';
 export async function createExtractorFromData({ wasmBinary, data, password = '', }) {
     const unrar = await getUnrar(wasmBinary && { wasmBinary });
     const extractor = new ExtractorData(unrar, data, password);

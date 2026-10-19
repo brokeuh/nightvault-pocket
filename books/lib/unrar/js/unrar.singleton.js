@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import unrarFactory from './unrar';
+import unrarFactory from './unrar.js';
 let unrar;
 export async function getUnrar(options) {
     if (!unrar) {

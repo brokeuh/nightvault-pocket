@@ -114,15 +114,29 @@
     {
       "id": "bookcase",
       "name": "Bookcase",
-      "desc": "Books, manga, comics and rulebooks on shelves, with one reader",
+      "desc": "Comics, manga, books and rulebooks on shelves, with one reader",
       "color": "#3a2816",
-      "soon": true,
-      "files": [],
+      "files": [
+        "books/index.html",
+        "books/app.js",
+        "books/manifest.webmanifest",
+        "books/lib/pdfjs/pdf.min.js",
+        "books/lib/pdfjs/pdf.worker.min.js",
+        "books/lib/unrar/index.esm.js",
+        "books/lib/unrar/js/Extractor.js",
+        "books/lib/unrar/js/ExtractorData.js",
+        "books/lib/unrar/js/ExtractorData.helper.js",
+        "books/lib/unrar/js/unrar.js",
+        "books/lib/unrar/js/unrar.singleton.js",
+        "books/lib/unrar/js/unrar.wasm"
+      ],
       "provides": [
         "reader",
         "books"
       ],
-      "uses": []
+      "uses": [],
+      "entry": "books/?nv=hub",
+      "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted."
     },
     {
       "id": "music",

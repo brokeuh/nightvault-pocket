@@ -1,5 +1,5 @@
-import { DataFile } from './ExtractorData.helper';
-import { Extractor } from './Extractor';
+import { DataFile } from './ExtractorData.helper.js';
+import { Extractor } from './Extractor.js';
 export class ExtractorData extends Extractor {
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types,@typescript-eslint/no-explicit-any
     constructor(unrar, data, password) {
