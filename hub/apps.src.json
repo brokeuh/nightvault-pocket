@@ -187,12 +187,17 @@
       "name": "Boardgames",
       "desc": "Your board games with BoardGameGeek sync, miniatures and terrain",
       "color": "#1f3216",
-      "soon": true,
-      "files": [],
+      "files": [
+        "boardgames/index.html",
+        "boardgames/app.js",
+        "boardgames/manifest.webmanifest"
+      ],
       "provides": [
         "boardgames"
       ],
-      "uses": []
+      "uses": [],
+      "entry": "boardgames/?nv=hub",
+      "keepsData": "Your plays, games added by hand, pictures and groups stay on this device. Games from BoardGameGeek come back by themselves."
     },
     {
       "id": "print3d",

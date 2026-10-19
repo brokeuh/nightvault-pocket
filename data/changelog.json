@@ -3,6 +3,26 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 74,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "boardgames"
+   ],
+   "title": "New app: Boardgames",
+   "items": [
+    "Boardgames is here: shelves for Board games, Wishlist, and Miniatures & terrain, plus Plays. Open it from its tile in The Nightvault (add it on the Apps screen).",
+    "Your BoardGameGeek collection, wishlist and plays come in by themselves every morning (once the BGG user name and token are set on GitHub).",
+    "A game and its expansions share one tile. Groups, groups inside groups, pins, tile covers and Select work like in Music and Bookcase.",
+    "Each game has a page with box art, players, play time, complexity, BGG rating and rank, your rating, plays and the expansions you have.",
+    "Log a play: date, players, scores and who won (★). The Android app sends it to BGG right away (Settings → log in to BGG once); when you are offline it goes later.",
+    "Add games that are not on BGG, and miniatures and terrain (which game or army, how many, paint), with your own photo."
+   ]
+  },
+  {
    "id": 73,
    "date": "2026-10-19",
    "where": [

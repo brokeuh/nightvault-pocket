@@ -18,6 +18,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NvLogPlugin.class);
         registerPlugin(NvPcPlugin.class);
         registerPlugin(NvPrintPlugin.class);
+        registerPlugin(NvBggPlugin.class);
         super.onCreate(savedInstanceState);
         // files in folders the owner picked (NvFiles) are played straight from there, with byte ranges for seeking
         bridge.setWebViewClient(new BridgeWebViewClient(bridge) {
