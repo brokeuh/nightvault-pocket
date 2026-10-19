@@ -3,6 +3,26 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 73,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "games"
+   ],
+   "title": "New app: Games",
+   "items": [
+    "Games is here: a list of your computer, console, retro and handheld games and a wishlist. Open it from its tile in The Nightvault (add it on the Apps screen).",
+    "Shelves per platform (PC, Switch, PS2 …) plus All games and Wishlist. A shelf appears by itself when you add a game for that platform.",
+    "One tile per game with all your copies inside: digital (Steam, GOG, Epic, eShop …) or physical with what's included (sealed, complete in box, loose) and the region (PAL, NTSC-U, NTSC-J).",
+    "Organised like Music: series tiles by themselves (Zelda, Half-Life …), your own groups, groups inside groups, select several, pin, tile cover, undo, Sort by and search everywhere.",
+    "Find games by name with their cover via IGDB, more covers via SteamGridDB, and import your Steam library and wishlist. These need your own free keys: Games ⚙ → Online lookup. They stay on your phone only.",
+    "Backup: Games ⚙ → Save all my games."
+   ]
+  },
+  {
    "id": 72,
    "date": "2026-10-19",
    "where": [

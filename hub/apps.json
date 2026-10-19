@@ -394,18 +394,32 @@
   {
    "id": "games",
    "name": "Games",
-   "desc": "Your computer, console and retro games in one list",
+   "desc": "Your computer, console, retro and handheld games, and your wishlist",
    "color": "#1c1f3e",
-   "soon": true,
-   "files": [],
+   "files": [
+    {
+     "path": "games/index.html",
+     "size": 13842
+    },
+    {
+     "path": "games/app.js",
+     "size": 102786
+    },
+    {
+     "path": "games/manifest.webmanifest",
+     "size": 549
+    }
+   ],
    "provides": [
     "videogames"
    ],
    "uses": [],
-   "size": 0,
-   "hash": "e3b0c44298fc",
-   "version": "2026.10.12.1325",
-   "updated": "2026-10-12"
+   "entry": "games/?nv=hub",
+   "keepsData": "Your games, copies, wishlist, groups and keys stay on this device.",
+   "size": 117177,
+   "hash": "bd5ab8e22e55",
+   "version": "2026.10.19.1119",
+   "updated": "2026-10-19"
   }
  ]
 }

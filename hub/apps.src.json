@@ -221,14 +221,19 @@
     {
       "id": "games",
       "name": "Games",
-      "desc": "Your computer, console and retro games in one list",
+      "desc": "Your computer, console, retro and handheld games, and your wishlist",
       "color": "#1c1f3e",
-      "soon": true,
-      "files": [],
+      "files": [
+        "games/index.html",
+        "games/app.js",
+        "games/manifest.webmanifest"
+      ],
       "provides": [
         "videogames"
       ],
-      "uses": []
+      "uses": [],
+      "entry": "games/?nv=hub",
+      "keepsData": "Your games, copies, wishlist, groups and keys stay on this device."
     }
   ]
 }

@@ -3,7 +3,7 @@ name: Update app list
 
 on:
   push:
-    paths: ["test/**", "tools/**", "admin/**", "audio/**", "books/**", "hub/index.html", "hub/core.js", "hub/nvlog.js", "hub/nvpc.js", "hub/nvgroups.js", "hub/apps.src.json", "hub/build_catalog.py"]
+    paths: ["test/**", "tools/**", "admin/**", "audio/**", "books/**", "games/**", "hub/index.html", "hub/core.js", "hub/nvlog.js", "hub/nvpc.js", "hub/nvgroups.js", "hub/apps.src.json", "hub/build_catalog.py"]
   workflow_dispatch:
 
 permissions:
