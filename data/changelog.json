@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 80,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: see every issue of your series",
+   "items": [
+    "Open a series on the Comics shelf and you see every issue that exists - yours in colour, the ones you don't have grey. Bookcase gets the list from Comic Vine by itself the first time (with your Comic Vine key).",
+    "One comic of a series is now enough: it gets a series tile that opens to the whole list, and the tile shows how many you have, like \"1 of 72\".",
+    "Tap a grey issue to find it on your sites, copy its title or mark it as on paper. It is a setting per shelf (shelf ⚙), on for Comics."
+   ]
+  },
+  {
    "id": 79,
    "date": "2026-10-19",
    "where": [

@@ -57,7 +57,7 @@ const SHELF_ICON = {
   colouring:'<path d="M18 3l3 3-9.5 9.5-4 1 1-4z"/><path d="M5 21c-1.5 0-2-1-2-2s1-2 2-2 2 1 2 2"/>',
   own:'<path d="M3 20h18"/><rect x="4" y="5" width="4" height="15" rx="1"/><rect x="9" y="8" width="4" height="12" rx="1"/><path d="M15.2 9.2l3.6-1 2.9 11-3.6 1z"/>'};
 const BASE_SHELVES = [
-  {id:'comics', name:'Comics', c:['#3a1626', '#1d1b33'], s:'#ff9db7', byPub:true},
+  {id:'comics', name:'Comics', c:['#3a1626', '#1d1b33'], s:'#ff9db7', byPub:true, fullSeries:true},
   {id:'manga', name:'Manga', c:['#341a3a', '#1a1b33'], s:'#e0a8ff', rtl:true},
   {id:'books', name:'Books', c:['#3a2816', '#1d2236'], s:'#f0b46a', authors:true},
   {id:'rulebooks', name:'Rulebooks', c:['#16323a', '#18203a'], s:'#7fe3ff'},
@@ -423,7 +423,13 @@ function grOf(sh){ if(GRS[sh]) return GRS[sh]; const s = shelfOf(sh);
     hay:b => [b.title, b.series, b.writer].filter(Boolean).join(' '), kinds:{series:'Series', author:'Writer', publisher:'Publisher'},
     auto:b => b.series ? {key:'s:' + norm(b.series), name:b.series, kind:'series'} : s.authors && b.writer ? {key:'a:' + norm(b.writer), name:b.writer, kind:'author'} : null,
     onRekey:async (from, to) => { const id = 'grp:' + sh + ':' + from; if(!COV.has(id)) return; const c = await dbGet('covers', id).catch(() => null); if(c){ await setCover('grp:' + sh + ':' + to, c.blob); draw() } }}) }
-const groupsOf = sh => GROUPCACHE[sh] || (GROUPCACHE[sh] = withPublishers(sh, grOf(sh).build(inShelf(sh))));
+const groupsOf = sh => GROUPCACHE[sh] || (GROUPCACHE[sh] = withPublishers(sh, oneIssueSeries(sh, grOf(sh).build(inShelf(sh)))));
+/* "Show every issue of a series" on: one comic of a series is enough for a series tile (it opens to the whole list, the rest grey) */
+function oneIssueSeries(sh, r){ if(!shelfOf(sh).fullSeries) return r; const G = grOf(sh), ov = G.read('items'), par = G.read('parent'), have = new Set(r.groups.map(g => g.key)), keep = [];
+  for(const b of r.singles){ const key = b.series ? 's:' + norm(b.series) : ''; if(!key || ov[b.id] !== undefined || have.has(key)){ keep.push(b); continue }
+    const g = {key, name:G.read('label')[key] || b.series, kind:'series', items:[b], kids:[], parent:null}; const pp = par[key]; if(pp && pp !== '_top') g.parent = pp; r.groups.push(g); have.add(key) }
+  r.singles = keep; const by = Object.fromEntries(r.groups.map(g => [g.key, g])); for(const g of r.groups) if(g.parent && by[g.parent] && !by[g.parent].kids.includes(g)) by[g.parent].kids.push(g); for(const g of r.groups) g.all = G.all(g);
+  return r }
 /* publishers: Comics › Marvel › Spider-Man › the volumes. A series (and a book without a series) goes into its publisher's tile by itself;
    the publisher comes from the file (ComicInfo.xml Publisher, the EPUB's publisher), else from the folder (Comics/Marvel/…), else "Edit details".
    Anything placed by hand wins: a series put inside another group stays there, a book set to "its own tile" stays on its own.
@@ -520,7 +526,7 @@ function bookTile(b){ const p = progress(b), s = STATE[b.id], G = grOf(b.shelf);
   return `<div class="bk" data-book="${esc(b.id)}">${coverHTML(b, '', (G.isPinned('it:' + b.id) ? PINB : '') + (s && s.finished ? '<span class="done">READ</span>' : '') + (b.vol ? `<span class="vol">${esc(b.vol)}</span>` : ''))}
     ${p > 0 && p < 1 ? `<div class="pbar"><i style="width:${Math.round(p * 100)}%"></i></div>` : ''}<div class="t">${esc(dispTitle(b))}</div><div class="a">${esc(dispSub(b) || ' ')}</div></div>` }
 function groupTile(sh, g){ const all = g.all || g.items, k = (g.kids || []).length, rd = all.filter(b => STATE[b.id] && STATE[b.id].finished).length, G = grOf(sh);
-  return `<div class="bk stack" data-grp="${esc(g.key)}">${groupCoverHTML(sh, g)}${G.isPinned('gr:' + g.key) ? PINB : ''}<span class="cdl">${all.length ? plural(all.length, 'book') : 'empty'}</span>
+  return `<div class="bk stack" data-grp="${esc(g.key)}">${groupCoverHTML(sh, g)}${G.isPinned('gr:' + g.key) ? PINB : ''}<span class="cdl">${(() => { const c = g.kind === 'series' && shelfOf(sh).fullSeries && COLS[grVid(g)]; return c ? (st => `${st.have} of ${st.total}`)(colStats(c)) : all.length ? plural(all.length, 'book') : 'empty' })()}</span>
     <div class="t">${esc(g.name)}</div><div class="a">${esc([G.label(g), k ? plural(k, 'group') : '', rd ? rd + ' of ' + all.length + ' read' : ''].filter(Boolean).join(' · '))}</div></div>` }
 
 /* ---------- screens: a stack of views ---------- */
@@ -595,12 +601,29 @@ function draw(){
       <div class="muted small">${esc(G.label(g))} · ${(g.kids || []).length ? plural(g.kids.length, 'group') + ' · ' : ''}${plural(all.length, 'book')}${rd ? ` · ${rd} read` : ''}</div>
       ${[...new Set(all.map(b => b.writer).filter(Boolean))].length === 1 ? `<div class="muted small">${esc(all.find(b => b.writer).writer)}</div>` : ''}</div></div>`;
     h += `<div class="mbar">${nextB ? `<button class="btn primary" data-read="${esc(nextB.id)}" style="flex:1;min-width:0"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${started(nextB) ? 'Continue' : 'Read'}: ${esc(g.kind === 'series' ? (nextB.vol || nextB.title) : dispTitle(nextB))}</span></button>` : ''}<button class="ib" id="gmenu" aria-label="More for this group">${IC_DOTS}</button></div>`;
-    { const cvb = g.kind === 'series' && all.find(b => b.cv && b.cv.id); if(cvb){ const c = COLS[cvb.cv.id], st = c && colStats(c); h += `<button class="btn" data-allis="${cvb.cv.id}" style="width:100%;margin-bottom:8px">${c ? `All issues · you have ${st.have} of ${st.total}` : 'All issues of this series (Comic Vine)'}</button>` } }
+    const full = g.kind === 'series' && shelfOf(v.shelf).fullSeries, fvid = full && grVid(g), fc = fvid && COLS[fvid];
+    if(full && fc){ /* every issue of the series: yours in colour (tap = the comic), the others grey (tap = Find it / on paper) */
+      const st = colStats(fc), f = S.filter['grp'] || 'all', d = colDigital(fc), P = fc.phys || {}, inList = new Set(fc.issues.map(i => numKey(i.num)));
+      const pass = i => { const k = numKey(i.num), D = !!d[k], Pp = !!P[k]; return f === 'have' ? D || Pp : f === 'miss' ? !D && !Pp : true };
+      h += `<div class="mtot">${esc(fc.name)}${fc.start ? ` (${esc(fc.start)})` : ''} · you have ${st.have} of ${st.total}${st.phys ? ` · ${st.phys} on paper` : ''}</div><div class="pbar" style="margin:0 0 8px"><i style="width:${st.total ? Math.round(100 * st.have / st.total) : 0}%"></i></div>`;
+      h += `<div class="chips">${[['all', 'All issues'], ['have', 'I have'], ['miss', 'Missing']].map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-gif="${k}">${t}</button>`).join('')}<button class="chip" data-col="${fvid}">⋯ List</button></div>`;
+      const kids = sortTiles(g.kids || [], 'title'); if(kids.length) h += `<div class="grid">${kids.map(x => groupTile(v.shelf, x)).join('')}</div>`;
+      h += issueGridHTML(fc, pass);
+      const extra = g.items.filter(b => b.num == null || !inList.has(numKey(b.num))).sort(seriesOrder);
+      if(extra.length && f !== 'miss') h += `<div class="sec">Also in this group</div><div class="grid">${extra.map(bookTile).join('')}</div>`;
+      body.innerHTML = h; lazyCovers(body); hookGrid(v.shelf); $('#gmenu').onclick = () => groupMenu(v.shelf, g);
+      body.querySelectorAll('[data-gif]').forEach(b => b.onclick = () => { S.filter['grp'] = b.dataset.gif; saveS(); draw() });
+      body.querySelectorAll('[data-iss]').forEach(el => el.onclick = () => { const b = d[el.dataset.iss]; if(b) go({v:'book', id:b.id}); else issueSheet(fc, fc.issues.find(i => numKey(i.num) === el.dataset.iss)) });
+      return }
+    if(full){ const st0 = SERLOAD[v.shelf + '|' + g.key];
+      h += CV.key() ? `<div class="mtot" id="serload">${st0 === 'none' ? 'Comic Vine doesn\'t know this series by this name – open a comic → ⋯ → Look up online to pick it.' : st0 && st0.startsWith('err:') ? esc(st0.slice(4)) : 'Getting every issue of this series from Comic Vine…'}</div>`
+        : `<button class="btn" id="serkey" style="width:100%;margin-bottom:8px">See every issue of this series (needs your Comic Vine key)</button>` }
     h += `<div class="mbar">${sortSel('inside', 'grp:' + v.shelf + ':' + g.key)}<span style="flex:1"></span><button class="btn sm" data-selstart="1">Select</button></div>`;
     const kids = sortTiles(g.kids || [], sortOf('inside', 'grp:' + v.shelf + ':' + g.key)), k = sortOf('inside', 'grp:' + v.shelf + ':' + g.key), items = k === 'series' ? g.items.slice().sort(seriesOrder) : sortTiles(g.items, k);
     h += `<div class="grid">${G.pinFirst([...kids, ...items], x => (x.items ? 'gr:' + x.key : 'it:' + x.id)).map(x => x.items ? groupTile(v.shelf, x) : bookTile(x)).join('')}</div>`;
     if(!all.length) h += `<p class="muted small" style="margin-top:12px">Empty. Tap ⋯ → <b>Add books…</b> to put books in it.</p>`;
-    body.innerHTML = h; lazyCovers(body); hookGrid(v.shelf); $('#gmenu').onclick = () => groupMenu(v.shelf, g); return }
+    body.innerHTML = h; lazyCovers(body); hookGrid(v.shelf); $('#gmenu').onclick = () => groupMenu(v.shelf, g);
+    if(full){ const k = $('#serkey'); if(k) k.onclick = () => cvKeySheet(() => serEnsure(v.shelf, g)); else if(!SERLOAD[v.shelf + '|' + g.key]) serEnsure(v.shelf, g) } return }
   if(v.v === 'book') return drawBook(v.id);
   if(v.v === 'col') return drawCol(v);
   if(v.v === 'colser') return drawColSer(v) }
@@ -1154,6 +1177,7 @@ function newShelf(){ ask('New shelf', 'Name, like Art books or Magazines', '', '
 function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh), folders = lsGet('nvBooks.folders', []).filter(f => f.shelf === sh), n = inShelf(sh).length;
   sheet(`<h3>${esc(s.name)}</h3>
     <div class="opt"><label for="ss_rtl">Read right to left (manga) unless a book says otherwise</label><input type="checkbox" id="ss_rtl" ${s.rtl ? 'checked' : ''}></div>
+    <div class="opt"><label for="ss_full">Show every issue of a series, the ones you don't have grey (Comic Vine)</label><input type="checkbox" id="ss_full" ${s.fullSeries ? 'checked' : ''}></div>
     <div class="opt"><label for="ss_pub">Bundle series by publisher (Marvel › Spider-Man › …)</label><input type="checkbox" id="ss_pub" ${s.byPub ? 'checked' : ''}></div>
     <div class="opt"><label for="ss_aut">A writer's books without a series make one tile</label><input type="checkbox" id="ss_aut" ${s.authors ? 'checked' : ''}></div>
     ${NvFiles ? `<div class="sec">Folders on this phone</div>${folders.map((f, i) => `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(inShelf(sh).filter(b => b.src.kind === 'link' && b.src.tree === f.tree).length, 'book')}</div></div><button class="btn sm" data-look="${i}">Look again</button><button class="btn sm danger" data-forget="${i}">Stop</button></div>`).join('') || '<p class="muted small">None yet - Add → Use a folder on this phone.</p>'}` : ''}
@@ -1162,6 +1186,7 @@ function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh), folders = lsGet
     <div class="sec">Your groups</div><div class="mlist"><button class="btn" id="ss_save">Save my groups</button><button class="btn" id="ss_load">Load from a file</button></div>
     <div class="sec">This shelf</div><div class="mlist"><button class="btn" id="ss_ren">Rename the shelf</button><button class="btn" id="ss_hide">Hide this shelf</button>${s.own ? `<button class="btn danger" id="ss_del">Remove this shelf${n ? ' (its books move to Books)' : ''}</button>` : ''}</div>`);
   $('#ss_rtl').onchange = e => { shelfSet(sh, {rtl:e.target.checked}); toast('Saved') };
+  $('#ss_full').onchange = e => { shelfSet(sh, {fullSeries:e.target.checked}); draw(); toast('Saved') };
   $('#ss_pub').onchange = e => { shelfSet(sh, {byPub:e.target.checked}); regroup(); draw(); toast(e.target.checked ? 'Series are now bundled by publisher' : 'Publisher tiles are off') };
   $('#ss_reread').onclick = () => { closeSheet(); rereadShelf(sh) };
   $('#ss_cv').onclick = () => cvLookup(sh, false); $('#ss_cvall').onclick = () => cvLookup(sh, true); $('#ss_cvkey').onclick = () => cvKeySheet();
@@ -1395,15 +1420,17 @@ async function colMine(sh){ if(!CV.key()) return cvKeySheet(() => colMine(sh));
   awake(false); closeSheet(); draw(); toast(`${plural(n, 'list')} made`) }
 
 /* one series: every issue */
+function issueGridHTML(c, pass){ const d = colDigital(c), P = c.phys || {};
+  return `<div class="grid">${c.issues.filter(pass).map(i => { const k = numKey(i.num), b = d[k], p = P[k], own = b || p;
+      const cov = b ? coverHTML(b) : `<div class="cv">${i.thumb ? `<img class="b" src="${esc(i.thumb)}" alt="" loading="lazy"><img class="f" src="${esc(i.thumb)}" alt="" loading="lazy">` : phHTML({title:c.name, shelf:c.shelf}, c.name + ' ' + i.label)}</div>`;
+      return `<div class="bk iss ${own ? '' : 'miss'}" data-iss="${esc(k)}">${cov.replace(/<\/div>$/, `<span class="vol">${esc(i.label)}</span>${b ? '<span class="bd dg">D</span>' : ''}${p ? `<span class="bd pp${b ? '' : ' solo'}">P</span>` : ''}</div>`)}<div class="t">${esc(i.name || c.name + ' ' + i.label)}</div><div class="a">${esc([i.date.slice(0, 4), p && p.price ? money(+p.price) : ''].filter(Boolean).join(' · ') || ' ')}</div></div>` }).join('')}</div>`; }
 function drawColSer(v){ const c = COLS[v.vid]; if(!c){ V.pop(); return draw() } const d = colDigital(c), st = colStats(c), f = S.filter['colser'] || 'all';
   $('#vtitle').textContent = ''; document.title = c.name + ' · Collection';
   let h = `<div class="alhead" style="align-items:center"><div style="min-width:0;flex:1"><b>${esc(c.name)}${c.start ? ` (${esc(c.start)})` : ''}</b><div class="muted small">${esc(cleanPub(c.pub) || '')}${c.pub ? ' · ' : ''}${st.have} of ${st.total} issues</div>
     <div class="muted small">${st.dig} digital · ${st.phys} on paper${st.price ? ' · ' + money(st.price) : ''}</div><div class="pbar" style="max-width:260px"><i style="width:${st.total ? Math.round(100 * st.have / st.total) : 0}%"></i></div></div><button class="ib" id="csmenu" aria-label="More for this list">${IC_DOTS}</button></div>`;
   h += `<div class="chips">${[['all', 'All'], ['have', 'I have'], ['miss', 'Missing'], ['dig', 'Digital'], ['phys', 'On paper']].map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-csf="${k}">${t}</button>`).join('')}</div>`;
   const P = c.phys || {}, pass = i => { const k = numKey(i.num), D = !!d[k], Pp = !!P[k]; return f === 'have' ? D || Pp : f === 'miss' ? !D && !Pp : f === 'dig' ? D : f === 'phys' ? Pp : true };
-  h += `<div class="grid">${c.issues.filter(pass).map(i => { const k = numKey(i.num), b = d[k], p = P[k], own = b || p;
-      const cov = b ? coverHTML(b) : `<div class="cv">${i.thumb ? `<img class="b" src="${esc(i.thumb)}" alt="" loading="lazy"><img class="f" src="${esc(i.thumb)}" alt="" loading="lazy">` : phHTML({title:c.name, shelf:c.shelf}, c.name + ' ' + i.label)}</div>`;
-      return `<div class="bk iss ${own ? '' : 'miss'}" data-iss="${esc(k)}">${cov.replace(/<\/div>$/, `<span class="vol">${esc(i.label)}</span>${b ? '<span class="bd dg">D</span>' : ''}${p ? `<span class="bd pp${b ? '' : ' solo'}">P</span>` : ''}</div>`)}<div class="t">${esc(i.name || c.name + ' ' + i.label)}</div><div class="a">${esc([i.date.slice(0, 4), p && p.price ? money(+p.price) : ''].filter(Boolean).join(' · ') || ' ')}</div></div>` }).join('')}</div>`;
+  h += issueGridHTML(c, pass);
   $('#body').innerHTML = h; lazyCovers($('#body'));
   $('#csmenu').onclick = () => colMenu(c);
   $('#body').querySelectorAll('[data-csf]').forEach(b => b.onclick = () => { S.filter['colser'] = b.dataset.csf; saveS(); draw() });
@@ -1445,3 +1472,18 @@ function sitesSheet(){ const l = sites();
   $('.sheet').addEventListener('click', e => { const up = e.target.closest('[data-sup]'), del = e.target.closest('[data-sdel]'), pre = e.target.closest('[data-spre]');
     if(up){ const i = +up.dataset.sup, x = l.slice(); [x[i - 1], x[i]] = [x[i], x[i - 1]]; save(x) } if(del){ const x = l.slice(); x.splice(+del.dataset.sdel, 1); save(x) }
     if(pre) save(l.concat(SITE_PRESETS.find(p => p.name === pre.dataset.spre))) }) }
+
+/* the series page fetches the whole list by itself (once): find the series on Comic Vine if needed, then all its issues */
+const SERLOAD = {};
+const grVid = g => { const b = (g.all || g.items || []).find(x => x.cv && x.cv.id); return b ? b.cv.id : 0 };
+async function serEnsure(sh, g){ const k = sh + '|' + g.key; if(SERLOAD[k] === 'busy') return; SERLOAD[k] = 'busy';
+  const say = t => { const el = $('#serload'); if(el) el.textContent = t };
+  try{ let vid = grVid(g);
+    if(!vid){ say('Finding this series on Comic Vine…'); const books = g.items.filter(b => cvName(b)); if(!books.length){ SERLOAD[k] = 'none'; return }
+      const hit = await cvSeries(books); if(!hit.id){ SERLOAD[k] = 'none'; return redrawIf(g) } await cvApply(books, hit, false); regroup(); vid = hit.id }
+    if(!COLS[vid]){ say('Getting every issue from Comic Vine…'); const b = (g.all || g.items).find(x => x.cv && x.cv.id === vid) || g.items[0];
+      await colAdd(sh, {id:vid, name:b.cv ? b.cv.name : g.name, start:b.cv ? b.cv.start : '', pub:b.cvPub || publisherOf(b)}, true) }
+    SERLOAD[k] = 'done' }
+  catch(e){ SERLOAD[k] = 'err:' + (e.message || String(e)); LE('cv', 'series list ' + g.name, e) }
+  redrawIf(g) }
+function redrawIf(g){ const v = cur(); if(v.v === 'group' && (v.key === g.key || (groupByKey(v.shelf, v.key) || {}).name === g.name)) draw(); else if(v.v === 'shelf') draw() }
