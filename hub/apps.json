@@ -22,7 +22,7 @@
     },
     {
      "path": "hub/nvpc.js",
-     "size": 5871
+     "size": 6307
     },
     {
      "path": "hub/nvgroups.js",
@@ -31,10 +31,10 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 76681,
-   "hash": "a03d485d346c",
-   "version": "2026.10.16.1416",
-   "updated": "2026-10-16"
+   "size": 77117,
+   "hash": "9e42ec35a205",
+   "version": "2026.10.19.1203",
+   "updated": "2026-10-19"
   },
   {
    "id": "scanner",
@@ -330,18 +330,32 @@
   {
    "id": "cinema",
    "name": "Cinema",
-   "desc": "Movies, TV shows, cartoons and anime, each on its own shelf",
+   "desc": "Movies, TV shows, cartoons and anime, each on its own shelf, with one video player (phone, PC or saved for a trip)",
    "color": "#3a1620",
-   "soon": true,
-   "files": [],
+   "files": [
+    {
+     "path": "cinema/index.html",
+     "size": 20702
+    },
+    {
+     "path": "cinema/app.js",
+     "size": 159559
+    },
+    {
+     "path": "cinema/manifest.webmanifest",
+     "size": 548
+    }
+   ],
    "provides": [
     "video"
    ],
    "uses": [],
-   "size": 0,
-   "hash": "e3b0c44298fc",
-   "version": "2026.10.12.1325",
-   "updated": "2026-10-12"
+   "entry": "cinema/?nv=hub",
+   "keepsData": "Your list, what you watched, groups and TMDB key stay on this device. Video files are never deleted.",
+   "size": 180809,
+   "hash": "7a2b03101e92",
+   "version": "2026.10.19.1203",
+   "updated": "2026-10-19"
   },
   {
    "id": "boardgames",
