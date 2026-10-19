@@ -305,7 +305,7 @@ async function readMeta(src, name, dir){
 
 /* ---------- library in memory ---------- */
 let BOOKS = [], BK = {}, STATE = {};
-async function loadLib(){ BOOKS = await dbAll('books'); BK = Object.fromEntries(BOOKS.map(b => [b.id, b])); STATE = {}; for(const s of await dbAll('state')) STATE[s.id] = s;
+async function loadLib(){ await loadCols(); BOOKS = await dbAll('books'); BK = Object.fromEntries(BOOKS.map(b => [b.id, b])); STATE = {}; for(const s of await dbAll('state')) STATE[s.id] = s;
   for(const id of await tx('covers', 'readonly', st => st.getAllKeys())) COV.add(id) }
 const st = id => STATE[id] || (STATE[id] = {id, page:0, pages:0, last:0, finished:false, marks:[]});
 const stT = {}; function saveState(id, now){ clearTimeout(stT[id]); const go = () => dbPut('state', st(id)).catch(() => {}); if(now) return go(); stT[id] = setTimeout(go, 800) }
@@ -529,6 +529,7 @@ const passFilter = (b, f) => f === 'nopub' ? !publisherOf(b) : f === 'reading' ?
 
 function draw(){
   const v = cur(), body = $('#body'); $('#vback').hidden = V.length < 2; $('#addbtn').hidden = !(v.v === 'shelf' || v.v === 'group');
+  if(v.v === 'col' || v.v === 'colser') $('#addbtn').hidden = true;
   $('#hubback').hidden = !(fromHub() && V.length < 2);
   let h = '';
   if(v.v === 'shelves'){ $('#vtitle').textContent = 'Bookcase'; document.title = 'Nightvault Bookcase';
@@ -547,6 +548,7 @@ function draw(){
   if(v.v === 'shelf'){ const s = shelfOf(v.shelf), all = inShelf(s.id), q = norm(Q[s.id] || ''), f = S.filter[s.id] || 'all', G = grOf(s.id);
     $('#vtitle').textContent = s.name; document.title = s.name + ' · Bookcase';
     if(!all.length){ body.innerHTML = `<div class="empty">${shelfIcon(s, 48)}<h2 style="margin:8px 0 4px;font-size:18px">No ${esc(s.name.toLowerCase())} yet</h2><p class="muted small" style="margin:0 0 14px">${NvFiles ? 'Tap <b>Add</b> and pick the folder on this phone where they are. Nothing is copied.' : 'Tap <b>Add</b> and pick books. They are copied into the app.'}</p><button class="btn primary" id="emptyadd">Add ${esc(s.name.toLowerCase())}</button></div>`; $('#emptyadd').onclick = addSheet; return }
+    if(showColTabs(s.id)) h += colTabs(s.id, 'books');
     h += `<input type="search" id="q" placeholder="Search ${esc(s.name.toLowerCase())}, series, writers" value="${esc(Q[s.id] || '')}" style="margin:2px 0 8px">`;
     if(q){ const {groups:gs} = groupsOf(s.id), where = {}; for(const g of gs) for(const b of g.items) where[b.id] = G.path(g, gs);
       const gm = gs.filter(g => norm(g.name).includes(q)).slice(0, 12), bm = all.filter(b => norm([b.title, b.series, b.writer, b.artist, b.name, publisherOf(b)].join(' ')).includes(q)).sort(seriesOrder);
@@ -575,12 +577,15 @@ function draw(){
       <div class="muted small">${esc(G.label(g))} · ${(g.kids || []).length ? plural(g.kids.length, 'group') + ' · ' : ''}${plural(all.length, 'book')}${rd ? ` · ${rd} read` : ''}</div>
       ${[...new Set(all.map(b => b.writer).filter(Boolean))].length === 1 ? `<div class="muted small">${esc(all.find(b => b.writer).writer)}</div>` : ''}</div></div>`;
     h += `<div class="mbar">${nextB ? `<button class="btn primary" data-read="${esc(nextB.id)}" style="flex:1;min-width:0"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${started(nextB) ? 'Continue' : 'Read'}: ${esc(g.kind === 'series' ? (nextB.vol || nextB.title) : dispTitle(nextB))}</span></button>` : ''}<button class="ib" id="gmenu" aria-label="More for this group">${IC_DOTS}</button></div>`;
+    { const cvb = g.kind === 'series' && all.find(b => b.cv && b.cv.id); if(cvb){ const c = COLS[cvb.cv.id], st = c && colStats(c); h += `<button class="btn" data-allis="${cvb.cv.id}" style="width:100%;margin-bottom:8px">${c ? `All issues · you have ${st.have} of ${st.total}` : 'All issues of this series (Comic Vine)'}</button>` } }
     h += `<div class="mbar">${sortSel('inside', 'grp:' + v.shelf + ':' + g.key)}<span style="flex:1"></span><button class="btn sm" data-selstart="1">Select</button></div>`;
     const kids = sortTiles(g.kids || [], sortOf('inside', 'grp:' + v.shelf + ':' + g.key)), k = sortOf('inside', 'grp:' + v.shelf + ':' + g.key), items = k === 'series' ? g.items.slice().sort(seriesOrder) : sortTiles(g.items, k);
     h += `<div class="grid">${G.pinFirst([...kids, ...items], x => (x.items ? 'gr:' + x.key : 'it:' + x.id)).map(x => x.items ? groupTile(v.shelf, x) : bookTile(x)).join('')}</div>`;
     if(!all.length) h += `<p class="muted small" style="margin-top:12px">Empty. Tap ⋯ → <b>Add books…</b> to put books in it.</p>`;
     body.innerHTML = h; lazyCovers(body); hookGrid(v.shelf); $('#gmenu').onclick = () => groupMenu(v.shelf, g); return }
-  if(v.v === 'book') return drawBook(v.id) }
+  if(v.v === 'book') return drawBook(v.id);
+  if(v.v === 'col') return drawCol(v);
+  if(v.v === 'colser') return drawColSer(v) }
 function contCard(b, withShelf){ const s = STATE[b.id], p = progress(b);
   return `<div class="cont" data-read="${esc(b.id)}">${coverHTML(b)}<div style="flex:1;min-width:0"><small>CONTINUE READING${withShelf ? ' · ' + esc(shelfOf(b.shelf).name.toUpperCase()) : ''}</small><b>${esc(dispTitle(b))}</b>
     <div class="muted small">${b.fmt === 'epub' && s.flow ? Math.round(p * 100) + '%' : `Page ${s.page + 1} of ${s.pages || b.pages || '?'}`}</div><div class="pbar"><i style="width:${Math.round(p * 100)}%"></i></div></div></div>` }
@@ -590,7 +595,7 @@ function storeLine(sh){ const bs = sh ? inShelf(sh) : BOOKS, cp = bs.filter(b =>
 /* clicks on the screens */
 $('#body').addEventListener('click', e => {
   if(selSkip){ selSkip = false; return }
-  const t = e.target, el = t.closest('[data-shelf],[data-book],[data-grp],[data-read],[data-filter],[data-selstart],[data-gotogrp],#newshelf,#newgrp');
+  const t = e.target, el = t.closest('[data-shelf],[data-book],[data-grp],[data-read],[data-filter],[data-selstart],[data-gotogrp],[data-tabgo],[data-col],[data-allis],#newshelf,#newgrp');
   if(!el) return; const v = cur();
   if(SEL && el.closest('.grid') && (el.dataset.book || el.dataset.grp)){ const id = el.dataset.book ? 'it:' + el.dataset.book : 'gr:' + el.dataset.grp; SEL.has(id) ? SEL.delete(id) : SEL.add(id); selDraw(); return }
   if(el.id === 'newshelf') return newShelf();
@@ -601,7 +606,11 @@ $('#body').addEventListener('click', e => {
   if(el.dataset.grp) return go({v:'group', shelf:v.shelf, key:el.dataset.grp});
   if(el.dataset.gotogrp){ V.pop(); if(cur().v !== 'group' || cur().key !== el.dataset.gotogrp) V.push({v:'group', shelf:v.shelf, key:el.dataset.gotogrp}); return draw() }
   if(el.dataset.filter){ S.filter[v.shelf] = el.dataset.filter; saveS(); return draw() }
-  if(el.dataset.selstart) return selStart() });
+  if(el.dataset.selstart) return selStart();
+  if(el.dataset.tabgo){ if(el.dataset.tabgo === 'col' && v.v !== 'col') go({v:'col', shelf:v.shelf}); else if(el.dataset.tabgo === 'books' && v.v === 'col'){ V.pop(); draw() } return }
+  if(el.dataset.col) return go({v:'colser', shelf:v.shelf, vid:+el.dataset.col});
+  if(el.dataset.allis){ const vid = +el.dataset.allis, b = BOOKS.find(x => x.cv && x.cv.id === vid); if(COLS[vid]) return go({v:'colser', shelf:v.shelf, vid});
+    colAdd(v.shelf, {id:vid, name:b.cv.name, start:b.cv.start, pub:b.cvPub || publisherOf(b)}).then(c => go({v:'colser', shelf:v.shelf, vid:c.vid})).catch(err => { closeSheet(); toast(err.message || String(err), 5000) }) } });
 $('#body').addEventListener('change', e => { const t = e.target, v = cur();
   if(t.dataset.sort){ S.sort[t.dataset.skey] = t.value; saveS(); draw() }
   if(t.id === 'grouped'){ S.grouped[v.shelf] = t.value === '1'; saveS(); draw() } });
@@ -1158,13 +1167,14 @@ function appSettings(){ const all = shelves(true);
   sheet(`<h3>Bookcase</h3><div class="sec" style="margin-top:4px">Shelves (tap ↑ to move one up)</div>
     ${all.map((s, i) => `<div class="li" style="cursor:default"><span style="width:30px;display:flex;justify-content:center">${shelfIcon(s, 20)}</span><div class="n"><div>${esc(s.name)}</div><div class="s">${plural(inShelf(s.id).length, 'book')}${s.hidden ? ' · hidden' : ''}</div></div><button class="btn sm" data-up="${i}" ${i ? '' : 'disabled'}>↑</button><button class="btn sm" data-eye="${esc(s.id)}">${s.hidden ? 'Show' : 'Hide'}</button></div>`).join('')}
     <div class="mlist" style="margin-top:10px"><button class="btn" id="as_new">+ New shelf</button></div>
+    <div class="sec">Find it</div><div class="mlist"><button class="btn" id="as_sites">Where to look for a book (${sites().length})</button></div>
     <div class="sec">Space</div><p class="muted small" id="as_space">…</p>
     <p class="muted small">Problems? Switch on <b>Debug mode</b> at the bottom of The Nightvault and send the log.</p>`);
   (async () => { try{ const e = await navigator.storage.estimate(), cp = BOOKS.filter(b => b.src.kind === 'copy'); $('#as_space').textContent = `${plural(BOOKS.length, 'book')} · ${plural(cp.length, 'copy', 'copies')} in the app (${mb(cp.reduce((a, b) => a + (b.size || 0), 0))}) · ${mb(Math.max(0, e.quota - e.usage))} free for the app` }catch(e){ $('#as_space').textContent = plural(BOOKS.length, 'book') } })();
   $('.sheet').addEventListener('click', e => { const u = e.target.closest('[data-up]'), ey = e.target.closest('[data-eye]');
     if(u){ const ids = shelves(true).map(s => s.id), i = +u.dataset.up; [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]]; const own = lsGet('nvBooks.shelves', {}); own._order = ids; lsSet('nvBooks.shelves', own); appSettings(); draw() }
     if(ey){ const s = shelfOf(ey.dataset.eye); shelfSet(s.id, {hidden:!s.hidden}); appSettings(); draw() } });
-  $('#as_new').onclick = () => newShelf() }
+  $('#as_new').onclick = () => newShelf(); $('#as_sites').onclick = () => sitesSheet() }
 $('#setbtn').onclick = () => { const v = cur(); if(v.v === 'shelves') appSettings(); else shelfSettings(v.shelf || (BK[v.id] || {}).shelf) };
 $('#addbtn').onclick = () => addSheet();
 
@@ -1285,3 +1295,135 @@ async function cvChoose(b){
         $('#cvst').textContent = 'Saving…'; try{ await cvApply(bs, hit, true) }catch(err){ toast(err.message || String(err), 5000) } regroup(); closeSheet(); draw(); toast(`${plural(bs.length, 'book')}: ${hit.pub || '?'} · ${hit.name} (${hit.start || '?'})`, 4000) } }
     catch(e){ $('#cvst').textContent = e.message || String(e) } };
   $('#cvgo').onclick = run; $('#cvq').onkeydown = e => { if(e.key === 'Enter') run() }; run() }
+
+/* =====================================================================================================================
+   COLLECTION LISTS (like the card binder): every issue of a series from Comic Vine – grey when you don't have it, in colour when you
+   do, with a D badge (digital: a file in Bookcase) and a P badge (paper: ticked by hand, with an optional price).
+   Stored in IndexedDB kv as 'col:<Comic Vine series id>' = {id, vid, shelf, name, start, pub, count, issues:[{num, label, name, date, img, thumb}],
+   phys:{'<num>':{price, at}}, at}. Digital = a book of this shelf with b.cv.id = vid (or the same series name when it was never looked up).
+   ===================================================================================================================== */
+let COLS = {};
+async function loadCols(){ COLS = {}; for(const r of await dbAll('kv')) if(String(r.id).startsWith('col:')) COLS[r.vid] = r }
+const colSave = c => dbPut('kv', c);
+const colsOf = sh => Object.values(COLS).filter(c => c.shelf === sh);
+const numKey = n => String(parseFloat(n));
+/* your digital copies of a list: number → book */
+function colDigital(c){ const m = {}; for(const b of inShelf(c.shelf)){ if(b.num == null) continue;
+    if((b.cv && b.cv.id === c.vid) || (!b.cv && b.series && norm(b.series) === norm(c.name))) if(!m[numKey(b.num)]) m[numKey(b.num)] = b }
+  return m }
+function colStats(c){ const d = colDigital(c), have = c.issues.filter(i => d[numKey(i.num)] || (c.phys || {})[numKey(i.num)]).length,
+    price = Object.values(c.phys || {}).reduce((a, x) => a + (+x.price || 0), 0);
+  return {have, total:c.issues.length, dig:c.issues.filter(i => d[numKey(i.num)]).length, phys:c.issues.filter(i => (c.phys || {})[numKey(i.num)]).length, price} }
+const money = n => n ? '€ ' + n.toFixed(2).replace('.', ',') : '';
+/* all issues of a Comic Vine series (100 per request) */
+async function cvAllIssues(vid, onPage){ const out = []; for(let off = 0; off < 2000; off += 100){
+    const j = await cvGet('issues', {filter:'volume:' + vid, sort:'cover_date:asc', limit:100, offset:off, field_list:'id,issue_number,name,cover_date,image'});
+    for(const i of j.results || []){ const n = parseFloat(i.issue_number); out.push({num:isNaN(n) ? out.length + 1 : n, label:'#' + i.issue_number, name:i.name || '', date:i.cover_date || '', img:i.image && (i.image.medium_url || i.image.small_url) || '', thumb:i.image && (i.image.small_url || i.image.thumb_url) || ''}) }
+    onPage && onPage(out.length, j.number_of_total_results);
+    if(!j.results || j.results.length < 100 || out.length >= (j.number_of_total_results || 0)) break }
+  return out.sort((a, b) => a.num - b.num) }
+async function colAdd(sh, v, quiet){ /* v: {id, name, start_year|start, publisher|pub, count_of_issues|count} */
+  const vid = v.id; if(COLS[vid]) return COLS[vid];
+  if(!quiet) sheet(`<h3>Getting the issues of ${esc(v.name)}…</h3><div class="prog busy"><i></i></div><div class="muted small" id="cas"></div>`, true);
+  const issues = await cvAllIssues(vid, (n, t) => { const s = $('#cas'); if(s) s.textContent = `${n} of ${t || '?'} issues` });
+  const c = {id:'col:' + vid, vid, shelf:sh, name:v.name, start:v.start_year || v.start || '', pub:(v.publisher && v.publisher.name) || v.pub || '', count:issues.length, issues, phys:{}, at:Date.now()};
+  COLS[vid] = c; await colSave(c); if(!quiet) closeSheet(); return c }
+
+/* the Collection lists page of a shelf: per publisher, a tile per series with "12 of 40" */
+function colTile(c){ const st = colStats(c), d = colDigital(c), first = c.issues.find(i => d[numKey(i.num)]) ;
+  const cov = first ? coverHTML(d[numKey(first.num)]) : `<div class="cv">${c.issues[0] && c.issues[0].thumb ? `<img class="b" src="${esc(c.issues[0].thumb)}" alt="" loading="lazy"><img class="f" src="${esc(c.issues[0].thumb)}" alt="" loading="lazy">` : phHTML({title:c.name, shelf:c.shelf}, c.name)}</div>`;
+  return `<div class="bk stack" data-col="${c.vid}">${cov}<span class="cdl">${st.have} of ${st.total}</span><div class="pbar"><i style="width:${st.total ? Math.round(100 * st.have / st.total) : 0}%"></i></div><div class="t">${esc(c.name)}${c.start ? ` (${esc(c.start)})` : ''}</div>
+    <div class="a">${[st.dig ? st.dig + ' D' : '', st.phys ? st.phys + ' P' : '', money(st.price)].filter(Boolean).join(' · ') || 'none yet'}</div></div>` }
+function drawCol(v){ const s = shelfOf(v.shelf), cs = colsOf(v.shelf), q = norm(Q['col:' + v.shelf] || '');
+  $('#vtitle').textContent = s.name; document.title = 'Collection · ' + s.name;
+  let h = colTabs(v.shelf, 'col');
+  h += `<div class="mbar"><button class="btn primary sm" id="coladd">+ Add a series</button><button class="btn sm" id="colmine">Add the series I have</button></div>`;
+  if(!cs.length){ h += `<div class="empty"><h2 style="margin:4px 0;font-size:17px">No collection lists yet</h2><p class="muted small" style="margin:0 0 6px">A list shows every issue of a series from Comic Vine: grey when you don't have it, in colour when you do (D = digital, P = on paper).</p><p class="muted small" style="margin:0">Tap <b>+ Add a series</b> to pick one, or <b>Add the series I have</b> for the series of your comics that were looked up on Comic Vine.</p></div>`; $('#body').innerHTML = h; hookCol(v); return }
+  const all = cs.map(colStats), tot = all.reduce((a, x) => ({have:a.have + x.have, total:a.total + x.total, price:a.price + x.price}), {have:0, total:0, price:0});
+  h += `<input type="search" id="colq" placeholder="Search your lists" value="${esc(Q['col:' + v.shelf] || '')}" style="margin:2px 0 8px"><div class="mtot">${plural(cs.length, 'series', 'series')} · ${tot.have} of ${tot.total} issues${tot.price ? ' · paper ' + money(tot.price) : ''}</div>`;
+  const byPub = {}; for(const c of cs) if(!q || norm(c.name + ' ' + c.pub).includes(q)) (byPub[cleanPub(c.pub) || 'Other'] = byPub[cleanPub(c.pub) || 'Other'] || []).push(c);
+  for(const p of Object.keys(byPub).sort(coll.compare)) h += `<div class="sec">${esc(p)}</div><div class="grid">${byPub[p].sort((a, b) => coll.compare(a.name, b.name) || (+a.start || 0) - (+b.start || 0)).map(colTile).join('')}</div>`;
+  $('#body').innerHTML = h; lazyCovers($('#body')); hookCol(v) }
+const colTabs = (sh, on) => `<div class="chips"><button class="chip ${on === 'books' ? 'on' : ''}" data-tabgo="books">My ${esc(shelfOf(sh).name.toLowerCase())}</button><button class="chip ${on === 'col' ? 'on' : ''}" data-tabgo="col">Collection lists${colsOf(sh).length ? ' (' + colsOf(sh).length + ')' : ''}</button></div>`;
+const showColTabs = sh => colsOf(sh).length || shelfOf(sh).byPub;
+function hookCol(v){ const a = $('#coladd'); if(a) a.onclick = () => colSearch(v.shelf); const m = $('#colmine'); if(m) m.onclick = () => colMine(v.shelf);
+  const q = $('#colq'); if(q) q.oninput = () => { Q['col:' + v.shelf] = q.value; clearTimeout(q._t); q._t = setTimeout(() => { const p = q.selectionStart; draw(); const n = $('#colq'); if(n){ n.focus(); try{ n.setSelectionRange(p, p) }catch(e){} } }, 250) } }
+/* + Add a series: search Comic Vine, tap one */
+function colSearch(sh, pre){ if(!CV.key()) return cvKeySheet(() => colSearch(sh, pre));
+  sheet(`<h3>Add a series</h3><div style="display:flex;gap:8px"><input type="search" id="csq" placeholder="Series name, like Saga or Amazing Spider-Man" value="${esc(pre || '')}"><button class="btn primary" id="csgo">Search</button></div>
+    <div class="chips" id="cspubs"></div><div class="muted small" id="csst" style="margin:6px 0"></div><div id="csres"></div>`, true);
+  let res = [], pub = '';
+  const show = () => { const list = res.filter(v => !pub || cleanPub(v.publisher && v.publisher.name) === pub);
+    const pubs = [...new Set(res.map(v => cleanPub(v.publisher && v.publisher.name)).filter(Boolean))].sort(coll.compare);
+    $('#cspubs').innerHTML = pubs.length > 1 ? [''].concat(pubs).map(p => `<button class="chip ${p === pub ? 'on' : ''}" data-cpub="${esc(p)}">${p ? esc(p) : 'All publishers'}</button>`).join('') : '';
+    $('#csres').innerHTML = list.map(v => `<div class="li" data-cadd="${v.id}"><span class="th"><div class="cv">${v.image && v.image.thumb_url ? `<img class="f" src="${esc(v.image.thumb_url)}" alt="" style="object-fit:cover">` : ''}</div></span><div class="n"><div>${esc(v.name)} (${v.start_year || '?'})</div><div class="s">${esc(cleanPub(v.publisher && v.publisher.name) || '?')} · ${plural(v.count_of_issues || 0, 'issue')}</div></div><span class="r">${COLS[v.id] ? '✓ in your lists' : ''}</span></div>`).join('') };
+  const run = async () => { const q = $('#csq').value.trim(); if(!q) return; $('#csst').textContent = 'Searching…'; $('#csres').innerHTML = '';
+    try{ const j = await cvGet('search', {resources:'volume', query:q, limit:40, field_list:'id,name,start_year,publisher,count_of_issues,image'}); res = (j.results || []).sort((a, b) => (b.count_of_issues || 0) - (a.count_of_issues || 0)); pub = '';
+      $('#csst').textContent = res.length ? 'Tap a series to add its list' : 'Nothing found - try other words'; show() }catch(e){ $('#csst').textContent = e.message || String(e) } };
+  $('#csgo').onclick = run; $('#csq').onkeydown = e => { if(e.key === 'Enter') run() }; setTimeout(() => $('#csq').focus(), 50); if(pre) run();
+  $('.sheet').addEventListener('click', async e => { const p = e.target.closest('[data-cpub]'); if(p){ pub = p.dataset.cpub; return show() }
+    const r = e.target.closest('[data-cadd]'); if(!r) return; const v = res.find(x => String(x.id) === r.dataset.cadd);
+    try{ const c = await colAdd(sh, v); go({v:'colser', shelf:sh, vid:c.vid}) }catch(err){ toast(err.message || String(err), 5000) } }) }
+/* Add the series I have: every Comic Vine series of the comics on this shelf */
+async function colMine(sh){ if(!CV.key()) return cvKeySheet(() => colMine(sh));
+  const want = {}; for(const b of inShelf(sh)) if(b.cv && b.cv.id && !COLS[b.cv.id]) want[b.cv.id] = {id:b.cv.id, name:b.cv.name, start:b.cv.start, pub:b.cvPub || publisherOf(b)};
+  const list = Object.values(want);
+  if(!list.length){ toast(inShelf(sh).some(b => b.cv) ? 'All your looked-up series already have a list' : 'First look your comics up on Comic Vine (shelf ⚙ → Online)', 5000); return }
+  awake(true); let stop = false, n = 0;
+  sheet(`<h3>Making ${plural(list.length, 'list')}…</h3><div class="prog"><i id="cmp"></i></div><div class="muted small" id="cms"></div><button class="btn" id="cmstop" style="width:100%;margin-top:8px">Stop</button>`, true);
+  $('#cmstop').onclick = () => { stop = true };
+  for(const v of list){ if(stop) break; try{ await colAdd(sh, v, true) }catch(e){ toast(e.message || String(e), 5000); LE('col', v.name, e); if(e.limit || /key/.test(e.message || '')) break }
+    n++; const p = $('#cmp'), s = $('#cms'); if(p) p.style.width = (100 * n / list.length) + '%'; if(s) s.textContent = `${n} of ${list.length} · ${v.name}` }
+  awake(false); closeSheet(); draw(); toast(`${plural(n, 'list')} made`) }
+
+/* one series: every issue */
+function drawColSer(v){ const c = COLS[v.vid]; if(!c){ V.pop(); return draw() } const d = colDigital(c), st = colStats(c), f = S.filter['colser'] || 'all';
+  $('#vtitle').textContent = ''; document.title = c.name + ' · Collection';
+  let h = `<div class="alhead" style="align-items:center"><div style="min-width:0;flex:1"><b>${esc(c.name)}${c.start ? ` (${esc(c.start)})` : ''}</b><div class="muted small">${esc(cleanPub(c.pub) || '')}${c.pub ? ' · ' : ''}${st.have} of ${st.total} issues</div>
+    <div class="muted small">${st.dig} digital · ${st.phys} on paper${st.price ? ' · ' + money(st.price) : ''}</div><div class="pbar" style="max-width:260px"><i style="width:${st.total ? Math.round(100 * st.have / st.total) : 0}%"></i></div></div><button class="ib" id="csmenu" aria-label="More for this list">${IC_DOTS}</button></div>`;
+  h += `<div class="chips">${[['all', 'All'], ['have', 'I have'], ['miss', 'Missing'], ['dig', 'Digital'], ['phys', 'On paper']].map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-csf="${k}">${t}</button>`).join('')}</div>`;
+  const P = c.phys || {}, pass = i => { const k = numKey(i.num), D = !!d[k], Pp = !!P[k]; return f === 'have' ? D || Pp : f === 'miss' ? !D && !Pp : f === 'dig' ? D : f === 'phys' ? Pp : true };
+  h += `<div class="grid">${c.issues.filter(pass).map(i => { const k = numKey(i.num), b = d[k], p = P[k], own = b || p;
+      const cov = b ? coverHTML(b) : `<div class="cv">${i.thumb ? `<img class="b" src="${esc(i.thumb)}" alt="" loading="lazy"><img class="f" src="${esc(i.thumb)}" alt="" loading="lazy">` : phHTML({title:c.name, shelf:c.shelf}, c.name + ' ' + i.label)}</div>`;
+      return `<div class="bk iss ${own ? '' : 'miss'}" data-iss="${esc(k)}">${cov.replace(/<\/div>$/, `<span class="vol">${esc(i.label)}</span>${b ? '<span class="bd dg">D</span>' : ''}${p ? `<span class="bd pp${b ? '' : ' solo'}">P</span>` : ''}</div>`)}<div class="t">${esc(i.name || c.name + ' ' + i.label)}</div><div class="a">${esc([i.date.slice(0, 4), p && p.price ? money(+p.price) : ''].filter(Boolean).join(' · ') || ' ')}</div></div>` }).join('')}</div>`;
+  $('#body').innerHTML = h; lazyCovers($('#body'));
+  $('#csmenu').onclick = () => colMenu(c);
+  $('#body').querySelectorAll('[data-csf]').forEach(b => b.onclick = () => { S.filter['colser'] = b.dataset.csf; saveS(); draw() });
+  $('#body').querySelectorAll('[data-iss]').forEach(el => el.onclick = () => issueSheet(c, c.issues.find(i => numKey(i.num) === el.dataset.iss))) }
+function issueSheet(c, i){ const k = numKey(i.num), b = colDigital(c)[k], p = (c.phys || {})[k], title = `${c.name} ${i.label}`;
+  sheet(`<div style="display:flex;gap:14px;align-items:flex-start">${i.img ? `<img src="${esc(i.img)}" alt="" style="width:110px;border-radius:8px;flex:none">` : ''}<div style="min-width:0"><h3 style="margin:0 0 4px">${esc(title)}</h3>
+      ${i.name ? `<div class="muted small">${esc(i.name)}</div>` : ''}<div class="muted small">${esc(i.date || '')}</div>
+      <div style="margin-top:8px;display:flex;gap:6px">${b ? '<span class="bd dg" style="position:static">D</span> <span class="small">Digital – in Bookcase</span>' : ''}${p ? '<span class="bd pp" style="position:static">P</span> <span class="small">On paper</span>' : ''}${!b && !p ? '<span class="small muted">You don\'t have this one yet</span>' : ''}</div></div></div>
+    ${b ? `<button class="btn primary" id="isopen" style="width:100%;margin-top:12px">${started(b) ? 'Continue reading' : 'Read'}</button>` : ''}
+    <div class="opt" style="margin-top:8px"><label for="isph">I have it on paper</label><input type="checkbox" id="isph" ${p ? 'checked' : ''}></div>
+    <div class="opt" id="isprow" ${p ? '' : 'hidden'}><label for="ispr">Price or value (optional)</label><input type="number" id="ispr" step="0.01" min="0" value="${p && p.price ? esc(p.price) : ''}" style="width:110px" placeholder="€"></div>
+    ${!b ? `<div class="sec">Find it</div><div class="mlist">${sites().map((x, n) => `<button class="btn" data-site="${n}">Find it on ${esc(x.name)}</button>`).join('')}<button class="btn" id="iscopy">Copy “${esc(title)}”</button></div>` : ''}`);
+  if($('#isopen')) $('#isopen').onclick = () => { closeSheet(); openReader(b) };
+  const saveP = async () => { c.phys = c.phys || {}; if($('#isph').checked){ c.phys[k] = {price:$('#ispr').value.trim(), at:(c.phys[k] || {}).at || Date.now()} } else delete c.phys[k]; await colSave(c); draw() };
+  $('#isph').onchange = () => { $('#isprow').hidden = !$('#isph').checked; saveP() }; $('#ispr').onchange = saveP;
+  if($('#iscopy')) $('#iscopy').onclick = () => copyText(title);
+  $('.sheet').addEventListener('click', e => { const s = e.target.closest('[data-site]'); if(s) openSite(sites()[+s.dataset.site], title) }) }
+function colMenu(c){ sheet(`<h3>${esc(c.name)}</h3><div class="mlist"><button class="btn" id="cmphys">Mark issues on paper…</button><button class="btn" id="cmnew">Check for new issues</button><button class="btn" id="cmcopy">Copy the missing issues as a list</button><button class="btn danger" id="cmdel">Remove this list</button></div><p class="muted small">Removing the list keeps your comics.</p>`);
+  $('#cmphys').onclick = async () => { const t = await ask('Which issues do you have on paper?', 'Like 1-12, 15, 20', '', 'Mark them'); if(!t) return; const want = new Set();
+    for(const part of t.split(/[,; ]+/)){ const m = part.match(/^#?(\d+(?:\.\d+)?)(?:-#?(\d+(?:\.\d+)?))?$/); if(!m) continue; const a = +m[1], z = m[2] != null ? +m[2] : a; for(const i of c.issues) if(i.num >= a && i.num <= z) want.add(numKey(i.num)) }
+    c.phys = c.phys || {}; for(const k of want) c.phys[k] = c.phys[k] || {price:'', at:Date.now()}; await colSave(c); draw(); toast(`${plural(want.size, 'issue')} marked as on paper`) };
+  $('#cmnew').onclick = async () => { closeSheet(); try{ const old = c.issues.length; c.issues = await cvAllIssues(c.vid); c.count = c.issues.length; c.at = Date.now(); await colSave(c); draw(); toast(c.issues.length > old ? `${plural(c.issues.length - old, 'new issue')}` : 'No new issues') }catch(e){ toast(e.message || String(e), 5000) } };
+  $('#cmcopy').onclick = () => { const d = colDigital(c), P = c.phys || {}; copyText(c.issues.filter(i => !d[numKey(i.num)] && !P[numKey(i.num)]).map(i => `${c.name} ${i.label}`).join('\n')) };
+  $('#cmdel').onclick = async () => { if(!confirm(`Remove the list “${c.name}”? Your comics stay.`)) return; await dbDel('kv', c.id); delete COLS[c.vid]; closeSheet(); V.pop(); draw() } }
+
+/* "Find it on …": websites the owner picks himself (app ⚙ → Where to look), {q} = what is searched; and "Copy" for anywhere else */
+const SITE_PRESETS = [{name:'Google', url:'https://www.google.com/search?q={q}'}, {name:'Humble Bundle', url:'https://www.humblebundle.com/store/search?search={q}'},
+  {name:'DriveThruComics', url:'https://www.drivethrucomics.com/browse.php?keywords={q}'}, {name:'Amazon', url:'https://www.amazon.com/s?k={q}'}];
+const sites = () => lsGet('nvBooks.sites', null) || SITE_PRESETS.slice(0, 1);
+function openSite(s, q){ const url = s.url.includes('{q}') ? s.url.split('{q}').join(encodeURIComponent(q)) : s.url + encodeURIComponent(q); L('find', s.name + ': ' + q); window.open(url, '_blank') }
+async function copyText(t){ try{ await navigator.clipboard.writeText(t); toast('Copied') }catch(e){ const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try{ document.execCommand('copy'); toast('Copied') }catch(x){ toast('Could not copy') } a.remove() } }
+function sitesSheet(){ const l = sites();
+  sheet(`<h3>Where to look for a book</h3><p class="muted small" style="margin:0 0 8px">These show as “Find it on …” for a comic you don't have yet. Add your own: a name, and the site's search address with <b>{q}</b> where the title goes (search something on the site, copy the address and replace the words with {q}).</p>
+    ${l.map((s, i) => `<div class="li" style="cursor:default"><div class="n"><div>${esc(s.name)}</div><div class="s" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.url)}</div></div><button class="btn sm" data-sup="${i}" ${i ? '' : 'disabled'}>↑</button><button class="btn sm danger" data-sdel="${i}">✕</button></div>`).join('') || '<p class="muted small">None – add one below.</p>'}
+    <div class="sec">Add a site</div><div class="field"><input type="text" id="sn" placeholder="Name, like My comic shop"></div><div class="field"><input type="text" id="su" placeholder="https://…/search?q={q}" autocapitalize="off" spellcheck="false"></div><button class="btn primary" id="sadd" style="width:100%">Add</button>
+    <div class="sec">Or add a ready one</div><div class="chips">${SITE_PRESETS.filter(p => !l.some(x => x.url === p.url)).map(p => `<button class="chip" data-spre="${esc(p.name)}">${esc(p.name)}</button>`).join('')}</div>`);
+  const save = x => { lsSet('nvBooks.sites', x); sitesSheet() };
+  $('#sadd').onclick = () => { const n = $('#sn').value.trim(), u = $('#su').value.trim(); if(!n || !/^https?:\/\//i.test(u)){ toast('Type a name and an address that starts with https://', 4000); return } save(l.concat({name:n, url:u})) };
+  $('.sheet').addEventListener('click', e => { const up = e.target.closest('[data-sup]'), del = e.target.closest('[data-sdel]'), pre = e.target.closest('[data-spre]');
+    if(up){ const i = +up.dataset.sup, x = l.slice(); [x[i - 1], x[i]] = [x[i], x[i - 1]]; save(x) } if(del){ const x = l.slice(); x.splice(+del.dataset.sdel, 1); save(x) }
+    if(pre) save(l.concat(SITE_PRESETS.find(p => p.name === pre.dataset.spre))) }) }

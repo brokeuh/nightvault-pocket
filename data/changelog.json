@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 78,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: collection lists for comics",
+   "items": [
+    "New on the Comics shelf: Collection lists. A list shows every issue of a series from Comic Vine, per publisher - grey when you don't have it, in colour when you do.",
+    "Two badges: D = digital (set by itself when Bookcase has the comic) and P = on paper (tick it, or mark many at once like 1-12, 15). A price per paper comic is optional, with totals.",
+    "Add a series with \"+ Add a series\", or \"Add the series I have\" for everything that was looked up on Comic Vine. A series also shows \"All issues\" at the top.",
+    "Tap a missing issue: \"Find it on …\" opens your own search sites (Bookcase ⚙ → Find it), or copy its title to search anywhere."
+   ]
+  },
+  {
    "id": 77,
    "date": "2026-10-19",
    "where": [

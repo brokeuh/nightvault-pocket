@@ -79,6 +79,13 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 .pbar{height:4px;border-radius:99px;background:#232b36;overflow:hidden;margin-top:5px}.pbar i{display:block;height:100%;background:var(--accent)}
 .cv .done{position:absolute;top:6px;right:6px;z-index:1;background:#0b0e13d9;color:var(--accent);font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;border:1px solid #f0b46a55;pointer-events:none}
 .cv .vol{position:absolute;left:6px;bottom:6px;z-index:1;background:#0b0e13d9;color:#fff;font-size:11px;font-weight:800;padding:2px 7px;border-radius:7px;pointer-events:none}
+/* collection lists: missing issues grey, D (digital) and P (paper) badges */
+.bk.iss.miss .cv{filter:grayscale(1) brightness(.55);opacity:.7}
+.bk.iss.miss .t{color:var(--dim)}
+.bd{position:absolute;top:6px;width:22px;height:22px;border-radius:7px;font-size:11.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;z-index:2;pointer-events:none}
+.bd.dg{right:6px;background:#173a5a;color:#9fd0ff;border:1px solid #9fd0ff77}
+.bd.pp{right:32px;background:#3a2816;color:#f0b46a;border:1px solid #f0b46a77}
+.bd.pp.solo{right:6px}
 .bk.stack .cv,.stack .gcv{box-shadow:5px -5px 0 -1px #2a3442,10px -10px 0 -2px #1c2430}
 .bk.stack{padding-top:10px;padding-right:10px}
 .bk .cdl{position:absolute;top:7px;right:7px;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;font-size:10.5px!important;background:#0b0e13d9;color:#7fe3ff;font-size:11px;font-weight:800;letter-spacing:.3px;padding:3px 8px;border-radius:99px;border:1px solid #7fe3ff55;pointer-events:none}
