@@ -173,14 +173,19 @@
     {
       "id": "cinema",
       "name": "Cinema",
-      "desc": "Movies, TV shows, cartoons and anime, each on its own shelf",
+      "desc": "Movies, TV shows, cartoons and anime, each on its own shelf, with one video player (phone, PC or saved for a trip)",
       "color": "#3a1620",
-      "soon": true,
-      "files": [],
+      "files": [
+        "cinema/index.html",
+        "cinema/app.js",
+        "cinema/manifest.webmanifest"
+      ],
       "provides": [
         "video"
       ],
-      "uses": []
+      "uses": [],
+      "entry": "cinema/?nv=hub",
+      "keepsData": "Your list, what you watched, groups and TMDB key stay on this device. Video files are never deleted."
     },
     {
       "id": "boardgames",

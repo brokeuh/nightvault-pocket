@@ -3,6 +3,26 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 77,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "cinema"
+   ],
+   "title": "New: Nightvault Cinema",
+   "items": [
+    "Your movies, TV shows, cartoons and anime, each on its own shelf, with one video player. Find it as a new tile in The Nightvault (Apps → Cinema).",
+    "Add videos: pick a folder on the phone (nothing is copied) or copy files into the app. Names are read from the file names (Inception (2010), Doctor Who S01E05, Frieren - 05) and you check them first.",
+    "Your PC: the films and shows in the PC app's Watch collections show up by themselves when you are home. Videos the phone can't play (MKV with HEVC, DTS sound …) are converted by the PC while you watch. Needs the newest PC app files.",
+    "Save to phone: ⋯ → Save to phone copies a film or a whole season from the PC into a phone folder, for a plane or camping trip. Remove it again with ⋯ or in The Nightvault → My PC.",
+    "Remembers where you stopped (also on the PC), marks what you watched, plays the next episode by itself, subtitles (SRT, VTT, ASS and the PC's), speed, sound track.",
+    "Posters, story, film series and episode names from TMDB with your own free key (⚙ → TMDB). Film series become one tile, organised like Music: groups, groups inside groups, pins, Sort by."
+   ]
+  },
+  {
    "id": 76,
    "date": "2026-10-19",
    "where": [

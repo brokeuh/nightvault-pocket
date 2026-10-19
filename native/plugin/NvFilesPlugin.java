@@ -45,7 +45,7 @@ public class NvFilesPlugin extends Plugin {
     @PluginMethod
     public void pickFolder(PluginCall call) {
         Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         startActivityForResult(call, i, "picked");
     }
 
@@ -55,8 +55,12 @@ public class NvFilesPlugin extends Plugin {
         if (r.getResultCode() != Activity.RESULT_OK || r.getData() == null || r.getData().getData() == null) { call.reject("No folder picked", "cancel"); return; }
         Uri tree = r.getData().getData();
         try {
-            getContext().getContentResolver().takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        } catch (Exception e) { /* some file apps give no lasting permission: it then works until the app restarts */ }
+            // read + write, so "Save to phone" (NvPc.saveToFolder) and "Remove the phone copy" keep working after a restart
+            getContext().getContentResolver().takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        } catch (Exception e) {
+            try { getContext().getContentResolver().takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION); }
+            catch (Exception e2) { /* some file apps give no lasting permission: it then works until the app restarts */ }
+        }
         JSObject o = new JSObject();
         o.put("tree", tree.toString());
         o.put("name", nameOf(tree));
@@ -173,6 +177,20 @@ public class NvFilesPlugin extends Plugin {
         call.resolve();
     }
 
+    /** deletes one file in a picked folder (Cinema: "Remove the phone copy" of a video saved from the PC) */
+    @PluginMethod
+    public void remove(PluginCall call) {
+        String u = call.getString("uri", "");
+        new Thread(() -> {
+            try {
+                boolean ok = DocumentsContract.deleteDocument(getContext().getContentResolver(), Uri.parse(u));
+                JSObject o = new JSObject();
+                o.put("removed", ok);
+                call.resolve(o);
+            } catch (Exception e) { call.reject("Could not remove the file: " + e.getMessage()); }
+        }).start();
+    }
+
     /** a piece of a file, as base64 (for reading tags when the /_nvfile_/ address does not work) */
     @PluginMethod
     public void read(PluginCall call) {
@@ -245,6 +263,8 @@ public class NvFilesPlugin extends Plugin {
         MIME.put("aac", "audio/aac"); MIME.put("ogg", "audio/ogg"); MIME.put("oga", "audio/ogg"); MIME.put("opus", "audio/ogg");
         MIME.put("flac", "audio/flac"); MIME.put("wav", "audio/wav"); MIME.put("webm", "audio/webm"); MIME.put("mka", "audio/webm");
         MIME.put("jpg", "image/jpeg"); MIME.put("jpeg", "image/jpeg"); MIME.put("png", "image/png"); MIME.put("webp", "image/webp");
+        MIME.put("mkv", "video/x-matroska"); MIME.put("m4v", "video/mp4"); MIME.put("mov", "video/mp4"); MIME.put("avi", "video/x-msvideo");
+        MIME.put("ts", "video/mp2t"); MIME.put("3gp", "video/3gpp"); MIME.put("srt", "text/plain"); MIME.put("vtt", "text/vtt"); MIME.put("ass", "text/plain");
         MIME.put("pdf", "application/pdf"); MIME.put("epub", "application/epub+zip"); MIME.put("cbz", "application/zip");
     }
 

@@ -7,7 +7,8 @@
      NVPC.url(path)               – address for the page: NVPC.url('/nv/file?id=..') → '/_nvpc_/nv/file?id=..' (Android fetches it from the PC)
      NVPC.list(kind, onProgress)  – the PC's library of one kind ('music', later 'audiobooks', 'books', 'video'); waits while the PC builds it
      NVPC.offline                 – ONE list of offline copies for all apps (localStorage nvOffline):
-         add({app, id, title, size, n, del:[{db, store, ids}]})   – del says which stored records make up the copy, so any app
+         add({app, id, title, size, n, del:[{db, store, ids}], files:[uri]})   – del says which stored records make up the copy
+                                                                     (files = files saved into a phone folder, removed with NvFiles), so any app
          all() / of(app) / get(app, id) / keep(app, id) / remove(app, id) / size(app)  (and the hub can remove them)
    Android side: NvPcPlugin (set / get / forget / hello / saveToFolder, and the /_nvpc_/ address in MainActivity). */
 (function(){
@@ -58,6 +59,8 @@
       size(app){ return NVPC.offline.all().filter(x => !app || x.app === app).reduce((n, x) => n + (x.size || 0), 0) },
       /* removes the stored records the copy is made of (any app's, e.g. from The Nightvault's Downloads screen) */
       async remove(app, id){ const rec = NVPC.offline.get(app, id); if(!rec) return;
+        /* files saved into a phone folder (Cinema: films and episodes are too big for the app's own storage) */
+        if((rec.files || []).length && NATIVE) try{ const F = Capacitor.registerPlugin('NvFiles'); for(const u of rec.files) await F.remove({uri:u}).catch(() => {}) }catch(e){}
         for(const d of rec.del || []) await new Promise(ok => { try{ const r = indexedDB.open(d.db); r.onerror = () => ok();
           r.onsuccess = () => { const db = r.result; if(!db.objectStoreNames.contains(d.store)){ db.close(); return ok() }
             const t = db.transaction(d.store, 'readwrite'), st = t.objectStore(d.store); for(const k of d.ids || []) st.delete(k); t.oncomplete = t.onerror = t.onabort = () => { db.close(); ok() } } }catch(e){ ok() } });
