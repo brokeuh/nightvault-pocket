@@ -57,7 +57,7 @@ const SHELF_ICON = {
   colouring:'<path d="M18 3l3 3-9.5 9.5-4 1 1-4z"/><path d="M5 21c-1.5 0-2-1-2-2s1-2 2-2 2 1 2 2"/>',
   own:'<path d="M3 20h18"/><rect x="4" y="5" width="4" height="15" rx="1"/><rect x="9" y="8" width="4" height="12" rx="1"/><path d="M15.2 9.2l3.6-1 2.9 11-3.6 1z"/>'};
 const BASE_SHELVES = [
-  {id:'comics', name:'Comics', c:['#3a1626', '#1d1b33'], s:'#ff9db7'},
+  {id:'comics', name:'Comics', c:['#3a1626', '#1d1b33'], s:'#ff9db7', byPub:true},
   {id:'manga', name:'Manga', c:['#341a3a', '#1a1b33'], s:'#e0a8ff', rtl:true},
   {id:'books', name:'Books', c:['#3a2816', '#1d2236'], s:'#f0b46a', authors:true},
   {id:'rulebooks', name:'Rulebooks', c:['#16323a', '#18203a'], s:'#7fe3ff'},
@@ -206,7 +206,7 @@ async function epubOpen(z){
       if(ncx){ const d = xml(await z.text(ncx.href)); const walk = (el, dep) => { for(const np of [...el.children].filter(c => c.localName === 'navPoint')){ const t = np.querySelector('navLabel text'), c = np.querySelector('content'); if(c) toc.push({title:t ? t.textContent.trim() : '', href:resolve(ncx.href, c.getAttribute('src')), d:dep}); walk(np, dep + 1) } }; const nm = d.querySelector('navMap'); if(nm) walk(nm, 0) } } }catch(e){ LE('epub', 'table of contents', e) }
   toc = toc.map(t => Object.assign(t, {ch:spine.findIndex(s => s.href === t.href.split('#')[0])})).filter(t => t.ch >= 0);
   const fixed = meta('rendition:layout') === 'pre-paginated';
-  return {z, opfPath, man, spine, toc, fixed, cover, meta:{title:q('title'), writer, artist, year:(q('date').match(/\d{4}/) || [''])[0], desc:q('description').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(), series, num:idx ? parseFloat(idx) : null, lang:q('language')}} }
+  return {z, opfPath, man, spine, toc, fixed, cover, meta:{title:q('title'), publisher:q('publisher'), writer, artist, year:(q('date').match(/\d{4}/) || [''])[0], desc:q('description').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(), series, num:idx ? parseFloat(idx) : null, lang:q('language')}} }
 /* a picture EPUB (most manga / comic EPUBs): every chapter is one picture → read it with the page reader */
 async function epubPictures(ep){
   if(ep.spine.length < 2) return null; const pics = []; let looked = 0;
@@ -235,7 +235,7 @@ function parseName(file, dir){
 function comicInfo(text){ try{ const d = xml(text), g = n => { const el = d.querySelector(n); return el ? el.textContent.trim() : '' };
     const num = g('Number'), vol = g('Volume');
     return {title:g('Title'), series:g('Series'), num:num !== '' && !isNaN(parseFloat(num)) ? parseFloat(num) : vol !== '' && !isNaN(parseFloat(vol)) ? parseFloat(vol) : null,
-      vol:num ? '#' + num : vol ? 'Vol. ' + vol : '', writer:g('Writer'), artist:[g('Penciller'), g('Inker')].filter(Boolean)[0] || '', year:g('Year'), desc:g('Summary'), pages:parseInt(g('PageCount')) || 0,
+      vol:num ? '#' + num : vol ? 'Vol. ' + vol : '', publisher:g('Publisher') || g('Imprint'), writer:g('Writer'), artist:[g('Penciller'), g('Inker')].filter(Boolean)[0] || '', year:g('Year'), desc:g('Summary'), pages:parseInt(g('PageCount')) || 0,
       rtl:/righttoleft/i.test(g('Manga')) ? true : null, cover:(() => { const p = d.querySelector('Page[Type="FrontCover"]'); return p ? parseInt(p.getAttribute('Image')) : null })()} }catch(e){ return null } }
 
 /* ---------- covers: a small picture per book (about 400 px wide) ---------- */
@@ -280,21 +280,21 @@ async function openDoc(b){
 /* ---------- reading a new book's details and cover ---------- */
 const junkTitle = t => !t || t.length < 2 || /^(untitled|microsoft|document|adobe|pdf|scan|title|print|cover)\b/i.test(t) || /\.(docx?|indd|pdf|qxd|pub|rtf)$/i.test(t);
 async function readMeta(src, name, dir){
-  const fmt = await realFmt(src, name), p = parseName(name, dir), md = {fmt, series:p.series, num:p.num, vol:p.vol, title:p.title || (p.series ? '' : p.clean), year:p.year, writer:'', artist:'', desc:'', pages:0, rtl:null, cover:null};
+  const fmt = await realFmt(src, name), p = parseName(name, dir), md = {fmt, series:p.series, num:p.num, vol:p.vol, title:p.title || (p.series ? '' : p.clean), year:p.year, publisher:'', writer:'', artist:'', desc:'', pages:0, rtl:null, cover:null};
   if(!fmt) throw new Error('Not a book file');
   if(fmt === 'cbz' || fmt === 'cbr'){
     if(fmt === 'cbr' && src.size > 300 * 1048576){ md.later = true; return md }   // a huge CBR: details and cover when it is first opened
     const arc = fmt === 'cbr' ? await rarOpen(src) : await zipOpen(src), pages = pageList(arc.entries); md.pages = pages.length;
     const ci = arc.find(/(^|\/)comicinfo\.xml$/i); let info = null; if(ci) try{ info = comicInfo(await arc.text(ci)) }catch(e){}
     if(info){ if(info.series){ md.series = info.series; md.num = info.num != null ? info.num : md.num; md.vol = info.vol || md.vol; md.title = info.title || '' } else if(info.title) md.title = info.title;
-      for(const k of ['writer', 'artist', 'desc', 'rtl']) if(info[k]) md[k] = info[k]; if(info.year) md.year = info.year }
+      for(const k of ['writer', 'artist', 'desc', 'rtl', 'publisher']) if(info[k]) md[k] = info[k]; if(info.year) md.year = info.year }
     const cp = info && info.cover != null && pages[info.cover] ? pages[info.cover] : pages.find(x => /(^|[\/_ \-])(cover|front)[^\/]*$/i.test(x.name) && !/back/i.test(x.name)) || pages[0];
     if(cp) md.cover = imgBlob(await arc.file(cp), cp.name) }
   else if(fmt === 'pdf'){ const pdf = await pdfOpen(src); md.pages = pdf.numPages;
     try{ const m = await pdf.getMetadata(), i = m.info || {}; if(!junkTitle(i.Title) && !p.series) md.title = i.Title.trim(); if(i.Author && i.Author.length < 80) md.writer = i.Author.trim(); if(i.Subject && i.Subject.length > 20) md.desc = i.Subject }catch(e){}
     try{ md.cover = await pdfRender(pdf, 0, 400, 'image/webp') }catch(e){ LE('pdf', 'cover', e) } try{ pdf.destroy() }catch(e){} }
   else if(fmt === 'epub'){ const z = await zipOpen(src), ep = await epubOpen(z), m = ep.meta;
-    if(m.title) md.title = m.title; if(m.writer) md.writer = m.writer; if(m.artist) md.artist = m.artist; if(m.year) md.year = m.year; if(m.desc) md.desc = m.desc;
+    if(m.title) md.title = m.title; if(m.writer) md.writer = m.writer; if(m.artist) md.artist = m.artist; if(m.year) md.year = m.year; if(m.publisher) md.publisher = m.publisher; if(m.desc) md.desc = m.desc;
     if(m.series){ md.series = m.series; md.num = m.num; md.vol = m.num != null ? 'Vol. ' + m.num : '' }
     else if(md.series && norm(md.title) !== norm(p.title || p.clean)){ /* the EPUB's own title wins; keep the series from the name */ }
     md.pages = ep.spine.length;
@@ -339,7 +339,7 @@ function toItems(list){ // list: [{f (File | link {uri,name,size}), path}]
   for(const [d, fs] of Object.entries(pics)) if(fs.length >= 3 && !bookDirs.has(d)) items.push({kind:'imgs', files:fs, path:d, dir:d.split('/').slice(0, -1).join('/'), name:d.split('/').pop() || 'Pictures'});
   return {items, notyet} }
 async function addFiles(files, shelf){ if(!files.length) return;
-  const list = files.map(f => ({f, path:f.webkitRelativePath || f.name}));
+  const list = files.map(f => ({f, path:f.webkitRelativePath ? f.webkitRelativePath.split('/').slice(1).join('/') : f.name}));
   const {items, notyet} = toItems(list); scan(items, shelf, null, notyet) }
 
 let wakeS = null;
@@ -379,16 +379,16 @@ async function scan(items, shelf, folder, notyet){
   sheet(`<h3>${folder ? 'Reading your books…' : 'Copying books into the app…'}</h3><div class="prog"><i id="sp"></i></div><div class="muted small" id="stx" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">0 of ${fresh.length} · starting…</div>
     <p class="muted small">The screen stays on while books are added.</p><button class="btn" id="sstop" style="width:100%">Stop (keep what is read so far)</button>`, true);
   $('#sstop').onclick = () => { me.stop = true; $('#sstop').disabled = true; $('#sstop').textContent = 'Stopping…' };
-  let done = 0, added = 0, failed = 0, i = 0; const now = Date.now(), errs = [];
+  let done = 0, added = 0, failed = 0, i = 0; const now = Date.now(), errs = [], tops = pubTops(items.map(it => it.dir).concat(BOOKS.filter(b => b.shelf === shelf).map(b => b.dir)));
   const one = async it => {
-    const b = {id:uid(), shelf, added:now, dir:it.dir || '', dir2:it.path};
+    const b = {id:uid(), shelf, added:now, dir:it.dir || '', dir2:it.path, pubDir:pubFolder(it.dir, tops)};
     if(it.kind === 'imgs'){ const fs = it.files.slice().sort((x, y) => pageSort(x.name, y.name)), p = parseName(it.name, it.dir);
       Object.assign(b, {fmt:'imgs', name:it.name, title:p.title || (p.series ? '' : p.clean), series:p.series, num:p.num, vol:p.vol, year:p.year, pages:fs.length, size:fs.reduce((n, f) => n + f.size, 0)});
       if(folder) b.src = {kind:'link', tree:folder.tree, files:fs.map(f => ({uri:f.uri, name:f.name, size:f.size}))};
       else { const fids = []; for(const f of fs){ const fid = uid(); await dbPut('files', {id:fid, blob:f}); fids.push({fid, name:f.name}) } b.src = {kind:'copy', fids} }
       try{ const f0 = fs.find(f => /cover|front/i.test(f.name)) || fs[0]; const u8 = folder ? new Uint8Array(await linkRead(f0.uri, f0.name, 0, f0.size)) : new Uint8Array(await f0.arrayBuffer()); await setCover(b.id, await thumb(imgBlob(u8, f0.name))) }catch(e){} }
     else { const f = it.f, src = folder ? srcFromLink(f) : srcFromBlob(f, f.name), md = await readMeta(src, f.name, it.dir);
-      Object.assign(b, {fmt:md.fmt, name:f.name, size:f.size, title:md.title, series:md.series, num:md.num, vol:md.vol, writer:md.writer, artist:md.artist, year:md.year, desc:md.desc, pages:md.pages, rtl:md.rtl, later:md.later || false});
+      Object.assign(b, {fmt:md.fmt, name:f.name, size:f.size, publisher:md.publisher || '', title:md.title, series:md.series, num:md.num, vol:md.vol, writer:md.writer, artist:md.artist, year:md.year, desc:md.desc, pages:md.pages, rtl:md.rtl, later:md.later || false});
       if(folder) b.src = {kind:'link', uri:f.uri, name:f.name, size:f.size, tree:folder.tree};
       else { const fid = uid(); await dbPut('files', {id:fid, blob:f}); b.src = {kind:'copy', fid} }
       if(md.cover) try{ await setCover(b.id, await thumb(md.cover)) }catch(e){ LE('cover', 'could not make the cover of ' + f.name, e) } }
@@ -408,12 +408,41 @@ async function lookAgain(f){ if(!NvFiles) return; await addFolder(f.shelf, {tree
 const GRS = {};
 function grOf(sh){ if(GRS[sh]) return GRS[sh]; const s = shelfOf(sh);
   return GRS[sh] = NVGROUPS.make({prefix:'nvBooks.' + sh, app:'bookcase-' + sh, title:'Bookcase · ' + s.name, itemsKey:'itemGroup', norm, key:b => b.id,
-    hay:b => [b.title, b.series, b.writer].filter(Boolean).join(' '), kinds:{series:'Series', author:'Writer'},
+    hay:b => [b.title, b.series, b.writer].filter(Boolean).join(' '), kinds:{series:'Series', author:'Writer', publisher:'Publisher'},
     auto:b => b.series ? {key:'s:' + norm(b.series), name:b.series, kind:'series'} : s.authors && b.writer ? {key:'a:' + norm(b.writer), name:b.writer, kind:'author'} : null,
     onRekey:async (from, to) => { const id = 'grp:' + sh + ':' + from; if(!COV.has(id)) return; const c = await dbGet('covers', id).catch(() => null); if(c){ await setCover('grp:' + sh + ':' + to, c.blob); draw() } }}) }
-const groupsOf = sh => GROUPCACHE[sh] || (GROUPCACHE[sh] = grOf(sh).build(inShelf(sh)));
+const groupsOf = sh => GROUPCACHE[sh] || (GROUPCACHE[sh] = withPublishers(sh, grOf(sh).build(inShelf(sh))));
+/* publishers: Comics › Marvel › Spider-Man › the volumes. A series (and a book without a series) goes into its publisher's tile by itself;
+   the publisher comes from the file (ComicInfo.xml Publisher, the EPUB's publisher), else from the folder (Comics/Marvel/…), else "Edit details".
+   Anything placed by hand wins: a series put inside another group stays there, a book set to "its own tile" stays on its own.
+   Switch per shelf (shelf ⚙ → "Bundle series by publisher"); on by default for Comics. */
+const PUB_ALIAS = [[/^marvel( comics| entertainment| worldwide)?$/i, 'Marvel'], [/^dc( comics| entertainment)?$/i, 'DC'], [/^dark ?horse( comics| books)?$/i, 'Dark Horse'], [/^image( comics)?$/i, 'Image'], [/^idw( publishing)?$/i, 'IDW'], [/^boom!?( studios)?$/i, 'BOOM! Studios']];
+const cleanPub = p => { p = String(p || '').trim(); for(const [re, n] of PUB_ALIAS) if(re.test(p)) return n; return p };
+/* Marvel/Spider-Man/x.cbz → Marvel; DC/Watchmen.cbz → DC too, but only when that folder also holds series folders (tops) – a folder like 'Loose' is no publisher */
+const pubFolder = (dir, tops) => { const seg = String(dir || '').split('/').filter(Boolean), ok = seg.length >= 2 || (seg.length === 1 && tops && tops.has(seg[0])); return ok ? seg[0].replace(/[([][^)\]]*[)\]]/g, '').trim() : '' };
+const pubTops = dirs => new Set(dirs.map(d => String(d || '').split('/').filter(Boolean)).filter(x => x.length >= 2).map(x => x[0]));
+const publisherOf = b => cleanPub(b.publisher || b.pubDir || '');
+function withPublishers(sh, r){
+  if(!shelfOf(sh).byPub) return r;
+  const G = grOf(sh), par = G.read('parent'), ov = G.read('items'), lab = G.read('label'), have = Object.fromEntries(r.groups.map(g => [g.key, g])), made = {};
+  const pubG = name => { const key = 'p:' + norm(name); if(have[key]) return have[key]; if(!made[key]) made[key] = {key, name:lab[key] || name, kind:'publisher', items:[], kids:[], parent:null, auto:true}; return made[key] };
+  const most = l => { const c = {}; for(const x of l) if(x) c[x] = (c[x] || 0) + 1; return Object.keys(c).sort((a, b) => c[b] - c[a])[0] || '' };
+  const moveG = [], moveS = [];
+  for(const g of r.groups) if(!g.parent && par[g.key] === undefined && g.kind !== 'own' && g.kind !== 'publisher'){ const p = most(g.all.map(publisherOf)); if(p) moveG.push([g, pubG(p)]) }
+  for(const b of r.singles) if(ov[b.id] === undefined){ const p = publisherOf(b); if(p) moveS.push([b, pubG(p)]) }
+  /* a publisher with just one book and nothing else stays a plain tile */
+  const count = {}; for(const [, P] of moveG.concat(moveS)) count[P.key] = (count[P.key] || 0) + 1;
+  const keep = P => !P.auto || count[P.key] + (P.items.length) > 1 || moveG.some(([, Q]) => Q === P);
+  for(const [g, P] of moveG) if(keep(P)){ g.parent = P.key; P.kids.push(g) }
+  const gone = new Set(); for(const [b, P] of moveS) if(keep(P)){ P.items.push(b); gone.add(b) }
+  for(const P of Object.values(made)) if(P.kids.length || P.items.length){ const pp = par[P.key]; P.parent = pp && (have[pp] || made[pp]) ? pp : null; if(P.parent) (have[pp] || made[pp]).kids.push(P); r.groups.push(P) }
+  r.singles = r.singles.filter(b => !gone.has(b));
+  for(const g of r.groups) g.all = G.all(g);
+  return r }
 let GROUPCACHE = {};
 const regroup = () => { GROUPCACHE = {} };
+/* "on the main page" by hand: remembered as '_top', so a series doesn't go back into its publisher tile by itself */
+const toTop = (G, key) => { const par = G.read('parent'); par[key] = '_top'; G.write('parent', par) };
 const grChange = (sh, fn, msg) => { const G = grOf(sh); G.change(fn); regroup(); G.undoToast(msg, () => { regroup(); selEnd(true); draw() }) };
 const groupByKey = (sh, k) => groupsOf(sh).groups.find(g => g.key === k) || null;
 const groupOfBook = b => groupsOf(b.shelf).groups.find(g => g.items.includes(b)) || null;
@@ -493,7 +522,7 @@ function draw(){
     if(!all.length){ body.innerHTML = `<div class="empty">${shelfIcon(s, 48)}<h2 style="margin:8px 0 4px;font-size:18px">No ${esc(s.name.toLowerCase())} yet</h2><p class="muted small" style="margin:0 0 14px">${NvFiles ? 'Tap <b>Add</b> and pick the folder on this phone where they are. Nothing is copied.' : 'Tap <b>Add</b> and pick books. They are copied into the app.'}</p><button class="btn primary" id="emptyadd">Add ${esc(s.name.toLowerCase())}</button></div>`; $('#emptyadd').onclick = addSheet; return }
     h += `<input type="search" id="q" placeholder="Search ${esc(s.name.toLowerCase())}, series, writers" value="${esc(Q[s.id] || '')}" style="margin:2px 0 8px">`;
     if(q){ const {groups:gs} = groupsOf(s.id), where = {}; for(const g of gs) for(const b of g.items) where[b.id] = G.path(g, gs);
-      const gm = gs.filter(g => norm(g.name).includes(q)).slice(0, 12), bm = all.filter(b => norm([b.title, b.series, b.writer, b.artist, b.name].join(' ')).includes(q)).sort(seriesOrder);
+      const gm = gs.filter(g => norm(g.name).includes(q)).slice(0, 12), bm = all.filter(b => norm([b.title, b.series, b.writer, b.artist, b.name, publisherOf(b)].join(' ')).includes(q)).sort(seriesOrder);
       if(!gm.length && !bm.length) h += '<p class="muted" style="text-align:center;margin-top:30px">Nothing found.</p>';
       if(gm.length) h += `<div class="sec">Groups</div><div class="grid">${gm.map(g => groupTile(s.id, g).replace(/<div class="a">[^<]*<\/div>/, g.parent ? `<div class="a">in ${esc(G.path(gs.find(x => x.key === g.parent), gs))}</div>` : '$&')).join('')}</div>`;
       if(bm.length) h += `<div class="sec">Books</div><div class="grid">${bm.slice(0, 300).map(b => bookTile(b).replace(/<div class="a">[^<]*<\/div>/, where[b.id] ? `<div class="a">in ${esc(where[b.id])}</div>` : '$&')).join('')}</div>` }
@@ -518,7 +547,7 @@ function draw(){
       ${g.parent ? `<div class="lnk small" data-gotogrp="${esc(g.parent)}">in ${esc(G.path(gs.find(x => x.key === g.parent), gs))}</div>` : ''}
       <div class="muted small">${esc(G.label(g))} · ${(g.kids || []).length ? plural(g.kids.length, 'group') + ' · ' : ''}${plural(all.length, 'book')}${rd ? ` · ${rd} read` : ''}</div>
       ${[...new Set(all.map(b => b.writer).filter(Boolean))].length === 1 ? `<div class="muted small">${esc(all.find(b => b.writer).writer)}</div>` : ''}</div></div>`;
-    h += `<div class="mbar">${nextB ? `<button class="btn primary" data-read="${esc(nextB.id)}" style="flex:1;min-width:0"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${started(nextB) ? 'Continue' : 'Read'}: ${esc(nextB.vol || nextB.title)}</span></button>` : ''}<button class="ib" id="gmenu" aria-label="More for this group">${IC_DOTS}</button></div>`;
+    h += `<div class="mbar">${nextB ? `<button class="btn primary" data-read="${esc(nextB.id)}" style="flex:1;min-width:0"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${started(nextB) ? 'Continue' : 'Read'}: ${esc(g.kind === 'series' ? (nextB.vol || nextB.title) : dispTitle(nextB))}</span></button>` : ''}<button class="ib" id="gmenu" aria-label="More for this group">${IC_DOTS}</button></div>`;
     h += `<div class="mbar">${sortSel('inside', 'grp:' + v.shelf + ':' + g.key)}<span style="flex:1"></span><button class="btn sm" data-selstart="1">Select</button></div>`;
     const kids = sortTiles(g.kids || [], sortOf('inside', 'grp:' + v.shelf + ':' + g.key)), k = sortOf('inside', 'grp:' + v.shelf + ':' + g.key), items = k === 'series' ? g.items.slice().sort(seriesOrder) : sortTiles(g.items, k);
     h += `<div class="grid">${G.pinFirst([...kids, ...items], x => (x.items ? 'gr:' + x.key : 'it:' + x.id)).map(x => x.items ? groupTile(v.shelf, x) : bookTile(x)).join('')}</div>`;
@@ -565,7 +594,7 @@ function drawBook(id){ const b = BK[id]; if(!b){ V.pop(); return draw() }
   const s = STATE[b.id], p = progress(b), g = groupOfBook(b), prev = nextInSeries(b, -1), next = nextInSeries(b, 1), sh = shelfOf(b.shelf);
   $('#vtitle').textContent = ''; document.title = dispTitle(b) + ' · Bookcase';
   const where = b.src.kind === 'link' ? 'In a folder on this phone' : 'Copied into the app';
-  const facts = [['Series', b.series ? `<span class="lnk" data-gotogrp2="1">${esc(b.series)}</span>${b.vol ? ' · ' + esc(b.vol) : ''}` : ''], ['Writer', esc(b.writer)], ['Artist', esc(b.artist)], ['Year', esc(b.year)],
+  const facts = [['Publisher', esc(publisherOf(b))], ['Series', b.series ? `<span class="lnk" data-gotogrp2="1">${esc(b.series)}</span>${b.vol ? ' · ' + esc(b.vol) : ''}` : ''], ['Writer', esc(b.writer)], ['Artist', esc(b.artist)], ['Year', esc(b.year)],
     ['Pages', b.pages ? String(b.pages) : ''], ['Reading', b.rtl ? 'Right to left (manga)' : b.rtl === false ? 'Left to right' : ''], ['File', `${esc((b.fmt || '').toUpperCase())}${b.size ? ' · ' + mb(b.size) : ''}`], ['Where', where + (b.dir ? ` · <span class="muted">${esc(b.dir)}</span>` : '')], ['Shelf', esc(sh.name)]].filter(x => x[1]);
   const nx = (x, lbl) => x ? `<div class="nx" data-book="${esc(x.id)}">${coverHTML(x)}<div class="n"><small>${lbl}</small><div>${esc(x.vol || x.title)}</div></div></div>` : '<div></div>';
   let h = `<div class="alhead" style="align-items:flex-start">${coverHTML(b)}<div style="min-width:0;flex:1"><b>${esc(b.series && b.title && norm(b.title) !== norm(b.series) ? b.title : dispTitle(b))}</b>
@@ -613,11 +642,11 @@ async function removeBooks(ids){ const bs = ids.map(id => BK[id]).filter(Boolean
   if(cur().v === 'book' && g.has(cur().id)) V.pop(); draw(); toast(plural(bs.length, 'book') + ' removed') }
 function editBook(b){
   sheet(`<h3>Edit details</h3>
-    ${[['title', 'Title'], ['series', 'Series'], ['num', 'Number in the series (for the order)'], ['vol', 'Shown as (like Vol. 3 or #12)'], ['writer', 'Writer'], ['artist', 'Artist'], ['year', 'Year']].map(([k, t]) => `<div class="field"><label>${t}</label><input type="${k === 'num' ? 'number' : 'text'}" step="any" id="ed_${k}" value="${esc(b[k] == null ? '' : b[k])}"></div>`).join('')}
+    ${[['title', 'Title'], ['series', 'Series'], ['publisher', 'Publisher'], ['num', 'Number in the series (for the order)'], ['vol', 'Shown as (like Vol. 3 or #12)'], ['writer', 'Writer'], ['artist', 'Artist'], ['year', 'Year']].map(([k, t]) => `<div class="field"><label>${t}</label><input type="${k === 'num' ? 'number' : 'text'}" step="any" id="ed_${k}" value="${esc(b[k] == null ? '' : b[k])}"></div>`).join('')}
     <div class="field"><label>About</label><textarea id="ed_desc">${esc(b.desc || '')}</textarea></div>
     <div class="field"><label>Reading direction</label><select id="ed_rtl" style="width:100%;height:42px"><option value="">Like the shelf (${shelfOf(b.shelf).rtl ? 'right to left' : 'left to right'})</option><option value="ltr" ${b.rtl === false ? 'selected' : ''}>Left to right</option><option value="rtl" ${b.rtl === true ? 'selected' : ''}>Right to left (manga)</option></select></div>
     <div style="display:flex;gap:8px;margin-top:6px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="edsave">Save</button></div>`, true);
-  $('#edsave').onclick = async () => { for(const k of ['title', 'series', 'vol', 'writer', 'artist', 'year', 'desc']) b[k] = $('#ed_' + k).value.trim();
+  $('#edsave').onclick = async () => { for(const k of ['title', 'series', 'publisher', 'vol', 'writer', 'artist', 'year', 'desc']) b[k] = $('#ed_' + k).value.trim();
     const n = $('#ed_num').value.trim(); b.num = n === '' ? null : parseFloat(n); const r = $('#ed_rtl').value; b.rtl = r === 'rtl' ? true : r === 'ltr' ? false : null;
     if(b.num != null && !b.vol) b.vol = '#' + b.num;
     await dbPut('books', b); regroup(); closeSheet(); draw(); toast('Saved') } }
@@ -660,7 +689,7 @@ function moveGroupSheet(sh, g){ const G = grOf(sh), gs = groupsOf(sh).groups, ba
   sheet(`<h3>Put “${esc(g.name)}” inside…</h3>${g.parent ? '<button class="btn" id="mgtop" style="width:100%;margin-bottom:8px">Back on the main page</button>' : ''}
     ${opts.map(x => `<div class="li" data-mg="${esc(x.key)}"><span class="th">${groupCoverHTML(sh, x)}</span><div class="n"><div>${esc(G.path(x, gs))}</div><div class="s">${plural(x.all.length, 'book')}</div></div></div>`).join('') || '<p class="muted small">No other groups yet. Make one with “+ Group” on the shelf.</p>'}`);
   lazyCovers($('.sheet'));
-  if($('#mgtop')) $('#mgtop').onclick = () => { grChange(sh, () => G.setParent(g.key, null), `“${g.name}” is back on the main page`); closeSheet(); draw() };
+  if($('#mgtop')) $('#mgtop').onclick = () => { grChange(sh, () => toTop(G, g.key), `“${g.name}” is back on the main page`); closeSheet(); draw() };
   $('.sheet').addEventListener('click', e => { const r = e.target.closest('[data-mg]'); if(!r) return; const t = gs.find(x => x.key === r.dataset.mg); grChange(sh, () => G.setParent(g.key, t.key), `“${g.name}” is now inside “${t.name}”`); closeSheet(); draw() }) }
 function groupPicker(b){ const sh = b.shelf, G = grOf(sh), now = groupOfBook(b), gs = groupsOf(sh).groups.filter(g => !now || g.key !== now.key).sort((x, y) => coll.compare(x.name, y.name)), ov = G.read('items');
   sheet(`<h3>Put “${esc(dispTitle(b))}” in a group</h3>${now ? `<p class="muted small" style="margin:0 0 8px">Now in “${esc(now.name)}”.</p>` : ''}
@@ -707,13 +736,13 @@ function selMoveSheet(){ const {sh, gs, its, grs} = selParts(), G = grOf(sh), ba
     <button class="btn" id="smtop" style="width:100%;margin-top:10px">The main page (own tiles)</button>
     <div style="margin-top:8px">${opts.map(x => `<div class="li" data-sm="${esc(x.key)}"><span class="th">${groupCoverHTML(sh, x)}</span><div class="n"><div>${esc(G.path(x, gs))}</div><div class="s">${plural(x.all.length, 'book')}</div></div></div>`).join('')}</div>`);
   lazyCovers($('.sheet'));
-  const move = t => { if(t){ G.put(its, t); for(const k of grs) G.setParent(k, t.key) } else { G.put(its, 'none'); for(const k of grs) G.setParent(k, null) } };
+  const move = t => { if(t){ G.put(its, t); for(const k of grs) G.setParent(k, t.key) } else { G.put(its, 'none'); for(const k of grs) toTop(G, k) } };
   const doit = (t, label, first) => { const n = SEL.size; grChange(sh, () => { if(first) first(); move(t) }, `${plural(n, 'tile')} moved to ${label}`); closeSheet(); selEnd(true); draw() };
   $('#smmake').onclick = () => { const n = $('#smn').value.trim(); if(!n) return; const v = cur(); doit({key:'c:' + norm(n), name:n, kind:'own'}, `“${n}”`, () => { const g = G.own(n); if(v.v === 'group' && !bad.has(v.key)) G.setParent(g.key, v.key) }) };
   $('#smtop').onclick = () => doit(null, 'the main page');
   $('.sheet').addEventListener('click', e => { const r = e.target.closest('[data-sm]'); if(!r) return; const t = gs.find(x => x.key === r.dataset.sm); if(t) doit(t, `“${t.name}”`) }) }
 function selTakeOut(){ const {sh, gs, its, grs} = selParts(), G = grOf(sh), here = gs.find(x => x.key === cur().key), up = here && here.parent ? gs.find(x => x.key === here.parent) : null, n = SEL.size;
-  grChange(sh, () => { G.put(its, up || 'none'); for(const k of grs) G.setParent(k, up ? up.key : null) }, `${plural(n, 'tile')} taken out${up ? ' to “' + up.name + '”' : ' to the main page'}`); selEnd(true); draw() }
+  grChange(sh, () => { G.put(its, up || 'none'); for(const k of grs) up ? G.setParent(k, up.key) : toTop(G, k) }, `${plural(n, 'tile')} taken out${up ? ' to “' + up.name + '”' : ' to the main page'}`); selEnd(true); draw() }
 function selMore(){ const {sh, books} = selParts(), G = grOf(sh), ids = [...SEL], allPinned = ids.every(x => G.isPinned(x));
   sheet(`<h3>${plural(ids.length, 'tile')} · ${plural(books.length, 'book')}</h3><div class="mlist"><button class="btn" id="smpin">${allPinned ? '★ Unpin' : '★ Pin to the top'}</button><button class="btn" id="smread">Mark as read</button><button class="btn" id="smunread">Mark as not read</button><button class="btn" id="smshelf">Move to another shelf…</button><button class="btn danger" id="smdel">Remove from Bookcase</button></div>`);
   $('#smpin').onclick = () => { G.togglePin(ids, !allPinned); closeSheet(); selEnd(true); draw() };
@@ -1059,11 +1088,15 @@ function newShelf(){ ask('New shelf', 'Name, like Art books or Magazines', '', '
 function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh), folders = lsGet('nvBooks.folders', []).filter(f => f.shelf === sh), n = inShelf(sh).length;
   sheet(`<h3>${esc(s.name)}</h3>
     <div class="opt"><label for="ss_rtl">Read right to left (manga) unless a book says otherwise</label><input type="checkbox" id="ss_rtl" ${s.rtl ? 'checked' : ''}></div>
+    <div class="opt"><label for="ss_pub">Bundle series by publisher (Marvel › Spider-Man › …)</label><input type="checkbox" id="ss_pub" ${s.byPub ? 'checked' : ''}></div>
     <div class="opt"><label for="ss_aut">A writer's books without a series make one tile</label><input type="checkbox" id="ss_aut" ${s.authors ? 'checked' : ''}></div>
     ${NvFiles ? `<div class="sec">Folders on this phone</div>${folders.map((f, i) => `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(inShelf(sh).filter(b => b.src.kind === 'link' && b.src.tree === f.tree).length, 'book')}</div></div><button class="btn sm" data-look="${i}">Look again</button><button class="btn sm danger" data-forget="${i}">Stop</button></div>`).join('') || '<p class="muted small">None yet - Add → Use a folder on this phone.</p>'}` : ''}
+    <div class="mlist" style="margin-top:10px"><button class="btn" id="ss_reread">Read the details of all books again</button><div class="muted small" style="margin:-2px 0 0">Fills in what is missing (publisher, writer, year …). What you edited by hand stays.</div></div>
     <div class="sec">Your groups</div><div class="mlist"><button class="btn" id="ss_save">Save my groups</button><button class="btn" id="ss_load">Load from a file</button></div>
     <div class="sec">This shelf</div><div class="mlist"><button class="btn" id="ss_ren">Rename the shelf</button><button class="btn" id="ss_hide">Hide this shelf</button>${s.own ? `<button class="btn danger" id="ss_del">Remove this shelf${n ? ' (its books move to Books)' : ''}</button>` : ''}</div>`);
   $('#ss_rtl').onchange = e => { shelfSet(sh, {rtl:e.target.checked}); toast('Saved') };
+  $('#ss_pub').onchange = e => { shelfSet(sh, {byPub:e.target.checked}); regroup(); draw(); toast(e.target.checked ? 'Series are now bundled by publisher' : 'Publisher tiles are off') };
+  $('#ss_reread').onclick = () => { closeSheet(); rereadShelf(sh) };
   $('#ss_aut').onchange = e => { shelfSet(sh, {authors:e.target.checked}); delete GRS[sh]; regroup(); draw(); toast('Saved') };
   $('.sheet').addEventListener('click', async e => { const lk = e.target.closest('[data-look]'), fg = e.target.closest('[data-forget]');
     if(lk){ closeSheet(); lookAgain(folders[+lk.dataset.look]) }
@@ -1109,3 +1142,16 @@ document.addEventListener('visibilitychange', () => { if(document.hidden){ if(R)
   draw(); L('start', `${BOOKS.length} books`);
   window.NVBOOKS = {get books(){ return BOOKS }, openDoc, readMeta, parseName, zipOpen, openReader, draw};   // for testing
 })();
+
+/* shelf ⚙ → "Read the details of all books again": fills in empty fields (e.g. the publisher for books added before it was read) */
+async function rereadShelf(sh){ const bs = inShelf(sh).filter(b => b.fmt !== 'imgs'), tops = pubTops(inShelf(sh).map(b => b.dir)); if(!bs.length) return; awake(true);
+  sheet(`<h3>Reading the details again…</h3><div class="prog"><i id="rrp"></i></div><div class="muted small" id="rrs">0 of ${bs.length}</div><button class="btn" id="rrstop" style="width:100%;margin-top:8px">Stop</button>`, true);
+  let stop = false, n = 0, changed = 0; $('#rrstop').onclick = () => { stop = true };
+  for(const b of bs){ if(stop) break; try{ const src = await bookSource(b), md = await readMeta(src, b.name, b.dir); let ch = false;
+      for(const k of ['publisher', 'writer', 'artist', 'year', 'desc', 'series']) if(md[k] && !b[k]){ b[k] = md[k]; ch = true }
+      if(b.num == null && md.num != null){ b.num = md.num; b.vol = b.vol || md.vol; ch = true }
+      const pd = pubFolder(b.dir, tops); if(b.pubDir !== pd){ b.pubDir = pd; ch = true }
+      if(!COV.has(b.id) && md.cover){ await setCover(b.id, await thumb(md.cover)) }
+      if(ch){ await dbPut('books', b); changed++ } }catch(e){ LE('reread', b.name, e) }
+    n++; const p = $('#rrp'), t = $('#rrs'); if(p) p.style.width = (100 * n / bs.length) + '%'; if(t) t.textContent = `${n} of ${bs.length} · ${b.name}` }
+  awake(false); regroup(); closeSheet(); draw(); toast(`${plural(changed, 'book')} updated`) }

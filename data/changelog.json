@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 71,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: comics by publisher",
+   "items": [
+    "Comics are now bundled by publisher: Comics › Marvel › Spider-Man › the volumes. The publisher comes from the comic itself (ComicInfo.xml), or from your folders (Comics/Marvel/…).",
+    "It is a setting per shelf: shelf ⚙ → \"Bundle series by publisher\". On for Comics, off for Books, Manga and the other shelves - switch it on there if you want it.",
+    "Moving things by hand still wins, and you can fill in or change the publisher with Edit details. Shelf ⚙ → \"Read the details of all books again\" fills it in for books you added before."
+   ]
+  },
+  {
    "id": 70,
    "date": "2026-10-19",
    "where": [
