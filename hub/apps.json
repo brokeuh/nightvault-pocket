@@ -284,7 +284,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 222399
+     "size": 260511
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -296,10 +296,10 @@
     "music"
    ],
    "uses": [],
-   "size": 222960,
-   "hash": "a49d54754282",
-   "version": "2026.10.16.1416",
-   "updated": "2026-10-16"
+   "size": 261072,
+   "hash": "5ee137142bf4",
+   "version": "2026.10.19.0908",
+   "updated": "2026-10-19"
   },
   {
    "id": "audiobooks",
@@ -310,7 +310,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 222399
+     "size": 260511
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -322,10 +322,10 @@
     "audiobooks"
    ],
    "uses": [],
-   "size": 222960,
-   "hash": "a49d54754282",
-   "version": "2026.10.16.1416",
-   "updated": "2026-10-16"
+   "size": 261072,
+   "hash": "5ee137142bf4",
+   "version": "2026.10.19.0908",
+   "updated": "2026-10-19"
   },
   {
    "id": "cinema",
