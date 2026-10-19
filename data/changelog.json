@@ -3,6 +3,25 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 82,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "print3d"
+   ],
+   "title": "New app: 3D Print",
+   "items": [
+    "3D Print is here (The Nightvault → Apps → install it). Your STL, OBJ and 3MF models with a 3D viewer: turn with one finger, zoom and move with two, pick a colour, full screen.",
+    "Add models from a folder on your phone (nothing is copied), copy files into the app – ZIP downloads from Printables / Thingiverse work too – or use the 3D models from the Nightvault PC app at home.",
+    "Files in the same folder (or ZIP) make one project tile, with its pictures and print files. Groups work the same as in Music.",
+    "Bambu Studio files: the plate picture, print time and grams are read by themselves.",
+    "Print log: tap “I printed this” – printer, filament or resin, amount, time, worked or failed. Prints shows your totals. Mark models “To print”."
+   ]
+  },
+  {
    "id": 81,
    "date": "2026-10-19",
    "where": [

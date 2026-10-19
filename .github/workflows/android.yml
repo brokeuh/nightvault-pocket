@@ -6,7 +6,7 @@ name: Build Android app
 on:
   push:
     branches: [main]
-    paths: ["native/**", "test/index.html", "hub/**", "tools/**", "admin/**", "audio/**", "books/**", "games/**", "boardgames/**", "cinema/**", ".github/workflows/android.yml"]
+    paths: ["native/**", "test/index.html", "hub/**", "tools/**", "admin/**", "audio/**", "books/**", "games/**", "boardgames/**", "cinema/**", "print3d/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 
 permissions:
@@ -51,12 +51,13 @@ jobs:
           cp -r ../games www/games
           cp -r ../boardgames www/boardgames
           cp -r ../cinema www/cinema
+          cp -r ../print3d www/print3d
           cp ../favicon.svg ../favicon-32.png ../apple-touch-icon.png ../icon-*.png www/
           printf '<!doctype html><meta charset="utf-8"><title>Nightvault</title><style>html{background:#0b0e13}</style><script>location.replace("hub/index.html")</script>' > www/index.html
           # the Capacitor helper first, so the pages see the Android app's plugins (text reader, share, files, back button)
           cp node_modules/@capacitor/core/dist/capacitor.js www/capacitor.js
-          sed -i 's#<head>#<head><script src="/capacitor.js"></script>#' www/test/index.html www/hub/index.html www/audio/index.html www/books/index.html www/games/index.html www/boardgames/index.html www/cinema/index.html
-          grep -c 'capacitor.js' www/test/index.html www/hub/index.html www/audio/index.html www/books/index.html www/games/index.html www/boardgames/index.html www/cinema/index.html
+          sed -i 's#<head>#<head><script src="/capacitor.js"></script>#' www/test/index.html www/hub/index.html www/audio/index.html www/books/index.html www/games/index.html www/boardgames/index.html www/cinema/index.html www/print3d/index.html
+          grep -c 'capacitor.js' www/test/index.html www/hub/index.html www/audio/index.html www/books/index.html www/games/index.html www/boardgames/index.html www/cinema/index.html www/print3d/index.html
           echo "WEB_BUILD=$(grep -o "const BUILD = '[0-9]\{12\}'" www/test/index.html | grep -o '[0-9]\{12\}')" >> "$GITHUB_ENV"
           npx cap add android
           bash patch.sh
