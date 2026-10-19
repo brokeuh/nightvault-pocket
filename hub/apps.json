@@ -445,11 +445,11 @@
    "files": [
     {
      "path": "games/index.html",
-     "size": 13842
+     "size": 15213
     },
     {
      "path": "games/app.js",
-     "size": 102786
+     "size": 106272
     },
     {
      "path": "games/manifest.webmanifest",
@@ -462,9 +462,9 @@
    "uses": [],
    "entry": "games/?nv=hub",
    "keepsData": "Your games, copies, wishlist, groups and keys stay on this device.",
-   "size": 117177,
-   "hash": "bd5ab8e22e55",
-   "version": "2026.10.19.1119",
+   "size": 122034,
+   "hash": "a0aed134788a",
+   "version": "2026.10.19.2113",
    "updated": "2026-10-19"
   }
  ]
