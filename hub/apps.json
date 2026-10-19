@@ -178,17 +178,17 @@
    "files": [
     {
      "path": "admin/index.html",
-     "size": 22924
+     "size": 23166
     }
    ],
    "provides": [
     "datajobs"
    ],
    "uses": [],
-   "size": 22924,
-   "hash": "1bd954365de0",
-   "version": "2026.10.12.1325",
-   "updated": "2026-10-12"
+   "size": 23166,
+   "hash": "22256287ecd3",
+   "version": "2026.10.19.0940",
+   "updated": "2026-10-19"
   },
   {
    "id": "go",
@@ -348,16 +348,30 @@
    "name": "Boardgames",
    "desc": "Your board games with BoardGameGeek sync, miniatures and terrain",
    "color": "#1f3216",
-   "soon": true,
-   "files": [],
+   "files": [
+    {
+     "path": "boardgames/index.html",
+     "size": 14089
+    },
+    {
+     "path": "boardgames/app.js",
+     "size": 85018
+    },
+    {
+     "path": "boardgames/manifest.webmanifest",
+     "size": 567
+    }
+   ],
    "provides": [
     "boardgames"
    ],
    "uses": [],
-   "size": 0,
-   "hash": "e3b0c44298fc",
-   "version": "2026.10.12.1325",
-   "updated": "2026-10-12"
+   "entry": "boardgames/?nv=hub",
+   "keepsData": "Your plays, games added by hand, pictures and groups stay on this device. Games from BoardGameGeek come back by themselves.",
+   "size": 99674,
+   "hash": "ffe79c233bba",
+   "version": "2026.10.19.0940",
+   "updated": "2026-10-19"
   },
   {
    "id": "print3d",
