@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 81,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: Discover comics",
+   "items": [
+    "New: Discover (Comics → Collection lists → Discover). See the comics that came out this week or this month, or browse every series of a publisher (Marvel, DC, Image …) with a search.",
+    "Tap any series to see all its issues - yours in colour, the rest grey - without adding anything. \"Add to my collection lists\" only when you want it.",
+    "Fixed: the \"Add a series\" search could not be closed without searching first. Tap outside it, press Back or tap Close."
+   ]
+  },
+  {
    "id": 80,
    "date": "2026-10-19",
    "where": [

@@ -553,7 +553,7 @@ const passFilter = (b, f) => f === 'nopub' ? !publisherOf(b) : f === 'reading' ?
 
 function draw(){
   const v = cur(), body = $('#body'); $('#vback').hidden = V.length < 2; $('#addbtn').hidden = !(v.v === 'shelf' || v.v === 'group');
-  if(v.v === 'col' || v.v === 'colser') $('#addbtn').hidden = true;
+  if(['col', 'colser', 'disc', 'cvser'].includes(v.v)) $('#addbtn').hidden = true;
   $('#hubback').hidden = !(fromHub() && V.length < 2);
   let h = '';
   if(v.v === 'shelves'){ $('#vtitle').textContent = 'Bookcase'; document.title = 'Nightvault Bookcase';
@@ -626,7 +626,9 @@ function draw(){
     if(full){ const k = $('#serkey'); if(k) k.onclick = () => cvKeySheet(() => serEnsure(v.shelf, g)); else if(!SERLOAD[v.shelf + '|' + g.key]) serEnsure(v.shelf, g) } return }
   if(v.v === 'book') return drawBook(v.id);
   if(v.v === 'col') return drawCol(v);
-  if(v.v === 'colser') return drawColSer(v) }
+  if(v.v === 'colser') return drawColSer(v);
+  if(v.v === 'disc') return drawDisc(v);
+  if(v.v === 'cvser') return drawCvSer(v) }
 function contCard(b, withShelf){ const s = STATE[b.id], p = progress(b);
   return `<div class="cont" data-read="${esc(b.id)}">${coverHTML(b)}<div style="flex:1;min-width:0"><small>CONTINUE READING${withShelf ? ' · ' + esc(shelfOf(b.shelf).name.toUpperCase()) : ''}</small><b>${esc(dispTitle(b))}</b>
     <div class="muted small">${b.fmt === 'epub' && s.flow ? Math.round(p * 100) + '%' : `Page ${s.page + 1} of ${s.pages || b.pages || '?'}`}</div><div class="pbar"><i style="width:${Math.round(p * 100)}%"></i></div></div></div>` }
@@ -1328,7 +1330,7 @@ function cvKeySheet(then){
 async function cvChoose(b){
   if(!CV.key()) return cvKeySheet(() => cvChoose(b));
   const bs = inShelf(b.shelf).filter(x => cvName(x) && norm(cvName(x)) === norm(cvName(b)));
-  sheet(`<h3>Comic Vine: “${esc(cvName(b))}”</h3><div style="display:flex;gap:8px"><input type="search" id="cvq" value="${esc(cvName(b))}"><button class="btn primary" id="cvgo">Search</button></div><div class="muted small" id="cvst" style="margin:8px 0">Searching…</div><div id="cvres"></div>`, true);
+  sheet(`<h3>Comic Vine: “${esc(cvName(b))}”</h3><div style="display:flex;gap:8px"><input type="search" id="cvq" value="${esc(cvName(b))}"><button class="btn primary" id="cvgo">Search</button></div><div class="muted small" id="cvst" style="margin:8px 0">Searching…</div><div id="cvres"></div><button class="btn" style="width:100%;margin-top:10px" onclick="closeSheet()">Close</button>`);
   const run = async () => { $('#cvst').textContent = 'Searching…'; $('#cvres').innerHTML = '';
     try{ const j = await cvGet('search', {resources:'volume', query:$('#cvq').value.trim(), limit:20, field_list:'id,name,start_year,publisher,count_of_issues,image'}), sc = cvPick(j.results || [], bs);
       $('#cvst').textContent = sc.length ? `Tap the right one – it is used for ${plural(bs.length, 'book')} of this series` : 'Nothing found - try other words';
@@ -1380,7 +1382,7 @@ function colTile(c){ const st = colStats(c), d = colDigital(c), first = c.issues
 function drawCol(v){ const s = shelfOf(v.shelf), cs = colsOf(v.shelf), q = norm(Q['col:' + v.shelf] || '');
   $('#vtitle').textContent = s.name; document.title = 'Collection · ' + s.name;
   let h = colTabs(v.shelf, 'col');
-  h += `<div class="mbar"><button class="btn primary sm" id="coladd">+ Add a series</button><button class="btn sm" id="colmine">Add the series I have</button></div>`;
+  h += `<div class="mbar"><button class="btn primary sm" id="coladd">+ Add a series</button><button class="btn sm" id="coldisc">Discover</button><button class="btn sm" id="colmine">Add the series I have</button></div>`;
   if(!cs.length){ h += `<div class="empty"><h2 style="margin:4px 0;font-size:17px">No collection lists yet</h2><p class="muted small" style="margin:0 0 6px">A list shows every issue of a series from Comic Vine: grey when you don't have it, in colour when you do (D = digital, P = on paper).</p><p class="muted small" style="margin:0">Tap <b>+ Add a series</b> to pick one, or <b>Add the series I have</b> for the series of your comics that were looked up on Comic Vine.</p></div>`; $('#body').innerHTML = h; hookCol(v); return }
   const all = cs.map(colStats), tot = all.reduce((a, x) => ({have:a.have + x.have, total:a.total + x.total, price:a.price + x.price}), {have:0, total:0, price:0});
   h += `<input type="search" id="colq" placeholder="Search your lists" value="${esc(Q['col:' + v.shelf] || '')}" style="margin:2px 0 8px"><div class="mtot">${plural(cs.length, 'series', 'series')} · ${tot.have} of ${tot.total} issues${tot.price ? ' · paper ' + money(tot.price) : ''}</div>`;
@@ -1389,12 +1391,12 @@ function drawCol(v){ const s = shelfOf(v.shelf), cs = colsOf(v.shelf), q = norm(
   $('#body').innerHTML = h; lazyCovers($('#body')); hookCol(v) }
 const colTabs = (sh, on) => `<div class="chips"><button class="chip ${on === 'books' ? 'on' : ''}" data-tabgo="books">My ${esc(shelfOf(sh).name.toLowerCase())}</button><button class="chip ${on === 'col' ? 'on' : ''}" data-tabgo="col">Collection lists${colsOf(sh).length ? ' (' + colsOf(sh).length + ')' : ''}</button></div>`;
 const showColTabs = sh => colsOf(sh).length || shelfOf(sh).byPub;
-function hookCol(v){ const a = $('#coladd'); if(a) a.onclick = () => colSearch(v.shelf); const m = $('#colmine'); if(m) m.onclick = () => colMine(v.shelf);
+function hookCol(v){ const a = $('#coladd'); if(a) a.onclick = () => colSearch(v.shelf); const dz = $('#coldisc'); if(dz) dz.onclick = () => CV.key() ? go({v:'disc', shelf:v.shelf, tab:'week'}) : cvKeySheet(() => go({v:'disc', shelf:v.shelf, tab:'week'})); const m = $('#colmine'); if(m) m.onclick = () => colMine(v.shelf);
   const q = $('#colq'); if(q) q.oninput = () => { Q['col:' + v.shelf] = q.value; clearTimeout(q._t); q._t = setTimeout(() => { const p = q.selectionStart; draw(); const n = $('#colq'); if(n){ n.focus(); try{ n.setSelectionRange(p, p) }catch(e){} } }, 250) } }
 /* + Add a series: search Comic Vine, tap one */
 function colSearch(sh, pre){ if(!CV.key()) return cvKeySheet(() => colSearch(sh, pre));
   sheet(`<h3>Add a series</h3><div style="display:flex;gap:8px"><input type="search" id="csq" placeholder="Series name, like Saga or Amazing Spider-Man" value="${esc(pre || '')}"><button class="btn primary" id="csgo">Search</button></div>
-    <div class="chips" id="cspubs"></div><div class="muted small" id="csst" style="margin:6px 0"></div><div id="csres"></div>`, true);
+    <div class="chips" id="cspubs"></div><div class="muted small" id="csst" style="margin:6px 0"></div><div id="csres"></div><button class="btn" style="width:100%;margin-top:10px" onclick="closeSheet()">Close</button>`);
   let res = [], pub = '';
   const show = () => { const list = res.filter(v => !pub || cleanPub(v.publisher && v.publisher.name) === pub);
     const pubs = [...new Set(res.map(v => cleanPub(v.publisher && v.publisher.name)).filter(Boolean))].sort(coll.compare);
@@ -1440,12 +1442,12 @@ function issueSheet(c, i){ const k = numKey(i.num), b = colDigital(c)[k], p = (c
       ${i.name ? `<div class="muted small">${esc(i.name)}</div>` : ''}<div class="muted small">${esc(i.date || '')}</div>
       <div style="margin-top:8px;display:flex;gap:6px">${b ? '<span class="bd dg" style="position:static">D</span> <span class="small">Digital – in Bookcase</span>' : ''}${p ? '<span class="bd pp" style="position:static">P</span> <span class="small">On paper</span>' : ''}${!b && !p ? '<span class="small muted">You don\'t have this one yet</span>' : ''}</div></div></div>
     ${b ? `<button class="btn primary" id="isopen" style="width:100%;margin-top:12px">${started(b) ? 'Continue reading' : 'Read'}</button>` : ''}
-    <div class="opt" style="margin-top:8px"><label for="isph">I have it on paper</label><input type="checkbox" id="isph" ${p ? 'checked' : ''}></div>
-    <div class="opt" id="isprow" ${p ? '' : 'hidden'}><label for="ispr">Price or value (optional)</label><input type="number" id="ispr" step="0.01" min="0" value="${p && p.price ? esc(p.price) : ''}" style="width:110px" placeholder="€"></div>
+    ${c.id ? `<div class="opt" style="margin-top:8px"><label for="isph">I have it on paper</label><input type="checkbox" id="isph" ${p ? 'checked' : ''}></div>` : '<p class="muted small" style="margin:10px 0 0">Add this series to your collection lists to mark issues as on paper.</p>'}
+    <div class="opt" id="isprow" ${p && c.id ? '' : 'hidden'}><label for="ispr">Price or value (optional)</label><input type="number" id="ispr" step="0.01" min="0" value="${p && p.price ? esc(p.price) : ''}" style="width:110px" placeholder="€"></div>
     ${!b ? `<div class="sec">Find it</div><div class="mlist">${sites().map((x, n) => `<button class="btn" data-site="${n}">Find it on ${esc(x.name)}</button>`).join('')}<button class="btn" id="iscopy">Copy “${esc(title)}”</button></div>` : ''}`);
   if($('#isopen')) $('#isopen').onclick = () => { closeSheet(); openReader(b) };
   const saveP = async () => { c.phys = c.phys || {}; if($('#isph').checked){ c.phys[k] = {price:$('#ispr').value.trim(), at:(c.phys[k] || {}).at || Date.now()} } else delete c.phys[k]; await colSave(c); draw() };
-  $('#isph').onchange = () => { $('#isprow').hidden = !$('#isph').checked; saveP() }; $('#ispr').onchange = saveP;
+  if($('#isph')){ $('#isph').onchange = () => { $('#isprow').hidden = !$('#isph').checked; saveP() }; $('#ispr').onchange = saveP }
   if($('#iscopy')) $('#iscopy').onclick = () => copyText(title);
   $('.sheet').addEventListener('click', e => { const s = e.target.closest('[data-site]'); if(s) openSite(sites()[+s.dataset.site], title) }) }
 function colMenu(c){ sheet(`<h3>${esc(c.name)}</h3><div class="mlist"><button class="btn" id="cmphys">Mark issues on paper…</button><button class="btn" id="cmnew">Check for new issues</button><button class="btn" id="cmcopy">Copy the missing issues as a list</button><button class="btn danger" id="cmdel">Remove this list</button></div><p class="muted small">Removing the list keeps your comics.</p>`);
@@ -1487,3 +1489,67 @@ async function serEnsure(sh, g){ const k = sh + '|' + g.key; if(SERLOAD[k] === '
   catch(e){ SERLOAD[k] = 'err:' + (e.message || String(e)); LE('cv', 'series list ' + g.name, e) }
   redrawIf(g) }
 function redrawIf(g){ const v = cur(); if(v.v === 'group' && (v.key === g.key || (groupByKey(v.shelf, v.key) || {}).name === g.name)) draw(); else if(v.v === 'shelf') draw() }
+
+/* =====================================================================================================================
+   DISCOVER (owner, 19 Oct: "browse what's out there and discover new comics"): look around on Comic Vine without adding anything.
+   New this week / this month (issues by their shop date), or every series of a publisher (A–Z, with a search). Tap one = preview of
+   the whole series (your comics in colour, the rest grey) with "Add to my lists". Answers are kept for a day (kv 'disc:…').
+   ===================================================================================================================== */
+const DISC_PUBS = ['Marvel', 'DC Comics', 'Image', 'Dark Horse Comics', 'IDW Publishing', 'BOOM! Studios', 'Dynamite Entertainment', 'Titan Comics', 'Mad Cave Studios', 'Rebellion'];
+async function discCache(key, maxAge, fn){ const c = await dbGet('kv', 'disc:' + key).catch(() => null); if(c && Date.now() - c.at < maxAge) return c.data;
+  const data = await fn(); await dbPut('kv', {id:'disc:' + key, at:Date.now(), data}).catch(() => {}); return data }
+const ymd = d => d.toISOString().slice(0, 10);
+async function discNew(days){ const to = new Date(), from = new Date(Date.now() - days * 864e5);
+  return discCache('new' + days + ':' + ymd(to), 6 * 3600e3, async () => { const out = [];
+    for(let off = 0; off < 400; off += 100){ const j = await cvGet('issues', {filter:`store_date:${ymd(from)}|${ymd(to)}`, sort:'store_date:desc', limit:100, offset:off, field_list:'id,issue_number,name,store_date,image,volume'});
+      for(const i of j.results || []) out.push({vid:i.volume && i.volume.id, vname:i.volume && i.volume.name, num:i.issue_number, date:i.store_date, thumb:i.image && (i.image.small_url || i.image.thumb_url) || ''});
+      if(!j.results || j.results.length < 100) break }
+    return out }) }
+async function discPub(name){ return discCache('pub:' + norm(name), 7 * 864e5, async () => {
+    const s = await cvGet('search', {resources:'publisher', query:name, limit:10, field_list:'id,name'}), p = (s.results || []).find(x => norm(x.name) === norm(name)) || (s.results || [])[0];
+    if(!p) return {name, vols:[]};
+    const j = await cvGet('publisher/4010-' + p.id, {field_list:'id,name,volumes'}), r = j.results || {};
+    return {id:p.id, name:p.name, vols:(r.volumes || []).map(v => ({id:v.id, name:v.name}))} }) }
+function drawDisc(v){ const s = shelfOf(v.shelf); $('#vtitle').textContent = 'Discover'; document.title = 'Discover · ' + s.name;
+  const tabs = [['week', 'New this week'], ['month', 'New this month'], ['pub', 'By publisher']];
+  let h = `<div class="chips">${tabs.map(([k, t]) => `<button class="chip ${v.tab === k ? 'on' : ''}" data-dtab="${k}">${t}</button>`).join('')}</div><div class="muted small" id="dst">Loading from Comic Vine…</div><div id="dbody"></div>`;
+  $('#body').innerHTML = h;
+  $('#body').querySelectorAll('[data-dtab]').forEach(b => b.onclick = () => { v.tab = b.dataset.dtab; draw() });
+  const st = t => { const e = $('#dst'); if(e) e.textContent = t }, me = v;
+  const mine = new Set(BOOKS.filter(b => b.cv && b.cv.id).map(b => b.cv.id));
+  if(v.tab === 'week' || v.tab === 'month') discNew(v.tab === 'week' ? 7 : 31).then(list => { if(cur() !== me) return;
+      const seen = new Set(), l = list.filter(i => i.vid && !seen.has(i.vid + '|' + i.num) && seen.add(i.vid + '|' + i.num));
+      st(`${plural(l.length, 'new comic')} · tap one to see its whole series${l.length >= 400 ? ' (the newest 400)' : ''}`);
+      $('#dbody').innerHTML = `<div class="grid">${l.map(i => `<div class="bk" data-cvs="${i.vid}"><div class="cv">${i.thumb ? `<img class="b" src="${esc(i.thumb)}" alt="" loading="lazy"><img class="f" src="${esc(i.thumb)}" alt="" loading="lazy">` : phHTML({title:i.vname, shelf:v.shelf}, i.vname)}<span class="vol">#${esc(i.num)}</span>${mine.has(i.vid) || COLS[i.vid] ? '<span class="bd dg">✓</span>' : ''}</div><div class="t">${esc(i.vname)}</div><div class="a">${esc(i.date || '')}</div></div>`).join('')}</div>` }).catch(e => st(e.message || String(e)));
+  if(v.tab === 'pub'){ const seenP = new Set(), pubs = DISC_PUBS.concat(BOOKS.filter(b => b.shelf === v.shelf).map(publisherOf).filter(Boolean)).filter(p => { const k = norm(cleanPub(p)); if(seenP.has(k)) return false; seenP.add(k); return true });
+    v.pub = v.pub || pubs[0];
+    $('#dbody').innerHTML = `<div class="chips">${pubs.map(p => `<button class="chip ${cleanPub(p) === cleanPub(v.pub) ? 'on' : ''}" data-dpub="${esc(p)}">${esc(cleanPub(p))}</button>`).join('')}</div><input type="search" id="dq" placeholder="Search in this publisher's series" value="${esc(v.q || '')}" style="margin:4px 0 8px"><div id="dlist"></div>`;
+    $('#dbody').querySelectorAll('[data-dpub]').forEach(b => b.onclick = () => { v.pub = b.dataset.dpub; v.q = ''; draw() });
+    discPub(v.pub).then(P => { if(cur() !== me) return;
+      const show = () => { const q = norm(v.q || ''), l = P.vols.filter(x => !q || norm(x.name).includes(q)).sort((a, b) => coll.compare(a.name, b.name));
+        st(`${cleanPub(P.name)}: ${plural(P.vols.length, 'series', 'series')} on Comic Vine${q ? ` · ${l.length} found` : ''} · tap one to see all its issues`);
+        $('#dlist').innerHTML = l.slice(0, 600).map(x => `<div class="li" data-cvs="${x.id}"><div class="n"><div>${esc(x.name)}</div></div><span class="r">${mine.has(x.id) ? '✓ you have comics' : COLS[x.id] ? '✓ in your lists' : ''}</span></div>`).join('') + (l.length > 600 ? `<p class="muted small">… and ${l.length - 600} more – type to narrow it down</p>` : '') };
+      show(); const q = $('#dq'); q.oninput = () => { v.q = q.value; clearTimeout(q._t); q._t = setTimeout(show, 200) } }).catch(e => st(e.message || String(e))) }
+  $('#dbody').onclick = e => { const t = e.target.closest('[data-cvs]'); if(t) go({v:'cvser', shelf:v.shelf, vid:+t.dataset.cvs}) } }   // on #dbody (new every draw), so one tap opens it once
+/* a series from Comic Vine, before (or without) adding it: every issue, yours in colour */
+const CVSER = {};
+async function cvSerInfo(vid){ if(CVSER[vid]) return CVSER[vid];
+  return CVSER[vid] = discCache('ser:' + vid, 864e5, async () => { const j = await cvGet('volume/4050-' + vid, {field_list:'id,name,start_year,publisher,count_of_issues,image,deck,description'}), r = j.results || {};
+    return {id:r.id, name:r.name, start:r.start_year, pub:r.publisher && r.publisher.name, n:r.count_of_issues, img:r.image && (r.image.medium_url || r.image.small_url), about:cvStrip(r.deck || r.description).slice(0, 1500)} }) }
+function drawCvSer(v){ if(COLS[v.vid]){ V[V.length - 1] = {v:'colser', shelf:v.shelf, vid:v.vid}; return draw() }
+  $('#vtitle').textContent = ''; $('#body').innerHTML = '<div class="muted small" id="cst">Loading from Comic Vine…</div>'; const me = v;
+  (async () => { try{ const info = await cvSerInfo(v.vid); if(cur() !== me) return; document.title = info.name + ' · Discover';
+      let h = `<div class="alhead" style="align-items:flex-start">${info.img ? `<div class="cv" style="width:min(30vw,130px)"><img class="f" src="${esc(info.img)}" alt="" style="object-fit:cover"></div>` : ''}<div style="min-width:0;flex:1"><b>${esc(info.name)}${info.start ? ` (${esc(info.start)})` : ''}</b><div class="muted small">${esc(cleanPub(info.pub) || '')} · ${plural(info.n || 0, 'issue')}</div></div></div>
+        <button class="btn primary" id="cvsadd" style="width:100%">Add to my collection lists</button>${info.about ? `<div class="desc clip" style="margin-top:12px" id="cvsab">${esc(info.about)}</div>` : ''}
+        <div class="sec">Issues</div><div class="muted small" id="cst">Getting the issues…</div><div id="cvsgrid"></div>`;
+      $('#body').innerHTML = h;
+      $('#cvsadd').onclick = async () => { try{ const c = await colAdd(v.shelf, {id:info.id, name:info.name, start:info.start, pub:info.pub}); toast(`${info.name} added to your lists`); V[V.length - 1] = {v:'colser', shelf:v.shelf, vid:c.vid}; draw() }catch(e){ closeSheet(); toast(e.message || String(e), 5000) } };
+      if(info.about && $('#cvsab')) $('#cvsab').onclick = e => e.currentTarget.classList.toggle('clip');
+      if((info.n || 0) > 300){ $('#cst').innerHTML = `${plural(info.n, 'issue')} – a long series. <button class="btn sm" id="cvsall">Show them all</button>`; $('#cvsall').onclick = () => loadIss(); return }
+      loadIss();
+      async function loadIss(){ try{ $('#cst').textContent = 'Getting the issues…';
+        const issues = await discCache('iss:' + v.vid, 864e5, () => cvAllIssues(v.vid, (n, t) => { const e = $('#cst'); if(e) e.textContent = `Getting the issues… ${n} of ${t || '?'}` })); if(cur() !== me) return;
+        const tmp = {vid:v.vid, shelf:v.shelf, name:info.name, issues, phys:{}}, d = colDigital(tmp);
+        $('#cst').textContent = `You have ${Object.keys(d).length} of ${issues.length}`; $('#cvsgrid').innerHTML = issueGridHTML(tmp, () => true); lazyCovers($('#cvsgrid'));
+        $('#cvsgrid').querySelectorAll('[data-iss]').forEach(el => el.onclick = () => { const b = d[el.dataset.iss]; if(b) go({v:'book', id:b.id}); else issueSheet(tmp, issues.find(i => numKey(i.num) === el.dataset.iss)) }) }catch(e){ const el = $('#cst'); if(el) el.textContent = e.message || String(e) } } }
+    catch(e){ const el = $('#cst'); if(el) el.textContent = e.message || String(e) } })() }
