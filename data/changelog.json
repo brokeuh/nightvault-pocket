@@ -3,6 +3,25 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 72,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "audiobooks"
+   ],
+   "title": "Audiobooks: organised like Music and Bookcase",
+   "items": [
+    "Books in a series share one tile (in series order, #1, #2 …); an author's other books share a tile too (Settings → Bundle books by author).",
+    "The same groups as Music and Bookcase: + Group, groups inside groups, ⋯ → Put in a group…, Add books…, Rename, Choose the tile cover, ★ Pin, Select several and move them, Undo, and Save my groups in Settings.",
+    "Tapping a book opens its page first: Continue / Listen, previous and next in the series, details and bookmarks. Grouped / All books and Sort by on every page; search also finds groups.",
+    "The series is read from the files (series tags), from a title like \"Mort (Discworld #4)\" or from folders (Author / Series / Book). Books added before: ⋯ → Read the book info again, or Edit details.",
+    "An author folder with one file per book now becomes separate books."
+   ]
+  },
+  {
    "id": 71,
    "date": "2026-10-19",
    "where": [

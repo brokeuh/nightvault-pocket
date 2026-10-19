@@ -158,8 +158,8 @@ input[type=range].seek{width:100%;margin:16px 0 0;accent-color:var(--accent);hei
 .pcs{font-size:9.5px;font-weight:800;letter-spacing:.4px;color:#9fd0ff;border:1px solid #9fd0ff66;border-radius:5px;padding:0 4px;margin-right:6px;vertical-align:1px}
 .pcoff{opacity:.42}
 .pcdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6f7d8c;margin-right:6px;vertical-align:0}.pcdot.ok{background:var(--accent)}.pcdot.no{background:var(--red)}
-#msel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(620px,calc(100% - 20px));display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:16px;background:#1b2a26f5;border:1px solid #2e6b55;box-shadow:0 8px 30px #0009;z-index:7;font-size:14px}
-body.selecting #mmini{display:none}
+#msel,#absel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(620px,calc(100% - 20px));display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:16px;background:#1b2a26f5;border:1px solid #2e6b55;box-shadow:0 8px 30px #0009;z-index:7;font-size:14px}
+body.selecting #mini,body.selecting #mmini{display:none}
 .bk.selmode{cursor:pointer}.bk.selmode .cv{transition:transform .12s}
 .bk.sel .cv{outline:3px solid var(--accent);outline-offset:-3px;transform:scale(.94)}
 .bk.sel::after{content:'✓';position:absolute;right:8px;bottom:44px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#08251b;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px}
@@ -168,6 +168,11 @@ body.selecting #mmini{display:none}
 .bk.stack .pinb{top:17px}
 .bk:has(.pinb) .pcb{left:36px}
 .bk .cdl{position:absolute;top:7px;right:7px;background:#0b0e13d9;color:#f1dc6b;font-size:11.5px;font-weight:800;letter-spacing:.3px;padding:3px 8px;border-radius:99px;border:1px solid #f1dc6b55;pointer-events:none}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px;margin:6px 0 12px}.facts span:nth-child(odd){color:var(--dim)}
+.desc{font-size:14px;line-height:1.55;color:#d4dbe3;white-space:pre-line}
+.nexts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.nx{display:flex;gap:10px;align-items:center;padding:8px;border-radius:14px;border:1px solid var(--line);background:var(--pan2);cursor:pointer;min-width:0}
+.nx .cv{width:44px;border-radius:8px}.nx .cv .ph{font-size:8px;padding:4px}.nx .cv .ph span{display:none}.nx .n{min-width:0}.nx .n div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}.nx small{color:var(--dim);font-size:11px}
 </style>
 </head>
 <body>
@@ -175,7 +180,7 @@ body.selecting #mmini{display:none}
 
 <!-- library -->
 <div id="lib">
-  <div class="top"><h1 id="apptitle">Audiobooks</h1>
+  <div class="top"><button class="ib" id="abback" hidden aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><h1 id="apptitle">Audiobooks</h1>
     <button class="ib" id="setbtn" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>
     <button class="btn primary sm" id="addbtn" style="height:42px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add</button></div>
   <div id="libbody"></div>
@@ -331,7 +336,10 @@ async function mp4Info(blob){
     const kind = moov.getUint32(d.s) & 0xffffff, a = d.s + 8, z = d.e, key = it.t.replace('\xa9', '@');
     if(key === 'covr'){ info.tags.cover = new Blob([u8.slice(a, z)], {type:kind === 14 ? 'image/png' : 'image/jpeg'}); continue }
     if(key === 'trkn' || key === 'disk'){ if(z - a >= 4) info.tags[key === 'trkn' ? 'track' : 'disc'] = moov.getUint16(a + 2); continue }
-    const map = {'@nam':'title', '@ART':'artist', 'aART':'albumartist', '@alb':'album', '@wrt':'composer', '@day':'year', 'desc':'desc', '@nrt':'narrator'};
+    if(key === '@mvi'){ const n = z - a; info.tags.seriesNum = n === 1 ? moov.getUint8(a) : n === 2 ? moov.getUint16(a) : n >= 4 ? moov.getUint32(a + n - 4) : 0; continue }
+    if(key === '----'){ const nm = one(it, 'name'); if(nm && kind === 1){ const name = utf8.decode(u8.slice(nm.s + 4, nm.e)).trim().toUpperCase(), val = utf8.decode(u8.slice(a, z)).trim();   // freeform tags (Mp3tag, Audiobookshelf …)
+        if(name === 'SERIES' || name === 'MVNM') info.tags.series = info.tags.series || val; else if(name === 'SERIES-PART' || name === 'MVIN') info.tags.seriesNum = info.tags.seriesNum || parseFloat(val) || 0; else if(name === 'NARRATOR') info.tags.narrator = info.tags.narrator || val } continue }
+    const map = {'@nam':'title', '@ART':'artist', 'aART':'albumartist', '@alb':'album', '@wrt':'composer', '@day':'year', 'desc':'desc', '@nrt':'narrator', '@grp':'grouping', '@mvn':'series'};
     if(map[key] && kind === 1) info.tags[map[key]] = utf8.decode(u8.slice(a, z)).trim() }
   // chapters: QuickTime chapter track (text samples)
   try{
@@ -380,8 +388,11 @@ function id3frames(b, v, a, z, out){
     else { id = latin(b, p, p + 4); size = v === 4 ? ssafe(p + 4) : ((b[p + 4] << 24) >>> 0) + (b[p + 5] << 16) + (b[p + 6] << 8) + b[p + 7]; hl = 10 }
     if(!/^[A-Z0-9]{3,4}$/.test(id) || size <= 0 || p + hl + size > z) break;
     const s = p + hl, e = s + size, f = b.subarray(s, e);
-    const T = {TIT2:'title', TT2:'title', TPE1:'artist', TP1:'artist', TPE2:'albumartist', TP2:'albumartist', TALB:'album', TAL:'album', TCOM:'composer', TCM:'composer', TYER:'year', TDRC:'year', TYE:'year', TRCK:'track', TRK:'track', TPOS:'disc', TPA:'disc'};
-    if(T[id]){ const val = id3text(f.subarray(1), f[0]); if(T[id] === 'track' || T[id] === 'disc') out.tags[T[id]] = parseInt(val) || 0; else if(val) out.tags[T[id]] = val }
+    const T = {TIT2:'title', TT2:'title', TPE1:'artist', TP1:'artist', TPE2:'albumartist', TP2:'albumartist', TALB:'album', TAL:'album', TCOM:'composer', TCM:'composer', TYER:'year', TDRC:'year', TYE:'year', TRCK:'track', TRK:'track', TPOS:'disc', TPA:'disc', TIT1:'grouping', TT1:'grouping', MVNM:'series', MVIN:'seriesNum'};
+    if(T[id]){ const val = id3text(f.subarray(1), f[0]); if(T[id] === 'track' || T[id] === 'disc') out.tags[T[id]] = parseInt(val) || 0; else if(T[id] === 'seriesNum') out.tags.seriesNum = parseFloat(val) || 0; else if(val) out.tags[T[id]] = val }
+    else if(id === 'TXXX'){ const enc = f[0], wide = enc === 1 || enc === 2; let q = 1; if(wide){ while(q + 1 < f.length && (f[q] || f[q + 1])) q += 2 } else { while(q < f.length && f[q]) q++ }
+      const desc = id3text(f.subarray(1, q), enc).toUpperCase(), val = id3text(f.subarray(q + (wide ? 2 : 1)), enc);
+      if(desc === 'SERIES') out.tags.series = out.tags.series || val; else if(desc === 'SERIES-PART') out.tags.seriesNum = out.tags.seriesNum || parseFloat(val) || 0; else if(desc === 'NARRATOR') out.tags.narrator = out.tags.narrator || val }
     else if((id === 'APIC' || id === 'PIC') && !out.tags.cover){
       const enc = f[0]; let q = 1, mime;
       if(id === 'PIC'){ mime = /png/i.test(latin(f, 1, 4)) ? 'image/png' : 'image/jpeg'; q = 4 } else { const m0 = q; while(q < f.length && f[q]) q++; mime = latin(f, m0, q) || 'image/jpeg'; q++ }
@@ -518,7 +529,8 @@ async function fileInfo(f, quick){
 
 /* ---------- library in memory ---------- */
 let BOOKS = [], STATE = {}, COVERURL = {};
-async function loadLib(){ BOOKS = await dbAll('books'); STATE = {}; for(const s of await dbAll('state')) STATE[s.id] = s }
+async function loadLib(){ BOOKS = await dbAll('books'); STATE = {}; for(const s of await dbAll('state')) STATE[s.id] = s; abRegroup();
+  try{ GPIC = new Set((await dbKeys('covers')).map(String).filter(k => k.startsWith('grp:')).map(k => k.slice(4))) }catch(e){} }
 const st = id => STATE[id] || (STATE[id] = {id, pos:0, speed:0, last:0, finished:false, marks:[]});
 let stTimer = {};
 function saveState(id, now){ clearTimeout(stTimer[id]); const go = () => dbPut('state', st(id)).catch(() => {}); if(now) return go(); stTimer[id] = setTimeout(go, 400) }
@@ -529,39 +541,292 @@ function coverHTML(b, url, extra){ extra = extra || ''; if(url) return `<div cla
   const h = hue(b.title); return `<div class="cv"><div class="ph" style="--c1:hsl(${h} 45% 30%);--c2:hsl(${(h + 40) % 360} 50% 16%)">${esc(b.title)}<span>${esc(b.author || '')}</span></div>${extra}</div>` }
 const progress = b => { const s = STATE[b.id]; if(!s) return 0; if(s.finished) return 1; return b.dur ? Math.min(1, s.pos / b.dur) : 0 };
 
-/* ---------- library screen ---------- */
+/* ---------- library screens: organised like Music and Bookcase (plans/shared-groups.md) ----------
+   main page → group (series / author / your own group, groups inside groups) → book page → player.
+   The grouping itself is the shared engine ../hub/nvgroups.js (prefix nvAudio): automatic group = the series; with
+   "Bundle books by author" (Settings, on by default) an author's other books make one tile too. */
+let AGR_ = null;
+const ag = () => AGR_ || (AGR_ = NVGROUPS.make({prefix:'nvAudio', app:'audiobooks', title:'Audiobooks', itemsKey:'itemGroup', norm, key:b => b.id,
+  hay:b => [b.title, b.series, b.author].filter(Boolean).join(' '), kinds:{series:'Series', author:'Author'},
+  auto:b => b.series ? {key:'s:' + norm(b.series), name:b.series, kind:'series'} : S.byAuthor !== false && b.author ? {key:'a:' + norm(b.author), name:b.author, kind:'author'} : null,
+  /* a renamed group: its own tile picture (covers store grp:<key>) moves with it */
+  onRekey:async (from, to) => { const c = await dbGet('covers', 'grp:' + from).catch(() => null); if(!c) return; await dbPut('covers', {id:'grp:' + to, blob:c.blob}); GPIC.add(to); drawLib() }}));
+let AGC = null;                                   // the groups, worked out once per change
+const abGroups = () => AGC || (AGC = ag().build(BOOKS));
+const abRegroup = () => { AGC = null };
+const abGroup = k => abGroups().groups.find(g => g.key === k) || null;
+const abGroupOf = b => abGroups().groups.find(g => g.items.includes(b)) || null;
+const abChange = (fn, msg) => { ag().change(fn); abRegroup(); ag().undoToast(msg, () => { abRegroup(); abSelEnd(true); drawLib() }) };
+const seriesOrder = (a, b) => ((a.seriesNum != null ? a.seriesNum : 1e9) - (b.seriesNum != null ? b.seriesNum : 1e9)) || coll.compare(norm(a.title), norm(b.title));
+const started = b => { const s = STATE[b.id]; return !!(s && (s.pos > 0 || s.finished)) };
+const lastHeard = x => x.items ? Math.max(0, ...(x.all || x.items).map(b => (STATE[b.id] || {}).last || 0)) : (STATE[x.id] || {}).last || 0;
+const addedAt = x => x.items ? Math.max(0, ...(x.all || x.items).map(b => b.added || 0)) : x.added || 0;
+const nameOfT = x => x.items ? x.name : (x.series || x.title || '');
+const numTxt = n => n == null ? '' : '#' + (Math.round(n * 10) / 10);
+
+/* the series of a book: its tags (series / movement / SERIES), a title like "Mort (Discworld #4)", else its folders (…/Author/Series/Book) */
+const SER_RE = /^(.*?)[\s,:-]*(?:#|book|boek|deel|band|tome|vol\.?|volume|part)\s*(\d+(?:\.\d+)?)\s*$/i;
+function seriesFrom(t, title, dir, author){
+  let series = (t.series || '').trim(), num = t.seriesNum || null;
+  if(!series && t.grouping){ const m = t.grouping.match(SER_RE); if(m && m[1]){ series = m[1].trim(); num = num || parseFloat(m[2]) } }
+  if(!series){ const m = String(title || '').match(/\(([^()]+?)[\s,]*(?:#|book|boek|deel|band|tome|vol\.?|volume|part)\s*(\d+(?:\.\d+)?)\)/i); if(m){ series = m[1].trim(); num = num || parseFloat(m[2]) } }
+  if(!series && dir){ const seg = String(dir).split('/').filter(Boolean).slice(1);    // the picked folder itself is not a series
+    const up = seg.length >= 2 ? seg[seg.length - 2] : '', a = norm(author);
+    if(up && norm(up) !== a && (seg.length >= 3 || (a && !norm(up).includes(a)))) series = up.replace(/[([][^)\]]*[)\]]/g, '').trim() }
+  if(series && num == null){ const own = String(dir || '').split('/').pop() + ' ' + (title || ''), m = own.match(/^\s*(\d{1,3}(?:\.\d)?)\s*[-._ ]/) || own.match(/(?:#|book|boek|deel|band|tome|vol\.?|volume|part)\s*(\d+(?:\.\d+)?)/i); if(m) num = parseFloat(m[1]) }
+  return {series, seriesNum:series && num != null && isFinite(num) ? num : null} }
+
+/* covers on screen: one url per book (worked out before drawing) and a group's own tile picture */
+let URLS = {}, GPIC = new Set(), GURL = {}, ABRND = {};
+async function abUrls(){ await Promise.all(BOOKS.map(async b => URLS[b.id] = await coverUrl(b)));
+  for(const k of GPIC) if(!GURL[k]){ const c = await dbGet('covers', 'grp:' + k).catch(() => null); if(c && c.blob) GURL[k] = URL.createObjectURL(c.blob); else GPIC.delete(k) } }
+function abGroupCover(g){ const c = ag().cover(g.key), all = (g.all || g.items).slice().sort(seriesOrder), wc = all.filter(b => URLS[b.id]);
+  if(c.t === 'pic' && GURL[g.key]) return coverHTML({title:g.name}, GURL[g.key]);
+  let b = c.t === 'item' ? all.find(x => x.id === c.al) : null;
+  if(c.t === 'random' && wc.length){ b = wc.find(x => x.id === ABRND[g.key]) || wc[Math.floor(Math.random() * wc.length)]; ABRND[g.key] = b.id }
+  b = b || wc[0]; const h = coverHTML(b || {title:g.name, author:''}, b ? URLS[b.id] : null);
+  return c.t === 'cycle' && wc.length > 1 ? h.replace('<div class="cv"', `<div class="cv" data-abcycle="${esc(g.key)}"`) : h }
+/* "Changing": the covers inside one after another (every 4 s, paused in the background) */
+const ABCYI = {};
+setInterval(() => { if(document.hidden || MODE !== 'audiobooks') return;
+  for(const el of document.querySelectorAll('#libbody [data-abcycle]')){ const r = el.getBoundingClientRect(); if(r.bottom < 0 || r.top > innerHeight) continue;
+    const g = abGroup(el.dataset.abcycle); if(!g) continue; const wc = g.all.slice().sort(seriesOrder).filter(b => URLS[b.id]); if(wc.length < 2) continue;
+    ABCYI[g.key] = ((ABCYI[g.key] || 0) + 1) % wc.length; const u = URLS[wc[ABCYI[g.key]].id]; let img = el.querySelector('img');
+    if(!img){ el.querySelectorAll('.ph').forEach(x => x.remove()); img = new Image(); img.alt = ''; el.prepend(img) }
+    img.style.transition = 'opacity .5s'; img.style.opacity = 0; setTimeout(() => { img.src = u; img.onload = () => img.style.opacity = 1 }, 450) } }, 4000);
+
+/* tiles */
+function abTile(b){ const s = STATE[b.id] || {}, p = progress(b), pin = ag().isPinned('it:' + b.id);
+  return `<div class="bk" data-book="${esc(b.id)}" style="position:relative">${coverHTML(b, URLS[b.id], (pin ? PINB : '') + (s.finished ? '<span class="done">✓ Done</span>' : b.series && b.seriesNum != null ? `<span class="cdl">${numTxt(b.seriesNum)}</span>` : ''))}
+    <div class="t">${esc(b.title)}</div><div class="a">${esc(b.author || '')}${b.dur ? (b.author ? ' · ' : '') + hm(b.dur) : ''}</div>${p > 0 && !s.finished ? `<div class="pbar"><i style="width:${p * 100}%"></i></div>` : ''}</div>` }
+function abGroupTile(g){ const all = g.all || g.items, k = (g.kids || []).length, done = all.filter(b => (STATE[b.id] || {}).finished).length, dur = all.reduce((n, b) => n + (b.dur || 0), 0);
+  return `<div class="bk stack" data-grp="${esc(g.key)}" style="position:relative">${abGroupCover(g)}${ag().isPinned('gr:' + g.key) ? PINB : ''}<span class="cdl grp">${k ? plural(k, 'group') + ' · ' : ''}${all.length ? plural(all.length, 'book') : 'empty'}</span>
+    <div class="t">${esc(g.name)}</div><div class="a">${esc(ag().label(g))}${all.length ? ' · ' + (done ? `${done} of ${all.length} finished` : hm(dur)) : ''}</div></div>` }
+
+/* the screens: a stack of views */
+let AV = [{v:'home'}];
+const atop = () => AV[AV.length - 1];
+function abGo(v){ abSelEnd(true); AV.push(v); drawLib(); scrollTo(0, 0) }
+function abBack(){ if(ABSEL){ abSelEnd(); return true } if(AV.length > 1){ AV.pop(); drawLib(); return true } return false }
+$('#abback').onclick = () => abBack();
+/* "Sort by" on every page, each page remembering its own choice (S.sorts) */
+const ABSORTS = {home:[['recent', 'Recently listened'], ['series', 'Series & title'], ['title', 'Title'], ['author', 'Author'], ['added', 'Recently added']],
+  inside:[['series', 'Series order'], ['title', 'Title'], ['recent', 'Recently listened'], ['added', 'Recently added']]};
+const abSortOf = (page, key) => (S.sorts || {})[key || page] || ABSORTS[page][0][0];
+const abSortSel = (page, key) => `<select data-absort="${page}" data-skey="${esc(key || page)}" aria-label="Sort by">${ABSORTS[page].map(([k, t]) => `<option value="${k}" ${abSortOf(page, key) === k ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+function abSort(list, k){ return list.slice().sort(k === 'title' ? (a, b) => coll.compare(norm(nameOfT(a)), norm(nameOfT(b)))
+  : k === 'recent' ? (a, b) => lastHeard(b) - lastHeard(a) || addedAt(b) - addedAt(a) : k === 'added' ? (a, b) => addedAt(b) - addedAt(a)
+  : k === 'author' ? (a, b) => coll.compare(norm(a.items ? (a.all[0] || {}).author : a.author) || 'zzz', norm(b.items ? (b.all[0] || {}).author : b.author) || 'zzz') || coll.compare(norm(nameOfT(a)), norm(nameOfT(b)))
+  : (a, b) => coll.compare(norm(nameOfT(a)), norm(nameOfT(b))) || seriesOrder(a.items ? {} : a, b.items ? {} : b)) }
+const ABFILTERS = [['all', 'All'], ['listening', 'Listening'], ['new', 'Not started'], ['finished', 'Finished']];
+const abPass = (b, f) => { const s = STATE[b.id] || {}; return f === 'listening' ? started(b) && !s.finished : f === 'new' ? !started(b) : f === 'finished' ? !!s.finished : true };
+
 async function drawLib(){
-  const body = $('#libbody');
+  if(MODE !== 'audiobooks') return;
+  const body = $('#libbody'), v = atop(); await abUrls();
+  $('#abback').hidden = AV.length < 2; $('#apptitle').textContent = AV.length < 2 ? 'Audiobooks' : ''; $('#addbtn').hidden = !(v.v === 'home' || v.v === 'group');
   if(!BOOKS.length){ body.innerHTML = `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
     <h2 style="margin:8px 0 4px;font-size:18px">No audiobooks yet</h2><p class="muted small" style="margin:0 0 14px">${NvFiles ? 'Tap <b>Add</b> and pick the folder on this phone that holds your audiobooks: one M4B per book, one long MP3/M4A, or a folder of MP3s per book. Nothing is copied.' : 'Tap <b>Add</b> and pick the files of a book: one M4B, one long MP3/M4A, or all the MP3s of a book at once. They are copied into the app, so they play without internet.'}</p>
     <button class="btn primary" onclick="openAdd()">Add an audiobook</button></div>${await storeLine()}`; return }
-  const q = (S.q || '').toLowerCase();
-  let list = BOOKS.filter(b => { const s = STATE[b.id] || {}; const started = s.pos > 0 || s.finished;
-    if(S.filter === 'listening' && !(started && !s.finished)) return false; if(S.filter === 'new' && started) return false; if(S.filter === 'finished' && !s.finished) return false;
-    return !q || (b.title + ' ' + (b.author || '') + ' ' + (b.narrator || '')).toLowerCase().includes(q) });
-  const last = b => (STATE[b.id] || {}).last || 0;
-  list.sort(S.sort === 'title' ? (a, b) => coll.compare(a.title, b.title) : S.sort === 'author' ? (a, b) => coll.compare(a.author || '~', b.author || '~') || coll.compare(a.title, b.title) : S.sort === 'added' ? (a, b) => b.added - a.added : (a, b) => (last(b) - last(a)) || (b.added - a.added));
-  const lastId = lsGet('nvAudio.last', null), lb = BOOKS.find(b => b.id === lastId), ls = lb && STATE[lb.id];
-  const urls = {}; await Promise.all(BOOKS.map(async b => urls[b.id] = await coverUrl(b)));
   let h = '';
-  if(lb && ls && !ls.finished && (!cur || cur.id !== lb.id)){ h += `<div class="cont" data-open="${lb.id}">${coverHTML(lb, urls[lb.id])}<div style="flex:1;min-width:0"><small>CONTINUE LISTENING</small><b>${esc(lb.title)}</b><div class="muted small">${esc(chapterAt(lb, ls.pos).title || '')}${lb.dur ? ' · ' + hm(lb.dur - ls.pos) + ' left' : ''}</div><div class="pbar"><i style="width:${progress(lb) * 100}%"></i></div></div></div>` }
-  h += `<div class="chips">${[['all', 'All'], ['listening', 'Listening'], ['new', 'Not started'], ['finished', 'Finished']].map(([v, t]) => `<button class="chip ${S.filter === v ? 'on' : ''}" data-filter="${v}">${t}</button>`).join('')}
-    <select id="sort" aria-label="Sort" style="margin-left:auto"><option value="recent">Recent</option><option value="added">Added</option><option value="title">Title</option><option value="author">Author</option></select></div>`;
-  if(BOOKS.length > 8) h += `<input type="search" id="q" placeholder="Search title, author or narrator" value="${esc(S.q || '')}" style="margin-bottom:8px">`;
-  h += list.length ? `<div class="grid">${list.map(b => { const s = STATE[b.id] || {}, p = progress(b);
-      return `<div class="bk" data-open="${b.id}">${coverHTML(b, urls[b.id], s.finished ? '<span class="done">✓ Done</span>' : '')}<div class="t">${esc(b.title)}</div><div class="a">${esc(b.author || '')}${b.dur ? (b.author ? ' · ' : '') + hm(b.dur) : ''}</div>${p > 0 && !s.finished ? `<div class="pbar"><i style="width:${p * 100}%"></i></div>` : ''}</div>` }).join('')}</div>`
-    : `<p class="muted" style="text-align:center;margin-top:30px">Nothing here.</p>`;
-  h += await storeLine();
-  body.innerHTML = h;
-  $('#sort').value = S.sort; $('#sort').onchange = e => { S.sort = e.target.value; saveS(); drawLib() };
-  if($('#q')) $('#q').oninput = e => { S.q = e.target.value; clearTimeout(drawLib.t); drawLib.t = setTimeout(() => { const pos = e.target.selectionStart; drawLib().then(() => { const i = $('#q'); if(i){ i.focus(); i.setSelectionRange(pos, pos) } }) }, 250) };
-}
+  if(v.v === 'home'){ const q = norm(S.q || ''), f = S.filter || 'all', G = ag();
+    h += `<input type="search" id="q" placeholder="Search books, series, authors, narrators" value="${esc(S.q || '')}" style="margin:2px 0 8px">`;
+    if(q){ const {groups:gs} = abGroups(), where = {}; for(const g of gs) for(const b of g.items) where[b.id] = G.path(g, gs);
+      const gm = gs.filter(g => norm(g.name).includes(q)).sort((x, y) => coll.compare(G.path(x, gs), G.path(y, gs))).slice(0, 12), bm = BOOKS.filter(b => norm([b.title, b.series, b.author, b.narrator].join(' ')).includes(q)).sort(seriesOrder);
+      if(!gm.length && !bm.length) h += '<p class="muted" style="text-align:center;margin-top:30px">Nothing found.</p>';
+      if(gm.length) h += `<div class="sec">Groups</div><div class="grid">${gm.map(g => abGroupTile(g).replace(/<div class="a">[^<]*<\/div>/, g.parent ? `<div class="a">in ${esc(G.path(gs.find(x => x.key === g.parent), gs))}</div>` : '$&')).join('')}</div>`;
+      if(bm.length) h += `<div class="sec">Books</div><div class="grid">${bm.slice(0, 300).map(b => abTile(b).replace(/<div class="a">[^<]*<\/div>/, where[b.id] ? `<div class="a">in ${esc(where[b.id])}</div>` : '$&')).join('')}</div>` }
+    else {
+      const lastId = lsGet('nvAudio.last', null), lb = BOOKS.find(b => b.id === lastId), ls = lb && STATE[lb.id];
+      if(lb && ls && !ls.finished && f === 'all' && (!cur || cur.id !== lb.id)) h += `<div class="cont" data-open="${esc(lb.id)}">${coverHTML(lb, URLS[lb.id])}<div style="flex:1;min-width:0"><small>CONTINUE LISTENING</small><b>${esc(lb.title)}</b><div class="muted small">${esc(chapterAt(lb, ls.pos).title || '')}${lb.dur ? ' · ' + hm(lb.dur - ls.pos) + ' left' : ''}</div><div class="pbar"><i style="width:${progress(lb) * 100}%"></i></div></div></div>`;
+      h += `<div class="chips">${ABFILTERS.map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-filter="${k}">${t}</button>`).join('')}</div>`;
+      const grouped = S.grouped !== false;
+      h += `<div class="mbar"><select id="abgrouped" aria-label="Groups"><option value="1" ${grouped ? 'selected' : ''}>Grouped</option><option value="0" ${!grouped ? 'selected' : ''}>All books</option></select>${abSortSel('home')}<span style="flex:1"></span><button class="btn sm" data-selstart="1">Select</button><button class="btn sm" id="abnewgrp">+ Group</button></div>`;
+      const vis = BOOKS.filter(b => abPass(b, f)), k = abSortOf('home');
+      h += `<div class="mtot">${plural(vis.length, 'book')}${f === 'all' ? ` · ${BOOKS.filter(b => (STATE[b.id] || {}).finished).length} finished · ${hm(vis.reduce((n, b) => n + (b.dur || 0), 0))}` : ''}</div>`;
+      let tiles;
+      if(!grouped || f !== 'all') tiles = abSort(vis, k);
+      else { const {groups, singles} = abGroups(); tiles = abSort([...groups.filter(g => !g.parent), ...singles], k) }
+      tiles = G.pinFirst(tiles, x => x.items ? 'gr:' + x.key : 'it:' + x.id);
+      h += tiles.length ? `<div class="grid">${tiles.map(x => x.items ? abGroupTile(x) : abTile(x)).join('')}</div>` : '<p class="muted" style="text-align:center;margin-top:30px">Nothing here.</p>' }
+    h += await storeLine() }
+  if(v.v === 'group'){ const G = ag(), g = abGroup(v.key); if(!g){ AV.pop(); return drawLib() }
+    const gs = abGroups().groups, all = g.all, done = all.filter(b => (STATE[b.id] || {}).finished).length, ord = all.slice().sort(seriesOrder);
+    const nextB = ord.find(b => started(b) && !STATE[b.id].finished) || ord.find(b => !(STATE[b.id] || {}).finished), authors = [...new Set(all.map(b => b.author).filter(Boolean))];
+    h += `<div class="alhead"><div class="stack" style="flex:none"><div class="gcv">${abGroupCover(g)}</div></div><div style="min-width:0;flex:1"><b>${esc(g.name)}</b>
+      ${g.parent ? `<div class="lnk small" data-gotogrp="${esc(g.parent)}">in ${esc(G.path(gs.find(x => x.key === g.parent), gs))}</div>` : ''}
+      ${authors.length === 1 && g.kind !== 'author' ? `<div class="muted small">${esc(authors[0])}</div>` : ''}
+      <div class="muted small">${esc(G.label(g))} · ${(g.kids || []).length ? plural(g.kids.length, 'group') + ' · ' : ''}${plural(all.length, 'book')}${done ? ` · ${done} finished` : ''}${all.length ? ' · ' + hm(all.reduce((n, b) => n + (b.dur || 0), 0)) : ''}</div></div></div>`;
+    h += `<div class="mbar">${nextB ? `<button class="btn primary" data-play="${esc(nextB.id)}" style="flex:1;min-width:0"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${started(nextB) ? 'Continue' : 'Listen'}: ${esc(nextB.title)}</span></button>` : ''}<button class="ib" id="abgmenu" aria-label="More for this group">${IC_DOTS}</button></div>`;
+    const sk = 'grp:' + g.key, k = abSortOf('inside', sk), kids = abSort(g.kids || [], k === 'series' ? 'title' : k), items = k === 'series' ? g.items.slice().sort(seriesOrder) : abSort(g.items, k);
+    h += `<div class="mbar"><span class="muted small" style="flex:1"></span><button class="btn sm" data-selstart="1">Select</button>${abSortSel('inside', sk)}</div>`;
+    h += `<div class="grid">${G.pinFirst([...kids, ...items], x => x.items ? 'gr:' + x.key : 'it:' + x.id).map(x => x.items ? abGroupTile(x) : abTile(x)).join('')}</div>`;
+    if(!all.length && !(g.kids || []).length) h += `<p class="muted small" style="margin-top:12px">Empty. Tap ⋯ → <b>Add books…</b> to put books in it, or <b>New group inside</b>.</p>` }
+  if(v.v === 'book'){ const b = BOOKS.find(x => x.id === v.id); if(!b){ AV.pop(); return drawLib() } h += abBookPage(b) }
+  body.innerHTML = h; abSelDraw();
+  const q = $('#q'); if(q) q.oninput = e => { S.q = e.target.value; saveS(); clearTimeout(drawLib.t); drawLib.t = setTimeout(() => { const pos = e.target.selectionStart; drawLib().then(() => { const i = $('#q'); if(i){ i.focus(); try{ i.setSelectionRange(pos, pos) }catch(x){} } }) }, 250) };
+  if($('#abgmenu')) $('#abgmenu').onclick = () => abGroupMenu(abGroup(v.key));
+  if($('#abbmenu')) $('#abbmenu').onclick = () => abBookMenu(BOOKS.find(x => x.id === v.id));
+  if($('#abnewgrp')) $('#abnewgrp').onclick = abNewGroup }
 async function storeLine(){ const cp = BOOKS.filter(b => !b.linked), used = cp.reduce((a, b) => a + (b.size || 0), 0), ln = BOOKS.length - cp.length;
-  let t = `${BOOKS.length} book${BOOKS.length === 1 ? '' : 's'}${ln ? ` · ${ln} from folders` : ''}${cp.length ? ` · ${mb(used)} copied into the app` : ''}`;
+  let t = `${plural(BOOKS.length, 'book')}${ln ? ` · ${ln} from folders` : ''}${cp.length ? ` · ${mb(used)} copied into the app` : ''}`;
   try{ const e = await navigator.storage.estimate(); if(e && e.quota) t += ` · ${mb(Math.max(0, e.quota - e.usage))} free for the app` }catch(e){}
   return `<div class="store">${t}</div>` }
-$('#libbody').addEventListener('click', e => { const f = e.target.closest('[data-filter]'); if(f){ S.filter = f.dataset.filter; saveS(); drawLib(); return }
-  const o = e.target.closest('[data-open]'); if(o) openBook(o.dataset.open) });
+
+/* the book page: a summary before you listen (like Bookcase) */
+const abSeries = b => { const g = abGroupOf(b); return g && g.kind === 'series' ? g.items.slice().sort(seriesOrder) : b.series ? BOOKS.filter(x => x.series && norm(x.series) === norm(b.series)).sort(seriesOrder) : [b] };
+function abBookPage(b){ const s = STATE[b.id] || {}, p = progress(b), l = abSeries(b), i = l.indexOf(b), prev = i > 0 ? l[i - 1] : null, next = i >= 0 ? l[i + 1] || null : null, g = abGroupOf(b);
+  const facts = [['Series', b.series ? `<span class="lnk" data-tobookgrp="1">${esc(b.series)}</span>${b.seriesNum != null ? ' · ' + numTxt(b.seriesNum) : ''}` : ''], ['Author', esc(b.author || '')], ['Read by', esc(b.narrator || '')], ['Year', esc(b.year || '')],
+    ['Length', b.dur ? hm(b.dur) : ''], ['Chapters', (b.chapters || []).length ? String(b.chapters.length) : ''], ['Files', `${b.parts.length} · ${mb(b.size || 0)}`],
+    ['Where', b.linked ? `In the folder “${esc(b.linked.name)}” on this phone` : 'Copied into the app'], ['Group', g && g.kind !== 'series' ? `<span class="lnk" data-tobookgrp="1">${esc(g.name)}</span>` : ''], ['Added', new Date(b.added).toLocaleDateString()]].filter(x => x[1]);
+  const nx = (x, lbl) => x ? `<div class="nx" data-book="${esc(x.id)}">${coverHTML(x, URLS[x.id])}<div class="n"><small>${lbl}</small><div>${esc(x.title)}</div></div></div>` : '<div></div>';
+  const left = b.dur ? Math.max(0, b.dur - (s.pos || 0)) : 0;
+  let h = `<div class="alhead" style="align-items:flex-start">${coverHTML(b, URLS[b.id])}<div style="min-width:0;flex:1"><b>${esc(b.title)}</b>
+    ${b.series ? `<div class="lnk small" data-tobookgrp="1">${esc(b.series)}${b.seriesNum != null ? ' · ' + numTxt(b.seriesNum) : ''}</div>` : ''}
+    <div class="muted small">${esc([b.author, b.narrator ? 'read by ' + b.narrator : ''].filter(Boolean).join(' · '))}</div>
+    <div class="muted small" style="margin-top:8px">${s.finished ? '✓ Finished' : started(b) ? `${Math.round(p * 100)}% · ${hm(left)} left${s.pos ? ' · ' + esc(chapterAt(b, s.pos).title || '') : ''}` : 'Not started' + (b.dur ? ' · ' + hm(b.dur) : '')}</div>${p > 0 && !s.finished ? `<div class="pbar"><i style="width:${p * 100}%"></i></div>` : ''}</div></div>
+    <div class="mbar"><button class="btn primary" data-play="${esc(b.id)}" style="flex:1">${IC_PLAY.replace('<svg ', '<svg width="18" height="18" ')}${s.finished ? 'Listen again' : started(b) ? 'Continue listening' : 'Listen'}</button><button class="ib" id="abbmenu" aria-label="More for this book">${IC_DOTS}</button></div>`;
+  if(prev || next) h += `<div class="nexts">${nx(prev, 'PREVIOUS')}${nx(next, 'NEXT IN SERIES')}</div>`;
+  if(b.desc) h += `<div class="sec">About</div><div class="desc">${esc(b.desc)}</div>`;
+  h += `<div class="sec">Details</div><div class="facts">${facts.map(([k, x]) => `<span>${k}</span><span style="min-width:0;overflow-wrap:anywhere">${x}</span>`).join('')}</div>`;
+  if(s.marks && s.marks.length) h += `<div class="sec">Bookmarks</div>${s.marks.slice().sort((x, y) => x.t - y.t).map(m => `<div class="li" data-markt="${m.t}"><span class="r" style="color:var(--accent)">★</span><div class="n"><div>${esc(m.note || chapterAt(b, m.t).title || 'Bookmark')}</div><div class="s">${clock(m.t)}</div></div></div>`).join('')}`;
+  return h }
+
+/* clicks on the screens */
+$('#libbody').addEventListener('click', async e => {
+  if(abSelSkip){ abSelSkip = false; return }
+  const el = e.target.closest('[data-filter],[data-open],[data-book],[data-grp],[data-play],[data-selstart],[data-gotogrp],[data-tobookgrp],[data-markt]'); if(!el) return;
+  if(ABSEL && el.closest('.grid') && (el.dataset.book || el.dataset.grp)){ const id = el.dataset.book ? 'it:' + el.dataset.book : 'gr:' + el.dataset.grp; ABSEL.has(id) ? ABSEL.delete(id) : ABSEL.add(id); abSelDraw(); return }
+  if(el.dataset.selstart) return ABSEL ? abSelEnd() : abSelStart();
+  if(el.dataset.filter){ S.filter = el.dataset.filter; saveS(); return drawLib() }
+  if(el.dataset.open) return openBook(el.dataset.open);
+  if(el.dataset.play){ const b = BOOKS.find(x => x.id === el.dataset.play); if(!b) return; const s = st(b.id); if(s.finished){ s.finished = false; s.pos = 0; await saveState(b.id, true) } return openBook(b.id, true) }
+  if(el.dataset.book) return abGo({v:'book', id:el.dataset.book});
+  if(el.dataset.grp) return abGo({v:'group', key:el.dataset.grp});
+  if(el.dataset.gotogrp){ AV.pop(); if(atop().v !== 'group' || atop().key !== el.dataset.gotogrp) AV.push({v:'group', key:el.dataset.gotogrp}); return drawLib() }
+  if(el.dataset.tobookgrp){ const b = BOOKS.find(x => x.id === atop().id), g = b && abGroupOf(b); if(g) abGo({v:'group', key:g.key}); return }
+  if(el.dataset.markt){ const b = BOOKS.find(x => x.id === atop().id); if(!b) return; await openBook(b.id); seekTo(+el.dataset.markt) } });
+$('#libbody').addEventListener('change', e => { const t = e.target;
+  if(t.dataset.absort){ S.sorts = Object.assign({}, S.sorts, {[t.dataset.skey]:t.value}); saveS(); drawLib() }
+  if(t.id === 'abgrouped'){ S.grouped = t.value === '1'; saveS(); drawLib() } });
+
+/* ---------- book ⋯ ---------- */
+function abBookMenu(b){ if(!b) return; const s = st(b.id), pin = ag().isPinned('it:' + b.id);
+  sheet(`<h3>${esc(b.title)}</h3><div class="mlist">
+    <button class="btn" id="bmg">Put in a group…</button><button class="btn" id="bme">Edit details</button>
+    <button class="btn" id="bmf">${s.finished ? 'Mark as not finished' : 'Mark as finished'}</button><button class="btn" id="bmp">${pin ? '★ Unpin from the top' : '★ Pin to the top'}</button>
+    <button class="btn" id="bmc">Change the cover</button><button class="btn" id="bms">Start again from the beginning</button>
+    <button class="btn" id="bmr">Read the book info again</button>${b.linked ? '<button class="btn" id="bmk">Check the file</button>' : ''}
+    <button class="btn danger" id="bmx">${b.linked ? 'Remove from Audiobooks (the files stay)' : 'Remove from this device'}</button></div><input type="file" id="bcf" accept="image/*" hidden>`);
+  $('#bmg').onclick = () => abGroupPicker(b); $('#bme').onclick = () => abEditBook(b);
+  $('#bmf').onclick = async () => { s.finished = !s.finished; if(!s.finished && s.pos >= b.dur - 1) s.pos = 0; if(s.finished && cur && cur.id === b.id) au.pause(); await saveState(b.id, true); closeSheet(); drawLib(); drawPlayer(); toast(s.finished ? 'Marked as finished' : 'Marked as not finished') };
+  $('#bmp').onclick = () => { ag().togglePin(['it:' + b.id], !pin); closeSheet(); drawLib(); toast(pin ? 'Unpinned' : 'Pinned: it shows first') };
+  $('#bmc').onclick = () => $('#bcf').click();
+  $('#bcf').onchange = async e => { const f = e.target.files[0]; if(!f) return; await dbPut('covers', {id:b.id, blob:f}); b.hasCover = true; await dbPut('books', b); if(COVERURL[b.id]){ URL.revokeObjectURL(COVERURL[b.id]); delete COVERURL[b.id] } artKey = null; $('#mini').dataset.id = ''; closeSheet(); drawLib(); if(cur && cur.id === b.id){ drawPlayer(true); syncMedia() } toast('New cover saved') };
+  $('#bms').onclick = async () => { s.finished = false; s.pos = 0; await saveState(b.id, true); closeSheet(); if(cur && cur.id === b.id) seekTo(0); drawLib(); toast('Back at the start') };
+  $('#bmr').onclick = () => rereadBook(b); if($('#bmk')) $('#bmk').onclick = () => checkFile(b.parts[0]);
+  $('#bmx').onclick = () => { sheet(`<h3>Remove “${esc(b.title)}”?</h3><p class="muted small">${b.linked ? `The book leaves Audiobooks, with its place and bookmarks. The files stay in the folder “${esc(b.linked.name)}”.` : `The copy on this device (${mb(b.size)}) and its place and bookmarks are removed. Your original files are not touched.`}</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Keep it</button><button class="btn primary" style="flex:1;background:#7a2a2f;border-color:#a3454b" id="bdel2">Remove</button></div>`);
+    $('#bdel2').onclick = async () => { if(cur && cur.id === b.id){ au.pause(); au.removeAttribute('src'); au.load(); cur = null; curPart = -1; mediaStop(); showPlayer(false) }
+      for(const p of b.parts) if(p.fid) await dbDel('files', p.fid).catch(() => {}); await dbDel('covers', b.id).catch(() => {}); await dbDel('state', b.id).catch(() => {}); await dbDel('books', b.id);
+      BOOKS = BOOKS.filter(x => x.id !== b.id); delete STATE[b.id]; abRegroup(); closeSheet(); if(atop().v === 'book' && atop().id === b.id) AV.pop(); drawLib(); drawMini(); toast('Removed') } } }
+$('#pmore').onclick = () => abBookMenu(cur);
+function abEditBook(b){
+  sheet(`<h3>Edit details</h3>${[['title', 'Title'], ['author', 'Author'], ['narrator', 'Read by'], ['series', 'Series'], ['seriesNum', 'Number in the series (for the order)'], ['year', 'Year']].map(([k, t]) => `<div class="opt" style="border:0;padding:6px 0 2px"><label>${t}</label></div><input type="${k === 'seriesNum' ? 'number' : 'text'}" step="any" id="ed_${k}" value="${esc(b[k] == null ? '' : b[k])}">`).join('')}
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="edsave">Save</button></div>`, true);
+  $('#edsave').onclick = async () => { for(const k of ['author', 'narrator', 'series', 'year']) b[k] = $('#ed_' + k).value.trim(); b.title = $('#ed_title').value.trim() || b.title;
+    const n = $('#ed_seriesNum').value.trim(); b.seriesNum = n === '' || !b.series ? null : parseFloat(n);
+    await dbPut('books', b); abRegroup(); closeSheet(); drawLib(); if(cur && cur.id === b.id) drawPlayer(true); $('#mini').dataset.id = ''; drawMini(); toast('Saved') } }
+
+/* ---------- groups: menus (the same words as Music and Bookcase) ---------- */
+function abAsk(title, ph, val, btn){ return new Promise(ok => { sheet(`<h3>${title}</h3><input type="text" id="askv" placeholder="${esc(ph || '')}" value="${esc(val || '')}" maxlength="80"><div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="flex:1" id="askno">Cancel</button><button class="btn primary" style="flex:2" id="askok">${btn || 'OK'}</button></div>`);
+  setTimeout(() => { const i = $('#askv'); if(i){ i.focus(); i.select() } }, 50);
+  const done = x => { closeSheet(); ok(x) }; $('#askno').onclick = () => done(null); $('#askok').onclick = () => done($('#askv').value.trim()); $('#askv').onkeydown = e => { if(e.key === 'Enter') done($('#askv').value.trim()) } }) }
+function abNewGroup(){ abAsk('New group', 'Name, like Discworld or Bedtime', '', 'Make the group').then(n => { if(!n) return; ag().own(n); abRegroup();
+  const g = abGroup('c:' + norm(n)); S.grouped = true; saveS(); drawLib(); toast(`Group “${n}”: ${plural(g ? g.all.length : 0, 'book')}. Books with this word in their title, series or author go in by themselves.`, 4500) }) }
+function abGroupMenu(g){ if(!g) return; const G = ag(), pin = G.isPinned('gr:' + g.key);
+  sheet(`<h3>${esc(g.name)}</h3><div class="mlist"><button class="btn primary" id="gadd">Add books…</button><button class="btn" id="gsub">New group inside</button><button class="btn" id="gmove">Put this group inside another group…</button><button class="btn" id="gren">Rename</button><button class="btn" id="gcov">Choose the tile cover</button><button class="btn" id="gpin">${pin ? '★ Unpin from the top' : '★ Pin to the top'}</button>${g.kind === 'own' ? '<button class="btn danger" id="gdel">Remove this group</button>' : ''}</div>
+    ${g.kind === 'own' ? '<p class="muted small" style="margin:10px 0 0">Removing the group keeps the books - they show as their own tiles again (or in their series).</p>' : ''}`);
+  $('#gadd').onclick = () => abAddItems(g); $('#gsub').onclick = () => abNewSub(g); $('#gmove').onclick = () => abMoveGroup(g); $('#gren').onclick = () => abRename(g); $('#gcov').onclick = () => abCoverSheet(g);
+  $('#gpin').onclick = () => { G.togglePin(['gr:' + g.key], !pin); closeSheet(); drawLib(); toast(pin ? 'Unpinned' : 'Pinned: it shows first') };
+  if($('#gdel')) $('#gdel').onclick = () => { closeSheet(); if(atop().v === 'group' && atop().key === g.key) AV.pop(); abChange(() => G.remove(g), `Group “${g.name}” removed`); drawLib() } }
+function abAddItems(g){ const G = ag(), gs = abGroups().groups, where = {}; for(const x of gs) for(const b of x.items) where[b.id] = x;
+  const pick = new Set(); let q = '';
+  const list = () => { const nq = norm(q); return BOOKS.filter(b => !g.items.includes(b) && (!nq || norm([b.title, b.series, b.author, (where[b.id] || {}).name].join(' ')).includes(nq))).sort((x, y) => coll.compare(norm(x.title), norm(y.title))) };
+  const upd = () => { $('#aago').textContent = pick.size ? `Add ${plural(pick.size, 'book')}` : 'Add'; $('#aago').disabled = !pick.size };
+  const drawL = () => { const l = list(), el = $('#aalist'); if(!el) return;
+    el.innerHTML = l.slice(0, 400).map(b => `<label class="li" style="cursor:pointer"><input type="checkbox" data-aa="${esc(b.id)}" ${pick.has(b.id) ? 'checked' : ''} style="width:22px;height:22px;accent-color:var(--accentd);flex:none"><span class="th">${coverHTML(b, URLS[b.id])}</span><div class="n"><div>${esc(b.title)}</div><div class="s">${esc(b.author || '')}${where[b.id] ? ' · in ' + esc(G.path(where[b.id], gs)) : ''}</div></div></label>`).join('') + (l.length > 400 ? `<p class="muted small">… and ${l.length - 400} more - type to narrow it down</p>` : '') + (!l.length ? '<p class="muted small">Nothing found.</p>' : ''); upd() };
+  sheet(`<h3>Add books to “${esc(g.name)}”</h3><input type="search" id="aaq" placeholder="Search title, series, author or group"><div id="aalist" style="max-height:52vh;overflow:auto;margin-top:8px"></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="aago" disabled>Add</button></div>`, true);
+  $('#aaq').oninput = e => { q = e.target.value; drawL() };
+  $('#aalist').onchange = e => { const c = e.target.closest('[data-aa]'); if(!c) return; c.checked ? pick.add(c.dataset.aa) : pick.delete(c.dataset.aa); upd() };
+  $('#aago').onclick = () => { abChange(() => G.put([...pick], g), `${plural(pick.size, 'book')} added to “${g.name}”`); closeSheet(); drawLib() };
+  drawL() }
+function abNewSub(g){ abAsk(`New group inside “${esc(g.name)}”`, 'Name, like Rincewind or Book 1-5', '', 'Make it').then(n => { if(!n) return; const G = ag(), k = G.own(n); if(k.key === g.key) return; G.setParent(k.key, g.key); abRegroup(); drawLib(); toast(`“${n}” made inside “${g.name}” - open it and add books`) }) }
+function abMoveGroup(g){ const G = ag(), gs = abGroups().groups, bad = new Set(G.inside(g, gs).concat(g.key)), opts = gs.filter(x => !bad.has(x.key)).sort((x, y) => coll.compare(G.path(x, gs), G.path(y, gs)));
+  sheet(`<h3>Put “${esc(g.name)}” inside…</h3>${g.parent ? '<button class="btn" id="mgtop" style="width:100%;margin-bottom:8px">Back on the main page</button>' : ''}
+    ${opts.map(x => `<div class="li" data-mg="${esc(x.key)}"><span class="th">${abGroupCover(x)}</span><div class="n"><div>${esc(G.path(x, gs))}</div><div class="s">${plural(x.all.length, 'book')}</div></div></div>`).join('') || '<p class="muted small">No other groups yet. Make one with “+ Group” on the main page.</p>'}`);
+  if($('#mgtop')) $('#mgtop').onclick = () => { abChange(() => G.setParent(g.key, null), `“${g.name}” is back on the main page`); closeSheet(); drawLib() };
+  $('.sheet').addEventListener('click', e => { const r = e.target.closest('[data-mg]'); if(!r) return; const t = gs.find(x => x.key === r.dataset.mg); abChange(() => G.setParent(g.key, t.key), `“${g.name}” is now inside “${t.name}”`); closeSheet(); drawLib() }) }
+function abGroupPicker(b){ const G = ag(), now = abGroupOf(b), gs = abGroups().groups.filter(g => !now || g.key !== now.key).sort((x, y) => coll.compare(x.name, y.name)), ov = G.read('items');
+  sheet(`<h3>Put “${esc(b.title)}” in a group</h3>${now ? `<p class="muted small" style="margin:0 0 8px">Now in “${esc(now.name)}”.</p>` : ''}
+    <div style="display:flex;gap:8px"><input type="text" id="gpn" placeholder="New group name" maxlength="60"><button class="btn primary" id="gpmake">Make</button></div>
+    <div style="margin-top:10px">${gs.map(g => `<div class="li" data-gp="${esc(g.key)}"><span class="th">${abGroupCover(g)}</span><div class="n"><div>${esc(G.path(g, abGroups().groups))}</div><div class="s">${plural(g.items.length, 'book')}</div></div></div>`).join('') || '<p class="muted small">No group tiles yet.</p>'}</div>
+    <div class="mlist" style="margin-top:10px">${now ? '<button class="btn" id="gpout">Take it out of its group (its own tile)</button>' : ''}${ov[b.id] ? '<button class="btn" id="gpauto">Back to automatic</button>' : ''}</div>`);
+  const done = (fn, m) => { abChange(fn, m); closeSheet(); drawLib() };
+  $('#gpmake').onclick = () => { const n = $('#gpn').value.trim(); if(!n) return; done(() => G.put([b.id], G.own(n)), `Put in “${n}”`) };
+  if($('#gpout')) $('#gpout').onclick = () => done(() => G.put([b.id], 'none'), 'Now on its own tile');
+  if($('#gpauto')) $('#gpauto').onclick = () => done(() => G.put([b.id]), 'Back to automatic');
+  $('.sheet').addEventListener('click', e => { const r = e.target.closest('[data-gp]'); if(!r) return; const g = abGroup(r.dataset.gp); if(g) done(() => G.put([b.id], g), `Put in “${g.name}”`) }) }
+function abRename(g){ const G = ag();
+  abAsk(`Rename “${esc(g.name)}”`, 'Name', g.name, 'Rename').then(n => { if(n == null || !n || n === g.name) return; let err = ''; G.change(() => { err = G.rename(g, n) });
+    if(err){ G.undo(); toast(err, 4000); return } abRegroup();
+    const v = atop(); if(v.v === 'group' && v.key === g.key && g.kind === 'own') v.key = 'c:' + norm(n);
+    drawLib(); G.undoToast(`Renamed to “${n}”`, () => { abRegroup(); drawLib() }) }) }
+function abCoverSheet(g){ const G = ag(), c = G.cover(g.key), wc = g.all.slice().sort(seriesOrder).filter(b => URLS[b.id]);
+  const save = x => { G.setCover(g.key, x); delete ABRND[g.key]; closeSheet(); drawLib(); toast('Tile cover saved') };
+  sheet(`<h3>Tile cover for “${esc(g.name)}”</h3>
+    <div class="chips"><button class="chip ${!c.t ? 'on' : ''}" data-gc="">The first book</button><button class="chip ${c.t === 'random' ? 'on' : ''}" data-gc="random">A random one</button><button class="chip ${c.t === 'cycle' ? 'on' : ''}" data-gc="cycle">Changing (one after another)</button><button class="chip ${c.t === 'pic' ? 'on' : ''}" data-gc="pic">A picture from the phone</button></div>
+    <div class="sec">Or pick one</div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(84px,1fr))">${wc.map(b => `<div class="bk" data-gca="${esc(b.id)}" style="${c.t === 'item' && c.al === b.id ? 'outline:2px solid var(--accent);border-radius:14px' : ''}">${coverHTML(b, URLS[b.id])}<div class="a">${esc(b.title)}</div></div>`).join('') || '<p class="muted small">No covers in this group yet.</p>'}</div><input type="file" id="gcf" accept="image/*" hidden>`);
+  $('.sheet').onclick = e => { const bt = e.target.closest('[data-gc]'), it = e.target.closest('[data-gca]');
+    if(it) return save({t:'item', al:it.dataset.gca}); if(!bt) return; const t = bt.dataset.gc;
+    if(t === 'pic'){ const i = $('#gcf'); i.onchange = async ev => { const f = ev.target.files[0]; if(!f) return; await dbPut('covers', {id:'grp:' + g.key, blob:f}); GPIC.add(g.key); if(GURL[g.key]){ URL.revokeObjectURL(GURL[g.key]); delete GURL[g.key] } save({t:'pic'}) }; i.click(); return }
+    save(t ? {t} : null) } }
+
+/* ---------- select several tiles and move them at once (long-press a tile, or "Select") ---------- */
+let ABSEL = null, abSelSkip = false;
+function abSelStart(id){ ABSEL = new Set(id ? [id] : []); abSelDraw() }
+function abSelEnd(quiet){ if(!ABSEL) return; ABSEL = null; if(!quiet) abSelDraw(); else { const b = $('#absel'); if(b) b.remove(); document.body.classList.remove('selecting') } }
+function abSelDraw(){ document.querySelectorAll('#libbody .grid > .bk').forEach(el => { const id = el.dataset.book ? 'it:' + el.dataset.book : el.dataset.grp ? 'gr:' + el.dataset.grp : null; el.classList.toggle('sel', !!(ABSEL && id && ABSEL.has(id))); el.classList.toggle('selmode', !!ABSEL) });
+  let bar = $('#absel'); if(!ABSEL){ if(bar) bar.remove(); document.body.classList.remove('selecting'); return }
+  document.body.classList.add('selecting');
+  if(!bar){ bar = document.createElement('div'); bar.id = 'absel'; document.body.appendChild(bar) }
+  const inGroup = atop().v === 'group', n = ABSEL.size;
+  bar.innerHTML = `<b style="flex:1">${n ? plural(n, 'tile') + ' selected' : 'Tap tiles to select them'}</b><button class="btn sm primary" id="selmove" ${n ? '' : 'disabled'}>Move to…</button><button class="btn sm" id="selpin" ${n ? '' : 'disabled'} title="Pin to the top">★</button>${inGroup ? `<button class="btn sm" id="selout" ${n ? '' : 'disabled'}>Take out</button>` : ''}<button class="btn sm" id="selx">Cancel</button>`;
+  $('#selx').onclick = () => abSelEnd(); $('#selmove').onclick = abSelMove; if($('#selout')) $('#selout').onclick = abSelOut;
+  $('#selpin').onclick = () => { const ids = [...ABSEL], on = !ids.every(x => ag().isPinned(x)); ag().togglePin(ids, on); abSelEnd(true); drawLib(); toast(on ? `${plural(ids.length, 'tile')} pinned to the top` : `${plural(ids.length, 'tile')} unpinned`) } }
+const abSelParts = () => ({gs:abGroups().groups, its:[...ABSEL].filter(x => x.startsWith('it:')).map(x => x.slice(3)), grs:[...ABSEL].filter(x => x.startsWith('gr:')).map(x => x.slice(3))});
+function abSelMove(){ const {gs, its, grs} = abSelParts(), G = ag(), bad = new Set(grs.flatMap(k => { const g = gs.find(x => x.key === k); return g ? G.inside(g, gs).concat(k) : [k] }));
+  const opts = gs.filter(x => !bad.has(x.key)).sort((x, y) => coll.compare(G.path(x, gs), G.path(y, gs)));
+  sheet(`<h3>Move ${plural(ABSEL.size, 'tile')} to…</h3><div style="display:flex;gap:8px"><input type="text" id="smn" placeholder="New group name" maxlength="60"><button class="btn primary" id="smmake">Make</button></div>
+    <button class="btn" id="smtop" style="width:100%;margin-top:10px">The main page (own tiles)</button>
+    <div style="margin-top:8px">${opts.map(x => `<div class="li" data-sm="${esc(x.key)}"><span class="th">${abGroupCover(x)}</span><div class="n"><div>${esc(G.path(x, gs))}</div><div class="s">${plural(x.all.length, 'book')}</div></div></div>`).join('')}</div>`);
+  const move = t => { if(t){ G.put(its, t); for(const k of grs) G.setParent(k, t.key) } else { G.put(its, 'none'); for(const k of grs) G.setParent(k, null) } };
+  const go = (t, label, first) => { const n = ABSEL.size; abChange(() => { if(first) first(); move(t) }, `${plural(n, 'tile')} moved to ${label}`); closeSheet(); abSelEnd(true); drawLib() };
+  $('#smmake').onclick = () => { const n = $('#smn').value.trim(); if(!n) return; const v = atop();
+    go({key:'c:' + norm(n), name:n, kind:'own'}, `“${n}”`, () => { const g = G.own(n); if(v.v === 'group' && !bad.has(v.key)) G.setParent(g.key, v.key) }) };
+  $('#smtop').onclick = () => go(null, 'the main page');
+  $('.sheet').addEventListener('click', e => { const r = e.target.closest('[data-sm]'); if(!r) return; const t = gs.find(x => x.key === r.dataset.sm); if(t) go(t, `“${t.name}”`) }) }
+function abSelOut(){ const {gs, its, grs} = abSelParts(), G = ag(), now = gs.find(x => x.key === atop().key), up = now && now.parent ? gs.find(x => x.key === now.parent) : null, n = ABSEL.size;
+  abChange(() => { G.put(its, up || 'none'); for(const k of grs) G.setParent(k, up ? up.key : null) }, `${plural(n, 'tile')} taken out${up ? ' to “' + up.name + '”' : ' to the main page'}`);
+  abSelEnd(true); drawLib() }
+/* long-press a tile: start selecting */
+{ let tmr = null, sx = 0, sy = 0; const body = $('#libbody');
+  body.addEventListener('pointerdown', e => { const el = e.target.closest('.grid > .bk'); if(!el) return; sx = e.clientX; sy = e.clientY; clearTimeout(tmr);
+    tmr = setTimeout(() => { const id = el.dataset.book ? 'it:' + el.dataset.book : el.dataset.grp ? 'gr:' + el.dataset.grp : null; if(!id) return; abSelSkip = true; if(!ABSEL) abSelStart(id); else { ABSEL.has(id) ? ABSEL.delete(id) : ABSEL.add(id); abSelDraw() } try{ navigator.vibrate && navigator.vibrate(20) }catch(x){} }, 520) });
+  body.addEventListener('pointermove', e => { if(Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) clearTimeout(tmr) });
+  for(const ev of ['pointerup', 'pointercancel', 'pointerleave']) body.addEventListener(ev, () => clearTimeout(tmr));
+  body.addEventListener('contextmenu', e => { if(e.target.closest('.grid > .bk')) e.preventDefault() }) }
+
 
 /* ---------- adding books ---------- */
 function openAdd(){
@@ -593,7 +858,10 @@ async function review(files, opt){
   drawReview() }
 /* sorted out: by folder when picked as a folder, else by album tag, else all one book */
 function makeGroups(){ const P0 = PENDING; if(P0.how === 'one') return [P0.items]; if(P0.how === 'each') return P0.items.map(i => [i]);
-  const auto = {}; for(const it of P0.items){ const k = it.root ? (it.info.tags.album ? 'album:' + it.info.tags.album.toLowerCase() : 'file:' + it.f.name) : it.dir || (it.info.tags.album ? 'album:' + it.info.tags.album.toLowerCase() : ''); (auto[k] = auto[k] || []).push(it) } return Object.values(auto) }
+  /* a folder is one book - unless its files carry different album tags (an author folder with one file per book): then one book per album */
+  const albums = {}; for(const it of P0.items) if(it.dir && !it.root) (albums[it.dir] = albums[it.dir] || new Set()).add(norm(it.info.tags.album || ''));
+  const auto = {}; for(const it of P0.items){ const al = it.info.tags.album ? 'album:' + it.info.tags.album.toLowerCase() : 'file:' + it.f.name;
+    const k = it.root ? al : it.dir ? (albums[it.dir].size > 1 ? it.dir + '|' + al : it.dir) : (it.info.tags.album ? al : ''); (auto[k] = auto[k] || []).push(it) } return Object.values(auto) }
 function sortParts(g){ return g.slice().sort((a, b) => ((a.info.tags.disc || 0) - (b.info.tags.disc || 0)) || coll.compare(a.f.webkitRelativePath || '', b.f.webkitRelativePath || '') || ((a.info.tags.track || 0) - (b.info.tags.track || 0)) || coll.compare(a.f.name, b.f.name)) }
 function describe(g){ g = sortParts(g); const t = g[0].info.tags, dir = g[0].dir;
   const title = (g.length > 1 ? t.album || (dir ? dir.split('/').pop() : '') : t.album || t.title) || (dir ? dir.split('/').pop() : '') || cleanName(g[0].f.name);
@@ -633,8 +901,9 @@ async function addBooks(D){
         cover = (pics.find(p => /cover|folder|front/i.test(p.name)) || pics[0]) || null }
       if(cover && cover.uri) cover = await cover.blob().catch(() => null);
       if(cover) await dbPut('covers', {id, blob:cover});
-      const book = {id, kind:'audiobook', title:d.title, author:d.author, narrator:d.narrator, year:d.year, parts, chapters, dur:t0, size:d.size, added:Date.now(), hasCover:!!cover, linked:linked ? {tree:linked.tree, name:linked.name} : null};
-      await dbPut('books', book); BOOKS.push(book); added++;
+      const book = {id, kind:'audiobook', title:d.title, author:d.author, narrator:d.narrator, year:d.year, parts, chapters, dur:t0, size:d.size, added:Date.now(), hasCover:!!cover, linked:linked ? {tree:linked.tree, name:linked.name} : null, dir:d.parts[0].dir || '', ...seriesFrom(d.parts[0].info.tags, d.title, d.parts[0].dir, d.author)};
+      if(book.series) book.title = book.title.replace(/\s*\([^()]*?(?:#|book|boek|deel|band|tome|vol\.?|volume|part)\s*\d+(?:\.\d+)?\)\s*$/i, '').trim() || book.title;
+      await dbPut('books', book); BOOKS.push(book); abRegroup(); added++;
     }catch(err){ if(!linked) for(const p of parts) await dbDel('files', p.fid).catch(() => {}); closeSheet(); toast(`Could not copy "${d.title}": ${err && err.name === 'QuotaExceededError' ? 'the phone is full' : (err && err.message) || err}`, 6000); break }
   }
   PENDING = null; closeSheet(); if(added) toast(added === 1 ? 'Audiobook added' : `${added} audiobooks added`); drawLib();
@@ -838,37 +1107,6 @@ $('#tsleep').onclick = () => { if(!cur) return;
     if(b){ sleep = b.dataset.m === 'ch' ? {chapter:chapterIdx(cur, gpos())} : {left:+b.dataset.m * 60}; au.volume = 1; closeSheet(); drawSleep(); sleepTick(); if(au.paused) togglePlay(true); toast(b.dataset.m === 'ch' ? 'Stops at the end of this chapter' : `Stops in ${b.dataset.m} minutes`) }
     if(e.target.id === 'sloff'){ sleep = null; au.volume = 1; clearInterval(sleepIv); closeSheet(); drawSleep() } } };
 
-/* book details */
-$('#pmore').onclick = () => bookSheet(cur && cur.id);
-function bookSheet(id){
-  const b = BOOKS.find(x => x.id === id); if(!b) return; const s = st(b.id);
-  sheet(`<h3>About this book</h3>
-    <div class="opt"><label>Title</label></div><input type="text" id="bt" value="${esc(b.title)}">
-    <div class="opt"><label>Author</label></div><input type="text" id="ba" value="${esc(b.author || '')}">
-    <div class="opt"><label>Read by</label></div><input type="text" id="bn" value="${esc(b.narrator || '')}">
-    <p class="muted small">${b.linked ? 'Plays from the folder “' + esc(b.linked.name) + '” · ' : 'Copied into the app · '}${b.parts.length} file${b.parts.length === 1 ? '' : 's'} · ${(b.chapters || []).length} chapters · ${hm(b.dur)} · ${mb(b.size)}${b.year ? ' · ' + esc(b.year) : ''}<br>Added ${new Date(b.added).toLocaleDateString()}</p>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn primary" id="bsave">Save</button>
-      <button class="btn" id="bcover">Change the cover picture</button>
-      <button class="btn" id="bfin">${s.finished ? 'Mark as not finished' : 'Mark as finished'}</button>
-      <button class="btn" id="bstart">Start again from the beginning</button>
-      <button class="btn" id="bread">Read the book info again</button>
-      ${b.linked ? '<button class="btn" id="bcheck">Check the file</button>' : ''}
-      <button class="btn danger" id="bdel">${b.linked ? 'Remove from the shelf' : 'Remove from this device'}</button></div>
-    <input type="file" id="bcf" accept="image/*" hidden>`);
-  $('#bsave').onclick = async () => { b.title = $('#bt').value.trim() || b.title; b.author = $('#ba').value.trim(); b.narrator = $('#bn').value.trim(); await dbPut('books', b); closeSheet(); if(cur && cur.id === b.id) drawPlayer(true); $('#mini').dataset.id = ''; drawMini(); toast('Saved') };
-  $('#bcover').onclick = () => $('#bcf').click();
-  $('#bcf').onchange = async e => { const f = e.target.files[0]; if(!f) return; await dbPut('covers', {id:b.id, blob:f}); b.hasCover = true; await dbPut('books', b); if(COVERURL[b.id]){ URL.revokeObjectURL(COVERURL[b.id]); delete COVERURL[b.id] } artKey = null; $('#mini').dataset.id = ''; closeSheet(); if(cur && cur.id === b.id){ drawPlayer(true); syncMedia() } toast('New cover saved') };
-  $('#bfin').onclick = async () => { s.finished = !s.finished; if(!s.finished && s.pos >= b.dur - 1) s.pos = 0; if(s.finished && cur && cur.id === b.id) au.pause(); await saveState(b.id, true); closeSheet(); drawPlayer(); toast(s.finished ? 'Marked as finished' : 'Marked as not finished') };
-  if($('#bcheck')) $('#bcheck').onclick = () => checkFile(b.parts[0]);
-  $('#bread').onclick = () => rereadBook(b);
-  $('#bstart').onclick = async () => { s.finished = false; s.pos = 0; await saveState(b.id, true); closeSheet(); if(cur && cur.id === b.id) seekTo(0); toast('Back at the start') };
-  $('#bdel').onclick = () => { sheet(`<h3>Remove "${esc(b.title)}"?</h3><p class="muted small">${b.linked ? `The book leaves the shelf, with its place and bookmarks. The files stay in the folder “${esc(b.linked.name)}”.` : `The copy on this device (${mb(b.size)}) and its place and bookmarks are removed. Your original files are not touched.`}</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Keep it</button><button class="btn primary" style="flex:1;background:#7a2a2f;border-color:#a3454b" id="bdel2">Remove</button></div>`);
-    $('#bdel2').onclick = async () => { if(cur && cur.id === b.id){ au.pause(); au.removeAttribute('src'); au.load(); cur = null; curPart = -1; mediaStop(); showPlayer(false) }
-      for(const p of b.parts) if(p.fid) await dbDel('files', p.fid).catch(() => {}); await dbDel('covers', b.id).catch(() => {}); await dbDel('state', b.id).catch(() => {}); await dbDel('books', b.id);
-      BOOKS = BOOKS.filter(x => x.id !== b.id); delete STATE[b.id]; closeSheet(); drawLib(); drawMini(); toast('Removed') } };
-}
-
 /* read title, author, length, chapters and cover from the files again (e.g. after a fix) */
 async function rereadBook(b){
   sheet('<h3>Reading the book info…</h3><div class="prog"><i id="rr"></i></div>', true);
@@ -884,8 +1122,9 @@ async function rereadBook(b){
     b.chapters = chapters; b.dur = t0;
     if(t.album || t.title) b.title = (items.length > 1 ? t.album : t.album || t.title) || b.title;
     b.author = t.albumartist || t.artist || b.author; if(t.narrator || t.composer) b.narrator = t.narrator || t.composer;
+    const sr = seriesFrom(t, b.title, b.dir, b.author); if(sr.series && !b.series){ b.series = sr.series; b.seriesNum = sr.seriesNum } else if(sr.series && b.seriesNum == null) b.seriesNum = sr.seriesNum;
     const cover = items.map(i => i.info.tags.cover).find(Boolean); if(cover){ await dbPut('covers', {id:b.id, blob:cover}); b.hasCover = true; if(COVERURL[b.id]){ URL.revokeObjectURL(COVERURL[b.id]); delete COVERURL[b.id] } }
-    await dbPut('books', b); closeSheet(); $('#mini').dataset.id = ''; artKey = null; if(cur && cur.id === b.id){ curPart = -1; drawPlayer(true) } drawLib();
+    await dbPut('books', b); abRegroup(); closeSheet(); $('#mini').dataset.id = ''; artKey = null; if(cur && cur.id === b.id){ curPart = -1; drawPlayer(true) } drawLib();
     toast(`${b.title}: ${hm(b.dur)}, ${b.chapters.length} chapters`, 4000)
   }catch(e){ closeSheet(); toast('Could not read the book: ' + (e.message || e), 5000) } }
 
@@ -897,8 +1136,18 @@ $('#setbtn').onclick = () => {
     <div class="opt"><label for="ss">Smart rewind<div class="muted small">After a pause, start a few seconds earlier (5 s after 1 minute, 15 s after 10 minutes, 30 s after an hour).</div></label><input type="checkbox" id="ss" ${S.smart ? 'checked' : ''}></div>
     <div class="opt"><label>Speed for new books</label><b>${speedTxt(S.speed || 1)}</b></div>
     ${window.NVLOG ? `<div class="opt"><label for="dbg">Debug mode<div class="muted small">Writes down everything that happens, with a bug button to send the log to Claude.</div></label><input type="checkbox" id="dbg" ${NVLOG.on ? 'checked' : ''}></div>` : ''}
-    ${NvFiles ? '<h3 style="margin:16px 0 4px">Folders on this phone</h3><div id="fldrs" class="muted small">…</div><button class="btn" id="fadd" style="width:100%;margin-top:8px">Add a folder</button>' : ''}`);
+    <div class="opt"><label for="sba">Bundle books by author<div class="muted small">An author's books that are not in a series share one tile. A series always gets its own tile.</div></label><input type="checkbox" id="sba" ${S.byAuthor !== false ? 'checked' : ''}></div>
+    ${NvFiles ? '<h3 style="margin:16px 0 4px">Folders on this phone</h3><div id="fldrs" class="muted small">…</div><button class="btn" id="fadd" style="width:100%;margin-top:8px">Add a folder</button>' : ''}
+    <h3 style="margin:16px 0 4px">Your groups</h3><div class="muted small">Your groups, groups inside groups, books you placed by hand, tile covers and pins are kept on this phone. Save a file now and then (Google Drive, mail …) so a new phone or a cleared app gets them back.${lsGet('nvAudio.groupsSaved', 0) ? ' Last saved ' + new Date(lsGet('nvAudio.groupsSaved', 0)).toLocaleDateString() + '.' : ''}</div>
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="btn" id="agsave" style="flex:1">Save my groups</button><button class="btn" id="agload" style="flex:1">Load from a file</button></div>`);
   if(NvFiles){ $('#fadd').onclick = () => { closeSheet(); linkFolder() }; drawFolders() }
+  $('#sba').onchange = e => { S.byAuthor = e.target.checked; saveS(); abRegroup(); drawLib() };
+  $('#agsave').onclick = async () => { try{ const r = await ag().saveBackup(); if(r !== 'cancelled'){ lsSet('nvAudio.groupsSaved', Date.now()); closeSheet(); toast(r === 'shared' ? 'Groups file ready - keep it somewhere safe' : 'Groups file saved to your downloads') } }catch(e){ toast('Could not save the file: ' + (e.message || e), 4000) } };
+  $('#agload').onclick = async () => { const t = await ag().pickFile(); if(t == null) return; const c = ag().checkBackup(t);
+    if(!c.ok){ toast(c.msg, 4000); return }
+    sheet(`<h3>Put your groups back?</h3><p class="muted small">${esc(c.msg)}</p><p class="muted small">This replaces the groups on this phone (your books themselves are not touched). Changed your mind afterwards? Tap <b>Undo</b>.</p>
+      <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="agok">Put them back</button></div>`);
+    $('#agok').onclick = () => { ag().applyBackup(c.d); abRegroup(); closeSheet(); AV = [{v:'home'}]; drawLib(); ag().undoToast('Groups put back from the file', () => { abRegroup(); drawLib() }) } };
   $('#sb').onchange = e => { S.back = +e.target.value; saveS(); $('#backn').textContent = S.back };
   $('#sf').onchange = e => { S.fwd = +e.target.value; saveS(); $('#fwdn').textContent = S.fwd };
   $('#ss').onchange = e => { S.smart = e.target.checked; saveS() };
@@ -940,6 +1189,7 @@ let mediaT = 0; au.addEventListener('timeupdate', () => { if(Date.now() - mediaT
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
   A.addListener('backButton', () => { if(sheetOpen()){ if(!$('#scrim').dataset.sticky) closeSheet(); return } if(!$('#player').hidden){ showPlayer(false); return }
     if(MODE === 'music' && musicBack()) return;
+    if(MODE === 'audiobooks' && abBack()) return;
     if(fromHub() && window.NVHOME !== false){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 
 /* =====================================================================================================================
