@@ -49,34 +49,55 @@ const dbClear = s => tx(s, 'readwrite', st => st.clear());
    Text names only – never console or store logos (owner's rule). igdb = IGDB's platform ids, to turn IGDB results into our platforms. */
 const FAM = {
   pc:{c:['#16323a', '#18203a'], s:'#7fe3ff'}, ps:{c:['#16243a', '#1a1b33'], s:'#7fb2ff'}, xbox:{c:['#1a3216', '#1a2233'], s:'#9be07a'},
-  nin:{c:['#3a1620', '#1d1b33'], s:'#ff9db7'}, sega:{c:['#162a3a', '#1f1b33'], s:'#8fc4ff'}, retro:{c:['#3a2816', '#1d2236'], s:'#f0b46a'},
+  nin:{c:['#3a1620', '#1d1b33'], s:'#ff9db7'}, sega:{c:['#162a3a', '#1f1b33'], s:'#8fc4ff'}, atari:{c:['#3a2216', '#1d1b33'], s:'#ffb08a'},
+  retro:{c:['#3a2816', '#1d2236'], s:'#f0b46a'}, comp:{c:['#2a3216', '#1a1f2e'], s:'#d4f08a'},
   mobile:{c:['#2e1a3a', '#1a1b33'], s:'#e0a8ff'}, other:{c:['#2a2f3a', '#1a1f2e'], s:'#c4cdd8'}};
+/* sections of the start page, in this order (owner, 19 Oct: a square tile for every known game system and handheld) */
+const SECS = [['list', 'Your list'], ['pc', 'PC'], ['ps', 'PlayStation'], ['xbox', 'Xbox'], ['nin', 'Nintendo'], ['ninh', 'Nintendo handhelds'], ['sega', 'Sega'],
+  ['atari', 'Atari'], ['retro', 'Other consoles'], ['hand', 'Other handhelds'], ['comp', 'Home computers'], ['mobile', 'Phone and tablet'], ['own', 'Your own systems']];
+const P = (id, name, short, fam, sec, igdb, icon) => ({id, name, short, fam, sec, igdb:igdb || [], icon});
 const PLATS = [
-  {id:'pc', name:'PC', short:'PC', fam:'pc', icon:'pc', igdb:[6, 3, 14]},
-  {id:'ps5', name:'PlayStation 5', short:'PS5', fam:'ps', igdb:[167]}, {id:'ps4', name:'PlayStation 4', short:'PS4', fam:'ps', igdb:[48]},
-  {id:'ps3', name:'PlayStation 3', short:'PS3', fam:'ps', igdb:[9]}, {id:'ps2', name:'PlayStation 2', short:'PS2', fam:'ps', igdb:[8]},
-  {id:'ps1', name:'PlayStation', short:'PS1', fam:'ps', igdb:[7]}, {id:'vita', name:'PS Vita', short:'VITA', fam:'ps', icon:'hand', igdb:[46]},
-  {id:'psp', name:'PSP', short:'PSP', fam:'ps', icon:'hand', igdb:[38]},
-  {id:'xsx', name:'Xbox Series X|S', short:'XSX', fam:'xbox', igdb:[169]}, {id:'xone', name:'Xbox One', short:'XONE', fam:'xbox', igdb:[49]},
-  {id:'x360', name:'Xbox 360', short:'X360', fam:'xbox', igdb:[12]}, {id:'xbox', name:'Xbox', short:'XBOX', fam:'xbox', igdb:[11]},
-  {id:'switch2', name:'Nintendo Switch 2', short:'SW2', fam:'nin', igdb:[508]}, {id:'switch', name:'Nintendo Switch', short:'SWITCH', fam:'nin', igdb:[130]},
-  {id:'wiiu', name:'Wii U', short:'WII U', fam:'nin', igdb:[41]}, {id:'wii', name:'Wii', short:'WII', fam:'nin', igdb:[5]},
-  {id:'gc', name:'GameCube', short:'GC', fam:'nin', igdb:[21]}, {id:'n64', name:'Nintendo 64', short:'N64', fam:'nin', igdb:[4]},
-  {id:'snes', name:'Super Nintendo', short:'SNES', fam:'nin', igdb:[19]}, {id:'nes', name:'NES', short:'NES', fam:'nin', igdb:[18]},
-  {id:'n3ds', name:'Nintendo 3DS', short:'3DS', fam:'nin', icon:'hand', igdb:[37]}, {id:'ds', name:'Nintendo DS', short:'DS', fam:'nin', icon:'hand', igdb:[20]},
-  {id:'gba', name:'Game Boy Advance', short:'GBA', fam:'nin', icon:'hand', igdb:[24]}, {id:'gbc', name:'Game Boy Color', short:'GBC', fam:'nin', icon:'hand', igdb:[22]},
-  {id:'gb', name:'Game Boy', short:'GB', fam:'nin', icon:'hand', igdb:[33]},
-  {id:'dc', name:'Dreamcast', short:'DC', fam:'sega', igdb:[23]}, {id:'saturn', name:'Sega Saturn', short:'SATURN', fam:'sega', igdb:[32]},
-  {id:'segacd', name:'Sega CD / Mega-CD', short:'MEGA-CD', fam:'sega', igdb:[78]}, {id:'s32x', name:'Sega 32X', short:'32X', fam:'sega', igdb:[30]},
-  {id:'md', name:'Mega Drive / Genesis', short:'MD', fam:'sega', igdb:[29]}, {id:'sms', name:'Master System', short:'SMS', fam:'sega', igdb:[64]},
-  {id:'gg', name:'Game Gear', short:'GG', fam:'sega', icon:'hand', igdb:[35]},
-  {id:'neogeo', name:'Neo Geo', short:'NEO GEO', fam:'retro', igdb:[80, 79]}, {id:'pce', name:'PC Engine / TurboGrafx-16', short:'PCE', fam:'retro', igdb:[86]},
-  {id:'a2600', name:'Atari 2600', short:'2600', fam:'retro', igdb:[59]}, {id:'arcade', name:'Arcade', short:'ARCADE', fam:'retro', igdb:[52]},
-  {id:'android', name:'Android', short:'ANDROID', fam:'mobile', icon:'phone', igdb:[34]}, {id:'ios', name:'iPhone / iPad', short:'iOS', fam:'mobile', icon:'phone', igdb:[39]}];
+  P('pc', 'PC', 'PC', 'pc', 'pc', [6, 3, 14], 'pc'), P('dos', 'MS-DOS', 'DOS', 'pc', 'pc', [13], 'pc'),
+  P('ps5', 'PlayStation 5', 'PS5', 'ps', 'ps', [167]), P('ps4', 'PlayStation 4', 'PS4', 'ps', 'ps', [48]), P('ps3', 'PlayStation 3', 'PS3', 'ps', 'ps', [9]),
+  P('ps2', 'PlayStation 2', 'PS2', 'ps', 'ps', [8]), P('ps1', 'PlayStation', 'PS1', 'ps', 'ps', [7]),
+  P('vita', 'PS Vita', 'VITA', 'ps', 'ps', [46], 'hand'), P('psp', 'PSP', 'PSP', 'ps', 'ps', [38], 'hand'),
+  P('xsx', 'Xbox Series X|S', 'XSX', 'xbox', 'xbox', [169]), P('xone', 'Xbox One', 'XONE', 'xbox', 'xbox', [49]), P('x360', 'Xbox 360', '360', 'xbox', 'xbox', [12]),
+  P('xbox', 'Xbox', 'XBOX', 'xbox', 'xbox', [11]),
+  P('switch2', 'Nintendo Switch 2', 'SW2', 'nin', 'nin', [508]), P('switch', 'Nintendo Switch', 'SWITCH', 'nin', 'nin', [130]), P('wiiu', 'Wii U', 'WII U', 'nin', 'nin', [41]),
+  P('wii', 'Wii', 'WII', 'nin', 'nin', [5]), P('gc', 'GameCube', 'GC', 'nin', 'nin', [21]), P('n64', 'Nintendo 64', 'N64', 'nin', 'nin', [4]),
+  P('snes', 'Super Nintendo / Super Famicom', 'SNES', 'nin', 'nin', [19, 58]), P('nes', 'NES / Famicom', 'NES', 'nin', 'nin', [18, 99]),
+  P('fds', 'Famicom Disk System', 'FDS', 'nin', 'nin', [51]),
+  P('n3ds', 'Nintendo 3DS / 2DS', '3DS', 'nin', 'ninh', [37], 'hand'), P('ds', 'Nintendo DS', 'DS', 'nin', 'ninh', [20], 'hand'),
+  P('gba', 'Game Boy Advance', 'GBA', 'nin', 'ninh', [24], 'hand'), P('gbc', 'Game Boy Color', 'GBC', 'nin', 'ninh', [22], 'hand'),
+  P('gb', 'Game Boy', 'GB', 'nin', 'ninh', [33], 'hand'), P('vb', 'Virtual Boy', 'VB', 'nin', 'ninh', [87], 'hand'),
+  P('gw', 'Game & Watch', 'G&W', 'nin', 'ninh', [], 'hand'), P('pmini', 'Pokémon mini', 'MINI', 'nin', 'ninh', [166], 'hand'),
+  P('dc', 'Dreamcast', 'DC', 'sega', 'sega', [23]), P('saturn', 'Sega Saturn', 'SATURN', 'sega', 'sega', [32]), P('s32x', 'Sega 32X', '32X', 'sega', 'sega', [30]),
+  P('segacd', 'Sega CD / Mega-CD', 'MCD', 'sega', 'sega', [78]), P('md', 'Mega Drive / Genesis', 'MD', 'sega', 'sega', [29]),
+  P('sms', 'Master System', 'SMS', 'sega', 'sega', [64]), P('sg1000', 'SG-1000', 'SG-1000', 'sega', 'sega', [84]),
+  P('gg', 'Game Gear', 'GG', 'sega', 'sega', [35], 'hand'), P('pico', 'Sega Pico', 'PICO', 'sega', 'sega', []),
+  P('jaguar', 'Atari Jaguar', 'JAGUAR', 'atari', 'atari', [62]), P('a7800', 'Atari 7800', '7800', 'atari', 'atari', [60]),
+  P('a5200', 'Atari 5200', '5200', 'atari', 'atari', [66]), P('a2600', 'Atari 2600', '2600', 'atari', 'atari', [59]),
+  P('lynx', 'Atari Lynx', 'LYNX', 'atari', 'atari', [61], 'hand'),
+  P('neogeo', 'Neo Geo (AES / MVS)', 'NEO GEO', 'retro', 'retro', [80, 79]), P('neocd', 'Neo Geo CD', 'NGCD', 'retro', 'retro', [136]),
+  P('pce', 'PC Engine / TurboGrafx-16', 'PCE', 'retro', 'retro', [86]), P('pcecd', 'PC Engine CD / TurboGrafx-CD', 'PCE-CD', 'retro', 'retro', [150]),
+  P('pcfx', 'PC-FX', 'PC-FX', 'retro', 'retro', [274]), P('3do', '3DO', '3DO', 'retro', 'retro', [50]), P('cdi', 'Philips CD-i', 'CD-i', 'retro', 'retro', [117]),
+  P('coleco', 'ColecoVision', 'COLECO', 'retro', 'retro', [68]), P('intv', 'Intellivision', 'INTV', 'retro', 'retro', [67]),
+  P('vectrex', 'Vectrex', 'VECTREX', 'retro', 'retro', [70]), P('odyssey2', 'Magnavox Odyssey² / Videopac', 'ODY²', 'retro', 'retro', [133]),
+  P('ouya', 'Ouya', 'OUYA', 'retro', 'retro', [72]), P('stadia', 'Google Stadia', 'STADIA', 'retro', 'retro', [170]),
+  P('evercade', 'Evercade', 'EVERCADE', 'retro', 'retro', []), P('arcade', 'Arcade', 'ARCADE', 'retro', 'retro', [52]),
+  P('ngpc', 'Neo Geo Pocket Color', 'NGPC', 'retro', 'hand', [120], 'hand'), P('ngp', 'Neo Geo Pocket', 'NGP', 'retro', 'hand', [119], 'hand'),
+  P('wsc', 'WonderSwan Color', 'WSC', 'retro', 'hand', [123], 'hand'), P('ws', 'WonderSwan', 'WS', 'retro', 'hand', [57], 'hand'),
+  P('ngage', 'N-Gage', 'N-GAGE', 'retro', 'hand', [42], 'hand'), P('playdate', 'Playdate', 'PLAYDATE', 'retro', 'hand', [], 'hand'),
+  P('gamecom', 'Game.com', 'GAME.COM', 'retro', 'hand', [], 'hand'),
+  P('c64', 'Commodore 64', 'C64', 'comp', 'comp', [15], 'pc'), P('amiga', 'Amiga', 'AMIGA', 'comp', 'comp', [16], 'pc'),
+  P('ast', 'Atari ST', 'ST', 'comp', 'comp', [63], 'pc'), P('a8bit', 'Atari 8-bit', 'ATARI 8', 'comp', 'comp', [65], 'pc'),
+  P('msx', 'MSX', 'MSX', 'comp', 'comp', [27], 'pc'), P('zx', 'ZX Spectrum', 'ZX', 'comp', 'comp', [26], 'pc'), P('cpc', 'Amstrad CPC', 'CPC', 'comp', 'comp', [25], 'pc'),
+  P('x68k', 'Sharp X68000', 'X68K', 'comp', 'comp', [121], 'pc'), P('pc98', 'NEC PC-98', 'PC-98', 'comp', 'comp', [149], 'pc'),
+  P('android', 'Android', 'ANDROID', 'mobile', 'mobile', [34], 'phone'), P('ios', 'iPhone / iPad', 'iOS', 'mobile', 'mobile', [39], 'phone')];
 const IGDB_PLAT = {}; for(const p of PLATS) for(const i of p.igdb || []) IGDB_PLAT[i] = p.id;
 /* your own platforms (Other… → a name), stored as {id:'x-…', name} */
 const ownPlats = () => lsGet('nvGames.plats', []);
-const allPlats = () => PLATS.concat(ownPlats().map(p => Object.assign({short:p.name.toUpperCase().slice(0, 10), fam:'other'}, p)));
+const allPlats = () => PLATS.concat(ownPlats().map(p => Object.assign({short:p.name.toUpperCase(), fam:'other', sec:'own'}, p)));
 const platOf = id => allPlats().find(p => p.id === id) || {id, name:id, short:String(id).toUpperCase(), fam:'other'};
 function addOwnPlat(name){ name = String(name || '').trim(); if(!name) return null; const hit = allPlats().find(p => norm(p.name) === norm(name) || norm(p.short) === norm(name)); if(hit) return hit.id;
   const id = 'x-' + norm(name).replace(/ /g, '-'); lsSet('nvGames.plats', ownPlats().concat({id, name})); return id }
@@ -100,10 +121,9 @@ const PLAT_ICON = {
 
 /* ---------- shelves: All games, one per platform you have games for, Wishlist ---------- */
 function shelves(all){
-  const set = lsGet('nvGames.shelves', {}), hid = set.hidden || {}, used = new Set(GAMES.flatMap(g => g.copies.map(c => c.plat)));
-  const ps = allPlats().filter(p => used.has(p.id)).map(p => Object.assign({}, FAM[p.fam] || FAM.other, {id:p.id, name:p.name, icon:p.icon || (p.fam === 'pc' ? 'pc' : 'pad'), plat:true}));
-  let list = [{id:'all', name:'All games', c:['#1c1f3e', '#151a2e'], s:'#a9b4ff', icon:'all'}, ...ps, {id:'wish', name:'Wishlist', c:['#3a1626', '#2a1f36'], s:'#ff9db7', icon:'wish'}];
-  const ord = set._order || []; list = list.map((s, i) => [s, i]).sort((a, b) => (((ord.indexOf(a[0].id) + 1) || 999) - ((ord.indexOf(b[0].id) + 1) || 999)) || a[1] - b[1]).map(x => x[0]);
+  const set = lsGet('nvGames.shelves', {}), hid = set.hidden || {};
+  const ps = allPlats().map(p => Object.assign({}, FAM[p.fam] || FAM.other, {id:p.id, name:p.name, short:p.short, sec:p.sec || 'own', icon:p.icon || 'pad', plat:true}));
+  const list = [{id:'all', name:'All games', c:['#1c1f3e', '#151a2e'], s:'#a9b4ff', icon:'all', sec:'list'}, {id:'wish', name:'Wishlist', c:['#3a1626', '#2a1f36'], s:'#ff9db7', icon:'wish', sec:'list'}, ...ps];
   for(const s of list) s.hidden = !!hid[s.id];
   return all ? list : list.filter(s => !s.hidden) }
 const shelfOf = id => shelves(true).find(s => s.id === id) || Object.assign({}, FAM[platOf(id).fam] || FAM.other, {id, name:platOf(id).name, icon:platOf(id).icon || (platOf(id).fam === 'pc' ? 'pc' : 'pad'), plat:true});
@@ -310,6 +330,13 @@ const FILTERS = [['all', 'All'], ['physical', 'Physical'], ['digital', 'Digital'
 const passFilter = (g, f, sh) => { if(f === 'all' || sh === 'wish') return true; const cs = sh === 'all' ? g.copies : g.copies.filter(c => c.plat === sh); return cs.some(c => c.kind === f) };
 const hayOf = g => norm([g.title, g.series, guessSeries(g.title), g.year, (g.genres || []).join(' '), g.copies.map(c => platOf(c.plat).name + ' ' + platOf(c.plat).short + ' ' + copyText(c)).join(' ')].join(' '));
 
+/* square system tile: up to 4 covers of its newest games behind the system's name (text only, no logos), number of games in the corner */
+function sysTile(s){ const gs = inShelf(s.id), n = gs.length, ph = s.id === 'wish' ? 0 : gs.filter(g => g.copies.some(c => c.kind === 'physical' && (s.id === 'all' || c.plat === s.id))).length;
+  const cov = gs.filter(hasCover).sort((a, b) => b.added - a.added).slice(0, 4), lbl = s.short || '', fs = lbl.length > 9 ? 13 : lbl.length > 7 ? 15 : lbl.length > 5 ? 18 : lbl.length > 3 ? 22 : 27;
+  return `<div class="bk st${n ? '' : ' off'}" data-shelf="${esc(s.id)}"><div class="sq" style="background:linear-gradient(150deg,${s.c[0]},${s.c[1]})">
+    ${cov.length ? `<div class="mos m${cov.length}">${cov.map(g => `<img data-fan="${esc(g.id)}" alt="" referrerpolicy="no-referrer">`).join('')}</div>` : ''}
+    <div class="sqi">${shelfIcon(s, lbl ? 20 : 34)}</div>${lbl ? `<div class="sqn" style="color:${s.s};font-size:${fs}px">${esc(lbl)}</div>` : ''}${n ? `<span class="cdl">${n}</span>` : ''}</div>
+    <div class="t">${esc(s.name)}</div><div class="a">${n ? plural(n, 'game') + (ph ? ` · ${ph} physical` : '') : 'empty'}</div></div>` }
 function draw(){
   const v = cur(), body = $('#body'); $('#vback').hidden = V.length < 2; $('#addbtn').hidden = v.v === 'game';
   $('#hubback').hidden = !(fromHub() && V.length < 2);
@@ -320,16 +347,20 @@ function draw(){
     if(q){ const hits = GAMES.filter(g => hayOf(g).includes(q)).sort(byTitle);
       h += hits.length ? `<div class="mtot">${plural(hits.length, 'game')}</div><div class="grid">${hits.slice(0, 300).map(g => gameTile(g, owned(g) ? 'all' : 'wish')).join('')}</div>` : '<p class="muted" style="text-align:center;margin-top:30px">Nothing found. Tap <b>Add</b> to add it.</p>';
       body.innerHTML = h; lazyCovers(body); hookSearch('_all'); hookGrid(null); return }
-    h += '<div class="shelves">' + shelves().map(s => { const gs = inShelf(s.id), ph = s.id === 'wish' ? 0 : gs.filter(g => g.copies.some(c => c.kind === 'physical' && (s.id === 'all' || c.plat === s.id))).length;
-        const fan = gs.filter(hasCover).sort((a, b) => b.added - a.added).slice(0, 3);
-        return `<div class="shelf" data-shelf="${esc(s.id)}" style="background:linear-gradient(150deg,${s.c[0]},${s.c[1]})"><div class="ic">${shelfIcon(s)}</div><div class="fan">${fan.map(g => `<img data-fan="${esc(g.id)}" alt="" referrerpolicy="no-referrer">`).join('')}</div>
-          <b>${esc(s.name)}</b><div class="s">${gs.length ? plural(gs.length, 'game') + (ph ? ` · ${ph} physical` : '') : 'empty'}</div></div>` }).join('') + '</div>';
-    if(!GAMES.length) h += `<div class="empty" style="margin-top:18px">${shelfIcon({s:'#a9b4ff', icon:'pad'}, 48)}<h2 style="margin:8px 0 4px;font-size:18px">No games yet</h2>
-      <p class="muted small" style="margin:0 0 14px">Tap <b>Add</b> to search a game by name, or bring in your Steam library. A shelf appears for every platform you have games for.</p>
+    /* a square tile for every game system and handheld (like the album tiles in Music), in sections; systems without games are dimmed */
+    const withGames = S.sysAll === false;
+    h += `<div class="chips"><button class="chip ${!withGames ? 'on' : ''}" data-sysall="1">All systems</button><button class="chip ${withGames ? 'on' : ''}" data-sysall="0">Only systems with games</button></div>`;
+    const shown = shelves(), cnt = {}; for(const x of shown) cnt[x.id] = inShelf(x.id).length;
+    if(withGames) h += `<div class="grid sys">${SECS.flatMap(([sec]) => shown.filter(x => x.sec === sec && (cnt[x.id] || sec === 'list'))).map(sysTile).join('')}</div>`;   // just your systems, together
+    else for(const [sec, title] of SECS){ const l = shown.filter(x => x.sec === sec); if(!l.length) continue;
+      h += `${sec === 'list' ? '' : `<div class="sec">${esc(title)}</div>`}<div class="grid sys">${l.map(sysTile).join('')}</div>` }
+    if(!GAMES.length) h = h.replace('<div class="chips">', () => `<div class="empty" style="margin:4px 0 14px">${shelfIcon({s:'#a9b4ff', icon:'pad'}, 48)}<h2 style="margin:8px 0 4px;font-size:18px">No games yet</h2>
+      <p class="muted small" style="margin:0 0 14px">Tap <b>Add</b> to search a game by name, or bring in your Steam library. Or tap a system below and add its games there.</p>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn primary" id="emptyadd">Add a game</button><button class="btn" id="emptysteam">Import from Steam</button></div>
-      ${hasIgdb() ? '' : '<p class="muted small" style="margin:12px 0 0">Tip: add your free IGDB key in Settings (⚙ → Online lookup) to find every game with its cover and series.</p>'}</div>`;
+      ${hasIgdb() ? '' : '<p class="muted small" style="margin:12px 0 0">Tip: add your free IGDB key in Settings (⚙ → Online lookup) to find every game with its cover and series.</p>'}</div>` + '<div class="chips">');
     h += storeLine();
     body.innerHTML = h; hookSearch('_all');
+    body.querySelectorAll('[data-sysall]').forEach(b => b.onclick = () => { S.sysAll = b.dataset.sysall === '1'; saveS(); draw() });
     body.querySelectorAll('[data-fan]').forEach(async im => { const g = GM[im.dataset.fan], u = await coverUrl(g.id) || g.cover; im.onerror = () => { if(g.cover2 && im.src !== g.cover2) im.src = g.cover2; else im.remove() }; im.src = u });
     if($('#emptyadd')) $('#emptyadd').onclick = () => addSheet(); if($('#emptysteam')) $('#emptysteam').onclick = () => keysSheet(true);
     return }
@@ -735,27 +766,25 @@ function keysSheet(steamFirst){ const k = KEYS();
 function appSettings(){ const all = shelves(true);
   sheet(`<h3>Games</h3><div class="mlist"><button class="btn primary" id="as_keys">Online lookup (IGDB, SteamGridDB)</button><button class="btn" id="as_steam">Import from Steam</button>${hasIgdb() ? '<button class="btn" id="as_fill">Fill in missing details (IGDB)</button>' : ''}</div>
     <div class="opt" style="margin-top:6px"><label for="as_guess">Guess the series from the name (Halo 3 → Halo) when a game has none</label><input type="checkbox" id="as_guess" ${S.guess ? 'checked' : ''}></div>
-    <div class="sec">Shelves (tap ↑ to move one up)</div>
-    ${all.map((s, i) => `<div class="li" style="cursor:default"><span style="width:30px;display:flex;justify-content:center">${shelfIcon(s, 20)}</span><div class="n"><div>${esc(s.name)}</div><div class="s">${plural(inShelf(s.id).length, 'game')}${s.hidden ? ' · hidden' : ''}</div></div><button class="btn sm" data-up="${i}" ${i ? '' : 'disabled'}>↑</button><button class="btn sm" data-eye="${esc(s.id)}">${s.hidden ? 'Show' : 'Hide'}</button></div>`).join('')}
-    <p class="muted small">A shelf appears by itself for every platform you have a game for.</p>
+    <div class="sec">Hidden systems</div>
+    ${all.filter(s => s.hidden).map(s => `<div class="li" style="cursor:default"><span style="width:30px;display:flex;justify-content:center">${shelfIcon(s, 20)}</span><div class="n"><div>${esc(s.name)}</div><div class="s">${plural(inShelf(s.id).length, 'game')}</div></div><button class="btn sm" data-eye="${esc(s.id)}">Show</button></div>`).join('') || '<p class="muted small">None. Hide a system you never use: open it → ⚙ → Hide this system.</p>'}
     <div class="sec">Your list</div><div class="mlist"><button class="btn" id="as_save">Save all my games (backup file)</button><button class="btn" id="as_load">Load games from a backup file</button></div>
     <p class="muted small">Your games are kept on this device. A backup file has your games, copies, wishlist and groups (not your own pictures).</p>
     <p class="muted small">Game info and covers: <a href="https://www.igdb.com" target="_blank" rel="noopener">IGDB.com</a>, <a href="https://www.steamgriddb.com" target="_blank" rel="noopener">SteamGridDB</a> and Steam. Problems? Switch on <b>Debug mode</b> at the bottom of The Nightvault and send the log.</p>`);
   $('#as_keys').onclick = () => keysSheet(false); $('#as_steam').onclick = () => keysSheet(true);
   if($('#as_fill')) $('#as_fill').onclick = () => fillDetails(GAMES.slice());
   $('#as_guess').onchange = e => { S.guess = e.target.checked; saveS(); regroup(); draw() };
-  $('.sheet').addEventListener('click', e => { const u = e.target.closest('[data-up]'), ey = e.target.closest('[data-eye]'), set = lsGet('nvGames.shelves', {});
-    if(u){ const ids = shelves(true).map(s => s.id), i = +u.dataset.up; [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]]; set._order = ids; lsSet('nvGames.shelves', set); appSettings(); draw() }
+  $('.sheet').addEventListener('click', e => { const ey = e.target.closest('[data-eye]'), set = lsGet('nvGames.shelves', {});
     if(ey){ set.hidden = set.hidden || {}; set.hidden[ey.dataset.eye] = !set.hidden[ey.dataset.eye]; lsSet('nvGames.shelves', set); appSettings(); draw() } });
   $('#as_save').onclick = () => saveBackup(); $('#as_load').onclick = () => loadBackup() }
 function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh);
   sheet(`<h3>${esc(s.name)}</h3>
     <div class="sec" style="margin-top:4px">Your groups on this shelf</div><div class="mlist"><button class="btn" id="ss_save">Save my groups</button><button class="btn" id="ss_load">Load from a file</button></div>
-    <div class="sec">This shelf</div><div class="mlist"><button class="btn" id="ss_hide">Hide this shelf</button><button class="btn" id="ss_all">All settings…</button></div>`);
+    <div class="sec">This shelf</div><div class="mlist"><button class="btn" id="ss_hide">Hide this system</button><button class="btn" id="ss_all">All settings…</button></div>`);
   $('#ss_save').onclick = async () => { try{ const r = await G.saveBackup(); if(r !== 'cancelled') toast('Groups saved') }catch(e){ toast(e.message || String(e), 4000) } };
   $('#ss_load').onclick = async () => { const t = await G.pickFile(); if(!t) return; const c = G.checkBackup(t); if(!c.ok){ toast(c.msg, 5000); return }
     if(!confirm(c.msg + '\n\nPut these groups back? (Undo is possible right after.)')) return; G.applyBackup(c.d); regroup(); closeSheet(); draw(); G.undoToast('Groups loaded', () => { regroup(); draw() }) };
-  $('#ss_hide').onclick = () => { const set = lsGet('nvGames.shelves', {}); set.hidden = set.hidden || {}; set.hidden[sh] = true; lsSet('nvGames.shelves', set); closeSheet(); V = [{v:'shelves'}]; draw(); toast(`${s.name} is hidden - show it again in Settings on the first page`, 4500) };
+  $('#ss_hide').onclick = () => { const set = lsGet('nvGames.shelves', {}); set.hidden = set.hidden || {}; set.hidden[sh] = true; lsSet('nvGames.shelves', set); closeSheet(); V = [{v:'shelves'}]; draw(); toast(`${s.name} is hidden - show it again in ⚙ on the first page`, 4500) };
   $('#ss_all').onclick = () => appSettings() }
 $('#setbtn').onclick = () => { const v = cur(); if(v.v === 'shelves' || v.v === 'game') appSettings(); else shelfSettings(v.shelf) };
 $('#addbtn').onclick = () => addSheet();

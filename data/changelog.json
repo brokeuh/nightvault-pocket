@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 83,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "games"
+   ],
+   "title": "Games: a square tile for every game system",
+   "items": [
+    "The first page of Games now has square tiles (like the album tiles in Music) for every game system and handheld: PC, PlayStation, Xbox, Nintendo, Nintendo handhelds, Sega, Atari, other consoles and handhelds, home computers and phones.",
+    "A tile shows the system's name, how many games you have and the covers of your newest games. Systems without games are dimmed - tap one to add its first game.",
+    "\"Only systems with games\" at the top shows just yours. Never use a system? Open it → ⚙ → Hide this system.",
+    "More older systems: Atari 5200/7800/Jaguar/Lynx, Neo Geo CD, PC Engine CD, 3DO, CD-i, ColecoVision, Intellivision, Vectrex, WonderSwan, Neo Geo Pocket, Virtual Boy, Commodore 64, Amiga, MSX, ZX Spectrum and more."
+   ]
+  },
+  {
    "id": 82,
    "date": "2026-10-19",
    "where": [

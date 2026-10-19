@@ -58,6 +58,20 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 .shelf .fan img{position:absolute;width:52px;aspect-ratio:5/7;object-fit:cover;border-radius:6px;box-shadow:0 4px 14px #0009;border:1px solid #ffffff22;background:#1a2230}
 .shelf .fan img:nth-child(1){right:0;top:0;transform:rotate(8deg)}.shelf .fan img:nth-child(2){right:12px;top:4px;transform:rotate(0)}.shelf .fan img:nth-child(3){right:24px;top:8px;transform:rotate(-8deg)}
 .shelf.add{background:none;border:1px dashed #2f3a48;color:var(--dim2);align-items:center;justify-content:center;gap:6px;text-align:center;font-size:14px}
+/* square system tiles on the start page (like the album tiles in Music): name in text, never a console logo */
+.grid.sys{grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:14px 12px}
+.st .sq{position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;border:1px solid #ffffff14}
+.st .mos{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;opacity:.42}
+.st .mos img{width:100%;height:100%;object-fit:cover;display:block;min-width:0;min-height:0}
+.st .mos.m1{grid-template-columns:1fr;grid-template-rows:1fr}.st .mos.m2{grid-template-rows:1fr}.st .mos.m3 img:first-child{grid-row:span 2}
+.st .sq::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#0b0e1300 35%,#0b0e13b0)}
+.st .sqi{position:absolute;left:9px;top:9px;z-index:1;display:flex}
+.st .sqi svg:only-child{opacity:.95}
+.st .sqn{position:absolute;left:10px;right:8px;bottom:8px;z-index:1;font-weight:800;letter-spacing:.4px;line-height:1.1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere;text-shadow:0 2px 10px #000a}
+.st .cdl{top:8px!important;right:8px!important;z-index:2}
+.st.off .sq{opacity:.5;filter:saturate(.6)}.st.off .t{color:var(--dim)}
+.st:active .sq{transform:scale(.97)}
+.st .sq:not(:has(.sqn)) .sqi{left:50%;top:50%;transform:translate(-50%,-50%)}
 /* cover grid: tall tiles like game boxes (--cover-ratio). A cover that doesn't fit is shown whole, a blurred copy fills the edges. */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:14px 12px;margin-top:6px}
 .bk{cursor:pointer;min-width:0;position:relative;-webkit-touch-callout:none;user-select:none}
