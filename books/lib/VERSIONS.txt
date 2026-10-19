@@ -1,0 +1,2 @@
+pdfjs-dist 4.10.38
+node-unrar-js 2.0.2
