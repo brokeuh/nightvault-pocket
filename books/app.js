@@ -114,7 +114,7 @@ const td8 = new TextDecoder('utf-8'), tdL = new TextDecoder('latin1');
 async function zipOpen(src){
   const n = src.size, tl = Math.min(n, 65557 + 20), tail = new Uint8Array(await src.read(n - tl, n)), dv = new DataView(tail.buffer);
   let e = -1; for(let i = tail.length - 22; i >= 0; i--) if(dv.getUint32(i, true) === 0x06054b50){ e = i; break }
-  if(e < 0) throw new Error('This is not a ZIP / CBZ file (or it is damaged)');
+  if(e < 0){ const h = new Uint8Array(await src.read(0, Math.min(8, n))); if(h[0] === 0x37 && h[1] === 0x7A && h[2] === 0xBC) throw new Error('This is a 7-Zip file (CB7) with a .cbz name - Bookcase can\'t open 7-Zip yet'); throw new Error(n < 1024 ? 'This file is empty' : 'This file is damaged or not completely downloaded (no ZIP inside)') }
   let cnt = dv.getUint16(e + 10, true), cds = dv.getUint32(e + 12, true), cdo = dv.getUint32(e + 16, true);
   if((cdo === 0xFFFFFFFF || cds === 0xFFFFFFFF || cnt === 0xFFFF) && e >= 20 && dv.getUint32(e - 20, true) === 0x07064b50){   // ZIP64
     const lo = Number(dv.getBigUint64(e - 12, true)), z = new DataView(await src.read(lo, lo + 56));
@@ -306,7 +306,15 @@ async function readMeta(src, name, dir){
 /* ---------- library in memory ---------- */
 let BOOKS = [], BK = {}, STATE = {};
 async function loadLib(){ await loadCols(); BOOKS = await dbAll('books'); BK = Object.fromEntries(BOOKS.map(b => [b.id, b])); STATE = {}; for(const s of await dbAll('state')) STATE[s.id] = s;
-  for(const id of await tx('covers', 'readonly', st => st.getAllKeys())) COV.add(id) }
+  for(const id of await tx('covers', 'readonly', st => st.getAllKeys())) COV.add(id);
+  await dropDoubles() }
+/* the same file twice on a shelf (added once through its own folder and once through a folder around it): keep one – the one you read in, else the oldest */
+async function dropDoubles(){ const by = {}; for(const b of BOOKS) if(b.fmt !== 'imgs' && b.name && b.size) (by[b.shelf + '|' + b.name + '|' + b.size] = by[b.shelf + '|' + b.name + '|' + b.size] || []).push(b);
+  const gone = []; for(const l of Object.values(by)) if(l.length > 1){ l.sort((a, b) => ((STATE[b.id] || {}).last || 0) - ((STATE[a.id] || {}).last || 0) || a.added - b.added); gone.push(...l.slice(1)) }
+  if(!gone.length) return; const g = new Set(gone.map(b => b.id));
+  await dbDelMany('books', [...g]); await dbDelMany('covers', [...g]).catch(() => {}); await dbDelMany('state', [...g]).catch(() => {});
+  for(const id of g){ delete BK[id]; delete STATE[id]; COV.delete(id) } BOOKS = BOOKS.filter(b => !g.has(b.id));
+  L('start', `removed ${gone.length} doubles`); setTimeout(() => toast(`${plural(gone.length, 'double')} removed (the same comic was in two of your folders)`, 5000), 800) }
 const st = id => STATE[id] || (STATE[id] = {id, page:0, pages:0, last:0, finished:false, marks:[]});
 const stT = {}; function saveState(id, now){ clearTimeout(stT[id]); const go = () => dbPut('state', st(id)).catch(() => {}); if(now) return go(); stT[id] = setTimeout(go, 800) }
 const progress = b => { const s = STATE[b.id]; if(!s) return 0; if(s.finished) return 1; if(b.fmt === 'epub' && s.flow) return s.frac || 0; const n = s.pages || b.pages; return n > 1 ? Math.min(1, s.page / (n - 1)) : 0 };
@@ -367,7 +375,8 @@ let SCAN = null;
 async function scan(items, shelf, folder, notyet){
   const key = it => folder ? (it.kind === 'imgs' ? folder.tree + '|' + it.path : it.f.uri) : (it.kind === 'imgs' ? 'dir|' + it.path + '|' + it.files.length : it.f.name + '|' + it.f.size);
   const bkey = b => b.src.kind === 'link' ? (b.fmt === 'imgs' ? b.src.tree + '|' + b.dir2 : b.src.uri) : (b.fmt === 'imgs' ? 'dir|' + b.dir2 + '|' + b.src.fids.length : b.name + '|' + b.size);
-  const have = new Set(BOOKS.filter(b => b.shelf === shelf).map(bkey)), fresh = items.filter(it => !have.has(key(it)));
+  const same = new Set(BOOKS.filter(b => b.shelf === shelf && b.fmt !== 'imgs').map(b => b.name + '|' + b.size));   // the same file through another folder (a folder inside a folder you added)
+  const have = new Set(BOOKS.filter(b => b.shelf === shelf).map(bkey)), fresh = items.filter(it => !have.has(key(it)) && !(it.kind === 'file' && same.has(it.f.name + '|' + it.f.size)));
   let removed = 0;
   if(folder){ const seen = new Set(items.map(key)), gone = BOOKS.filter(b => b.shelf === shelf && b.src.kind === 'link' && b.src.tree === folder.tree && !seen.has(bkey(b)));
     if(gone.length){ removed = gone.length; await dbDelMany('books', gone.map(b => b.id)); const g = new Set(gone.map(b => b.id)); BOOKS = BOOKS.filter(b => !g.has(b.id)); for(const id of g) delete BK[id] } }
@@ -419,9 +428,10 @@ const groupsOf = sh => GROUPCACHE[sh] || (GROUPCACHE[sh] = withPublishers(sh, gr
    the publisher comes from the file (ComicInfo.xml Publisher, the EPUB's publisher), else from the folder (Comics/Marvel/…), else "Edit details".
    Anything placed by hand wins: a series put inside another group stays there, a book set to "its own tile" stays on its own.
    Switch per shelf (shelf ⚙ → "Bundle series by publisher"); on by default for Comics. */
-const PUB_ALIAS = [[/^marvel( comics| entertainment| worldwide)?$/i, 'Marvel'], [/^dc( comics| entertainment)?$/i, 'DC'], [/^dark ?horse( comics| books)?$/i, 'Dark Horse'], [/^image( comics)?$/i, 'Image'], [/^idw( publishing)?$/i, 'IDW'], [/^boom!?( studios)?$/i, 'BOOM! Studios']];
+const PUB_ALIAS = [[/^marvel( comics| entertainment| worldwide)?$/i, 'Marvel'], [/^dc( comics| entertainment)?$/i, 'DC'], [/^dark ?horse( comics| books)?$/i, 'Dark Horse'], [/^image( comics)?$/i, 'Image'], [/^idw( publishing)?$/i, 'IDW'], [/^boom!?( studios)?$/i, 'BOOM! Studios'], [/^dynamite( entertainment)?$/i, 'Dynamite'], [/^titan( comics)?$/i, 'Titan'], [/^archie( comics)?$/i, 'Archie'], [/^valiant( entertainment| comics)?$/i, 'Valiant'], [/^ablaze( publishing)?$/i, 'Ablaze'], [/^aftershock( comics)?$/i, 'AfterShock'], [/^oni( press)?$/i, 'Oni Press'], [/^vault( comics)?$/i, 'Vault']];
 const cleanPub = p => { p = String(p || '').trim(); for(const [re, n] of PUB_ALIAS) if(re.test(p)) return n; return p };
 /* Marvel/Spider-Man/x.cbz → Marvel; DC/Watchmen.cbz → DC too, but only when that folder also holds series folders (tops) – a folder like 'Loose' is no publisher */
+const NOT_PUB_DIR = /\b(19|20)\d\d[.\-_ ]\d\d|\b(weekly|week|pack|packs|0-?day|download|downloads|torr|torrents?|new|incoming|unsorted|misc|loose|to ?read|read|comics?|books?|manga|ebooks?|digital|scans?|temp|tmp)\b/i;
 const pubFolder = (dir, tops) => { const seg = String(dir || '').split('/').filter(Boolean), ok = seg.length >= 2 || (seg.length === 1 && tops && tops.has(seg[0])); return ok ? seg[0].replace(/[([][^)\]]*[)\]]/g, '').trim() : '' };
 const pubTops = dirs => new Set(dirs.map(d => String(d || '').split('/').filter(Boolean)).filter(x => x.length >= 2).map(x => x[0]));
 /* where a book's publisher comes from, in this order: the file / edited by hand → the folder → another book of the same series that
@@ -432,19 +442,27 @@ const KNOWN_PUB = {
   Image:'spawn|saga|invincible|walking dead|geiger|monstress|radiant black',
   'Dark Horse':'hellboy|bprd|b p r d|umbrella academy',
   IDW:'teenage mutant ninja turtles|tmnt|sonic the hedgehog',
-  'BOOM! Studios':'something is killing the children|house of slaughter|power rangers'};
+  'BOOM! Studios':'something is killing the children|house of slaughter|power rangers',
+  Rebellion:'judge dredd|2000ad|2000 ad|2000ad prog|judge anderson',
+  Dynamite:'vampirella|red sonja|the boys'};
 /* names of more than one word, and distinctive single names, count anywhere in the series name ("Absolute Batman", "Uncanny X-Men");
    other single words (Saga, Flash, Titans, Thor …) only when they are the whole name apart from words like "The", "Absolute", "Amazing" */
-const ANYWHERE = new Set('marvel dc batman superman wolverine deadpool avengers nightwing aquaman supergirl superboy batgirl batwoman catwoman hellboy spawn daredevil punisher hawkeye carnage venom dceased bprd tmnt'.split(' '));
+const ANYWHERE = new Set('2000ad vampirella marvel dc batman superman wolverine deadpool avengers nightwing aquaman supergirl superboy batgirl batwoman catwoman hellboy spawn daredevil punisher hawkeye carnage venom dceased bprd tmnt'.split(' '));
 const PREFIX_RE = /^((the|absolute|ultimate|all new|all new all different|amazing|uncanny|immortal|superior|spectacular|astonishing|sensational|new|savage|mighty|dark|young|original|untold|unstoppable) )+/;
 const guessPub = name => { const n = norm(name), bare = n.replace(PREFIX_RE, '').trim();
   for(const [p, w] of Object.entries(KNOWN_PUB)) for(const k of w.split('|')){ if(k.includes(' ') || ANYWHERE.has(k)){ if((' ' + n + ' ').includes(' ' + k + ' ')) return p } else if(bare === k || n === k) return p }
   return '' };
 let PUBLEARN = null;   // series → publisher, from the books that have one (rebuilt with the groups)
 function pubLearn(){ if(PUBLEARN) return PUBLEARN; const c = {};
-  for(const b of BOOKS){ const p = cleanPub(b.publisher || b.pubDir || b.cvPub); if(!p || !b.series) continue; const k = norm(b.series); (c[k] = c[k] || {})[p] = (c[k][p] || 0) + 1 }
+  for(const b of BOOKS){ const p = pubDirect(b).p; if(!p || !b.series) continue; const k = norm(b.series); (c[k] = c[k] || {})[p] = (c[k][p] || 0) + 1 }
   PUBLEARN = {}; for(const [k, ps] of Object.entries(c)) PUBLEARN[k] = Object.keys(ps).sort((a, b) => ps[b] - ps[a])[0]; return PUBLEARN }
-function pubSource(b){ if(b.publisher) return {p:cleanPub(b.publisher), how:'file'}; if(b.pubDir) return {p:cleanPub(b.pubDir), how:'folder'}; if(b.cvPub) return {p:cleanPub(b.cvPub), how:'online'};
+/* a publisher written in the file name: "Junk Punch 03 (of 05) (2026) (Mad Cave Studios) (Digital).cbz" */
+const PUB_WORD = /\b(comics|entertainment|studios|press|publishing|publications|books|media|productions|group)$|^(marvel|dc|image|idw|boom!?|dark horse|titan|ablaze|oni|aftershock|vault|scout|zenescope|archie|valiant|rebellion|humanoids|fantagraphics|top cow|skybound|mad cave|ahoy|awa|source point|massive|bad idea|whatnot|behemoth)\b/i;
+const pubFromName = n => { for(const m of String(n || '').matchAll(/\(([^()]{2,40})\)/g)){ const t = m[1].trim(); if(/^(of \d+|\d{4}|digital.*|webrip|.*-(dcp|empire)|limited series|series|one-?shot|\d+p|c2c|f|fixed|hd|.*rip)$/i.test(t)) continue; if(PUB_WORD.test(t)) return t } return '' };
+/* what the book itself says: the file, the file name, the folder, Comic Vine */
+function pubDirect(b){ if(b.publisher) return {p:cleanPub(b.publisher), how:'file'}; const pn = pubFromName(b.name); if(pn) return {p:cleanPub(pn), how:'name'};
+  if(b.pubDir && !NOT_PUB_DIR.test(b.pubDir)) return {p:cleanPub(b.pubDir), how:'folder'}; if(b.cvPub) return {p:cleanPub(b.cvPub), how:'online'}; return {p:'', how:''} }
+function pubSource(b){ const d = pubDirect(b); if(d.p) return d; if(b.cvPub) return {p:cleanPub(b.cvPub), how:'online'};
   const l = b.series && pubLearn()[norm(b.series)]; if(l) return {p:l, how:'series'};
   const g = guessPub(b.series || b.title || b.name); if(g) return {p:g, how:'guess'}; return {p:'', how:''} }
 const publisherOf = b => pubSource(b).p;
@@ -630,7 +648,7 @@ function drawBook(id){ const b = BK[id]; if(!b){ V.pop(); return draw() }
   const s = STATE[b.id], p = progress(b), g = groupOfBook(b), prev = nextInSeries(b, -1), next = nextInSeries(b, 1), sh = shelfOf(b.shelf);
   $('#vtitle').textContent = ''; document.title = dispTitle(b) + ' · Bookcase';
   const where = b.src.kind === 'link' ? 'In a folder on this phone' : 'Copied into the app';
-  const facts = [['Publisher', (() => { const x = pubSource(b); return x.p ? esc(x.p) + ({folder:' <span class="muted">· from the folder</span>', online:' <span class="muted">· from Comic Vine</span>', series:' <span class="muted">· like the rest of this series</span>', guess:' <span class="muted">· guessed from the name – fix it with Edit details</span>'}[x.how] || '') : '' })()], ['Series', b.series ? `<span class="lnk" data-gotogrp2="1">${esc(b.series)}</span>${b.vol ? ' · ' + esc(b.vol) : ''}` : ''], ['Writer', esc(b.writer)], ['Artist', esc(b.artist)], ['Year', esc(b.year)],
+  const facts = [['Publisher', (() => { const x = pubSource(b); return x.p ? esc(x.p) + ({folder:' <span class="muted">· from the folder</span>', name:' <span class="muted">· from the file name</span>', online:' <span class="muted">· from Comic Vine</span>', series:' <span class="muted">· like the rest of this series</span>', guess:' <span class="muted">· guessed from the name – fix it with Edit details</span>'}[x.how] || '') : '' })()], ['Series', b.series ? `<span class="lnk" data-gotogrp2="1">${esc(b.series)}</span>${b.vol ? ' · ' + esc(b.vol) : ''}` : ''], ['Writer', esc(b.writer)], ['Artist', esc(b.artist)], ['Year', esc(b.year)],
     ['Pages', b.pages ? String(b.pages) : ''], ['Reading', b.rtl ? 'Right to left (manga)' : b.rtl === false ? 'Left to right' : ''], ['Comic Vine', b.cv ? esc(b.cv.name) + (b.cv.start ? ` (${b.cv.start})` : '') : ''], ['File', `${esc((b.fmt || '').toUpperCase())}${b.size ? ' · ' + mb(b.size) : ''}`], ['Where', where + (b.dir ? ` · <span class="muted">${esc(b.dir)}</span>` : '')], ['Shelf', esc(sh.name)]].filter(x => x[1]);
   const nx = (x, lbl) => x ? `<div class="nx" data-book="${esc(x.id)}">${coverHTML(x)}<div class="n"><small>${lbl}</small><div>${esc(x.vol || x.title)}</div></div></div>` : '<div></div>';
   let h = `<div class="alhead" style="align-items:flex-start">${coverHTML(b)}<div style="min-width:0;flex:1"><b>${esc(b.series && b.title && norm(b.title) !== norm(b.series) ? b.title : dispTitle(b))}</b>

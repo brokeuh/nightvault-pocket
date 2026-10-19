@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 79,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: no doubles, better publishers",
+   "items": [
+    "Fixed: adding a folder that contains a folder you added before (like Torr with the Weekly Pack inside) no longer adds those comics a second time. Doubles that are already there are removed when Bookcase opens - your files stay.",
+    "Fixed: a folder like \"2026.08.19 Weekly Pack\" is no longer taken for a publisher.",
+    "New: the publisher in the file name is used too, like (Mad Cave Studios) or (Dynamite Entertainment).",
+    "A file that is damaged, not fully downloaded or really a 7-Zip file now says so."
+   ]
+  },
+  {
    "id": 78,
    "date": "2026-10-19",
    "where": [
