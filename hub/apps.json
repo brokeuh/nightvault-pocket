@@ -390,18 +390,36 @@
   {
    "id": "print3d",
    "name": "3D Print",
-   "desc": "Your 3D models (STL, OBJ, 3MF) with a 3D viewer",
+   "desc": "Your 3D models (STL, OBJ, 3MF) with a 3D viewer, projects and your print log",
    "color": "#16323a",
-   "soon": true,
-   "files": [],
+   "files": [
+    {
+     "path": "print3d/index.html",
+     "size": 17967
+    },
+    {
+     "path": "print3d/app.js",
+     "size": 106705
+    },
+    {
+     "path": "print3d/viewer.js",
+     "size": 24405
+    },
+    {
+     "path": "print3d/manifest.webmanifest",
+     "size": 561
+    }
+   ],
    "provides": [
     "models3d"
    ],
    "uses": [],
-   "size": 0,
-   "hash": "e3b0c44298fc",
-   "version": "2026.10.12.1325",
-   "updated": "2026-10-12"
+   "entry": "print3d/?nv=hub",
+   "keepsData": "Your models list, prints, tags, groups and copies in the app stay on this device. Files in phone folders are never deleted.",
+   "size": 149638,
+   "hash": "03a414ac517a",
+   "version": "2026.10.19.1725",
+   "updated": "2026-10-19"
   },
   {
    "id": "collectables",
