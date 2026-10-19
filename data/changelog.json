@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 76,
+   "date": "2026-10-19",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: look up comics on Comic Vine",
+   "items": [
+    "Type your Comic Vine key once (Comics shelf ⚙ → Online). Bookcase then looks up the publisher and series of comics that don't say it themselves, and fills in the story and cover when they are missing.",
+    "It asks once per series and remembers the answer, so it only needs the internet while it looks. After adding comics it offers to look them up.",
+    "Picked the wrong series? Comic ⋯ → \"Look up online (Comic Vine)…\" and tap the right one - it is used for the whole series.",
+    "Also: guessing a publisher from the name is more careful now, and \"previous / next in series\" stays inside the same series."
+   ]
+  },
+  {
    "id": 75,
    "date": "2026-10-19",
    "where": [

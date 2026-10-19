@@ -401,6 +401,8 @@ async function scan(items, shelf, folder, notyet){
   L('add', `${added} added, ${failed} failed`, errs.slice(0, 20));
   { regroup(); const nb = BOOKS.filter(b => b.shelf === shelf && b.added === now); L('add', 'publishers', nb.map(b => `${b.name} → ${pubSource(b).p || '-'} (${pubSource(b).how || 'none'})`).slice(0, 200)) }
   toast(`${plural(added, 'book')} added${removed ? ` · ${removed} gone` : ''}${failed ? ` · ${failed} could not be read` : ''}${notyet ? ` · ${notyet} in a format not supported yet` : ''}`, 6000);
+  if(!failed && shelfOf(shelf).byPub && CV.key() && BOOKS.some(b => b.shelf === shelf && b.added === now && (!pubSource(b).p || pubSource(b).how === 'guess'))) setTimeout(() => { const n = BOOKS.filter(b => b.shelf === shelf && b.added === now && (!pubSource(b).p || pubSource(b).how === 'guess')).length;
+    sheet(`<h3>Look them up online?</h3><p class="muted small">${plural(n, 'comic')} of what you just added ${n === 1 ? 'has' : 'have'} no publisher in the file. Comic Vine can find it (and the story and cover).</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Not now</button><button class="btn primary" style="flex:2" id="cvnow">Look them up</button></div>`); $('#cvnow').onclick = () => cvLookup(shelf, false) }, 700);
   if(failed) setTimeout(() => sheet(`<h3>${plural(failed, 'file')} could not be read</h3><div style="max-height:46vh;overflow:auto;font-size:12.5px" class="muted">${errs.slice(0, 60).map(esc).join('<br>')}</div><button class="btn primary" style="width:100%;margin-top:12px" id="errok">OK</button>`), 400), setTimeout(() => { const b = $('#errok'); if(b) b.onclick = closeSheet }, 500) }
 async function lookAgain(f){ if(!NvFiles) return; await addFolder(f.shelf, {tree:f.tree, name:f.name}) }
 
@@ -431,13 +433,18 @@ const KNOWN_PUB = {
   'Dark Horse':'hellboy|bprd|b p r d|umbrella academy',
   IDW:'teenage mutant ninja turtles|tmnt|sonic the hedgehog',
   'BOOM! Studios':'something is killing the children|house of slaughter|power rangers'};
-const KNOWN_RE = Object.entries(KNOWN_PUB).map(([p, w]) => [p, new RegExp('(^| )(' + w + ')( |$)')]);
-const guessPub = name => { const n = ' ' + norm(name) + ' '; for(const [p, re] of KNOWN_RE) if(re.test(n.trim())) return p; return '' };
+/* names of more than one word, and distinctive single names, count anywhere in the series name ("Absolute Batman", "Uncanny X-Men");
+   other single words (Saga, Flash, Titans, Thor …) only when they are the whole name apart from words like "The", "Absolute", "Amazing" */
+const ANYWHERE = new Set('marvel dc batman superman wolverine deadpool avengers nightwing aquaman supergirl superboy batgirl batwoman catwoman hellboy spawn daredevil punisher hawkeye carnage venom dceased bprd tmnt'.split(' '));
+const PREFIX_RE = /^((the|absolute|ultimate|all new|all new all different|amazing|uncanny|immortal|superior|spectacular|astonishing|sensational|new|savage|mighty|dark|young|original|untold|unstoppable) )+/;
+const guessPub = name => { const n = norm(name), bare = n.replace(PREFIX_RE, '').trim();
+  for(const [p, w] of Object.entries(KNOWN_PUB)) for(const k of w.split('|')){ if(k.includes(' ') || ANYWHERE.has(k)){ if((' ' + n + ' ').includes(' ' + k + ' ')) return p } else if(bare === k || n === k) return p }
+  return '' };
 let PUBLEARN = null;   // series → publisher, from the books that have one (rebuilt with the groups)
 function pubLearn(){ if(PUBLEARN) return PUBLEARN; const c = {};
-  for(const b of BOOKS){ const p = cleanPub(b.publisher || b.pubDir); if(!p || !b.series) continue; const k = norm(b.series); (c[k] = c[k] || {})[p] = (c[k][p] || 0) + 1 }
+  for(const b of BOOKS){ const p = cleanPub(b.publisher || b.pubDir || b.cvPub); if(!p || !b.series) continue; const k = norm(b.series); (c[k] = c[k] || {})[p] = (c[k][p] || 0) + 1 }
   PUBLEARN = {}; for(const [k, ps] of Object.entries(c)) PUBLEARN[k] = Object.keys(ps).sort((a, b) => ps[b] - ps[a])[0]; return PUBLEARN }
-function pubSource(b){ if(b.publisher) return {p:cleanPub(b.publisher), how:'file'}; if(b.pubDir) return {p:cleanPub(b.pubDir), how:'folder'};
+function pubSource(b){ if(b.publisher) return {p:cleanPub(b.publisher), how:'file'}; if(b.pubDir) return {p:cleanPub(b.pubDir), how:'folder'}; if(b.cvPub) return {p:cleanPub(b.cvPub), how:'online'};
   const l = b.series && pubLearn()[norm(b.series)]; if(l) return {p:l, how:'series'};
   const g = guessPub(b.series || b.title || b.name); if(g) return {p:g, how:'guess'}; return {p:'', how:''} }
 const publisherOf = b => pubSource(b).p;
@@ -466,7 +473,8 @@ const grChange = (sh, fn, msg) => { const G = grOf(sh); G.change(fn); regroup();
 const groupByKey = (sh, k) => groupsOf(sh).groups.find(g => g.key === k) || null;
 const groupOfBook = b => groupsOf(b.shelf).groups.find(g => g.items.includes(b)) || null;
 /* the books of a series in reading order (for "next in series" and "Read next") */
-const seriesList = b => { const g = groupOfBook(b); return g ? g.items.slice().sort(seriesOrder) : [b] };
+/* only the same series: a publisher or own group can hold other series too */
+const seriesList = b => { const g = groupOfBook(b); if(!g) return [b]; const l = g.kind === 'series' ? g.items : b.series ? g.items.filter(x => norm(x.series) === norm(b.series)) : [b]; return l.slice().sort(seriesOrder) };
 const nextInSeries = (b, d) => { const l = seriesList(b), i = l.indexOf(b); return i < 0 ? null : l[i + d] || null };
 
 /* ---------- covers on screen (filled in when they scroll into view) ---------- */
@@ -494,8 +502,8 @@ function bookTile(b){ const p = progress(b), s = STATE[b.id], G = grOf(b.shelf);
   return `<div class="bk" data-book="${esc(b.id)}">${coverHTML(b, '', (G.isPinned('it:' + b.id) ? PINB : '') + (s && s.finished ? '<span class="done">READ</span>' : '') + (b.vol ? `<span class="vol">${esc(b.vol)}</span>` : ''))}
     ${p > 0 && p < 1 ? `<div class="pbar"><i style="width:${Math.round(p * 100)}%"></i></div>` : ''}<div class="t">${esc(dispTitle(b))}</div><div class="a">${esc(dispSub(b) || ' ')}</div></div>` }
 function groupTile(sh, g){ const all = g.all || g.items, k = (g.kids || []).length, rd = all.filter(b => STATE[b.id] && STATE[b.id].finished).length, G = grOf(sh);
-  return `<div class="bk stack" data-grp="${esc(g.key)}">${groupCoverHTML(sh, g)}${G.isPinned('gr:' + g.key) ? PINB : ''}<span class="cdl">${k ? plural(k, 'group') + ' · ' : ''}${all.length ? plural(all.length, 'book') : 'empty'}</span>
-    <div class="t">${esc(g.name)}</div><div class="a">${esc(G.label(g))}${all.length ? ` · ${rd ? rd + ' of ' + all.length + ' read' : 'not started'}` : ''}</div></div>` }
+  return `<div class="bk stack" data-grp="${esc(g.key)}">${groupCoverHTML(sh, g)}${G.isPinned('gr:' + g.key) ? PINB : ''}<span class="cdl">${all.length ? plural(all.length, 'book') : 'empty'}</span>
+    <div class="t">${esc(g.name)}</div><div class="a">${esc([G.label(g), k ? plural(k, 'group') : '', rd ? rd + ' of ' + all.length + ' read' : ''].filter(Boolean).join(' · '))}</div></div>` }
 
 /* ---------- screens: a stack of views ---------- */
 let V = [{v:'shelves'}];
@@ -613,8 +621,8 @@ function drawBook(id){ const b = BK[id]; if(!b){ V.pop(); return draw() }
   const s = STATE[b.id], p = progress(b), g = groupOfBook(b), prev = nextInSeries(b, -1), next = nextInSeries(b, 1), sh = shelfOf(b.shelf);
   $('#vtitle').textContent = ''; document.title = dispTitle(b) + ' · Bookcase';
   const where = b.src.kind === 'link' ? 'In a folder on this phone' : 'Copied into the app';
-  const facts = [['Publisher', (() => { const x = pubSource(b); return x.p ? esc(x.p) + ({folder:' <span class="muted">· from the folder</span>', series:' <span class="muted">· like the rest of this series</span>', guess:' <span class="muted">· guessed from the name – fix it with Edit details</span>'}[x.how] || '') : '' })()], ['Series', b.series ? `<span class="lnk" data-gotogrp2="1">${esc(b.series)}</span>${b.vol ? ' · ' + esc(b.vol) : ''}` : ''], ['Writer', esc(b.writer)], ['Artist', esc(b.artist)], ['Year', esc(b.year)],
-    ['Pages', b.pages ? String(b.pages) : ''], ['Reading', b.rtl ? 'Right to left (manga)' : b.rtl === false ? 'Left to right' : ''], ['File', `${esc((b.fmt || '').toUpperCase())}${b.size ? ' · ' + mb(b.size) : ''}`], ['Where', where + (b.dir ? ` · <span class="muted">${esc(b.dir)}</span>` : '')], ['Shelf', esc(sh.name)]].filter(x => x[1]);
+  const facts = [['Publisher', (() => { const x = pubSource(b); return x.p ? esc(x.p) + ({folder:' <span class="muted">· from the folder</span>', online:' <span class="muted">· from Comic Vine</span>', series:' <span class="muted">· like the rest of this series</span>', guess:' <span class="muted">· guessed from the name – fix it with Edit details</span>'}[x.how] || '') : '' })()], ['Series', b.series ? `<span class="lnk" data-gotogrp2="1">${esc(b.series)}</span>${b.vol ? ' · ' + esc(b.vol) : ''}` : ''], ['Writer', esc(b.writer)], ['Artist', esc(b.artist)], ['Year', esc(b.year)],
+    ['Pages', b.pages ? String(b.pages) : ''], ['Reading', b.rtl ? 'Right to left (manga)' : b.rtl === false ? 'Left to right' : ''], ['Comic Vine', b.cv ? esc(b.cv.name) + (b.cv.start ? ` (${b.cv.start})` : '') : ''], ['File', `${esc((b.fmt || '').toUpperCase())}${b.size ? ' · ' + mb(b.size) : ''}`], ['Where', where + (b.dir ? ` · <span class="muted">${esc(b.dir)}</span>` : '')], ['Shelf', esc(sh.name)]].filter(x => x[1]);
   const nx = (x, lbl) => x ? `<div class="nx" data-book="${esc(x.id)}">${coverHTML(x)}<div class="n"><small>${lbl}</small><div>${esc(x.vol || x.title)}</div></div></div>` : '<div></div>';
   let h = `<div class="alhead" style="align-items:flex-start">${coverHTML(b)}<div style="min-width:0;flex:1"><b>${esc(b.series && b.title && norm(b.title) !== norm(b.series) ? b.title : dispTitle(b))}</b>
     ${b.series ? `<div class="lnk small" data-gotogrp2="1">${esc(b.series)}${b.vol ? ' · ' + esc(b.vol) : ''}</div>` : ''}<div class="muted small">${esc([b.writer, b.year].filter(Boolean).join(' · '))}</div>
@@ -645,11 +653,12 @@ function bookMenu(b){ const G = grOf(b.shelf), s = STATE[b.id], pin = G.isPinned
   sheet(`<h3>${esc(dispTitle(b))}</h3><div class="mlist">
     <button class="btn" id="bmg">Put in a group…</button><button class="btn" id="bms">Move to another shelf…</button><button class="btn" id="bme">Edit details</button>
     <button class="btn" id="bmr">${s && s.finished ? 'Mark as not read' : 'Mark as read'}</button><button class="btn" id="bmp">${pin ? '★ Unpin from the top' : '★ Pin to the top'}</button>
-    <button class="btn" id="bmc">Change the cover</button><button class="btn" id="bmprint">Print…</button>
+    <button class="btn" id="bmcv">Look up online (Comic Vine)…</button><button class="btn" id="bmc">Change the cover</button><button class="btn" id="bmprint">Print…</button>
     <button class="btn danger" id="bmx">${b.src.kind === 'link' ? 'Remove from Bookcase (the file stays)' : 'Remove from Bookcase'}</button></div>`);
   $('#bmg').onclick = () => groupPicker(b); $('#bms').onclick = () => shelfPicker([b.id]); $('#bme').onclick = () => editBook(b);
   $('#bmr').onclick = () => { const x = st(b.id); x.finished = !x.finished; if(x.finished){ x.last = x.last || Date.now(); x.page = Math.max(0, (x.pages || b.pages || 1) - 1) } else x.page = 0; saveState(b.id, true); closeSheet(); draw() };
   $('#bmp').onclick = () => { G.togglePin(['it:' + b.id], !pin); closeSheet(); draw(); toast(pin ? 'Unpinned' : 'Pinned: it shows first') };
+  $('#bmcv').onclick = () => cvChoose(b);
   $('#bmc').onclick = () => coverSheet(b); $('#bmprint').onclick = () => { closeSheet(); printSheet(b) };
   $('#bmx').onclick = () => removeBooks([b.id]) }
 async function removeBooks(ids){ const bs = ids.map(id => BK[id]).filter(Boolean); if(!bs.length) return;
@@ -1121,12 +1130,14 @@ function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh), folders = lsGet
     <div class="opt"><label for="ss_pub">Bundle series by publisher (Marvel › Spider-Man › …)</label><input type="checkbox" id="ss_pub" ${s.byPub ? 'checked' : ''}></div>
     <div class="opt"><label for="ss_aut">A writer's books without a series make one tile</label><input type="checkbox" id="ss_aut" ${s.authors ? 'checked' : ''}></div>
     ${NvFiles ? `<div class="sec">Folders on this phone</div>${folders.map((f, i) => `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(inShelf(sh).filter(b => b.src.kind === 'link' && b.src.tree === f.tree).length, 'book')}</div></div><button class="btn sm" data-look="${i}">Look again</button><button class="btn sm danger" data-forget="${i}">Stop</button></div>`).join('') || '<p class="muted small">None yet - Add → Use a folder on this phone.</p>'}` : ''}
+    <div class="sec">Online (Comic Vine)</div><div class="mlist"><button class="btn primary" id="ss_cv">Look up the comics without a publisher</button><button class="btn" id="ss_cvall">Look up all comics on this shelf</button><button class="btn" id="ss_cvkey">${CV.key() ? 'Change your Comic Vine key' : 'Type your Comic Vine key'}</button><div class="muted small" style="margin:-2px 0 0">Once per series; the results are remembered. Needs the internet only while it looks.</div></div>
     <div class="mlist" style="margin-top:10px"><button class="btn" id="ss_reread">Read the details of all books again</button><div class="muted small" style="margin:-2px 0 0">Fills in what is missing (publisher, writer, year …). What you edited by hand stays.</div></div>
     <div class="sec">Your groups</div><div class="mlist"><button class="btn" id="ss_save">Save my groups</button><button class="btn" id="ss_load">Load from a file</button></div>
     <div class="sec">This shelf</div><div class="mlist"><button class="btn" id="ss_ren">Rename the shelf</button><button class="btn" id="ss_hide">Hide this shelf</button>${s.own ? `<button class="btn danger" id="ss_del">Remove this shelf${n ? ' (its books move to Books)' : ''}</button>` : ''}</div>`);
   $('#ss_rtl').onchange = e => { shelfSet(sh, {rtl:e.target.checked}); toast('Saved') };
   $('#ss_pub').onchange = e => { shelfSet(sh, {byPub:e.target.checked}); regroup(); draw(); toast(e.target.checked ? 'Series are now bundled by publisher' : 'Publisher tiles are off') };
   $('#ss_reread').onclick = () => { closeSheet(); rereadShelf(sh) };
+  $('#ss_cv').onclick = () => cvLookup(sh, false); $('#ss_cvall').onclick = () => cvLookup(sh, true); $('#ss_cvkey').onclick = () => cvKeySheet();
   $('#ss_aut').onchange = e => { shelfSet(sh, {authors:e.target.checked}); delete GRS[sh]; regroup(); draw(); toast('Saved') };
   $('.sheet').addEventListener('click', async e => { const lk = e.target.closest('[data-look]'), fg = e.target.closest('[data-forget]');
     if(lk){ closeSheet(); lookAgain(folders[+lk.dataset.look]) }
@@ -1185,3 +1196,92 @@ async function rereadShelf(sh){ const bs = inShelf(sh).filter(b => b.fmt !== 'im
       if(ch){ await dbPut('books', b); changed++ } }catch(e){ LE('reread', b.name, e) }
     n++; const p = $('#rrp'), t = $('#rrs'); if(p) p.style.width = (100 * n / bs.length) + '%'; if(t) t.textContent = `${n} of ${bs.length} · ${b.name}` }
   awake(false); regroup(); closeSheet(); draw(); toast(`${plural(changed, 'book')} updated`) }
+
+/* =====================================================================================================================
+   ONLINE LOOKUP – Comic Vine (comicvine.gamespot.com, free key of the owner, kept on this device only: nvBooks.cvKey)
+   Asks once per SERIES (search the series → its issues), not per comic: about 2 requests per series, one every 1.3 s
+   (Comic Vine allows ~200 an hour). Results are remembered (nvBooks.cv), so it works offline afterwards.
+   Comic Vine sends no CORS headers: inside the Android app the request goes through Android's own connection (CapacitorHttp).
+   What it fills in: the publisher (b.cvPub – a publisher from the file or set by hand still wins), and when empty: year, About, cover.
+   ===================================================================================================================== */
+const CV = {key:() => lsGet('nvBooks.cvKey', ''), cache:() => lsGet('nvBooks.cv', {}), save:c => lsSet('nvBooks.cv', c), last:0};
+const cvHttp = () => NATIVE && Capacitor.Plugins && Capacitor.Plugins.CapacitorHttp;
+async function cvGet(path, params){
+  const key = CV.key(); if(!key) throw Object.assign(new Error('Type your Comic Vine key first (shelf ⚙ → Comic Vine)'), {nokey:true});
+  const wait = CV.last + 1300 - Date.now(); if(wait > 0) await sleep(wait); CV.last = Date.now();
+  const q = new URLSearchParams(Object.assign({api_key:key, format:'json'}, params)), url = `https://comicvine.gamespot.com/api/${path}/?${q}`;
+  let j; const H = cvHttp();
+  if(H){ const r = await H.get({url, headers:{Accept:'application/json', 'User-Agent':'NightvaultBookcase/1.0 (personal app)'}, responseType:'json'});
+    if(r.status === 401 || r.status === 403) throw new Error(`Comic Vine refused the request (${r.status}) – check your key`);
+    if(r.status === 420 || r.status === 429) throw Object.assign(new Error('Comic Vine says: too many requests – wait an hour and try again'), {limit:true});
+    if(r.status >= 400) throw new Error('Comic Vine answered ' + r.status); j = typeof r.data === 'string' ? JSON.parse(r.data) : r.data }
+  else { let r; try{ r = await fetch(url) }catch(e){ throw new Error('Comic Vine can only be reached from the Nightvault Android app (a web browser blocks it)') }
+    j = await r.json() }
+  if(j.status_code === 100) throw new Error('Comic Vine says the key is not right');
+  if(j.status_code === 107) throw Object.assign(new Error('Comic Vine says: too many requests – wait an hour and try again'), {limit:true});
+  if(j.status_code !== 1) throw new Error('Comic Vine: ' + (j.error || 'error ' + j.status_code));
+  return j }
+const cvStrip = h => String(h || '').replace(/<(script|style|table|figure)[^]*?<\/\1>/gi, ' ').replace(/<br\s*\/?>|<\/p>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&nbsp;/g, ' ').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n\n').trim();
+/* the series of a book as Comic Vine will see it: "Amazing Spider-Man" (no "The", no year, no issue) */
+const cvName = b => String(b.series || b.title || '').replace(/\(\d{4}\)/g, '').trim();
+const cvKeyOf = b => norm(cvName(b)) + '|' + (b.year || '');
+/* the best matching Comic Vine series for these books: same name, started in or before their year (the newest such run), enough issues */
+function cvPick(results, books){ const name = norm(cvName(books[0])), years = books.map(b => +b.year).filter(Boolean), y = years.length ? Math.max(...years) : 0, maxN = Math.max(0, ...books.map(b => b.num || 0));
+  const scored = results.map(v => { const vn = norm(v.name); let s = vn === name ? 60 : vn.replace(/^the /, '') === name.replace(/^the /, '') ? 55 : vn.includes(name) || name.includes(vn) ? 25 : 0;
+    const st = +v.start_year || 0; if(y && st){ if(st > y) s -= 60; else s += Math.max(0, 30 - (y - st) * 2) }
+    if(maxN && v.count_of_issues >= maxN) s += 10; else if(maxN && v.count_of_issues) s -= 10;
+    return {v, s} }).sort((a, b) => b.s - a.s);
+  return scored }
+async function cvSeries(books, force){
+  const k = cvKeyOf(books[0]), c = CV.cache(); if(!force && c[k] && (c[k].id || Date.now() - c[k].at < 14 * 864e5)) return c[k];
+  const j = await cvGet('search', {resources:'volume', query:cvName(books[0]), limit:20, field_list:'id,name,start_year,publisher,count_of_issues,image,deck'});
+  const best = cvPick(j.results || [], books)[0];
+  const hit = best && best.s >= 40 ? {id:best.v.id, name:best.v.name, start:best.v.start_year, pub:best.v.publisher && best.v.publisher.name, n:best.v.count_of_issues, at:Date.now()} : {id:0, at:Date.now()};
+  c[k] = hit; CV.save(c); return hit }
+/* the issues of a Comic Vine series: number → {desc, year, img} */
+async function cvIssues(vid){ const j = await cvGet('issues', {filter:'volume:' + vid, limit:100, field_list:'id,issue_number,name,cover_date,description,deck,image'});
+  const out = {}; for(const i of j.results || []) out[parseFloat(i.issue_number)] = {name:i.name, year:(i.cover_date || '').slice(0, 4), desc:cvStrip(i.deck || i.description).slice(0, 4000), img:i.image && (i.image.medium_url || i.image.small_url)}; return out }
+async function cvImage(url){ const H = cvHttp(); if(H){ const r = await H.get({url, responseType:'blob'}); const bin = atob(String(r.data).replace(/^data:[^,]*,/, '')), u = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], {type:'image/jpeg'}) }
+  return (await fetch(url)).blob() }
+async function cvApply(books, hit, withIssues){ if(!hit || !hit.id) return 0; let n = 0, iss = null;
+  if(withIssues && books.some(b => !b.desc || !COV.has(b.id) || !b.year)) try{ iss = await cvIssues(hit.id) }catch(e){ if(e.limit) throw e; LE('cv', 'issues', e) }
+  for(const b of books){ b.cv = {id:hit.id, name:hit.name, start:hit.start}; if(hit.pub) b.cvPub = hit.pub;
+    const i = iss && b.num != null ? iss[b.num] : null;
+    if(i){ if(!b.desc && i.desc) b.desc = i.desc; if(!b.year && i.year) b.year = i.year; if(!COV.has(b.id) && i.img) try{ await setCover(b.id, await thumb(await cvImage(i.img))) }catch(e){} }
+    await dbPut('books', b); n++ }
+  return n }
+/* shelf ⚙ / after adding: look up the comics that have no publisher (or all of them) */
+async function cvLookup(sh, all){
+  if(!CV.key()) return cvKeySheet(() => cvLookup(sh, all));
+  const want = inShelf(sh).filter(b => all || !pubSource(b).p || pubSource(b).how === 'guess'), bySeries = {};
+  for(const b of want) if(cvName(b)) (bySeries[cvKeyOf(b)] = bySeries[cvKeyOf(b)] || []).push(b);
+  const list = Object.values(bySeries); if(!list.length){ toast('Nothing to look up'); return }
+  awake(true); let stop = false, done = 0, found = 0, books = 0; const lines = [];
+  sheet(`<h3>Looking up on Comic Vine…</h3><div class="prog"><i id="cvp"></i></div><div class="muted small" id="cvs">0 of ${plural(list.length, 'series', 'series')}</div><div id="cvl" class="small" style="max-height:34vh;overflow:auto;margin-top:6px"></div><button class="btn" id="cvstop" style="width:100%;margin-top:8px">Stop</button>`, true);
+  $('#cvstop').onclick = () => { stop = true; $('#cvstop').textContent = 'Stopping…' };
+  for(const bs of list){ if(stop) break;
+    try{ const hit = await cvSeries(bs); if(hit.id){ found++; books += await cvApply(bs, hit, true) } lines.unshift(`${esc(cvName(bs[0]))} → ${hit.id ? `<b>${esc(hit.pub || '?')}</b> · ${esc(hit.name)} (${hit.start || '?'})` : '<span class="muted">not found</span>'}`) }
+    catch(e){ lines.unshift(`<span style="color:var(--red)">${esc(e.message || e)}</span>`); LE('cv', cvName(bs[0]), e); if(e.limit || e.nokey || /key|Android app|refused/.test(e.message || '')) stop = true }
+    done++; const p = $('#cvp'), s = $('#cvs'), l = $('#cvl'); if(p) p.style.width = (100 * done / list.length) + '%'; if(s) s.textContent = `${done} of ${plural(list.length, 'series', 'series')} · ${found} found`; if(l) l.innerHTML = lines.slice(0, 60).join('<br>') }
+  awake(false); regroup(); draw(); L('cv', `lookup: ${found} of ${list.length} series found, ${books} books updated`, lines.slice(0, 80));
+  const s = $('#cvs'); if(s) s.textContent = `Done: ${found} of ${plural(list.length, 'series', 'series')} found · ${plural(books, 'book')} updated`; const st = $('#cvstop'); if(st){ st.textContent = 'OK'; st.onclick = closeSheet } }
+function cvKeySheet(then){
+  sheet(`<h3>Comic Vine</h3><p class="muted small" style="margin:0 0 10px">Comic Vine is a free comics database. With your own key Bookcase can look up the publisher, series and story of your comics. The key stays on this phone.</p>
+    <div class="field"><label>Your Comic Vine key</label><input type="text" id="cvk" value="${esc(CV.key())}" placeholder="40 letters and numbers" autocomplete="off" spellcheck="false"></div>
+    <p class="muted small">No key yet? Make a free account on comicvine.gamespot.com, then open comicvine.gamespot.com/api – the key is on that page. (Your Nightvault PC app may have it under Settings.)</p>
+    <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="cvksave">Save${then ? ' and look up' : ''}</button></div>`);
+  $('#cvksave').onclick = () => { const k = $('#cvk').value.trim().replace(/\s+/g, ''); if(!/^[0-9a-f]{40}$/i.test(k)){ toast('That does not look like a Comic Vine key (40 letters and numbers)', 4000); return } lsSet('nvBooks.cvKey', k); closeSheet(); toast('Key saved'); if(then) then() } }
+/* book ⋯ → "Look up online…": pick the right Comic Vine series yourself (for the whole series of this book) */
+async function cvChoose(b){
+  if(!CV.key()) return cvKeySheet(() => cvChoose(b));
+  const bs = inShelf(b.shelf).filter(x => cvName(x) && norm(cvName(x)) === norm(cvName(b)));
+  sheet(`<h3>Comic Vine: “${esc(cvName(b))}”</h3><div style="display:flex;gap:8px"><input type="search" id="cvq" value="${esc(cvName(b))}"><button class="btn primary" id="cvgo">Search</button></div><div class="muted small" id="cvst" style="margin:8px 0">Searching…</div><div id="cvres"></div>`, true);
+  const run = async () => { $('#cvst').textContent = 'Searching…'; $('#cvres').innerHTML = '';
+    try{ const j = await cvGet('search', {resources:'volume', query:$('#cvq').value.trim(), limit:20, field_list:'id,name,start_year,publisher,count_of_issues,image'}), sc = cvPick(j.results || [], bs);
+      $('#cvst').textContent = sc.length ? `Tap the right one – it is used for ${plural(bs.length, 'book')} of this series` : 'Nothing found - try other words';
+      $('#cvres').innerHTML = sc.slice(0, 12).map(({v}) => `<div class="li" data-cv="${v.id}"><span class="th"><div class="cv">${v.image && v.image.thumb_url ? `<img class="f" src="${esc(v.image.thumb_url)}" alt="" style="object-fit:cover">` : ''}</div></span><div class="n"><div>${esc(v.name)} (${v.start_year || '?'})</div><div class="s">${esc(v.publisher ? v.publisher.name : '?')} · ${plural(v.count_of_issues || 0, 'issue')}</div></div></div>`).join('');
+      $('#cvres').onclick = async e => { const r = e.target.closest('[data-cv]'); if(!r) return; const v = sc.find(x => String(x.v.id) === r.dataset.cv).v;
+        const hit = {id:v.id, name:v.name, start:v.start_year, pub:v.publisher && v.publisher.name, n:v.count_of_issues, at:Date.now()}, c = CV.cache(); c[cvKeyOf(b)] = hit; CV.save(c);
+        $('#cvst').textContent = 'Saving…'; try{ await cvApply(bs, hit, true) }catch(err){ toast(err.message || String(err), 5000) } regroup(); closeSheet(); draw(); toast(`${plural(bs.length, 'book')}: ${hit.pub || '?'} · ${hit.name} (${hit.start || '?'})`, 4000) } }
+    catch(e){ $('#cvst').textContent = e.message || String(e) } };
+  $('#cvgo').onclick = run; $('#cvq').onkeydown = e => { if(e.key === 'Enter') run() }; run() }
