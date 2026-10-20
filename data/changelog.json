@@ -3,6 +3,25 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 84,
+   "date": "2026-10-20",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "games"
+   ],
+   "title": "Games: play your own backups (first version)",
+   "items": [
+    "Open a system (like SNES) → ▶ How to play: pick the emulator app on this phone (or \"Let Android ask\", which works with any emulator) and the folder with your backups. \"Look for games\" puts the files on the games in your list and can add the ones that are missing.",
+    "A game with a backup gets a ▶ on its tile and a Play button. RetroArch starts with the right core; PPSSPP, Dolphin, NetherSX2, DuckStation, DraStic, Redream and others start directly.",
+    "Play on my PC: the PC starts the game with its own emulator, or a Steam game. Set the folders and emulators in Nightvault on the PC: Settings → Games: play on this PC (needs the new PC files).",
+    "Save to phone: copies a backup from the PC into the phone folder once (a disc's .bin files come along), then it plays offline.",
+    "Only your own backups. Some systems need the console's BIOS file inside the emulator (PS1, PS2, Saturn …)."
+   ]
+  },
+  {
    "id": 83,
    "date": "2026-10-19",
    "where": [

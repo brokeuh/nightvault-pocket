@@ -103,9 +103,9 @@ function addOwnPlat(name){ name = String(name || '').trim(); if(!name) return nu
   const id = 'x-' + norm(name).replace(/ /g, '-'); lsSet('nvGames.plats', ownPlats().concat({id, name})); return id }
 const STORES = {steam:['Steam', 'Steam'], gog:['GOG', 'GOG'], epic:['Epic Games', 'Epic'], ea:['EA app', 'EA'], ubisoft:['Ubisoft Connect', 'Ubisoft'], battlenet:['Battle.net', 'B.net'],
   itch:['itch.io', 'itch'], amazon:['Amazon Games', 'Amazon'], msstore:['Microsoft Store / Game Pass', 'MS Store'], psn:['PlayStation Store', 'PS Store'],
-  xbox:['Xbox Store', 'Xbox Store'], eshop:['Nintendo eShop', 'eShop'], app:['App store', 'App store'], own:['My own install (no launcher)', 'Own install'], other:['Other / not sure', 'Digital']};
-const storesFor = plat => { const f = platOf(plat).fam; return f === 'pc' ? ['steam', 'gog', 'epic', 'ea', 'ubisoft', 'battlenet', 'itch', 'amazon', 'msstore', 'own', 'other']
-  : f === 'ps' ? ['psn', 'other'] : f === 'xbox' ? ['xbox', 'msstore', 'other'] : f === 'nin' ? ['eshop', 'other'] : f === 'mobile' ? ['app', 'other'] : ['own', 'other'] };
+  xbox:['Xbox Store', 'Xbox Store'], eshop:['Nintendo eShop', 'eShop'], app:['App store', 'App store'], own:['My own install (no launcher)', 'Own install'], backup:['My own backup (ROM / disc image)', 'Backup'], other:['Other / not sure', 'Digital']};
+const storesFor = plat => { const f = platOf(plat).fam; return f === 'pc' ? ['steam', 'gog', 'epic', 'ea', 'ubisoft', 'battlenet', 'itch', 'amazon', 'msstore', 'own', 'backup', 'other']
+  : f === 'ps' ? ['psn', 'backup', 'other'] : f === 'xbox' ? ['xbox', 'msstore', 'backup', 'other'] : f === 'nin' ? ['eshop', 'backup', 'other'] : f === 'mobile' ? ['app', 'other'] : ['backup', 'own', 'other'] };
 const BOX = {sealed:'Sealed', cib:'Complete in box', nomanual:'Box, no manual', loose:'Loose (game only)'};
 const BOXS = {sealed:'Sealed', cib:'CIB', nomanual:'Boxed', loose:'Loose'};
 const REGIONS = ['PAL', 'NTSC-U', 'NTSC-J', 'Other'];
@@ -297,6 +297,7 @@ function marks(g, sh){ let l;
   else if(sh === 'all') l = [...new Set(g.copies.map(c => c.plat))].map(p => ({t:platOf(p).short}));
   else l = g.copies.filter(c => c.plat === sh).map(c => ({t:copyShort(c), p:c.kind === 'physical'}));
   const seen = new Set(); l = l.filter(x => !seen.has(x.t) && seen.add(x.t));
+  if(typeof canPlay === 'function' && canPlay(g)) l.unshift({t:'▶'});   // you can start it (a backup file or a Steam game)
   return l.length ? `<span class="vol">${l.slice(0, 3).map(x => `<span${x.p ? ' class="ph2"' : ''}>${esc(x.t)}</span>`).join('')}${l.length > 3 ? `<span>+${l.length - 3}</span>` : ''}</span>` : '' }
 function gameTile(g, sh){ const G = grOf(sh);
   return `<div class="bk" data-game="${esc(g.id)}">${coverHTML(g, '', (G.isPinned('it:' + g.id) ? PINB : '') + (g.wish && sh !== 'wish' ? '<span class="wish">WISH</span>' : '') + marks(g, sh))}
@@ -373,7 +374,7 @@ function draw(){
       if(!gm.length && !bm.length) h += '<p class="muted" style="text-align:center;margin-top:30px">Nothing found.</p>';
       if(gm.length) h += `<div class="sec">Groups</div><div class="grid">${gm.map(g => groupTile(s.id, g).replace(/<div class="a">[^<]*<\/div>/, g.parent ? `<div class="a">in ${esc(G.path(gs.find(x => x.key === g.parent), gs))}</div>` : '$&')).join('')}</div>`;
       if(bm.length) h += `<div class="sec">Games</div><div class="grid">${bm.slice(0, 300).map(g => gameTile(g, s.id).replace(/<div class="a">[^<]*<\/div>/, where[g.id] ? `<div class="a">in ${esc(where[g.id])}</div>` : '$&')).join('')}</div>` }
-    else { if(s.id !== 'wish') h += `<div class="chips">${FILTERS.map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-filter="${k}">${t}</button>`).join('')}</div>`;
+    else { if(s.id !== 'wish') h += `<div class="chips">${FILTERS.map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-filter="${k}">${t}</button>`).join('')}${s.plat ? `<span style="flex:1"></span><button class="chip" data-howplay="${esc(s.id)}">▶ How to play</button>` : ''}</div>`;
       const grouped = S.grouped[s.id] !== false;
       h += `<div class="mbar"><select id="grouped" aria-label="Groups"><option value="1" ${grouped ? 'selected' : ''}>Grouped</option><option value="0" ${!grouped ? 'selected' : ''}>All games</option></select>${sortSel('shelf', 'shelf:' + s.id)}<span style="flex:1"></span><button class="btn sm" data-selstart="1">Select</button><button class="btn sm" id="newgrp">+ Group</button></div>`;
       const vis = all.filter(g => passFilter(g, f, s.id)), k = sortOf('shelf', 'shelf:' + s.id), ph = all.filter(g => passFilter(g, 'physical', s.id)).length;
@@ -415,6 +416,7 @@ $('#body').addEventListener('click', e => {
   if(el.dataset.gotogrp){ V.pop(); if(cur().v !== 'group' || cur().key !== el.dataset.gotogrp) V.push({v:'group', shelf:v.shelf, key:el.dataset.gotogrp}); return draw() }
   if(el.dataset.filter){ S.filter[v.shelf] = el.dataset.filter; saveS(); return draw() }
   if(el.dataset.selstart) return selStart() });
+$('#body').addEventListener('click', e => { const b = e.target.closest('[data-howplay]'); if(b) howToPlay(b.dataset.howplay) });
 $('#body').addEventListener('change', e => { const t = e.target, v = cur();
   if(t.dataset.sort){ S.sort[t.dataset.skey] = t.value; saveS(); draw() }
   if(t.id === 'grouped'){ S.grouped[v.shelf] = t.value === '1'; saveS(); draw() } });
@@ -437,10 +439,10 @@ function drawGame(id, sh){ const g = GM[id]; if(!g){ V.pop(); return draw() }
   let h = `<div class="alhead" style="align-items:flex-start">${coverHTML(g)}<div style="min-width:0;flex:1"><b>${esc(g.title)}</b>
     ${ser ? `<div class="${grp ? 'lnk' : 'muted'} small" data-gotogrp2="1">${esc(grp ? grp.name : ser)}</div>` : ''}<div class="muted small">${esc([g.year, g.genres.slice(0, 3).join(', ')].filter(Boolean).join(' · '))}</div>
     <div style="margin-top:8px">${pl.map(p => `<span class="tag">${esc(platOf(p).short)}</span>`).join('')}${g.wish ? '<span class="tag" style="color:#ff9db7">♥ Wishlist</span>' : ''}</div></div></div>
-    <div class="mbar"><button class="btn primary" id="gaddcopy" style="flex:1">${owned(g) ? '+ Add a copy' : g.wish ? 'I got it' : '+ Add a copy'}</button><button class="ib" id="gmenu2" aria-label="More for this game">${IC_DOTS}</button></div>`;
+    ${playRowHTML(g)}<div class="mbar"><button class="btn ${canPlay(g) ? '' : 'primary'}" id="gaddcopy" style="flex:1">${owned(g) ? '+ Add a copy' : g.wish ? 'I got it' : '+ Add a copy'}</button><button class="ib" id="gmenu2" aria-label="More for this game">${IC_DOTS}</button></div>`;
   h += `<div class="sec">${owned(g) ? 'Your copies' : 'You don’t own it yet'}</div>`;
   h += g.copies.length ? g.copies.map(c => { const p = platOf(c.plat), f = FAM[p.fam] || FAM.other;
-      return `<div class="copy" data-copy="${esc(c.id)}"><span class="pl" style="background:linear-gradient(150deg,${f.c[0]},${f.c[1]});color:${f.s}">${esc(p.short)}</span><div class="n"><div>${esc(p.name)}</div><div class="s">${esc(copyText(c))}</div></div><span class="muted small">Edit</span></div>` }).join('')
+      return `<div class="copy" data-copy="${esc(c.id)}"><span class="pl" style="background:linear-gradient(150deg,${f.c[0]},${f.c[1]});color:${f.s}">${esc(p.short)}</span><div class="n"><div>${esc(p.name)}</div><div class="s">${esc(copyText(c))}</div>${romTags(c) ? `<div>${romTags(c)}</div>` : ''}</div><span class="muted small">Edit</span></div>` }).join('')
     : `<p class="muted small">${g.wish ? `On your wishlist${g.wishPlats.length ? ' for ' + g.wishPlats.map(p => platOf(p).name).join(', ') : ''}. Tap <b>I got it</b> when you have it.` : 'No copies.'}</p>`;
   if(g.summary) h += `<div class="sec">About</div><div class="desc clip" id="gdesc">${esc(g.summary)}</div>${g.summary.length > 300 ? '<button class="btn sm" id="gmore" style="margin-top:6px">More</button>' : ''}`;
   const facts = [['Series', esc(ser) + (g.series ? '' : ser ? ' <span class="muted">(guessed from the name)</span>' : '')], ['Released', esc(g.year || '')], ['Genres', esc(g.genres.join(', '))],
@@ -450,7 +452,7 @@ function drawGame(id, sh){ const g = GM[id]; if(!g){ V.pop(); return draw() }
   h += `<div class="sec">Details</div><div class="facts">${facts.map(([k, v]) => `<span>${k}</span><span style="min-width:0;overflow-wrap:anywhere">${v}</span>`).join('')}</div>`;
   if(!g.igdb && hasIgdb()) h += `<button class="btn sm" id="glook">Look up details online (IGDB)</button>`;
   $('#body').innerHTML = h; lazyCovers($('#body'));
-  $('#gmenu2').onclick = () => gameMenu(g, sh);
+  $('#gmenu2').onclick = () => gameMenu(g, sh); hookPlay(g);
   $('#gaddcopy').onclick = () => copySheet(g, null, {plat:sh !== 'all' && sh !== 'wish' ? sh : (g.wishPlats[0] || null)});
   if($('#gmore')) $('#gmore').onclick = () => { $('#gdesc').classList.remove('clip'); $('#gmore').remove() };
   if($('#glook')) $('#glook').onclick = () => lookupSheet(g);
@@ -525,9 +527,11 @@ function copySheet(g, c, ctx, draft){ ctx = ctx || {}; const isNew = !c;
         : `<div class="sec">What's included</div><div class="chips">${Object.entries(BOX).map(([k, t]) => `<button class="chip ${d.box === k ? 'on' : ''}" data-cb="${k}">${t}</button>`).join('')}</div>
            <div class="sec">Region</div><div class="chips">${REGIONS.map(r => `<button class="chip ${d.region === r ? 'on' : ''}" data-cr="${r}">${r}</button>`).join('')}</div>`}` : ''}` };
   sheet(`<h3>${isNew ? 'Add a copy' : 'Your copy'} · ${esc(g.title)}</h3><div id="cpbody"></div>
+    ${d.rom && (d.rom.phone || d.rom.pc) ? `<div class="sec">Backup file</div>${['phone', 'pc'].filter(w => d.rom[w]).map(w => `<div class="li" style="cursor:default"><div class="n"><div>${esc(d.rom[w].name)}</div><div class="s">${w === 'phone' ? 'On this phone' : 'On my PC'}${d.rom[w].size ? ' · ' + ((d.rom[w].size / 1048576) < 1 ? Math.max(1, Math.round(d.rom[w].size / 1024)) + ' KB' : Math.round(d.rom[w].size / 1048576) + ' MB') : ''}</div></div><button class="btn sm" data-romforget="${w}">Forget</button></div>`).join('')}<p class="muted small" style="margin:4px 0 0">Forget only removes the link here; the file stays.</p>` : ''}
     <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="cpsave">${isNew ? 'Add' : 'Save'}</button></div>
     ${!isNew ? `<div class="mlist" style="margin-top:10px">${g.copies.length > 1 ? '<button class="btn" id="cpsplit">This is a different game – make it its own tile</button>' : ''}<button class="btn danger" id="cpdel">Remove this copy</button></div>` : ''}`, true);
   drawC();
+  document.querySelectorAll('[data-romforget]').forEach(b => b.onclick = () => { d.rom = Object.assign({}, d.rom); delete d.rom[b.dataset.romforget]; b.closest('.li').remove(); toast('Forgotten - tap Save') });
   $('#cpbody').onclick = e => { const t = e.target.closest('[data-cp],[data-ck],[data-cs],[data-cb],[data-cr]'); if(!t) return;
     if(t.dataset.cp){ d.plat = t.dataset.cp; if(!storesFor(d.plat).includes(d.store)) d.store = storesFor(d.plat)[0] }
     if(t.dataset.ck){ d.kind = t.dataset.ck; if(d.kind === 'digital' && !d.store) d.store = storesFor(d.plat)[0] }
@@ -764,13 +768,14 @@ function keysSheet(steamFirst){ const k = KEYS();
     el.innerHTML = out.join('') || 'Saved.'; draw() };
   $('#k_steam').onclick = () => { save(); const w = $('#k_wish').checked; steamImport(w) } }
 function appSettings(){ const all = shelves(true);
-  sheet(`<h3>Games</h3><div class="mlist"><button class="btn primary" id="as_keys">Online lookup (IGDB, SteamGridDB)</button><button class="btn" id="as_steam">Import from Steam</button>${hasIgdb() ? '<button class="btn" id="as_fill">Fill in missing details (IGDB)</button>' : ''}</div>
+  sheet(`<h3>Games</h3><div class="mlist"><button class="btn primary" id="as_keys">Online lookup (IGDB, SteamGridDB)</button><button class="btn" id="as_steam">Import from Steam</button>${window.NVPC && NVPC.native ? '<button class="btn" id="as_pcroms">Look for game backups on my PC</button>' : ''}${hasIgdb() ? '<button class="btn" id="as_fill">Fill in missing details (IGDB)</button>' : ''}</div>
     <div class="opt" style="margin-top:6px"><label for="as_guess">Guess the series from the name (Halo 3 → Halo) when a game has none</label><input type="checkbox" id="as_guess" ${S.guess ? 'checked' : ''}></div>
     <div class="sec">Hidden systems</div>
     ${all.filter(s => s.hidden).map(s => `<div class="li" style="cursor:default"><span style="width:30px;display:flex;justify-content:center">${shelfIcon(s, 20)}</span><div class="n"><div>${esc(s.name)}</div><div class="s">${plural(inShelf(s.id).length, 'game')}</div></div><button class="btn sm" data-eye="${esc(s.id)}">Show</button></div>`).join('') || '<p class="muted small">None. Hide a system you never use: open it → ⚙ → Hide this system.</p>'}
     <div class="sec">Your list</div><div class="mlist"><button class="btn" id="as_save">Save all my games (backup file)</button><button class="btn" id="as_load">Load games from a backup file</button></div>
     <p class="muted small">Your games are kept on this device. A backup file has your games, copies, wishlist and groups (not your own pictures).</p>
     <p class="muted small">Game info and covers: <a href="https://www.igdb.com" target="_blank" rel="noopener">IGDB.com</a>, <a href="https://www.steamgriddb.com" target="_blank" rel="noopener">SteamGridDB</a> and Steam. Problems? Switch on <b>Debug mode</b> at the bottom of The Nightvault and send the log.</p>`);
+  if($('#as_pcroms')) $('#as_pcroms').onclick = () => scanPc(null);
   $('#as_keys').onclick = () => keysSheet(false); $('#as_steam').onclick = () => keysSheet(true);
   if($('#as_fill')) $('#as_fill').onclick = () => fillDetails(GAMES.slice());
   $('#as_guess').onchange = e => { S.guess = e.target.checked; saveS(); regroup(); draw() };
@@ -778,14 +783,14 @@ function appSettings(){ const all = shelves(true);
     if(ey){ set.hidden = set.hidden || {}; set.hidden[ey.dataset.eye] = !set.hidden[ey.dataset.eye]; lsSet('nvGames.shelves', set); appSettings(); draw() } });
   $('#as_save').onclick = () => saveBackup(); $('#as_load').onclick = () => loadBackup() }
 function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh);
-  sheet(`<h3>${esc(s.name)}</h3>
+  sheet(`<h3>${esc(s.name)}</h3>${s.plat ? `<div class="mlist" style="margin-bottom:6px"><button class="btn primary" id="ss_play">▶ How to play ${esc(s.short || s.name)}</button></div>` : ''}
     <div class="sec" style="margin-top:4px">Your groups on this shelf</div><div class="mlist"><button class="btn" id="ss_save">Save my groups</button><button class="btn" id="ss_load">Load from a file</button></div>
     <div class="sec">This shelf</div><div class="mlist"><button class="btn" id="ss_hide">Hide this system</button><button class="btn" id="ss_all">All settings…</button></div>`);
   $('#ss_save').onclick = async () => { try{ const r = await G.saveBackup(); if(r !== 'cancelled') toast('Groups saved') }catch(e){ toast(e.message || String(e), 4000) } };
   $('#ss_load').onclick = async () => { const t = await G.pickFile(); if(!t) return; const c = G.checkBackup(t); if(!c.ok){ toast(c.msg, 5000); return }
     if(!confirm(c.msg + '\n\nPut these groups back? (Undo is possible right after.)')) return; G.applyBackup(c.d); regroup(); closeSheet(); draw(); G.undoToast('Groups loaded', () => { regroup(); draw() }) };
   $('#ss_hide').onclick = () => { const set = lsGet('nvGames.shelves', {}); set.hidden = set.hidden || {}; set.hidden[sh] = true; lsSet('nvGames.shelves', set); closeSheet(); V = [{v:'shelves'}]; draw(); toast(`${s.name} is hidden - show it again in ⚙ on the first page`, 4500) };
-  $('#ss_all').onclick = () => appSettings() }
+  $('#ss_all').onclick = () => appSettings(); if($('#ss_play')) $('#ss_play').onclick = () => howToPlay(sh) }
 $('#setbtn').onclick = () => { const v = cur(); if(v.v === 'shelves' || v.v === 'game') appSettings(); else shelfSettings(v.shelf) };
 $('#addbtn').onclick = () => addSheet();
 
@@ -814,5 +819,5 @@ if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App)
   const P = new URLSearchParams(location.search), sh = P.get('shelf');
   if(sh) V.push({v:'shelf', shelf:sh});
   draw(); L('start', `${GAMES.length} games`);
-  window.NVGAMES = {get games(){ return GAMES }, draw, guessSeries, fromIgdb, steamImport, fillDetails, saveGame, newGame, net, go};   // for testing
+  window.NVGAMES = {get games(){ return GAMES }, draw, cleanRom:(...a) => cleanRom(...a), romEntries:(...a) => romEntries(...a), guessSeries, fromIgdb, steamImport, fillDetails, saveGame, newGame, net, go};   // for testing
 })();

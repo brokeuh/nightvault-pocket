@@ -242,6 +242,7 @@
       "files": [
         "games/index.html",
         "games/app.js",
+        "games/play.js",
         "games/manifest.webmanifest"
       ],
       "provides": [

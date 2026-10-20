@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 J=android/app/src/main/java/be/brokeuh/nightvault
 mkdir -p "$J"
-cp plugin/MainActivity.java plugin/NvOcrPlugin.java plugin/NvUpdatePlugin.java plugin/NvCapturePlugin.java plugin/NvCaptureService.java plugin/NvMediaPlugin.java plugin/NvMediaService.java plugin/NvFilesPlugin.java plugin/NvLogPlugin.java plugin/NvPcPlugin.java plugin/NvPrintPlugin.java plugin/NvBggPlugin.java "$J/"
+cp plugin/MainActivity.java plugin/NvOcrPlugin.java plugin/NvUpdatePlugin.java plugin/NvCapturePlugin.java plugin/NvCaptureService.java plugin/NvMediaPlugin.java plugin/NvMediaService.java plugin/NvFilesPlugin.java plugin/NvLogPlugin.java plugin/NvPcPlugin.java plugin/NvPrintPlugin.java plugin/NvBggPlugin.java plugin/NvLaunchPlugin.java "$J/"
 # Google ML Kit text recognition (the model is inside the app, works without internet)
 sed -i "s#^dependencies {#dependencies {\n    implementation 'com.google.mlkit:text-recognition:16.0.1'#" android/app/build.gradle
 # version shown in Android settings: the build number
@@ -14,6 +14,9 @@ grep -q 'android.permission.CAMERA' "$M" || sed -i 's#<uses-permission android:n
 # Take with me: the app talks to the owner's PC on the home network over plain http (NvPcPlugin) - Android blocks that unless allowed
 grep -q 'usesCleartextTraffic' "$M" || sed -i 's#<application#<application android:usesCleartextTraffic="true"#' "$M"
 grep -q 'usesCleartextTraffic' "$M"
+# Games: see which emulator apps are installed (NvLaunch) - Android 11+ hides other apps unless asked
+grep -q 'QUERY_ALL_PACKAGES' "$M" || sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />#' "$M"
+grep -q 'QUERY_ALL_PACKAGES' "$M"
 # icon
 R=android/app/src/main/res
 rm -rf "$R/mipmap-anydpi-v26"
