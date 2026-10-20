@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 86,
+   "date": "2026-10-20",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: names like “De Rode Ridder -001- Title” make a series",
+   "items": [
+    "File names with the number between dashes (De Rode Ridder -001- Het gebroken zwaard) are now read as series + album number, so they bundle into one series tile and get the full album list with the missing ones grey.",
+    "Comics you already added are read again once by themselves when Bookcase starts."
+   ]
+  },
+  {
    "id": 85,
    "date": "2026-10-20",
    "where": [

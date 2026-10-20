@@ -225,6 +225,7 @@ function parseName(file, dir){
   let series = '', num = null, vol = '', title = '', m;
   if((m = s.match(/^(.*?)[\s.\-–:]*\b(?:v|vol|volume|tome|t|deel|band|book|boek)\.?\s*(\d+(?:\.\d+)?)\b\s*(?:[-–:]\s*(.*))?$/i))){ series = m[1]; num = parseFloat(m[2]); vol = 'Vol. ' + (+m[2]); title = m[3] || '' }
   else if((m = s.match(/^(.*?)\s*#\s*(\d+(?:\.\d+)?)\b\s*(?:[-–:]\s*(.*))?$/))){ series = m[1]; num = parseFloat(m[2]); vol = '#' + (+m[2]); title = m[3] || '' }
+  else if((m = s.match(/^(.*?\D)\s*[-–]\s*(\d{1,4}(?:\.\d+)?)\s*[-–](?:\s*(.*))?$/)) && m[1].trim()){ series = m[1]; num = parseFloat(m[2]); vol = '#' + (+m[2]); title = m[3] || '' }   // "De Rode Ridder -001- Het gebroken zwaard"
   else if((m = s.match(/^(.*?\D)\s+(\d{1,4}(?:\.\d+)?)(?:\s*(?:of\s*\d+))?\s*(?:[-–:]\s*(.*))?$/i)) && m[1].trim() && !(+m[2] > 1900 && +m[2] < 2100 && /^\d{4}$/.test(m[2]))){ series = m[1]; num = parseFloat(m[2]); vol = '#' + (+m[2]); title = m[3] || '' }
   series = series.replace(/[\s\-–:,.]+$/, '').trim();
   const parent = String(dir || '').split('/').filter(Boolean).pop() || '';
@@ -307,7 +308,12 @@ async function readMeta(src, name, dir){
 let BOOKS = [], BK = {}, STATE = {};
 async function loadLib(){ await loadCols(); BOOKS = await dbAll('books'); BK = Object.fromEntries(BOOKS.map(b => [b.id, b])); STATE = {}; for(const s of await dbAll('state')) STATE[s.id] = s;
   for(const id of await tx('covers', 'readonly', st => st.getAllKeys())) COV.add(id);
-  await dropDoubles() }
+  await dropDoubles(); await renameFix() }
+/* books added before the file-name reader knew a pattern (like "De Rode Ridder -001- Title", 20 Oct): read their names again, once */
+async function renameFix(){ const ch = [];
+  for(const b of BOOKS){ if(b.series || b.num != null || !b.name || b.fmt === 'imgs') continue; const p = parseName(b.name, b.dir); if(!p.series || p.num == null) continue;
+    const old = String(b.name).replace(/\.[a-z0-9]+$/i, ''); b.series = p.series; b.num = p.num; b.vol = p.vol; if(!b.title || b.title === p.clean || b.title === old) b.title = p.title; ch.push(b) }
+  for(const b of ch) await dbPut('books', b); if(ch.length) L('add', `file names read again: ${ch.length} books now in a series`) }
 /* the same file twice on a shelf (added once through its own folder and once through a folder around it): keep one – the one you read in, else the oldest */
 async function dropDoubles(){ const by = {}; for(const b of BOOKS) if(b.fmt !== 'imgs' && b.name && b.size) (by[b.shelf + '|' + b.name + '|' + b.size] = by[b.shelf + '|' + b.name + '|' + b.size] || []).push(b);
   const gone = []; for(const l of Object.values(by)) if(l.length > 1){ l.sort((a, b) => ((STATE[b.id] || {}).last || 0) - ((STATE[a.id] || {}).last || 0) || a.added - b.added); gone.push(...l.slice(1)) }
