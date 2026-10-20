@@ -1,0 +1,26 @@
+# Looks at what the Grand Comics Database and Wikipedia answer for a few Flemish / Dutch series (for building Bookcase).
+# Run by hand; prints the answers in the job log. Changes nothing.
+name: Bookcase - look at GCD and Wikipedia
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask
+        run: |
+          set +e
+          UA="NightvaultBookcase/1.0 (personal app; github.com/brokeuh)"
+          g(){ echo; echo "===== $1"; curl -sS -m 30 -A "$UA" -D /tmp/h -o /tmp/b "$1"; grep -i -E "^HTTP|access-control|content-type|retry|ratelimit|x-rate" /tmp/h; head -c ${2:-2500} /tmp/b; echo; }
+          g "https://www.comics.org/api/series/name/jommeke/?format=json" 4000
+          g "https://www.comics.org/api/series/name/suske%20en%20wiske/?format=json" 4000
+          g "https://www.comics.org/api/series/name/kiekeboe/?format=json" 2500
+          g "https://www.comics.org/api/series/name/nero/?format=json" 1500
+          ID=$(curl -sS -m 30 -A "$UA" "https://www.comics.org/api/series/name/jommeke/?format=json" | python3 -c "import sys,json;j=json.load(sys.stdin);r=j.get('results',j if isinstance(j,list) else []);s=r[0] if r else {};print((s.get('active_issues') or [''])[0])")
+          echo "first issue: $ID"; [ -n "$ID" ] && g "$ID?format=json" 4000
+          g "https://www.comics.org/api/issue/on_sale_weekly/2026/week/40/?format=json" 1500
+          g "https://nl.wikipedia.org/w/api.php?action=opensearch&search=Lijst%20van%20Jommeke&limit=5&format=json&origin=*" 1500
+          g "https://nl.wikipedia.org/w/api.php?action=opensearch&search=Lijst%20van%20verhalen%20van%20Suske%20en%20Wiske&limit=5&format=json&origin=*" 1500
+          g "https://nl.wikipedia.org/w/api.php?action=parse&page=Lijst_van_albums_van_Jommeke&prop=wikitext&format=json&origin=*&redirects=1" 3500
