@@ -18,16 +18,25 @@ jobs:
           exec > /tmp/out.txt 2>&1
           UA="NightvaultBookcase/1.0 (personal app; github.com/brokeuh)"
           g(){ echo; echo "===== $1"; curl -sS -m 30 -A "$UA" -D /tmp/h -o /tmp/b "$1"; grep -i -E "^HTTP|access-control|content-type|retry|ratelimit|x-rate" /tmp/h; head -c ${2:-2500} /tmp/b; echo; }
-          g "https://www.comics.org/api/series/name/jommeke/?format=json" 4000
-          g "https://www.comics.org/api/series/name/suske%20en%20wiske/?format=json" 4000
-          g "https://www.comics.org/api/series/name/kiekeboe/?format=json" 2500
-          g "https://www.comics.org/api/series/name/nero/?format=json" 1500
-          ID=$(curl -sS -m 30 -A "$UA" "https://www.comics.org/api/series/name/jommeke/?format=json" | python3 -c "import sys,json;j=json.load(sys.stdin);r=j.get('results',j if isinstance(j,list) else []);s=r[0] if r else {};print((s.get('active_issues') or [''])[0])")
-          echo "first issue: $ID"; [ -n "$ID" ] && g "$ID?format=json" 4000
-          g "https://www.comics.org/api/issue/on_sale_weekly/2026/week/40/?format=json" 1500
-          g "https://nl.wikipedia.org/w/api.php?action=opensearch&search=Lijst%20van%20Jommeke&limit=5&format=json&origin=*" 1500
-          g "https://nl.wikipedia.org/w/api.php?action=opensearch&search=Lijst%20van%20verhalen%20van%20Suske%20en%20Wiske&limit=5&format=json&origin=*" 1500
-          g "https://nl.wikipedia.org/w/api.php?action=parse&page=Lijst_van_albums_van_Jommeke&prop=wikitext&format=json&origin=*&redirects=1" 3500
+          python3 - <<'PY'
+          import json, urllib.request, time
+          UA = {"User-Agent": "NightvaultBookcase/1.0 (personal app; github.com/brokeuh)"}
+          def get(u):
+              time.sleep(1.5); r = urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=30); return r.status, dict(r.headers), r.read().decode()
+          for q in ["jommeke", "suske%20en%20wiske", "kiekeboe", "nero", "de%20rode%20ridder", "agent%20327"]:
+              u = f"https://www.comics.org/api/series/name/{q}/?format=json"; n = 0
+              print("\n#####", q)
+              while u and n < 4:
+                  st, h, b = get(u); j = json.loads(b); n += 1
+                  for s in j["results"]:
+                      print(f'  {s["name"]} | {s["country"]}/{s["language"]} | {s["year_began"]}-{s["year_ended"]} | {len(s["active_issues"])} issues | {s["publisher"].split("/publisher/")[1].split("/")[0]} | {s["api_url"].split("/series/")[1].split("/")[0]} | first: {s["issue_descriptors"][:3]}')
+                  u = j.get("next")
+          st, h, b = get("https://www.comics.org/api/issue/1294988/?format=json"); print("\n##### ISSUE", st, {k: v for k, v in h.items() if k.lower().startswith(("access", "content-type", "x-"))}); print(b[:3000])
+          st, h, b = get("https://www.comics.org/api/publisher/3033/?format=json"); print("\n##### PUBLISHER", b[:800])
+          st, h, b = get("https://www.comics.org/api/series/85346/?format=json"); print("\n##### SERIES", b[:600])
+          PY
+          g "https://nl.wikipedia.org/w/api.php?action=parse&page=Lijst_van_verhalen_van_Suske_en_Wiske&prop=wikitext&format=json&origin=*&redirects=1" 3000
+          g "https://nl.wikipedia.org/w/api.php?action=parse&page=Lijst_van_Jommekesalbums&prop=wikitext&section=2&format=json&origin=*&redirects=1" 2500
       - name: Save the answers on the branch probe-books (not main)
         run: |
           cd /tmp && rm -rf p && mkdir p && cd p && git init -q && cp /tmp/out.txt answers.txt
