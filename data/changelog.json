@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 85,
+   "date": "2026-10-20",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: Flemish and Dutch comics (GCD and Wikipedia)",
+   "items": [
+    "Next to Comic Vine, Bookcase now also looks in the Grand Comics Database (comics.org) and the Dutch Wikipedia album lists – good for Suske en Wiske, Jommeke, De Kiekeboes, Nero, De Rode Ridder, Urbanus and many more. No key needed.",
+    "Shelf ⚙ → Online → Where to look: Comic Vine, then GCD, then Wikipedia (the first list that holds all your album numbers wins), or just one of them. GCD works in the Android app.",
+    "The series page shows every album, the ones you don't have grey – also for Flemish and Dutch series. Tap a grey album to see its cover (from GCD) and Find it.",
+    "Look up online… and + Add a series have Comic Vine · GCD · Wikipedia buttons to pick the right series yourself."
+   ]
+  },
+  {
    "id": 84,
    "date": "2026-10-20",
    "where": [

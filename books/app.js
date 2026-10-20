@@ -410,8 +410,8 @@ async function scan(items, shelf, folder, notyet){
   L('add', `${added} added, ${failed} failed`, errs.slice(0, 20));
   { regroup(); const nb = BOOKS.filter(b => b.shelf === shelf && b.added === now); L('add', 'publishers', nb.map(b => `${b.name} → ${pubSource(b).p || '-'} (${pubSource(b).how || 'none'})`).slice(0, 200)) }
   toast(`${plural(added, 'book')} added${removed ? ` · ${removed} gone` : ''}${failed ? ` · ${failed} could not be read` : ''}${notyet ? ` · ${notyet} in a format not supported yet` : ''}`, 6000);
-  if(!failed && shelfOf(shelf).byPub && CV.key() && BOOKS.some(b => b.shelf === shelf && b.added === now && (!pubSource(b).p || pubSource(b).how === 'guess'))) setTimeout(() => { const n = BOOKS.filter(b => b.shelf === shelf && b.added === now && (!pubSource(b).p || pubSource(b).how === 'guess')).length;
-    sheet(`<h3>Look them up online?</h3><p class="muted small">${plural(n, 'comic')} of what you just added ${n === 1 ? 'has' : 'have'} no publisher in the file. Comic Vine can find it (and the story and cover).</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Not now</button><button class="btn primary" style="flex:2" id="cvnow">Look them up</button></div>`); $('#cvnow').onclick = () => cvLookup(shelf, false) }, 700);
+  if(!failed && shelfOf(shelf).byPub && canLookOnline(shelf) && BOOKS.some(b => b.shelf === shelf && b.added === now && (!pubSource(b).p || pubSource(b).how === 'guess'))) setTimeout(() => { const n = BOOKS.filter(b => b.shelf === shelf && b.added === now && (!pubSource(b).p || pubSource(b).how === 'guess')).length;
+    sheet(`<h3>Look them up online?</h3><p class="muted small">${plural(n, 'comic')} of what you just added ${n === 1 ? 'has' : 'have'} no publisher in the file. Bookcase can look it up online (${esc(srcOrder(shelf).map(x => SRC_NAME[x]).join(', '))}).</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Not now</button><button class="btn primary" style="flex:2" id="cvnow">Look them up</button></div>`); $('#cvnow').onclick = () => cvLookup(shelf, false) }, 700);
   if(failed) setTimeout(() => sheet(`<h3>${plural(failed, 'file')} could not be read</h3><div style="max-height:46vh;overflow:auto;font-size:12.5px" class="muted">${errs.slice(0, 60).map(esc).join('<br>')}</div><button class="btn primary" style="width:100%;margin-top:12px" id="errok">OK</button>`), 400), setTimeout(() => { const b = $('#errok'); if(b) b.onclick = closeSheet }, 500) }
 async function lookAgain(f){ if(!NvFiles) return; await addFolder(f.shelf, {tree:f.tree, name:f.name}) }
 
@@ -605,7 +605,7 @@ function draw(){
     if(full && fc){ /* every issue of the series: yours in colour (tap = the comic), the others grey (tap = Find it / on paper) */
       const st = colStats(fc), f = S.filter['grp'] || 'all', d = colDigital(fc), P = fc.phys || {}, inList = new Set(fc.issues.map(i => numKey(i.num)));
       const pass = i => { const k = numKey(i.num), D = !!d[k], Pp = !!P[k]; return f === 'have' ? D || Pp : f === 'miss' ? !D && !Pp : true };
-      h += `<div class="mtot">${esc(fc.name)}${fc.start ? ` (${esc(fc.start)})` : ''} · you have ${st.have} of ${st.total}${st.phys ? ` · ${st.phys} on paper` : ''}</div><div class="pbar" style="margin:0 0 8px"><i style="width:${st.total ? Math.round(100 * st.have / st.total) : 0}%"></i></div>`;
+      h += `<div class="mtot">${esc(fc.name)}${fc.start ? ` (${esc(fc.start)})` : ''} · you have ${st.have} of ${st.total} <span class="muted">· ${SRC_NAME[srcOf(fc.vid)]}</span>${st.phys ? ` · ${st.phys} on paper` : ''}</div><div class="pbar" style="margin:0 0 8px"><i style="width:${st.total ? Math.round(100 * st.have / st.total) : 0}%"></i></div>`;
       h += `<div class="chips">${[['all', 'All issues'], ['have', 'I have'], ['miss', 'Missing']].map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-gif="${k}">${t}</button>`).join('')}<button class="chip" data-col="${fvid}">⋯ List</button></div>`;
       const kids = sortTiles(g.kids || [], 'title'); if(kids.length) h += `<div class="grid">${kids.map(x => groupTile(v.shelf, x)).join('')}</div>`;
       h += issueGridHTML(fc, pass);
@@ -616,14 +616,14 @@ function draw(){
       body.querySelectorAll('[data-iss]').forEach(el => el.onclick = () => { const b = d[el.dataset.iss]; if(b) go({v:'book', id:b.id}); else issueSheet(fc, fc.issues.find(i => numKey(i.num) === el.dataset.iss)) });
       return }
     if(full){ const st0 = SERLOAD[v.shelf + '|' + g.key];
-      h += CV.key() ? `<div class="mtot" id="serload">${st0 === 'none' ? 'Comic Vine doesn\'t know this series by this name – open a comic → ⋯ → Look up online to pick it.' : st0 && st0.startsWith('err:') ? esc(st0.slice(4)) : 'Getting every issue of this series from Comic Vine…'}</div>`
-        : `<button class="btn" id="serkey" style="width:100%;margin-bottom:8px">See every issue of this series (needs your Comic Vine key)</button>` }
+      h += canLookOnline(v.shelf) ? `<div class="mtot" id="serload">${st0 === 'none' ? 'This series was not found online by this name – open a comic → ⋯ → Look up online to pick it.' : st0 && st0.startsWith('err:') ? esc(st0.slice(4)) : 'Looking up every issue of this series…'}</div>`
+        : whyNoSource(v.shelf) === 'nokey' ? `<button class="btn" id="serkey" style="width:100%;margin-bottom:8px">See every issue of this series (needs your Comic Vine key)</button>` : `<div class="mtot">${esc(whyNoSource(v.shelf))}</div>` }
     h += `<div class="mbar">${sortSel('inside', 'grp:' + v.shelf + ':' + g.key)}<span style="flex:1"></span><button class="btn sm" data-selstart="1">Select</button></div>`;
     const kids = sortTiles(g.kids || [], sortOf('inside', 'grp:' + v.shelf + ':' + g.key)), k = sortOf('inside', 'grp:' + v.shelf + ':' + g.key), items = k === 'series' ? g.items.slice().sort(seriesOrder) : sortTiles(g.items, k);
     h += `<div class="grid">${G.pinFirst([...kids, ...items], x => (x.items ? 'gr:' + x.key : 'it:' + x.id)).map(x => x.items ? groupTile(v.shelf, x) : bookTile(x)).join('')}</div>`;
     if(!all.length) h += `<p class="muted small" style="margin-top:12px">Empty. Tap ⋯ → <b>Add books…</b> to put books in it.</p>`;
     body.innerHTML = h; lazyCovers(body); hookGrid(v.shelf); $('#gmenu').onclick = () => groupMenu(v.shelf, g);
-    if(full){ const k = $('#serkey'); if(k) k.onclick = () => cvKeySheet(() => serEnsure(v.shelf, g)); else if(!SERLOAD[v.shelf + '|' + g.key]) serEnsure(v.shelf, g) } return }
+    if(full){ const k = $('#serkey'); if(k) k.onclick = () => cvKeySheet(() => serEnsure(v.shelf, g)); else if(!SERLOAD[v.shelf + '|' + g.key] && canLookOnline(v.shelf)) serEnsure(v.shelf, g) } return }
   if(v.v === 'book') return drawBook(v.id);
   if(v.v === 'col') return drawCol(v);
   if(v.v === 'colser') return drawColSer(v);
@@ -651,8 +651,8 @@ $('#body').addEventListener('click', e => {
   if(el.dataset.filter){ S.filter[v.shelf] = el.dataset.filter; saveS(); return draw() }
   if(el.dataset.selstart) return selStart();
   if(el.dataset.tabgo){ if(el.dataset.tabgo === 'col' && v.v !== 'col') go({v:'col', shelf:v.shelf}); else if(el.dataset.tabgo === 'books' && v.v === 'col'){ V.pop(); draw() } return }
-  if(el.dataset.col) return go({v:'colser', shelf:v.shelf, vid:+el.dataset.col});
-  if(el.dataset.allis){ const vid = +el.dataset.allis, b = BOOKS.find(x => x.cv && x.cv.id === vid); if(COLS[vid]) return go({v:'colser', shelf:v.shelf, vid});
+  if(el.dataset.col) return go({v:'colser', shelf:v.shelf, vid:vidOf(el.dataset.col)});
+  if(el.dataset.allis){ const vid = vidOf(el.dataset.allis), b = BOOKS.find(x => x.cv && x.cv.id === vid); if(COLS[vid]) return go({v:'colser', shelf:v.shelf, vid});
     colAdd(v.shelf, {id:vid, name:b.cv.name, start:b.cv.start, pub:b.cvPub || publisherOf(b)}).then(c => go({v:'colser', shelf:v.shelf, vid:c.vid})).catch(err => { closeSheet(); toast(err.message || String(err), 5000) }) } });
 $('#body').addEventListener('change', e => { const t = e.target, v = cur();
   if(t.dataset.sort){ S.sort[t.dataset.skey] = t.value; saveS(); draw() }
@@ -674,7 +674,7 @@ function drawBook(id){ const b = BK[id]; if(!b){ V.pop(); return draw() }
   $('#vtitle').textContent = ''; document.title = dispTitle(b) + ' · Bookcase';
   const where = b.src.kind === 'link' ? 'In a folder on this phone' : 'Copied into the app';
   const facts = [['Publisher', (() => { const x = pubSource(b); return x.p ? esc(x.p) + ({folder:' <span class="muted">· from the folder</span>', name:' <span class="muted">· from the file name</span>', online:' <span class="muted">· from Comic Vine</span>', series:' <span class="muted">· like the rest of this series</span>', guess:' <span class="muted">· guessed from the name – fix it with Edit details</span>'}[x.how] || '') : '' })()], ['Series', b.series ? `<span class="lnk" data-gotogrp2="1">${esc(b.series)}</span>${b.vol ? ' · ' + esc(b.vol) : ''}` : ''], ['Writer', esc(b.writer)], ['Artist', esc(b.artist)], ['Year', esc(b.year)],
-    ['Pages', b.pages ? String(b.pages) : ''], ['Reading', b.rtl ? 'Right to left (manga)' : b.rtl === false ? 'Left to right' : ''], ['Comic Vine', b.cv ? esc(b.cv.name) + (b.cv.start ? ` (${b.cv.start})` : '') : ''], ['File', `${esc((b.fmt || '').toUpperCase())}${b.size ? ' · ' + mb(b.size) : ''}`], ['Where', where + (b.dir ? ` · <span class="muted">${esc(b.dir)}</span>` : '')], ['Shelf', esc(sh.name)]].filter(x => x[1]);
+    ['Pages', b.pages ? String(b.pages) : ''], ['Reading', b.rtl ? 'Right to left (manga)' : b.rtl === false ? 'Left to right' : ''], ['Online', b.cv ? esc(b.cv.name) + (b.cv.start ? ` (${b.cv.start})` : '') + ` <span class="muted">· ${SRC_NAME[srcOf(b.cv.id)]}</span>` : ''], ['File', `${esc((b.fmt || '').toUpperCase())}${b.size ? ' · ' + mb(b.size) : ''}`], ['Where', where + (b.dir ? ` · <span class="muted">${esc(b.dir)}</span>` : '')], ['Shelf', esc(sh.name)]].filter(x => x[1]);
   const nx = (x, lbl) => x ? `<div class="nx" data-book="${esc(x.id)}">${coverHTML(x)}<div class="n"><small>${lbl}</small><div>${esc(x.vol || x.title)}</div></div></div>` : '<div></div>';
   let h = `<div class="alhead" style="align-items:flex-start">${coverHTML(b)}<div style="min-width:0;flex:1"><b>${esc(b.series && b.title && norm(b.title) !== norm(b.series) ? b.title : dispTitle(b))}</b>
     ${b.series ? `<div class="lnk small" data-gotogrp2="1">${esc(b.series)}${b.vol ? ' · ' + esc(b.vol) : ''}</div>` : ''}<div class="muted small">${esc([b.writer, b.year].filter(Boolean).join(' · '))}</div>
@@ -705,7 +705,7 @@ function bookMenu(b){ const G = grOf(b.shelf), s = STATE[b.id], pin = G.isPinned
   sheet(`<h3>${esc(dispTitle(b))}</h3><div class="mlist">
     <button class="btn" id="bmg">Put in a group…</button><button class="btn" id="bms">Move to another shelf…</button><button class="btn" id="bme">Edit details</button>
     <button class="btn" id="bmr">${s && s.finished ? 'Mark as not read' : 'Mark as read'}</button><button class="btn" id="bmp">${pin ? '★ Unpin from the top' : '★ Pin to the top'}</button>
-    <button class="btn" id="bmcv">Look up online (Comic Vine)…</button><button class="btn" id="bmc">Change the cover</button><button class="btn" id="bmprint">Print…</button>
+    <button class="btn" id="bmcv">Look up online…</button><button class="btn" id="bmc">Change the cover</button><button class="btn" id="bmprint">Print…</button>
     <button class="btn danger" id="bmx">${b.src.kind === 'link' ? 'Remove from Bookcase (the file stays)' : 'Remove from Bookcase'}</button></div>`);
   $('#bmg').onclick = () => groupPicker(b); $('#bms').onclick = () => shelfPicker([b.id]); $('#bme').onclick = () => editBook(b);
   $('#bmr').onclick = () => { const x = st(b.id); x.finished = !x.finished; if(x.finished){ x.last = x.last || Date.now(); x.page = Math.max(0, (x.pages || b.pages || 1) - 1) } else x.page = 0; saveState(b.id, true); closeSheet(); draw() };
@@ -1179,15 +1179,17 @@ function newShelf(){ ask('New shelf', 'Name, like Art books or Magazines', '', '
 function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh), folders = lsGet('nvBooks.folders', []).filter(f => f.shelf === sh), n = inShelf(sh).length;
   sheet(`<h3>${esc(s.name)}</h3>
     <div class="opt"><label for="ss_rtl">Read right to left (manga) unless a book says otherwise</label><input type="checkbox" id="ss_rtl" ${s.rtl ? 'checked' : ''}></div>
-    <div class="opt"><label for="ss_full">Show every issue of a series, the ones you don't have grey (Comic Vine)</label><input type="checkbox" id="ss_full" ${s.fullSeries ? 'checked' : ''}></div>
+    <div class="opt"><label for="ss_full">Show every issue of a series, the ones you don't have grey (looked up online)</label><input type="checkbox" id="ss_full" ${s.fullSeries ? 'checked' : ''}></div>
     <div class="opt"><label for="ss_pub">Bundle series by publisher (Marvel › Spider-Man › …)</label><input type="checkbox" id="ss_pub" ${s.byPub ? 'checked' : ''}></div>
     <div class="opt"><label for="ss_aut">A writer's books without a series make one tile</label><input type="checkbox" id="ss_aut" ${s.authors ? 'checked' : ''}></div>
     ${NvFiles ? `<div class="sec">Folders on this phone</div>${folders.map((f, i) => `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(inShelf(sh).filter(b => b.src.kind === 'link' && b.src.tree === f.tree).length, 'book')}</div></div><button class="btn sm" data-look="${i}">Look again</button><button class="btn sm danger" data-forget="${i}">Stop</button></div>`).join('') || '<p class="muted small">None yet - Add → Use a folder on this phone.</p>'}` : ''}
-    <div class="sec">Online (Comic Vine)</div><div class="mlist"><button class="btn primary" id="ss_cv">Look up the comics without a publisher</button><button class="btn" id="ss_cvall">Look up all comics on this shelf</button><button class="btn" id="ss_cvkey">${CV.key() ? 'Change your Comic Vine key' : 'Type your Comic Vine key'}</button><div class="muted small" style="margin:-2px 0 0">Once per series; the results are remembered. Needs the internet only while it looks.</div></div>
+    <div class="sec">Online</div><div class="opt"><label for="ss_src">Where to look</label><select id="ss_src">${[['auto', 'Comic Vine, then GCD, then Wikipedia'], ['cv', 'Only Comic Vine'], ['gcd', 'Only GCD (comics.org)'], ['wiki', 'Only Wikipedia (Dutch)']].map(([k, t]) => `<option value="${k}" ${srcPref(sh) === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    <div class="muted small" style="margin:-4px 0 8px">Comic Vine knows most American comics (needs your free key). GCD and Wikipedia also know Flemish and Dutch comics (Suske en Wiske, Jommeke, De Kiekeboes …) and need no key; GCD works in the Android app. The first one whose list holds all your numbers is used.</div><div class="mlist"><button class="btn primary" id="ss_cv">Look up the comics without a publisher</button><button class="btn" id="ss_cvall">Look up all comics on this shelf</button><button class="btn" id="ss_cvkey">${CV.key() ? 'Change your Comic Vine key' : 'Type your Comic Vine key'}</button><div class="muted small" style="margin:-2px 0 0">Once per series; the results are remembered. Needs the internet only while it looks.</div></div>
     <div class="mlist" style="margin-top:10px"><button class="btn" id="ss_reread">Read the details of all books again</button><div class="muted small" style="margin:-2px 0 0">Fills in what is missing (publisher, writer, year …). What you edited by hand stays.</div></div>
     <div class="sec">Your groups</div><div class="mlist"><button class="btn" id="ss_save">Save my groups</button><button class="btn" id="ss_load">Load from a file</button></div>
     <div class="sec">This shelf</div><div class="mlist"><button class="btn" id="ss_ren">Rename the shelf</button><button class="btn" id="ss_hide">Hide this shelf</button>${s.own ? `<button class="btn danger" id="ss_del">Remove this shelf${n ? ' (its books move to Books)' : ''}</button>` : ''}</div>`);
   $('#ss_rtl').onchange = e => { shelfSet(sh, {rtl:e.target.checked}); toast('Saved') };
+  $('#ss_src').onchange = e => { shelfSet(sh, {src:e.target.value}); for(const k in SERLOAD) if(k.startsWith(sh + '|')) delete SERLOAD[k]; toast('Saved') };
   $('#ss_full').onchange = e => { shelfSet(sh, {fullSeries:e.target.checked}); draw(); toast('Saved') };
   $('#ss_pub').onchange = e => { shelfSet(sh, {byPub:e.target.checked}); regroup(); draw(); toast(e.target.checked ? 'Series are now bundled by publisher' : 'Publisher tiles are off') };
   $('#ss_reread').onclick = () => { closeSheet(); rereadShelf(sh) };
@@ -1299,23 +1301,24 @@ async function cvIssues(vid){ const j = await cvGet('issues', {filter:'volume:' 
 async function cvImage(url){ const H = cvHttp(); if(H){ const r = await H.get({url, responseType:'blob'}); const bin = atob(String(r.data).replace(/^data:[^,]*,/, '')), u = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], {type:'image/jpeg'}) }
   return (await fetch(url)).blob() }
 async function cvApply(books, hit, withIssues){ if(!hit || !hit.id) return 0; let n = 0, iss = null;
-  if(withIssues && books.some(b => !b.desc || !COV.has(b.id) || !b.year)) try{ iss = await cvIssues(hit.id) }catch(e){ if(e.limit) throw e; LE('cv', 'issues', e) }
-  for(const b of books){ b.cv = {id:hit.id, name:hit.name, start:hit.start}; if(hit.pub) b.cvPub = hit.pub;
-    const i = iss && b.num != null ? iss[b.num] : null;
+  if(withIssues && srcOf(hit.id) === 'cv' && books.some(b => !b.desc || !COV.has(b.id) || !b.year)) try{ iss = await cvIssues(hit.id) }catch(e){ if(e.limit) throw e; LE('cv', 'issues', e) }
+  const L = srcOf(hit.id) !== 'cv' && LISTS[hit.id], byN = {}; if(L) for(const x of L) byN[numKey(x.num)] = {year:x.date.slice(0, 4)};
+  for(const b of books){ b.cv = {id:hit.id, name:hit.name, start:hit.start, src:srcOf(hit.id)}; if(hit.pub) b.cvPub = hit.pub;
+    const i = b.num == null ? null : iss ? iss[b.num] : byN[numKey(b.num)];
     if(i){ if(!b.desc && i.desc) b.desc = i.desc; if(!b.year && i.year) b.year = i.year; if(!COV.has(b.id) && i.img) try{ await setCover(b.id, await thumb(await cvImage(i.img))) }catch(e){} }
     await dbPut('books', b); n++ }
   return n }
 /* shelf ⚙ / after adding: look up the comics that have no publisher (or all of them) */
 async function cvLookup(sh, all){
-  if(!CV.key()) return cvKeySheet(() => cvLookup(sh, all));
+  if(!canLookOnline(sh)){ if(whyNoSource(sh) === 'nokey') return cvKeySheet(() => cvLookup(sh, all)); toast(whyNoSource(sh), 5000); return }
   const want = inShelf(sh).filter(b => all || !pubSource(b).p || pubSource(b).how === 'guess'), bySeries = {};
   for(const b of want) if(cvName(b)) (bySeries[cvKeyOf(b)] = bySeries[cvKeyOf(b)] || []).push(b);
   const list = Object.values(bySeries); if(!list.length){ toast('Nothing to look up'); return }
   awake(true); let stop = false, done = 0, found = 0, books = 0; const lines = [];
-  sheet(`<h3>Looking up on Comic Vine…</h3><div class="prog"><i id="cvp"></i></div><div class="muted small" id="cvs">0 of ${plural(list.length, 'series', 'series')}</div><div id="cvl" class="small" style="max-height:34vh;overflow:auto;margin-top:6px"></div><button class="btn" id="cvstop" style="width:100%;margin-top:8px">Stop</button>`, true);
+  sheet(`<h3>Looking up online…</h3><div class="prog"><i id="cvp"></i></div><div class="muted small" id="cvs">0 of ${plural(list.length, 'series', 'series')}</div><div id="cvl" class="small" style="max-height:34vh;overflow:auto;margin-top:6px"></div><button class="btn" id="cvstop" style="width:100%;margin-top:8px">Stop</button>`, true);
   $('#cvstop').onclick = () => { stop = true; $('#cvstop').textContent = 'Stopping…' };
   for(const bs of list){ if(stop) break;
-    try{ const hit = await cvSeries(bs); if(hit.id){ found++; books += await cvApply(bs, hit, true) } lines.unshift(`${esc(cvName(bs[0]))} → ${hit.id ? `<b>${esc(hit.pub || '?')}</b> · ${esc(hit.name)} (${hit.start || '?'})` : '<span class="muted">not found</span>'}`) }
+    try{ const hit = await findSeries(sh, bs, all); if(hit.id){ found++; books += await cvApply(bs, hit, true) } lines.unshift(`${esc(cvName(bs[0]))} → ${hit.id ? `<b>${esc(hit.pub || '?')}</b> · ${esc(hit.name)}${hit.start ? ` (${hit.start})` : ''} <span class="muted">· ${SRC_NAME[srcOf(hit.id)]}</span>` : '<span class="muted">not found</span>'}`) }
     catch(e){ lines.unshift(`<span style="color:var(--red)">${esc(e.message || e)}</span>`); LE('cv', cvName(bs[0]), e); if(e.limit || e.nokey || /key|Android app|refused/.test(e.message || '')) stop = true }
     done++; const p = $('#cvp'), s = $('#cvs'), l = $('#cvl'); if(p) p.style.width = (100 * done / list.length) + '%'; if(s) s.textContent = `${done} of ${plural(list.length, 'series', 'series')} · ${found} found`; if(l) l.innerHTML = lines.slice(0, 60).join('<br>') }
   awake(false); regroup(); draw(); L('cv', `lookup: ${found} of ${list.length} series found, ${books} books updated`, lines.slice(0, 80));
@@ -1326,20 +1329,169 @@ function cvKeySheet(then){
     <p class="muted small">No key yet? Make a free account on comicvine.gamespot.com, then open comicvine.gamespot.com/api – the key is on that page. (Your Nightvault PC app may have it under Settings.)</p>
     <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="cvksave">Save${then ? ' and look up' : ''}</button></div>`);
   $('#cvksave').onclick = () => { const k = $('#cvk').value.trim().replace(/\s+/g, ''); if(!/^[0-9a-f]{40}$/i.test(k)){ toast('That does not look like a Comic Vine key (40 letters and numbers)', 4000); return } lsSet('nvBooks.cvKey', k); closeSheet(); toast('Key saved'); if(then) then() } }
-/* book ⋯ → "Look up online…": pick the right Comic Vine series yourself (for the whole series of this book) */
+/* search one source by hand: rows to tap (book ⋯ → Look up online, and + Add a series). books = your comics of that series (or []) */
+async function srcSearch(src, q, books){ const th = u => u ? `<img class="f" src="${esc(u)}" alt="" style="object-fit:cover">` : '';
+  if(src === 'cv'){ const j = await cvGet('search', {resources:'volume', query:q, limit:40, field_list:'id,name,start_year,publisher,count_of_issues,image'});
+    const l = books.length ? cvPick(j.results || [], books).map(x => x.v) : (j.results || []).sort((a, b) => (b.count_of_issues || 0) - (a.count_of_issues || 0));
+    return l.map(v => ({key:v.id, name:v.name, start:v.start_year, pub:cleanPub(v.publisher && v.publisher.name), thumb:th(v.image && v.image.thumb_url), sub:`${esc(cleanPub(v.publisher && v.publisher.name) || '?')} · ${plural(v.count_of_issues || 0, 'issue')}`,
+      hit:async () => ({id:v.id, name:v.name, start:v.start_year, pub:v.publisher && v.publisher.name, n:v.count_of_issues, at:Date.now()})})) }
+  if(src === 'gcd'){ const res = await gcdSearch(q), l = books.length ? gcdPick(res, books) : res.map(s => ({s, list:gcdIssueList(s)})).filter(x => x.list.length).sort((a, b) => b.list.length - a.list.length);
+    return l.slice(0, 40).map(({s, list}) => ({key:'g' + s.id, name:s.name, start:s.year_began, thumb:'', sub:`${esc([String(s.country || '').toUpperCase(), s.language].filter(Boolean).join(' · '))} · ${s.year_began || '?'}–${s.year_ended || 'now'} · ${plural(list.length, 'album')}${books.length ? ` · you have ${Math.round(covOf(list, books) * books.filter(b => b.num != null).length)} of them` : ''}`,
+      hit:() => gcdHit(s, list, books)})) }
+  const pages = await wikiFind(q); return pages.map(p => ({key:'w' + p.id, name:p.name, start:'', thumb:'', sub:esc(p.title), hit:async () => { const pg = await wikiPage(p.id); if(pg.list.length < 5) throw new Error('No numbered album list found on that page'); return wikiHit(pg, books) }})) }
+function srcChips(on){ return `<div class="chips" id="srcch">${['cv', 'gcd', 'wiki'].map(k => `<button class="chip ${on === k ? 'on' : ''}" data-src="${k}">${SRC_NAME[k]}</button>`).join('')}</div>` }
+const firstSrc = sh => srcPref(sh) !== 'auto' ? srcPref(sh) : CV.key() ? 'cv' : canGcd() ? 'gcd' : 'wiki';
+/* book ⋯ → "Look up online…": pick the right series yourself (for the whole series of this book), in Comic Vine, GCD or Wikipedia */
 async function cvChoose(b){
-  if(!CV.key()) return cvKeySheet(() => cvChoose(b));
-  const bs = inShelf(b.shelf).filter(x => cvName(x) && norm(cvName(x)) === norm(cvName(b)));
-  sheet(`<h3>Comic Vine: “${esc(cvName(b))}”</h3><div style="display:flex;gap:8px"><input type="search" id="cvq" value="${esc(cvName(b))}"><button class="btn primary" id="cvgo">Search</button></div><div class="muted small" id="cvst" style="margin:8px 0">Searching…</div><div id="cvres"></div><button class="btn" style="width:100%;margin-top:10px" onclick="closeSheet()">Close</button>`);
-  const run = async () => { $('#cvst').textContent = 'Searching…'; $('#cvres').innerHTML = '';
-    try{ const j = await cvGet('search', {resources:'volume', query:$('#cvq').value.trim(), limit:20, field_list:'id,name,start_year,publisher,count_of_issues,image'}), sc = cvPick(j.results || [], bs);
-      $('#cvst').textContent = sc.length ? `Tap the right one – it is used for ${plural(bs.length, 'book')} of this series` : 'Nothing found - try other words';
-      $('#cvres').innerHTML = sc.slice(0, 12).map(({v}) => `<div class="li" data-cv="${v.id}"><span class="th"><div class="cv">${v.image && v.image.thumb_url ? `<img class="f" src="${esc(v.image.thumb_url)}" alt="" style="object-fit:cover">` : ''}</div></span><div class="n"><div>${esc(v.name)} (${v.start_year || '?'})</div><div class="s">${esc(v.publisher ? v.publisher.name : '?')} · ${plural(v.count_of_issues || 0, 'issue')}</div></div></div>`).join('');
-      $('#cvres').onclick = async e => { const r = e.target.closest('[data-cv]'); if(!r) return; const v = sc.find(x => String(x.v.id) === r.dataset.cv).v;
-        const hit = {id:v.id, name:v.name, start:v.start_year, pub:v.publisher && v.publisher.name, n:v.count_of_issues, at:Date.now()}, c = CV.cache(); c[cvKeyOf(b)] = hit; CV.save(c);
-        $('#cvst').textContent = 'Saving…'; try{ await cvApply(bs, hit, true) }catch(err){ toast(err.message || String(err), 5000) } regroup(); closeSheet(); draw(); toast(`${plural(bs.length, 'book')}: ${hit.pub || '?'} · ${hit.name} (${hit.start || '?'})`, 4000) } }
+  const bs = inShelf(b.shelf).filter(x => cvName(x) && norm(cvName(x)) === norm(cvName(b))); let src = firstSrc(b.shelf), rows = [];
+  sheet(`<h3>Look up “${esc(cvName(b))}”</h3>${srcChips(src)}<div style="display:flex;gap:8px"><input type="search" id="cvq" value="${esc(cvName(b))}"><button class="btn primary" id="cvgo">Search</button></div><div class="muted small" id="cvst" style="margin:8px 0">Searching…</div><div id="cvres"></div><button class="btn" style="width:100%;margin-top:10px" onclick="closeSheet()">Close</button>`);
+  const run = async () => { $('#cvst').textContent = 'Searching…'; $('#cvres').innerHTML = ''; const me = src;
+    if(src === 'cv' && !CV.key()){ $('#cvst').innerHTML = 'Comic Vine needs your free key. <button class="btn sm" id="cvk2">Type it</button>'; $('#cvk2').onclick = () => cvKeySheet(() => cvChoose(b)); return }
+    if(src === 'gcd' && !canGcd()){ $('#cvst').textContent = 'GCD (comics.org) can only be reached from the Nightvault Android app'; return }
+    try{ rows = await srcSearch(src, $('#cvq').value.trim(), bs); if(me !== src) return;
+      $('#cvst').textContent = rows.length ? `Tap the right one – it is used for ${plural(bs.length, 'book')} of this series` : 'Nothing found - try other words';
+      $('#cvres').innerHTML = rows.slice(0, 15).map((r, n) => `<div class="li" data-cvr="${n}"><span class="th"><div class="cv">${r.thumb}</div></span><div class="n"><div>${esc(r.name)}${r.start ? ` (${esc(r.start)})` : ''}</div><div class="s">${r.sub}</div></div></div>`).join('') }
     catch(e){ $('#cvst').textContent = e.message || String(e) } };
+  $('#cvres').onclick = async e => { const r = e.target.closest('[data-cvr]'); if(!r) return; $('#cvst').textContent = 'Saving…';
+    try{ const hit = await rows[+r.dataset.cvr].hit(), c = CV.cache(); c['pick:' + cvKeyOf(b)] = hit; if(srcOf(hit.id) === 'cv') c[cvKeyOf(b)] = hit; CV.save(c);
+      await cvApply(bs, hit, true); for(const k in SERLOAD) if(k.startsWith(b.shelf + '|')) delete SERLOAD[k];
+      regroup(); closeSheet(); draw(); toast(`${plural(bs.length, 'book')}: ${hit.pub || '?'} · ${hit.name} (${hit.start || '?'}) · ${SRC_NAME[srcOf(hit.id)]}`, 4000) }
+    catch(err){ $('#cvst').textContent = err.message || String(err) } };
+  $('#srcch').onclick = e => { const c = e.target.closest('[data-src]'); if(!c) return; src = c.dataset.src; $('#srcch').querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === c)); run() };
   $('#cvgo').onclick = run; $('#cvq').onkeydown = e => { if(e.key === 'Enter') run() }; run() }
+
+/* =====================================================================================================================
+   MORE SOURCES (owner, 20 Oct: "Flemish and Dutch comics, to fill in the blanks like Comic Vine")
+   GCD – Grand Comics Database (comics.org, free, no key). Very good for Belgian and Dutch albums: ONE search returns the series with
+     every album number and title. GCD sends no CORS headers → only from the Android app (CapacitorHttp). Polite: one request every
+     3.2 s (GCD allows 20 a minute, 200 an hour). Covers: one extra request, only when you open a missing album.
+   Wikipedia NL – the "Lijst van albums van …" pages: the complete numbered list of big series (Suske en Wiske = the Vierkleurenreeks
+     numbers on the cover, Jommeke, De Kiekeboes, Nero, De Rode Ridder, Urbanus …). Works from any browser.
+   Ids: Comic Vine = a number, GCD = 'g<series id>', Wikipedia = 'w<page id>'. A book's b.cv = {id, name, start, src}.
+   Shelf ⚙ → "Where to look": auto (Comic Vine, then GCD, then Wikipedia – the first whose list holds all your numbers wins) or one of them.
+   ===================================================================================================================== */
+const srcOf = id => /^g/.test(String(id)) ? 'gcd' : /^w/.test(String(id)) ? 'wiki' : 'cv';
+const SRC_NAME = {cv:'Comic Vine', gcd:'GCD', wiki:'Wikipedia'};
+const vidOf = s => /^\d+$/.test(String(s)) ? +s : String(s);
+const UA = 'NightvaultBookcase/1.0 (personal app; github.com/brokeuh)';
+const LISTS = {};   // id → issues, while the app is open (saves asking twice)
+const GCD = {last:0, q:Promise.resolve()}, WIKI = {last:0, q:Promise.resolve()}, BLOCK = {};
+function polite(who, gap, fn){ const run = who.q.then(async () => { const w = who.last + gap - Date.now(); if(w > 0) await sleep(w); who.last = Date.now(); return fn() }); who.q = run.catch(() => {}); return run }
+const canGcd = () => !!cvHttp();
+async function gcdGet(url){ if(!/format=json/.test(url)) url += (url.includes('?') ? '&' : '?') + 'format=json';
+  return polite(GCD, 3200, async () => { const H = cvHttp(); if(!H) throw Object.assign(new Error('GCD (comics.org) can only be reached from the Nightvault Android app'), {noweb:true});
+    const r = await H.get({url, headers:{Accept:'application/json', 'User-Agent':UA}, responseType:'json'});
+    if(r.status === 429) throw Object.assign(new Error('GCD says: too many requests – try again in an hour'), {limit:true});
+    if(r.status === 404) return null; if(r.status >= 400) throw new Error('GCD answered ' + r.status);
+    return typeof r.data === 'string' ? JSON.parse(r.data) : r.data }) }
+async function wikiGet(params){ const url = 'https://nl.wikipedia.org/w/api.php?' + new URLSearchParams(Object.assign({format:'json', origin:'*', formatversion:'2'}, params));
+  return polite(WIKI, 1000, async () => { let r; try{ r = await fetch(url) }catch(e){ throw new Error('Wikipedia could not be reached – no internet?') }
+    if(r.status === 429) throw Object.assign(new Error('Wikipedia says: too many requests – try again later'), {limit:true});
+    if(!r.ok) throw new Error('Wikipedia answered ' + r.status); return r.json() }) }
+
+/* GCD: "1 - De Wollebollen", "1 - De Wollebollen [Herdruk 1991]", "1 [kleur] - …", "190A - …": one entry per album number (reprints left out) */
+function gcdIssueList(s){ const out = [], seen = new Set(), u = s.active_issues || [];
+  (s.issue_descriptors || []).forEach((t, i) => { const m = String(t).match(/^\s*(\d+(?:[.,]\d+)?)[A-Za-z]?\s*(?:\[[^\]]*\]\s*)?(?:-\s*(.*))?$/); if(!m) return;
+    const num = parseFloat(m[1].replace(',', '.')), k = numKey(num); if(seen.has(k)) return; seen.add(k);
+    const gid = (String(u[i] || '').match(/issue\/(\d+)/) || [])[1] || '';
+    out.push({num, label:'#' + m[1], name:String(m[2] || '').replace(/\s*\[[^\]]*\]\s*$/, '').trim(), date:'', img:'', thumb:'', gid}) });
+  return oddOut(out.sort((a, b) => a.num - b.num)) }
+/* a typing error far past the end ("#8134" after #384) */
+const oddOut = l => { while(l.length > 3 && l[l.length - 1].num > 2 * l[l.length - 2].num + 10) l.pop(); return l };
+const gcdId = s => (String(s.api_url || '').match(/series\/(\d+)/) || [])[1];
+async function gcdSearch(name){ return discCache('gcds:' + norm(name), 7 * 864e5, async () => { const out = []; let url = `https://www.comics.org/api/series/name/${encodeURIComponent(name)}/`;
+    for(let p = 0; url && p < 3; p++){ const j = await gcdGet(url); if(!j) break;
+      for(const s of j.results || []) out.push({id:gcdId(s), name:s.name, country:s.country, language:s.language, year_began:s.year_began, year_ended:s.year_ended, publisher:s.publisher, issue_descriptors:s.issue_descriptors, active_issues:s.active_issues});
+      url = j.next }
+    return out }) }
+async function gcdPubName(url){ const id = (String(url || '').match(/publisher\/(\d+)/) || [])[1]; if(!id) return ''; const c = lsGet('nvBooks.gcdPub', {}); if(c[id]) return c[id];
+  try{ const j = await gcdGet(`https://www.comics.org/api/publisher/${id}/`); if(j && j.name){ c[id] = j.name; lsSet('nvBooks.gcdPub', c); return j.name } }catch(e){ if(e.limit) throw e } return '' }
+const covOf = (list, books) => { const nums = books.map(b => b.num).filter(n => n != null); if(!nums.length) return 0; const h = new Set(list.map(i => numKey(i.num))); return nums.filter(n => h.has(numKey(n))).length / nums.length };
+const bare = s => norm(s).replace(/^(de|het|the|les?|la) /, '');
+function gcdPick(results, books){ const name = norm(cvName(books[0])), years = books.map(b => +b.year).filter(Boolean), y = years.length ? Math.min(...years) : 0;
+  return results.map(s => { const vn = norm(s.name); let sc = vn === name ? 60 : bare(vn) === bare(name) ? 55 : vn.includes(bare(name)) ? 15 : 0;
+      if(s.language === 'nl') sc += 15; if(s.country === 'be' || s.country === 'nl') sc += 5;
+      const list = gcdIssueList(s), cov = covOf(list, books); sc += Math.round(cov * 30) + Math.min(10, list.length / 20);
+      if(y && s.year_began && s.year_began > y + 1) sc -= 20;
+      return {s, sc, cov, list} }).filter(x => x.list.length).sort((a, b) => b.sc - a.sc) }
+async function gcdHit(s, list, books){ LISTS['g' + s.id] = list;
+  return {id:'g' + s.id, name:s.name, start:s.year_began || '', pub:await gcdPubName(s.publisher), n:list.length, cov:books ? covOf(list, books) : 0, src:'gcd', at:Date.now()} }
+async function gcdSeries(books, force){ const k = 'gcd:' + cvKeyOf(books[0]), c = CV.cache(); if(!force && c[k] && (c[k].id || Date.now() - c[k].at < 14 * 864e5)) return c[k];
+  const best = gcdPick(await gcdSearch(cvName(books[0])), books)[0];
+  const hit = best && best.sc >= 50 ? await gcdHit(best.s, best.list, books) : {id:0, at:Date.now()};
+  const c2 = CV.cache(); c2[k] = hit; CV.save(c2); return hit }
+async function gcdCover(c, i){ if(i.img || !i.gid || !canGcd()) return false; const j = await gcdGet(`https://www.comics.org/api/issue/${i.gid}/`); if(!j) return false;
+  i.img = i.thumb = j.cover || ''; i.date = i.date || j.publication_date || ''; if(!i.name && j.title) i.name = j.title; i.gcdDone = 1; if(c && c.id) await colSave(c); return !!i.img }
+
+/* Wikipedia: the numbered album list in a "Lijst van albums van …" page – tables (Nummer / VK | Titel | Datum) or "# [[Title]]" lists */
+const wikiClean = t => String(t || '').replace(/<ref[^>]*\/>|<ref[^]*?<\/ref>/g, '').replace(/\{\{[^{}]*\}\}/g, '').replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g, '$1').replace(/\[https?:\S+\s([^\]]*)\]/g, '$1').replace(/'{2,}/g, '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/^[\s*°†#]+/, '').replace(/\s+/g, ' ').trim();
+function wikiCell(c){ let d = 0, cut = -1; const s = String(c);   // drop 'style="…"|' in front of a cell, but not the | inside [[a|b]]
+  for(let i = 0; i < s.length; i++){ const two = s.substr(i, 2); if(two === '[[' || two === '{{'){ d++; i++ } else if(two === ']]' || two === '}}'){ d--; i++ } else if(s[i] === '|' && !d){ cut = i; break } }
+  return wikiClean(cut >= 0 && /=/.test(s.slice(0, cut)) ? s.slice(cut + 1) : s) }
+function wikiSplit(line, sep){ const out = []; let d = 0, cur = '';   // split "a || b" but not inside [[ ]] / {{ }}
+  for(let i = 0; i < line.length; i++){ const two = line.substr(i, 2);
+    if(two === '[[' || two === '{{'){ d++; cur += two; i++; continue } if(two === ']]' || two === '}}'){ d--; cur += two; i++; continue }
+    if(!d && two === sep){ out.push(cur); cur = ''; i++; continue } cur += line[i] }
+  out.push(cur); return out }
+function wikiAlbums(text){ const blocks = []; text = String(text || '').replace(/inhoud\s*=\s*#/g, 'inhoud=\n#');
+  for(const m of text.matchAll(/\{\|[^]*?\n\|\}/g)){ const rows = m[0].replace(/^\{\|[^\n]*/, '').split(/\n\|-[^\n]*/); let head = null; const ent = [];
+    for(const r of rows){ const cells = []; let isHead = false;
+      for(const ln of r.split('\n')){ const l = ln.trim(); if(!l) continue;
+        if(l[0] === '!'){ isHead = true; wikiSplit(l.slice(1), '!!').forEach(x => cells.push(wikiCell(x))) }
+        else if(l[0] === '|' && l[1] !== '}'){ wikiSplit(l.slice(1), '||').forEach(x => cells.push(wikiCell(x))) }
+        else if(cells.length) cells[cells.length - 1] += ' ' + wikiClean(l) }
+      if(!cells.length) continue;
+      if(isHead || cells.some(x => /^(nr\.?|nummer|titel|no\.?)$/i.test(x))){ if(cells.some(x => /^(nr\.?|nummer|titel|no\.?|vk)$/i.test(x))) head = cells; continue }
+      if(!head) continue;
+      const ix = re => head.findIndex(x => re.test(x)), nc = ix(/^vk$/i) >= 0 ? ix(/^vk$/i) : Math.max(0, ix(/^(nr\.?|nummer|no\.?|#)$/i)),
+        tc = ix(/titel|verhaal|album/i) >= 0 ? ix(/titel|verhaal|album/i) : nc + 1, yc = ix(/datum|jaar|druk|uitgave|verschen|^van$/i);
+      const mm = String(cells[nc] || '').match(/^\d+(?:[.,]\d+)?/), n = mm ? parseFloat(mm[0].replace(',', '.')) : NaN, t = cells[tc] || '';
+      if(isNaN(n) || !t) continue; ent.push({num:n, name:t, date:((yc >= 0 && cells[yc] || '').match(/\b(1[89]|20)\d\d\b/) || [''])[0]}) }
+    if(ent.length) blocks.push({table:true, ent}) }
+  let run = null;   // "# [[Title]]" lists (numbered 1, 2, 3 … by MediaWiki)
+  for(const ln of text.replace(/\{\|[^]*?\n\|\}/g, '').split('\n')){ const m = ln.match(/^#(?![#*:])\s*(.*)$/);
+    if(m){ if(!run) blocks.push(run = {table:false, ent:[], n:0}); run.n++; const t = wikiClean(m[1]).replace(/\s*\(\d{4}\)\s*$/, ''); if(t) run.ent.push({num:run.n, name:t.replace(/\}+\s*$/, '').trim(), date:(m[1].match(/\((\d{4})\)/) || [''])[1] || ''}) }
+    else if(ln.trim()) run = null }
+  const good = blocks.filter(b => b.ent.length >= 5).sort((a, b) => b.ent.length - a.ent.length); if(!good.length) return [];
+  const out = good[0].ent.slice(), have = new Set(out.map(e => numKey(e.num)));
+  for(const b of good.slice(1)) if(b.table && good[0].table && !b.ent.some(e => have.has(numKey(e.num)))){ out.push(...b.ent); b.ent.forEach(e => have.add(numKey(e.num))) }  // Nero: one table per newspaper, the numbers go on
+  const seen = new Set(); return out.filter(e => !seen.has(numKey(e.num)) && seen.add(numKey(e.num))).sort((a, b) => a.num - b.num)
+    .map(e => ({num:e.num, label:'#' + e.num, name:e.name, date:e.date, img:'', thumb:''})) }
+const wikiSerName = t => String(t).replace(/^lijst van (de )?(albums|verhalen|stripalbums|stripverhalen|delen)( van| uit)? /i, '').replace(/\s*\(.*\)\s*$/, '');
+async function wikiFind(name){ return discCache('wikis:' + norm(name), 14 * 864e5, async () => {
+    const j = await wikiGet({action:'query', list:'search', srsearch:'intitle:lijst ' + name, srlimit:15, srnamespace:0});
+    return ((j.query || {}).search || []).filter(r => /^lijst van (de )?(albums|verhalen|stripalbums|stripverhalen|delen)/i.test(r.title)).map(r => ({id:r.pageid, title:r.title, name:wikiSerName(r.title)})) }) }
+async function wikiPage(pageid){ return discCache('wikip:' + pageid, 14 * 864e5, async () => {
+    const j = await wikiGet({action:'parse', pageid, prop:'wikitext', redirects:1}); const p = j.parse || {};
+    if(!p.wikitext) throw new Error('Wikipedia: that page is gone'); return {id:p.pageid, title:p.title, name:wikiSerName(p.title), list:wikiAlbums(typeof p.wikitext === 'string' ? p.wikitext : p.wikitext['*'])} }) }
+function wikiHit(pg, books){ LISTS['w' + pg.id] = pg.list; return {id:'w' + pg.id, name:pg.name, start:(pg.list.find(i => i.date) || {}).date || '', pub:'', n:pg.list.length, cov:books ? covOf(pg.list, books) : 0, src:'wiki', at:Date.now()} }
+async function wikiSeries(books, force){ const k = 'wiki:' + cvKeyOf(books[0]), c = CV.cache(); if(!force && c[k] && (c[k].id || Date.now() - c[k].at < 14 * 864e5)) return c[k];
+  const name = bare(cvName(books[0])), cands = (await wikiFind(cvName(books[0]))).filter(p => bare(p.name) === name || bare(p.name).includes(name) || name.includes(bare(p.name)));
+  let best = null; for(const p of cands.slice(0, 2)){ const pg = await wikiPage(p.id); if(pg.list.length < 5) continue; const h = wikiHit(pg, books); if(!best || h.cov > best.cov) best = h; if(h.cov >= 1) break }
+  const hit = best || {id:0, at:Date.now()}, c2 = CV.cache(); c2[k] = hit; CV.save(c2); return hit }
+
+/* every issue of a list, from where it came from */
+async function allIssues(vid, onPage, fresh){ if(LISTS[vid] && !fresh) return LISTS[vid]; const s = srcOf(vid);
+  if(s === 'gcd'){ const j = await gcdGet(`https://www.comics.org/api/series/${String(vid).slice(1)}/`); if(!j) throw new Error('GCD does not know this series any more'); return LISTS[vid] = gcdIssueList(j) }
+  if(s === 'wiki'){ if(fresh) await dbDel('kv', 'disc:wikip:' + String(vid).slice(1)).catch(() => {}); return LISTS[vid] = (await wikiPage(String(vid).slice(1))).list }
+  return cvAllIssues(vid, onPage) }
+/* which sources a shelf may use right now */
+const srcPref = sh => shelfOf(sh).src || 'auto';
+function srcOrder(sh){ const p = srcPref(sh); return (p === 'auto' ? ['cv', 'gcd', 'wiki'] : [p]).filter(s => !(BLOCK[s] > Date.now()) && (s !== 'cv' || CV.key()) && (s !== 'gcd' || canGcd())) }
+const canLookOnline = sh => srcOrder(sh).length > 0;
+const whyNoSource = sh => { const p = srcPref(sh); return p === 'cv' && !CV.key() ? 'nokey' : p === 'gcd' && !canGcd() ? 'GCD (comics.org) can only be reached from the Nightvault Android app' : BLOCK[p] > Date.now() ? SRC_NAME[p] + ' said: too many requests – try again in an hour' : '' };
+/* the best series for these books: a series you picked by hand wins; then each source in turn, until one holds all your numbers */
+async function findSeries(sh, books, force){ const k = cvKeyOf(books[0]), c = CV.cache(); if(c['pick:' + k] && c['pick:' + k].id) return c['pick:' + k];
+  const order = srcOrder(sh); if(!order.length){ const w = whyNoSource(sh); throw Object.assign(new Error(w === 'nokey' ? 'Type your Comic Vine key first (shelf ⚙ → Online)' : w || 'Nothing to look in'), {nokey:w === 'nokey'}) }
+  const maxN = Math.max(0, ...books.map(b => b.num || 0)); let best = null, pub = '';
+  for(const s of order){ let hit;
+    try{ hit = s === 'cv' ? await cvSeries(books, force) : s === 'gcd' ? await gcdSeries(books, force) : await wikiSeries(books, force) }
+    catch(e){ if(e.limit) BLOCK[s] = Date.now() + 3600e3; if(order.length === 1) throw e; LE('src', SRC_NAME[s] + ' ' + cvName(books[0]), e); continue }
+    if(!hit || !hit.id) continue; if(hit.pub && !pub) pub = hit.pub;
+    const cov = s === 'cv' ? (!maxN || hit.n >= maxN ? 1 : (hit.n || 0) / maxN) : hit.cov || 0;
+    if(!best || cov > best.cov){ best = Object.assign({}, hit, {cov, src:s}) } if(cov >= 1) break }
+  if(best && !best.pub && pub) best.pub = pub;
+  return best || {id:0} }
 
 /* =====================================================================================================================
    COLLECTION LISTS (like the card binder): every issue of a series from Comic Vine – grey when you don't have it, in colour when you
@@ -1354,7 +1506,7 @@ const colsOf = sh => Object.values(COLS).filter(c => c.shelf === sh);
 const numKey = n => String(parseFloat(n));
 /* your digital copies of a list: number → book */
 function colDigital(c){ const m = {}; for(const b of inShelf(c.shelf)){ if(b.num == null) continue;
-    if((b.cv && b.cv.id === c.vid) || (!b.cv && b.series && norm(b.series) === norm(c.name))) if(!m[numKey(b.num)]) m[numKey(b.num)] = b }
+    if((b.cv && b.cv.id === c.vid) || (b.series && (!b.cv || srcOf(b.cv.id) !== srcOf(c.vid)) && bare(b.series) === bare(c.name))) if(!m[numKey(b.num)]) m[numKey(b.num)] = b }
   return m }
 function colStats(c){ const d = colDigital(c), have = c.issues.filter(i => d[numKey(i.num)] || (c.phys || {})[numKey(i.num)]).length,
     price = Object.values(c.phys || {}).reduce((a, x) => a + (+x.price || 0), 0);
@@ -1370,7 +1522,7 @@ async function cvAllIssues(vid, onPage){ const out = []; for(let off = 0; off < 
 async function colAdd(sh, v, quiet){ /* v: {id, name, start_year|start, publisher|pub, count_of_issues|count} */
   const vid = v.id; if(COLS[vid]) return COLS[vid];
   if(!quiet) sheet(`<h3>Getting the issues of ${esc(v.name)}…</h3><div class="prog busy"><i></i></div><div class="muted small" id="cas"></div>`, true);
-  const issues = await cvAllIssues(vid, (n, t) => { const s = $('#cas'); if(s) s.textContent = `${n} of ${t || '?'} issues` });
+  const issues = await allIssues(vid, (n, t) => { const s = $('#cas'); if(s) s.textContent = `${n} of ${t || '?'} issues` });
   const c = {id:'col:' + vid, vid, shelf:sh, name:v.name, start:v.start_year || v.start || '', pub:(v.publisher && v.publisher.name) || v.pub || '', count:issues.length, issues, phys:{}, at:Date.now()};
   COLS[vid] = c; await colSave(c); if(!quiet) closeSheet(); return c }
 
@@ -1383,7 +1535,7 @@ function drawCol(v){ const s = shelfOf(v.shelf), cs = colsOf(v.shelf), q = norm(
   $('#vtitle').textContent = s.name; document.title = 'Collection · ' + s.name;
   let h = colTabs(v.shelf, 'col');
   h += `<div class="mbar"><button class="btn primary sm" id="coladd">+ Add a series</button><button class="btn sm" id="coldisc">Discover</button><button class="btn sm" id="colmine">Add the series I have</button></div>`;
-  if(!cs.length){ h += `<div class="empty"><h2 style="margin:4px 0;font-size:17px">No collection lists yet</h2><p class="muted small" style="margin:0 0 6px">A list shows every issue of a series from Comic Vine: grey when you don't have it, in colour when you do (D = digital, P = on paper).</p><p class="muted small" style="margin:0">Tap <b>+ Add a series</b> to pick one, or <b>Add the series I have</b> for the series of your comics that were looked up on Comic Vine.</p></div>`; $('#body').innerHTML = h; hookCol(v); return }
+  if(!cs.length){ h += `<div class="empty"><h2 style="margin:4px 0;font-size:17px">No collection lists yet</h2><p class="muted small" style="margin:0 0 6px">A list shows every issue of a series (from Comic Vine, GCD or Wikipedia): grey when you don't have it, in colour when you do (D = digital, P = on paper).</p><p class="muted small" style="margin:0">Tap <b>+ Add a series</b> to pick one, or <b>Add the series I have</b> for the series of your comics that were looked up online.</p></div>`; $('#body').innerHTML = h; hookCol(v); return }
   const all = cs.map(colStats), tot = all.reduce((a, x) => ({have:a.have + x.have, total:a.total + x.total, price:a.price + x.price}), {have:0, total:0, price:0});
   h += `<input type="search" id="colq" placeholder="Search your lists" value="${esc(Q['col:' + v.shelf] || '')}" style="margin:2px 0 8px"><div class="mtot">${plural(cs.length, 'series', 'series')} · ${tot.have} of ${tot.total} issues${tot.price ? ' · paper ' + money(tot.price) : ''}</div>`;
   const byPub = {}; for(const c of cs) if(!q || norm(c.name + ' ' + c.pub).includes(q)) (byPub[cleanPub(c.pub) || 'Other'] = byPub[cleanPub(c.pub) || 'Other'] || []).push(c);
@@ -1393,27 +1545,28 @@ const colTabs = (sh, on) => `<div class="chips"><button class="chip ${on === 'bo
 const showColTabs = sh => colsOf(sh).length || shelfOf(sh).byPub;
 function hookCol(v){ const a = $('#coladd'); if(a) a.onclick = () => colSearch(v.shelf); const dz = $('#coldisc'); if(dz) dz.onclick = () => CV.key() ? go({v:'disc', shelf:v.shelf, tab:'week'}) : cvKeySheet(() => go({v:'disc', shelf:v.shelf, tab:'week'})); const m = $('#colmine'); if(m) m.onclick = () => colMine(v.shelf);
   const q = $('#colq'); if(q) q.oninput = () => { Q['col:' + v.shelf] = q.value; clearTimeout(q._t); q._t = setTimeout(() => { const p = q.selectionStart; draw(); const n = $('#colq'); if(n){ n.focus(); try{ n.setSelectionRange(p, p) }catch(e){} } }, 250) } }
-/* + Add a series: search Comic Vine, tap one */
-function colSearch(sh, pre){ if(!CV.key()) return cvKeySheet(() => colSearch(sh, pre));
-  sheet(`<h3>Add a series</h3><div style="display:flex;gap:8px"><input type="search" id="csq" placeholder="Series name, like Saga or Amazing Spider-Man" value="${esc(pre || '')}"><button class="btn primary" id="csgo">Search</button></div>
+/* + Add a series: search Comic Vine, GCD or Wikipedia, tap one */
+function colSearch(sh, pre){ let src = firstSrc(sh), rows = [], pub = '';
+  sheet(`<h3>Add a series</h3>${srcChips(src)}<div style="display:flex;gap:8px"><input type="search" id="csq" placeholder="Series name, like Saga or Suske en Wiske" value="${esc(pre || '')}"><button class="btn primary" id="csgo">Search</button></div>
     <div class="chips" id="cspubs"></div><div class="muted small" id="csst" style="margin:6px 0"></div><div id="csres"></div><button class="btn" style="width:100%;margin-top:10px" onclick="closeSheet()">Close</button>`);
-  let res = [], pub = '';
-  const show = () => { const list = res.filter(v => !pub || cleanPub(v.publisher && v.publisher.name) === pub);
-    const pubs = [...new Set(res.map(v => cleanPub(v.publisher && v.publisher.name)).filter(Boolean))].sort(coll.compare);
+  const show = () => { const list = rows.map((r, n) => [r, n]).filter(([r]) => !pub || r.pub === pub);
+    const pubs = [...new Set(rows.map(r => r.pub).filter(Boolean))].sort(coll.compare);
     $('#cspubs').innerHTML = pubs.length > 1 ? [''].concat(pubs).map(p => `<button class="chip ${p === pub ? 'on' : ''}" data-cpub="${esc(p)}">${p ? esc(p) : 'All publishers'}</button>`).join('') : '';
-    $('#csres').innerHTML = list.map(v => `<div class="li" data-cadd="${v.id}"><span class="th"><div class="cv">${v.image && v.image.thumb_url ? `<img class="f" src="${esc(v.image.thumb_url)}" alt="" style="object-fit:cover">` : ''}</div></span><div class="n"><div>${esc(v.name)} (${v.start_year || '?'})</div><div class="s">${esc(cleanPub(v.publisher && v.publisher.name) || '?')} · ${plural(v.count_of_issues || 0, 'issue')}</div></div><span class="r">${COLS[v.id] ? '✓ in your lists' : ''}</span></div>`).join('') };
-  const run = async () => { const q = $('#csq').value.trim(); if(!q) return; $('#csst').textContent = 'Searching…'; $('#csres').innerHTML = '';
-    try{ const j = await cvGet('search', {resources:'volume', query:q, limit:40, field_list:'id,name,start_year,publisher,count_of_issues,image'}); res = (j.results || []).sort((a, b) => (b.count_of_issues || 0) - (a.count_of_issues || 0)); pub = '';
-      $('#csst').textContent = res.length ? 'Tap a series to add its list' : 'Nothing found - try other words'; show() }catch(e){ $('#csst').textContent = e.message || String(e) } };
+    $('#csres').innerHTML = list.map(([r, n]) => `<div class="li" data-cadd="${n}"><span class="th"><div class="cv">${r.thumb}</div></span><div class="n"><div>${esc(r.name)}${r.start ? ` (${esc(r.start)})` : ''}</div><div class="s">${r.sub}</div></div><span class="r">${COLS[r.key] ? '✓ in your lists' : ''}</span></div>`).join('') };
+  const run = async () => { const q = $('#csq').value.trim(); if(!q) return; $('#csst').textContent = 'Searching…'; $('#csres').innerHTML = ''; $('#cspubs').innerHTML = ''; const me = src;
+    if(src === 'cv' && !CV.key()){ $('#csst').innerHTML = 'Comic Vine needs your free key. <button class="btn sm" id="csk">Type it</button>'; $('#csk').onclick = () => cvKeySheet(() => colSearch(sh, q)); return }
+    if(src === 'gcd' && !canGcd()){ $('#csst').textContent = 'GCD (comics.org) can only be reached from the Nightvault Android app'; return }
+    try{ rows = await srcSearch(src, q, []); if(me !== src) return; pub = ''; $('#csst').textContent = rows.length ? 'Tap a series to add its list' : 'Nothing found - try other words'; show() }catch(e){ $('#csst').textContent = e.message || String(e) } };
   $('#csgo').onclick = run; $('#csq').onkeydown = e => { if(e.key === 'Enter') run() }; setTimeout(() => $('#csq').focus(), 50); if(pre) run();
-  $('.sheet').addEventListener('click', async e => { const p = e.target.closest('[data-cpub]'); if(p){ pub = p.dataset.cpub; return show() }
-    const r = e.target.closest('[data-cadd]'); if(!r) return; const v = res.find(x => String(x.id) === r.dataset.cadd);
-    try{ const c = await colAdd(sh, v); go({v:'colser', shelf:sh, vid:c.vid}) }catch(err){ toast(err.message || String(err), 5000) } }) }
+  $('.sheet').addEventListener('click', async e => { const ch = e.target.closest('[data-src]'); if(ch){ src = ch.dataset.src; $('#srcch').querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === ch)); return run() }
+    const p = e.target.closest('[data-cpub]'); if(p){ pub = p.dataset.cpub; return show() }
+    const r = e.target.closest('[data-cadd]'); if(!r) return; const row = rows[+r.dataset.cadd];
+    try{ if(COLS[row.key]) return go({v:'colser', shelf:sh, vid:row.key}); $('#csst').textContent = 'Getting the list…'; const hit = await row.hit(); const c = await colAdd(sh, hit); go({v:'colser', shelf:sh, vid:c.vid}) }catch(err){ toast(err.message || String(err), 5000) } }) }
 /* Add the series I have: every Comic Vine series of the comics on this shelf */
-async function colMine(sh){ if(!CV.key()) return cvKeySheet(() => colMine(sh));
+async function colMine(sh){
   const want = {}; for(const b of inShelf(sh)) if(b.cv && b.cv.id && !COLS[b.cv.id]) want[b.cv.id] = {id:b.cv.id, name:b.cv.name, start:b.cv.start, pub:b.cvPub || publisherOf(b)};
-  const list = Object.values(want);
-  if(!list.length){ toast(inShelf(sh).some(b => b.cv) ? 'All your looked-up series already have a list' : 'First look your comics up on Comic Vine (shelf ⚙ → Online)', 5000); return }
+  const list = Object.values(want); if(!CV.key() && list.some(v => srcOf(v.id) === 'cv')) return cvKeySheet(() => colMine(sh));
+  if(!list.length){ toast(inShelf(sh).some(b => b.cv) ? 'All your looked-up series already have a list' : 'First look your comics up online (shelf ⚙ → Online)', 5000); return }
   awake(true); let stop = false, n = 0;
   sheet(`<h3>Making ${plural(list.length, 'list')}…</h3><div class="prog"><i id="cmp"></i></div><div class="muted small" id="cms"></div><button class="btn" id="cmstop" style="width:100%;margin-top:8px">Stop</button>`, true);
   $('#cmstop').onclick = () => { stop = true };
@@ -1424,7 +1577,7 @@ async function colMine(sh){ if(!CV.key()) return cvKeySheet(() => colMine(sh));
 /* one series: every issue */
 function issueGridHTML(c, pass){ const d = colDigital(c), P = c.phys || {};
   return `<div class="grid">${c.issues.filter(pass).map(i => { const k = numKey(i.num), b = d[k], p = P[k], own = b || p;
-      const cov = b ? coverHTML(b) : `<div class="cv">${i.thumb ? `<img class="b" src="${esc(i.thumb)}" alt="" loading="lazy"><img class="f" src="${esc(i.thumb)}" alt="" loading="lazy">` : phHTML({title:c.name, shelf:c.shelf}, c.name + ' ' + i.label)}</div>`;
+      const cov = b ? coverHTML(b) : `<div class="cv">${i.thumb ? `<img class="b" src="${esc(i.thumb)}" alt="" loading="lazy"><img class="f" src="${esc(i.thumb)}" alt="" loading="lazy">` : phHTML({title:c.name, shelf:c.shelf}, c.name)}</div>`;
       return `<div class="bk iss ${own ? '' : 'miss'}" data-iss="${esc(k)}">${cov.replace(/<\/div>$/, `<span class="vol">${esc(i.label)}</span>${b ? '<span class="bd dg">D</span>' : ''}${p ? `<span class="bd pp${b ? '' : ' solo'}">P</span>` : ''}</div>`)}<div class="t">${esc(i.name || c.name + ' ' + i.label)}</div><div class="a">${esc([i.date.slice(0, 4), p && p.price ? money(+p.price) : ''].filter(Boolean).join(' · ') || ' ')}</div></div>` }).join('')}</div>`; }
 function drawColSer(v){ const c = COLS[v.vid]; if(!c){ V.pop(); return draw() } const d = colDigital(c), st = colStats(c), f = S.filter['colser'] || 'all';
   $('#vtitle').textContent = ''; document.title = c.name + ' · Collection';
@@ -1438,7 +1591,7 @@ function drawColSer(v){ const c = COLS[v.vid]; if(!c){ V.pop(); return draw() } 
   $('#body').querySelectorAll('[data-csf]').forEach(b => b.onclick = () => { S.filter['colser'] = b.dataset.csf; saveS(); draw() });
   $('#body').querySelectorAll('[data-iss]').forEach(el => el.onclick = () => issueSheet(c, c.issues.find(i => numKey(i.num) === el.dataset.iss))) }
 function issueSheet(c, i){ const k = numKey(i.num), b = colDigital(c)[k], p = (c.phys || {})[k], title = `${c.name} ${i.label}`;
-  sheet(`<div style="display:flex;gap:14px;align-items:flex-start">${i.img ? `<img src="${esc(i.img)}" alt="" style="width:110px;border-radius:8px;flex:none">` : ''}<div style="min-width:0"><h3 style="margin:0 0 4px">${esc(title)}</h3>
+  sheet(`<div style="display:flex;gap:14px;align-items:flex-start">${i.img ? `<img src="${esc(i.img)}" alt="" style="width:110px;border-radius:8px;flex:none">` : ''}<div style="min-width:0"><h3 style="margin:0 0 4px" data-issk="${esc(c.vid + ':' + k)}">${esc(title)}</h3>
       ${i.name ? `<div class="muted small">${esc(i.name)}</div>` : ''}<div class="muted small">${esc(i.date || '')}</div>
       <div style="margin-top:8px;display:flex;gap:6px">${b ? '<span class="bd dg" style="position:static">D</span> <span class="small">Digital – in Bookcase</span>' : ''}${p ? '<span class="bd pp" style="position:static">P</span> <span class="small">On paper</span>' : ''}${!b && !p ? '<span class="small muted">You don\'t have this one yet</span>' : ''}</div></div></div>
     ${b ? `<button class="btn primary" id="isopen" style="width:100%;margin-top:12px">${started(b) ? 'Continue reading' : 'Read'}</button>` : ''}
@@ -1446,6 +1599,7 @@ function issueSheet(c, i){ const k = numKey(i.num), b = colDigital(c)[k], p = (c
     <div class="opt" id="isprow" ${p && c.id ? '' : 'hidden'}><label for="ispr">Price or value (optional)</label><input type="number" id="ispr" step="0.01" min="0" value="${p && p.price ? esc(p.price) : ''}" style="width:110px" placeholder="€"></div>
     ${!b ? `<div class="sec">Find it</div><div class="mlist">${sites().map((x, n) => `<button class="btn" data-site="${n}">Find it on ${esc(x.name)}</button>`).join('')}<button class="btn" id="iscopy">Copy “${esc(title)}”</button></div>` : ''}`);
   if($('#isopen')) $('#isopen').onclick = () => { closeSheet(); openReader(b) };
+  if(!i.img && i.gid && !i.gcdDone && canGcd()) gcdCover(c, i).then(ok => { if(!ok) return; const open = !!$(`[data-issk="${CSS.escape(c.vid + ':' + k)}"]`); if(['colser', 'group'].includes(cur().v)) draw(); if(open) issueSheet(c, i) }).catch(e => LE('gcd', 'cover', e));
   const saveP = async () => { c.phys = c.phys || {}; if($('#isph').checked){ c.phys[k] = {price:$('#ispr').value.trim(), at:(c.phys[k] || {}).at || Date.now()} } else delete c.phys[k]; await colSave(c); draw() };
   if($('#isph')){ $('#isph').onchange = () => { $('#isprow').hidden = !$('#isph').checked; saveP() }; $('#ispr').onchange = saveP }
   if($('#iscopy')) $('#iscopy').onclick = () => copyText(title);
@@ -1454,7 +1608,7 @@ function colMenu(c){ sheet(`<h3>${esc(c.name)}</h3><div class="mlist"><button cl
   $('#cmphys').onclick = async () => { const t = await ask('Which issues do you have on paper?', 'Like 1-12, 15, 20', '', 'Mark them'); if(!t) return; const want = new Set();
     for(const part of t.split(/[,; ]+/)){ const m = part.match(/^#?(\d+(?:\.\d+)?)(?:-#?(\d+(?:\.\d+)?))?$/); if(!m) continue; const a = +m[1], z = m[2] != null ? +m[2] : a; for(const i of c.issues) if(i.num >= a && i.num <= z) want.add(numKey(i.num)) }
     c.phys = c.phys || {}; for(const k of want) c.phys[k] = c.phys[k] || {price:'', at:Date.now()}; await colSave(c); draw(); toast(`${plural(want.size, 'issue')} marked as on paper`) };
-  $('#cmnew').onclick = async () => { closeSheet(); try{ const old = c.issues.length; c.issues = await cvAllIssues(c.vid); c.count = c.issues.length; c.at = Date.now(); await colSave(c); draw(); toast(c.issues.length > old ? `${plural(c.issues.length - old, 'new issue')}` : 'No new issues') }catch(e){ toast(e.message || String(e), 5000) } };
+  $('#cmnew').onclick = async () => { closeSheet(); try{ const old = c.issues.length; c.issues = await allIssues(c.vid, null, true); c.count = c.issues.length; c.at = Date.now(); await colSave(c); draw(); toast(c.issues.length > old ? `${plural(c.issues.length - old, 'new issue')}` : 'No new issues') }catch(e){ toast(e.message || String(e), 5000) } };
   $('#cmcopy').onclick = () => { const d = colDigital(c), P = c.phys || {}; copyText(c.issues.filter(i => !d[numKey(i.num)] && !P[numKey(i.num)]).map(i => `${c.name} ${i.label}`).join('\n')) };
   $('#cmdel').onclick = async () => { if(!confirm(`Remove the list “${c.name}”? Your comics stay.`)) return; await dbDel('kv', c.id); delete COLS[c.vid]; closeSheet(); V.pop(); draw() } }
 
@@ -1481,9 +1635,9 @@ const grVid = g => { const b = (g.all || g.items || []).find(x => x.cv && x.cv.i
 async function serEnsure(sh, g){ const k = sh + '|' + g.key; if(SERLOAD[k] === 'busy') return; SERLOAD[k] = 'busy';
   const say = t => { const el = $('#serload'); if(el) el.textContent = t };
   try{ let vid = grVid(g);
-    if(!vid){ say('Finding this series on Comic Vine…'); const books = g.items.filter(b => cvName(b)); if(!books.length){ SERLOAD[k] = 'none'; return }
-      const hit = await cvSeries(books); if(!hit.id){ SERLOAD[k] = 'none'; return redrawIf(g) } await cvApply(books, hit, false); regroup(); vid = hit.id }
-    if(!COLS[vid]){ say('Getting every issue from Comic Vine…'); const b = (g.all || g.items).find(x => x.cv && x.cv.id === vid) || g.items[0];
+    if(!vid){ say('Finding this series online…'); const books = g.items.filter(b => cvName(b)); if(!books.length){ SERLOAD[k] = 'none'; return }
+      const hit = await findSeries(sh, books); if(!hit.id){ SERLOAD[k] = 'none'; return redrawIf(g) } await cvApply(books, hit, false); regroup(); vid = hit.id }
+    if(!COLS[vid]){ say(`Getting every issue from ${SRC_NAME[srcOf(vid)]}…`); const b = (g.all || g.items).find(x => x.cv && x.cv.id === vid) || g.items[0];
       await colAdd(sh, {id:vid, name:b.cv ? b.cv.name : g.name, start:b.cv ? b.cv.start : '', pub:b.cvPub || publisherOf(b)}, true) }
     SERLOAD[k] = 'done' }
   catch(e){ SERLOAD[k] = 'err:' + (e.message || String(e)); LE('cv', 'series list ' + g.name, e) }
