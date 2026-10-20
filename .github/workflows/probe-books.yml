@@ -15,31 +15,34 @@ jobs:
       - name: Ask
         run: |
           set +e
-          exec > /tmp/out.txt 2>&1
-          UA="NightvaultBookcase/1.0 (personal app; github.com/brokeuh)"
-          g(){ echo; echo "===== $1"; curl -sS -m 30 -A "$UA" -D /tmp/h -o /tmp/b "$1"; grep -i -E "^HTTP|access-control|content-type|retry|ratelimit|x-rate" /tmp/h; head -c ${2:-2500} /tmp/b; echo; }
-          python3 - <<'PY'
-          import json, urllib.request, time
+          mkdir -p /tmp/raw
+          python3 - <<'PY' > /tmp/out.txt 2>&1
+          import json, urllib.request, urllib.parse, time
           UA = {"User-Agent": "NightvaultBookcase/1.0 (personal app; github.com/brokeuh)"}
-          def get(u):
-              time.sleep(1.5); r = urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=30); return r.status, dict(r.headers), r.read().decode()
-          for q in ["jommeke", "suske%20en%20wiske", "kiekeboe", "nero", "de%20rode%20ridder", "agent%20327"]:
-              u = f"https://www.comics.org/api/series/name/{q}/?format=json"; n = 0
-              print("\n#####", q)
-              while u and n < 4:
-                  st, h, b = get(u); j = json.loads(b); n += 1
-                  for s in j["results"]:
-                      print(f'  {s["name"]} | {s["country"]}/{s["language"]} | {s["year_began"]}-{s["year_ended"]} | {len(s["active_issues"])} issues | {s["publisher"].split("/publisher/")[1].split("/")[0]} | {s["api_url"].split("/series/")[1].split("/")[0]} | first: {s["issue_descriptors"][:3]}')
-                  u = j.get("next")
-          st, h, b = get("https://www.comics.org/api/issue/1294988/?format=json"); print("\n##### ISSUE", st, {k: v for k, v in h.items() if k.lower().startswith(("access", "content-type", "x-"))}); print(b[:3000])
-          st, h, b = get("https://www.comics.org/api/publisher/3033/?format=json"); print("\n##### PUBLISHER", b[:800])
-          st, h, b = get("https://www.comics.org/api/series/85346/?format=json"); print("\n##### SERIES", b[:600])
+          def get(u, f=None):
+              time.sleep(3.2)
+              try:
+                  r = urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=30); b = r.read().decode(); h = dict(r.headers)
+              except Exception as e:
+                  print("ERR", u, e); return ""
+              print("OK", u, {k: v for k, v in h.items() if k.lower().startswith(("access", "x-rate", "retry"))})
+              if f: open("/tmp/raw/" + f, "w").write(b)
+              return b
+          get("https://www.comics.org/api/series/name/kiekeboe/?format=json", "gcd_kiekeboe.json")
+          get("https://www.comics.org/api/series/26417/?format=json", "gcd_sw26417.json")
+          for i in ["https://www.comics.org/api/issue/1294988/?format=json"]: pass
+          s = json.loads(open("/tmp/raw/gcd_sw26417.json").read() or "{}")
+          for n, u in enumerate((s.get("active_issues") or [])[:2] + (s.get("active_issues") or [])[200:201]):
+              get(u, f"gcd_issue{n}.json")
+          W = "https://nl.wikipedia.org/w/api.php?"
+          for t in ["Lijst van albums van Jommeke", "Lijst van verhalen van Suske en Wiske", "Lijst van albums van De Kiekeboes", "Lijst van albums van Nero", "Lijst van albums van De Rode Ridder", "Lijst van albums van Urbanus"]:
+              get(W + urllib.parse.urlencode({"action": "parse", "page": t, "prop": "wikitext", "format": "json", "redirects": 1}), "wiki_" + t.split(" van ")[-1].replace(" ", "_") + ".json")
+          for q in ["Kiekeboe", "Nero", "Rode Ridder", "Urbanus", "Bessy", "Lucky Luke"]:
+              get(W + urllib.parse.urlencode({"action": "query", "list": "search", "srsearch": "intitle:lijst " + q, "srlimit": 8, "format": "json"}), "wsearch_" + q.replace(" ", "_") + ".json")
           PY
-          g "https://nl.wikipedia.org/w/api.php?action=parse&page=Lijst_van_verhalen_van_Suske_en_Wiske&prop=wikitext&format=json&origin=*&redirects=1" 3000
-          g "https://nl.wikipedia.org/w/api.php?action=parse&page=Lijst_van_Jommekesalbums&prop=wikitext&section=2&format=json&origin=*&redirects=1" 2500
       - name: Save the answers on the branch probe-books (not main)
         run: |
-          cd /tmp && rm -rf p && mkdir p && cd p && git init -q && cp /tmp/out.txt answers.txt
+          cd /tmp && rm -rf p && mkdir p && cd p && git init -q && cp /tmp/out.txt answers.txt && cp -r /tmp/raw raw
           git config user.name card-bot; git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add answers.txt && git commit -q -m "GCD / Wikipedia answers"
+          git add -A && git commit -q -m "GCD / Wikipedia answers"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:refs/heads/probe-books
