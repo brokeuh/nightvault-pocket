@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 87,
+   "date": "2026-10-20",
+   "where": [
+    "android"
+   ],
+   "apps": [
+    "games"
+   ],
+   "title": "Android app: asks for less (Google Play Protect)",
+   "items": [
+    "Google Play Protect blocked the last Android update. The app had started asking to see every installed app (for Games' emulator buttons) – together with screen capture that looks suspicious to Google.",
+    "Now the app only asks about the emulators Games knows (RetroArch, PPSSPP, Dolphin, DuckStation …). Everything works the same."
+   ]
+  },
+  {
    "id": 86,
    "date": "2026-10-20",
    "where": [

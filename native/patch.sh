@@ -14,9 +14,14 @@ grep -q 'android.permission.CAMERA' "$M" || sed -i 's#<uses-permission android:n
 # Take with me: the app talks to the owner's PC on the home network over plain http (NvPcPlugin) - Android blocks that unless allowed
 grep -q 'usesCleartextTraffic' "$M" || sed -i 's#<application#<application android:usesCleartextTraffic="true"#' "$M"
 grep -q 'usesCleartextTraffic' "$M"
-# Games: see which emulator apps are installed (NvLaunch) - Android 11+ hides other apps unless asked
-grep -q 'QUERY_ALL_PACKAGES' "$M" || sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />#' "$M"
-grep -q 'QUERY_ALL_PACKAGES' "$M"
+# Games: see which emulator apps are installed (NvLaunch). Only the emulator packages listed in games/play.js are made visible
+# (<queries>) - NOT QUERY_ALL_PACKAGES: together with screen capture and the overlay that made Google Play Protect block the app (20 Oct).
+Q=$(grep -o "pkgs:\[[^]]*\]" ../games/play.js | grep -o "'[^']*'" | tr -d "'" | sort -u | sed 's#.*#        <package android:name="&" />#' | tr '\n' '~')
+[ -n "$Q" ] || { echo "no emulator packages found in games/play.js"; exit 1; }
+grep -q '<queries>' "$M" || sed -i "s#</manifest>#    <queries>~${Q}    </queries>~</manifest>#" "$M"
+sed -i 's#~#\n#g' "$M"
+! grep -q 'QUERY_ALL_PACKAGES' "$M"
+grep -q 'com.retroarch' "$M"
 # icon
 R=android/app/src/main/res
 rm -rf "$R/mipmap-anydpi-v26"
