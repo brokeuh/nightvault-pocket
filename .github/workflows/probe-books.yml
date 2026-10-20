@@ -5,6 +5,9 @@ name: Bookcase - look at GCD and Wikipedia
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -12,6 +15,7 @@ jobs:
       - name: Ask
         run: |
           set +e
+          exec > /tmp/out.txt 2>&1
           UA="NightvaultBookcase/1.0 (personal app; github.com/brokeuh)"
           g(){ echo; echo "===== $1"; curl -sS -m 30 -A "$UA" -D /tmp/h -o /tmp/b "$1"; grep -i -E "^HTTP|access-control|content-type|retry|ratelimit|x-rate" /tmp/h; head -c ${2:-2500} /tmp/b; echo; }
           g "https://www.comics.org/api/series/name/jommeke/?format=json" 4000
@@ -24,3 +28,9 @@ jobs:
           g "https://nl.wikipedia.org/w/api.php?action=opensearch&search=Lijst%20van%20Jommeke&limit=5&format=json&origin=*" 1500
           g "https://nl.wikipedia.org/w/api.php?action=opensearch&search=Lijst%20van%20verhalen%20van%20Suske%20en%20Wiske&limit=5&format=json&origin=*" 1500
           g "https://nl.wikipedia.org/w/api.php?action=parse&page=Lijst_van_albums_van_Jommeke&prop=wikitext&format=json&origin=*&redirects=1" 3500
+      - name: Save the answers on the branch probe-books (not main)
+        run: |
+          cd /tmp && rm -rf p && mkdir p && cd p && git init -q && cp /tmp/out.txt answers.txt
+          git config user.name card-bot; git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add answers.txt && git commit -q -m "GCD / Wikipedia answers"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:refs/heads/probe-books
