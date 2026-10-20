@@ -1,0 +1,17 @@
+OK https://www.comics.org/api/series/name/kiekeboe/?format=json {}
+OK https://www.comics.org/api/series/26417/?format=json {}
+OK https://www.comics.org/api/issue/373688/?format=json {}
+OK https://www.comics.org/api/issue/2565218/?format=json {}
+OK https://www.comics.org/api/issue/920886/?format=json {}
+OK https://nl.wikipedia.org/w/api.php?action=parse&page=Lijst+van+albums+van+Jommeke&prop=wikitext&format=json&redirects=1 {}
+OK https://nl.wikipedia.org/w/api.php?action=parse&page=Lijst+van+verhalen+van+Suske+en+Wiske&prop=wikitext&format=json&redirects=1 {}
+OK https://nl.wikipedia.org/w/api.php?action=parse&page=Lijst+van+albums+van+De+Kiekeboes&prop=wikitext&format=json&redirects=1 {}
+OK https://nl.wikipedia.org/w/api.php?action=parse&page=Lijst+van+albums+van+Nero&prop=wikitext&format=json&redirects=1 {}
+OK https://nl.wikipedia.org/w/api.php?action=parse&page=Lijst+van+albums+van+De+Rode+Ridder&prop=wikitext&format=json&redirects=1 {}
+OK https://nl.wikipedia.org/w/api.php?action=parse&page=Lijst+van+albums+van+Urbanus&prop=wikitext&format=json&redirects=1 {}
+OK https://nl.wikipedia.org/w/api.php?action=query&list=search&srsearch=intitle%3Alijst+Kiekeboe&srlimit=8&format=json {}
+OK https://nl.wikipedia.org/w/api.php?action=query&list=search&srsearch=intitle%3Alijst+Nero&srlimit=8&format=json {}
+OK https://nl.wikipedia.org/w/api.php?action=query&list=search&srsearch=intitle%3Alijst+Rode+Ridder&srlimit=8&format=json {}
+OK https://nl.wikipedia.org/w/api.php?action=query&list=search&srsearch=intitle%3Alijst+Urbanus&srlimit=8&format=json {}
+ERR https://nl.wikipedia.org/w/api.php?action=query&list=search&srsearch=intitle%3Alijst+Bessy&srlimit=8&format=json HTTP Error 429: Too Many Requests
+ERR https://nl.wikipedia.org/w/api.php?action=query&list=search&srsearch=intitle%3Alijst+Lucky+Luke&srlimit=8&format=json HTTP Error 429: Too Many Requests
