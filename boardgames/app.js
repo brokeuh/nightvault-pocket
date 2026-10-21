@@ -35,18 +35,21 @@ let NvBgg = null; if(NATIVE) try{ NvBgg = Capacitor.registerPlugin('NvBgg') }cat
    items : games and pieces added by hand {id:'own:…', shelf, name, type:'game'|'expansion', base, year, players:[a,b], time:[a,b], age, notes, forGame, count, paint, added}
    plays : plays logged here {id, game:<item id>, date, players:[{n, u, s, w}], sent:'wait'|'yes'|'fail'|'here'|'web', err, bggPlay, sentAt, at}
    pics  : {id, blob}  ('it:<item id>' own picture of an item, 'grp:<shelf>:<group key>' a group's own picture)
-   kv    : {id:'bgg', data} the last BoardGameGeek file (so the shelf works offline) */
+   kv    : {id:'bgg', data} the last BoardGameGeek file (so the shelf works offline)
+   files : (v2) a game's own files – rulebook, errata, player aids, fan-made … {id, game:<item id> | 'grp:<shelf>:<group key>', kind, name, fname, size, type, added}
+   blobs : (v2) {id, blob} the file itself (apart, so the automatic backup keeps the list but not the big files) */
 let DB = null;
-function openDB(){ return new Promise((ok, no) => { const r = indexedDB.open('nvBoard', 1);
-  r.onupgradeneeded = () => { const d = r.result; for(const s of ['items', 'plays', 'pics', 'kv']) if(!d.objectStoreNames.contains(s)) d.createObjectStore(s, {keyPath:'id'}) };
+function openDB(){ return new Promise((ok, no) => { const r = indexedDB.open('nvBoard', 2);
+  r.onupgradeneeded = () => { const d = r.result; for(const s of ['items', 'plays', 'pics', 'kv', 'files', 'blobs']) if(!d.objectStoreNames.contains(s)) d.createObjectStore(s, {keyPath:'id'}) };
   r.onblocked = () => toast('Close the other Boardgames tab, then reload', 6000);
-  r.onsuccess = () => ok(DB = r.result); r.onerror = () => no(r.error) }) }
+  r.onsuccess = () => { DB = r.result; DB.onversionchange = () => { DB.close(); toast('Boardgames was updated in another tab - reload this page', 6000) }; ok(DB) }; r.onerror = () => no(r.error) }) }
 function tx(store, mode, fn){ return new Promise((ok, no) => { const t = DB.transaction(store, mode), st = t.objectStore(store); let res; const q = fn(st); if(q) q.onsuccess = () => res = q.result; t.oncomplete = () => ok(res); t.onerror = t.onabort = () => no(t.error || new Error('Storage error')) }) }
 const dbGet = (s, id) => tx(s, 'readonly', st => st.get(id));
 const dbAll = s => tx(s, 'readonly', st => st.getAll());
 const dbKeys = s => tx(s, 'readonly', st => st.getAllKeys());
 const dbPut = (s, v) => tx(s, 'readwrite', st => st.put(v));
 const dbDel = (s, id) => tx(s, 'readwrite', st => st.delete(id));
+const mb = n => n >= 1073741824 ? (n / 1073741824).toFixed(1) + ' GB' : n >= 1048576 ? Math.round(n / 1048576) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
 
 /* ---------- shelves ---------- */
 const SHELF_ICON = {
@@ -286,7 +289,8 @@ function drawGroup(body, v){ const G = grOf(v.shelf), g = groupByKey(v.shelf, v.
   const kids = sortTiles(g.kids || [], k === 'base' ? 'name' : k), items = sortTiles(g.items, k);
   h += `<div class="grid">${G.pinFirst([...kids, ...items], x => x.items ? 'gr:' + x.key : 'it:' + x.id).map(x => x.items ? groupTile(v.shelf, x) : itemTile(x)).join('')}</div>`;
   if(!all.length) h += `<p class="muted small" style="margin-top:12px">Empty. Tap ⋯ → <b>Add ${many}…</b> to put ${many} in it.</p>`;
-  body.innerHTML = h; lazyCovers(body); hookGrid(v.shelf); $('#gmenu').onclick = () => groupMenu(v.shelf, g) }
+  h += g.kind === 'game' && head.id ? filesHTML(head.id, head) : filesHTML('grp:' + v.shelf + ':' + g.key, null);
+  body.innerHTML = h; lazyCovers(body); hookGrid(v.shelf); hookFiles(body); $('#gmenu').onclick = () => groupMenu(v.shelf, g) }
 
 /* ---------- the game page ---------- */
 function drawGame(body, id){ const it = IT[id]; if(!it){ V.pop(); return draw() }
@@ -305,6 +309,7 @@ function drawGame(body, id){ const it = IT[id]; if(!it){ V.pop(); return draw() 
   if(stats.length) h += `<div class="stats">${stats.map(([k, x]) => `<div class="stat"><small>${k}</small><b>${esc(x)}</b></div>`).join('')}</div>`;
   const exps = it.expIds.map(x => IT[x]).filter(Boolean).sort(baseFirst);
   if(exps.length) h += `<div class="sec">Expansions you have</div><div class="grid">${exps.map(itemTile).join('')}</div>`;
+  h += filesHTML(it.id, it);
   const about = it.about || it.notes || '';
   if(about) h += `<div class="sec">${it.about ? 'About' : 'Notes'}</div><div class="desc clip" id="gdesc">${esc(about)}</div>${about.length > 300 ? '<button class="btn sm" id="gmore" style="margin-top:6px">More</button>' : ''}`;
   if(it.comment) h += `<div class="sec">Your note on BGG</div><div class="desc">${esc(it.comment)}</div>`;
@@ -313,7 +318,7 @@ function drawGame(body, id){ const it = IT[id]; if(!it){ V.pop(); return draw() 
   h += `<div class="sec">Details</div><div class="facts">${facts.map(([k, x]) => `<span>${k}</span><span style="min-width:0;overflow-wrap:anywhere">${k === 'From' ? x : esc(x)}</span>`).join('')}</div>`;
   if(it.shelf !== 'minis'){ const ps = allPlays().filter(p => p.game === it.id || (it.expIds.includes(p.game)));
     if(ps.length) h += `<div class="sec">Plays</div>${ps.slice(0, 15).map(playLi).join('')}${ps.length > 15 ? `<button class="btn sm" data-plays="1" style="margin-top:8px">All plays</button>` : ''}` }
-  body.innerHTML = h; lazyCovers(body);
+  body.innerHTML = h; lazyCovers(body); hookFiles(body);
   $('#imenu').onclick = () => itemMenu(it);
   if($('#gedit')) $('#gedit').onclick = () => it.src === 'own' ? editItem(it) : pictureSheet(it);
   if($('#gmore')) $('#gmore').onclick = () => { $('#gdesc').classList.remove('clip'); $('#gmore').remove() };
@@ -467,6 +472,80 @@ async function sendPending(loud){ if(!NvBgg || SENDING) return; let st; try{ st 
 addEventListener('online', () => sendPending());
 
 /* =====================================================================================================================
+   FILES PER GAME – rulebook, errata / FAQ, player aids, scenarios, fan-made files (plans/boardgames.md, 21 Oct).
+   Kept only in Boardgames (IndexedDB files + blobs). Opened in Bookcase's reader (books/index.html?open=board:<id> reads it from here,
+   it never lands on a Bookcase shelf); text files in a sheet; anything else can be saved or shared.
+   ===================================================================================================================== */
+let FILES = [];
+const KINDS = [['rules', 'Rulebook'], ['errata', 'Errata / FAQ'], ['aid', 'Player aid'], ['scenario', 'Scenario'], ['fan', 'Fan-made'], ['other', 'Other']];
+const kindName = k => (KINDS.find(x => x[0] === k) || KINDS[5])[1];
+const KIND_ICON = {rules:'<path d="M5 4h11l3 3v13H5z"/><path d="M8 10h8M8 13h8M8 16h5"/>', errata:'<path d="M5 4h11l3 3v13H5z"/><path d="M12 9v4M12 16h.01"/>',
+  aid:'<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 12h8M8 15h4"/>', scenario:'<path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/>',
+  fan:'<path d="M12 3l2.6 5.6 6 .6-4.5 4 1.3 6-5.4-3.2-5.4 3.2 1.3-6-4.5-4 6-.6z"/>', other:'<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>'};
+const fileExt = n => (String(n).match(/\.([a-z0-9]+)$/i) || ['', ''])[1].toLowerCase();
+const READABLE = /^(pdf|epub|cbz|cbr|zip|rar|jpe?g|png|gif|webp|avif|bmp)$/;
+const TEXTY = /^(txt|md|text|csv)$/;
+const filesOf = target => FILES.filter(f => f.game === target).sort((a, b) => KINDS.findIndex(k => k[0] === a.kind) - KINDS.findIndex(k => k[0] === b.kind) || coll.compare(a.name, b.name));
+/* a first guess at the kind of file, from its name (rulebook, errata …) – changed with one tap */
+function guessKind(name){ const n = norm(name);
+  if(/\b(errata|faq|clarification|corrections?|updates?|v\d)\b/.test(n)) return 'errata';
+  if(/\b(fan|fanmade|fan made|house rules?|huisregels?|homebrew|variants?|custom|unofficial)\b/.test(n)) return 'fan';
+  if(/\b(rules?|rulebook|regels?|spelregels|reglement|manual|handleiding|regeln|anleitung|regles)\b/.test(n)) return 'rules';
+  if(/\b(aid|player aid|reference|cheat|summary|overview|quick)\b/.test(n)) return 'aid';
+  if(/\b(scenario|campaign|mission|quest|map)\b/.test(n)) return 'scenario';
+  return 'fan' }
+const niceName = fname => String(fname).replace(/\.[a-z0-9]+$/i, '').replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim() || fname;
+function filesHTML(target, it){ const fs = filesOf(target);
+  return `<div class="sec">Files</div>${fs.map(f => `<div class="li" data-file="${esc(f.id)}"><span class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9be07a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${KIND_ICON[f.kind] || KIND_ICON.other}</svg></span><div class="n"><div>${esc(f.name)}</div><div class="s">${esc(kindName(f.kind))} · ${esc((fileExt(f.fname) || 'file').toUpperCase())} · ${mb(f.size || 0)}</div></div><button class="ib fdots" data-fmenu="${esc(f.id)}" aria-label="More for this file">${IC_DOTS}</button></div>`).join('')
+    || '<p class="muted small" style="margin:0 0 6px">No files yet: the rulebook, errata, player aids or fan-made extras you downloaded.</p>'}
+    <div class="mbar" style="margin-top:8px"><button class="btn sm" data-addfile="${esc(target)}">+ Add a file</button>${it && it.bgg ? `<button class="btn sm" data-bggfiles="${it.bgg}">Files on BGG</button>` : ''}</div>` }
+function hookFiles(root){ root.querySelectorAll('[data-file],[data-fmenu],[data-addfile],[data-bggfiles]').forEach(el => el.onclick = e => { e.stopPropagation();
+  if(el.dataset.fmenu) return fileMenu(el.dataset.fmenu);
+  if(el.dataset.addfile) return pickFiles(el.dataset.addfile);
+  if(el.dataset.bggfiles) return openUrl(`https://boardgamegeek.com/boardgame/${el.dataset.bggfiles}/files`);
+  const f = FILES.find(x => x.id === el.dataset.file); if(f) openFile(f) }) }
+function pickFiles(target){ const i = $('#pickfile'); i.value = ''; i.onchange = e => { const fs = [...e.target.files]; if(fs.length) addFilesSheet(target, fs) }; i.click() }
+function addFilesSheet(target, fs){ const one = fs.length === 1; let kind = guessKind(fs[0].name);
+  if(!one && fs.every(f => guessKind(f.name) === kind)) kind = guessKind(fs[0].name); else if(!one) kind = '';
+  const total = fs.reduce((a, f) => a + f.size, 0);
+  sheet(`<h3>Add ${one ? 'a file' : plural(fs.length, 'file')}</h3>
+    ${one ? `<div class="field"><label>Name</label><input type="text" id="af_name" value="${esc(niceName(fs[0].name))}" maxlength="120"></div>` : `<p class="muted small" style="margin:0 0 8px">${fs.map(f => esc(f.name)).join('<br>')}</p>`}
+    <div class="field"><label>What is it?${!one ? ' (empty = a guess per file from its name)' : ''}</label><div class="chips">${KINDS.map(([k, t]) => `<button class="chip ${kind === k ? 'on' : ''}" data-kind="${k}">${t}</button>`).join('')}</div></div>
+    <p class="muted small">${mb(total)} · the file${one ? ' is' : 's are'} copied into Boardgames (works offline).</p>
+    <div style="display:flex;gap:8px;margin-top:6px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="af_go">Add</button></div>`, true);
+  $('.sheet').addEventListener('click', e => { const c = e.target.closest('[data-kind]'); if(!c) return; kind = kind === c.dataset.kind && !one ? '' : c.dataset.kind; document.querySelectorAll('[data-kind]').forEach(x => x.classList.toggle('on', x.dataset.kind === kind)) });
+  $('#af_go').onclick = async () => { const b = $('#af_go'); b.disabled = true; b.textContent = 'Adding…';
+    try{ await addFiles(target, fs.map((f, i) => ({file:f, kind:kind || guessKind(f.name), name:one ? ($('#af_name').value.trim() || niceName(f.name)) : niceName(f.name)}))); closeSheet(); draw(); toast(one ? 'File added' : plural(fs.length, 'file') + ' added') }
+    catch(e){ LE('files', 'add failed', e); b.disabled = false; b.textContent = 'Add'; toast(e && e.name === 'QuotaExceededError' ? 'The phone is too full for this file' : (e.message || String(e)), 5000) } } }
+async function addFiles(target, list){
+  for(const x of list){ const id = uid(), f = {id, game:target, kind:x.kind || 'other', name:x.name || niceName(x.file.name), fname:x.file.name, size:x.file.size, type:x.file.type || '', added:Date.now()};
+    await dbPut('blobs', {id, blob:x.file}); await dbPut('files', f); FILES.push(f); L('files', 'added', {name:f.fname, size:f.size, kind:f.kind}) } }
+async function fileBlob(f){ const r = await dbGet('blobs', f.id); if(!r || !r.blob) throw new Error('The file is missing on this device'); return r.blob }
+async function openFile(f){ const e = fileExt(f.fname);
+  if(READABLE.test(e) || /^image\/|pdf|epub/.test(f.type)){ try{ sessionStorage.setItem('nvBoard.view', JSON.stringify({V, y:scrollY})) }catch(err){} location.href = '../books/index.html?open=board:' + encodeURIComponent(f.id); return }
+  if(TEXTY.test(e) || /^text\//.test(f.type)){ try{ const t = await (await fileBlob(f)).text();
+      sheet(`<h3>${esc(f.name)}</h3><div class="desc" style="white-space:pre-wrap;max-height:62vh;overflow:auto;font-size:13.5px">${esc(t.slice(0, 200000))}</div><button class="btn" style="width:100%;margin-top:10px" onclick="closeSheet()">Close</button>`) }catch(err){ toast(err.message || String(err), 4000) } return }
+  sheet(`<h3>${esc(f.name)}</h3><p class="muted small">Boardgames can't show ${esc((e || 'this kind of').toUpperCase())} files itself. Save or share it to open it in another app.</p><div class="mlist"><button class="btn primary" id="fo_save">${NATIVE ? 'Share / open with…' : 'Download'}</button></div>`);
+  $('#fo_save').onclick = () => { closeSheet(); saveCopy(f) } }
+async function saveCopy(f){ try{ const blob = await fileBlob(f);
+    if(NATIVE){ const FS = Capacitor.registerPlugin('Filesystem'), SH = Capacitor.registerPlugin('Share');
+      const b64 = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = () => no(r.error); r.readAsDataURL(blob) });
+      const w = await FS.writeFile({path:f.fname.replace(/[\\/:*?"<>|]+/g, '_'), data:b64, directory:'CACHE'});
+      await SH.share({title:f.name, files:[w.uri], dialogTitle:'Save or open ' + f.name}); return }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = f.fname; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 1000) }
+  catch(e){ if(!/cancel/i.test((e && e.message) || '')){ LE('files', 'save failed', e); toast(e.message || String(e), 4000) } } }
+function fileMenu(id){ const f = FILES.find(x => x.id === id); if(!f) return;
+  sheet(`<h3>${esc(f.name)}</h3><p class="muted small" style="margin:-4px 0 10px">${esc(f.fname)} · ${mb(f.size || 0)}</p>
+    <div class="field"><label>What is it?</label><div class="chips">${KINDS.map(([k, t]) => `<button class="chip ${f.kind === k ? 'on' : ''}" data-fk="${k}">${t}</button>`).join('')}</div></div>
+    <div class="mlist"><button class="btn primary" id="fm_open">Open</button><button class="btn" id="fm_ren">Rename</button><button class="btn" id="fm_save">${NATIVE ? 'Share / save a copy…' : 'Download a copy'}</button><button class="btn danger" id="fm_del">Remove this file</button></div>`);
+  $('.sheet').addEventListener('click', async e => { const c = e.target.closest('[data-fk]'); if(!c) return; f.kind = c.dataset.fk; await dbPut('files', f); document.querySelectorAll('[data-fk]').forEach(x => x.classList.toggle('on', x.dataset.fk === f.kind)); draw() });
+  $('#fm_open').onclick = () => { closeSheet(); openFile(f) };
+  $('#fm_ren').onclick = async () => { const n = await ask('Rename the file', 'Name', f.name, 'Rename'); if(!n) return; f.name = n; await dbPut('files', f); draw() };
+  $('#fm_save').onclick = () => { closeSheet(); saveCopy(f) };
+  $('#fm_del').onclick = async () => { if(!confirm(`Remove “${f.name}” from Boardgames?`)) return; await removeFile(f); closeSheet(); draw(); toast('File removed') } }
+async function removeFile(f, quiet){ await dbDel('blobs', f.id).catch(() => {}); await dbDel('files', f.id).catch(() => {}); FILES = FILES.filter(x => x !== f); if(!quiet) L('files', 'removed', {name:f.fname}) }
+
+/* =====================================================================================================================
    MENUS: a game / piece, adding by hand, pictures
    ===================================================================================================================== */
 function itemMenu(it){ const G = grOf(it.shelf), pin = G.isPinned('it:' + it.id), moved = lsGet('nvBoard.shelfOf', {})['bgg:' + it.bgg];
@@ -482,8 +561,8 @@ function itemMenu(it){ const G = grOf(it.shelf), pin = G.isPinned('it:' + it.id)
   if($('#imbgg')) $('#imbgg').onclick = () => openUrl(bggUrl(it.bgg));
   if($('#imx')) $('#imx').onclick = () => removeOwn([it.id]) }
 async function removeOwn(ids){ const its = ids.map(id => IT[id]).filter(x => x && x.src === 'own'); if(!its.length){ toast('Games from BoardGameGeek are removed on BGG'); return }
-  if(!confirm(`Remove ${its.length === 1 ? '“' + its[0].name + '”' : plural(its.length, 'item')} from Boardgames?${PLAYS.some(p => ids.includes(p.game)) ? '\n\nIts plays stay in the Plays list.' : ''}`)) return;
-  for(const it of its){ await dbDel('items', it.id); await delPic('it:' + it.id) }
+  if(!confirm(`Remove ${its.length === 1 ? '“' + its[0].name + '”' : plural(its.length, 'item')} from Boardgames?${PLAYS.some(p => ids.includes(p.game)) ? '\n\nIts plays stay in the Plays list.' : ''}${ids.some(id => filesOf(id).length) ? '\n\nIts files (rulebook …) are removed too.' : ''}`)) return;
+  for(const it of its){ await dbDel('items', it.id); await delPic('it:' + it.id); for(const f of filesOf(it.id)) await removeFile(f, true) }
   const g = new Set(its.map(x => x.id)); OWN = OWN.filter(x => !g.has(x.id)); rebuild(); closeSheet(); selEnd(true);
   if(cur().v === 'game' && g.has(cur().id)) V.pop(); draw(); toast(plural(its.length, 'item') + ' removed') }
 function pictureSheet(it){ const has = PICS.has('it:' + it.id);
@@ -661,14 +740,17 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden) sendP
 /* ---------- start ---------- */
 (async () => {
   try{ await openDB();
-    const [own, plays, keys, kv] = await Promise.all([dbAll('items'), dbAll('plays'), dbKeys('pics'), dbGet('kv', 'bgg')]);
-    OWN = own; PLAYS = plays; for(const k of keys) PICS.add(k); if(kv && kv.data) BGG = kv.data }
+    const [own, plays, keys, kv, files] = await Promise.all([dbAll('items'), dbAll('plays'), dbKeys('pics'), dbGet('kv', 'bgg'), dbAll('files')]);
+    OWN = own; PLAYS = plays; FILES = files; for(const k of keys) PICS.add(k); if(kv && kv.data) BGG = kv.data }
   catch(e){ $('#body').innerHTML = `<p class="muted">Boardgames could not open its storage: ${esc(e.message || e)}</p>`; return }
   rebuild();
   const P = new URLSearchParams(location.search), sh = P.get('shelf'); if(sh && SHELVES.some(s => s.id === sh)) V.push({v:'shelf', shelf:sh});
   if(P.get('plays')) V.push({v:'plays'});
-  draw(); L('start', `${ITEMS.length} items, ${PLAYS.length} own plays`);
+  /* back from Bookcase's reader: the same page as before (game page, group …) */
+  let back0 = null; try{ back0 = JSON.parse(sessionStorage.getItem('nvBoard.view') || 'null'); sessionStorage.removeItem('nvBoard.view') }catch(e){}
+  if(back0 && Array.isArray(back0.V) && back0.V.length) V = back0.V;
+  draw(); if(back0 && back0.y) scrollTo(0, back0.y); L('start', `${ITEMS.length} items, ${PLAYS.length} own plays`);
   const ch = await loadBgg(false); if(ch) rebuild(); if(ch || BGGERR) draw();
   sendPending();
-  window.NVBOARD = {get items(){ return ITEMS }, get plays(){ return PLAYS }, allPlays, logPlay, draw, rebuild, loadBgg, sendPending};   // for testing
+  window.NVBOARD = {get items(){ return ITEMS }, get plays(){ return PLAYS }, get files(){ return FILES }, addFiles, openFile, allPlays, logPlay, draw, rebuild, loadBgg, sendPending};   // for testing
 })();

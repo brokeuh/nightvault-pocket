@@ -3,6 +3,26 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 92,
+   "date": "2026-10-21",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "boardgames"
+   ],
+   "title": "Boardgames: files per game",
+   "items": [
+    "Every game now has a Files section: add the rulebook, errata / FAQ, player aids, scenarios or fan-made files you downloaded.",
+    "Boardgames guesses what each file is from its name (Rulebook, Errata, Fan-made …); tap ⋯ to change it, rename it, share a copy or remove it.",
+    "PDFs, EPUBs, comics and pictures open in Bookcase's reader (zoom, search inside PDFs, bookmarks, print); closing it brings you back to the game. They do not show up on Bookcase's shelves.",
+    "Text files open right away; other files (like a 3D model) can be shared to another app.",
+    "\"Files on BGG\" opens the game's files page on BoardGameGeek, to find new fan-made files.",
+    "The list of files is in the automatic backups too (the files themselves stay on the phone)."
+   ]
+  },
+  {
    "id": 91,
    "date": "2026-10-21",
    "where": [

@@ -33,7 +33,7 @@
     audiobooks:{title:'Audiobooks', ls:['nvAudio.'], db:'nvAudio', stores:['books', 'state'], main:'books', word:['book', 'books']},
     bookcase:{title:'Bookcase', ls:['nvBooks.'], skip:['nvBooks.cvKey'], db:'nvBooks', stores:['books', 'state'], main:'books', word:['book', 'books']},
     games:{title:'Games', ls:['nvGames.'], skip:['nvGames.keys', 'nvGames.igdbTok'], db:'nvGames', stores:['games', 'kv'], main:'games', word:['game', 'games']},
-    boardgames:{title:'Boardgames', ls:['nvBoard.'], db:'nvBoard', stores:['items', 'plays', 'kv'], main:'items', word:['game', 'games']},
+    boardgames:{title:'Boardgames', ls:['nvBoard.'], db:'nvBoard', stores:['items', 'plays', 'kv', 'files'], main:'items', word:['game', 'games']},
     cinema:{title:'Cinema', ls:['nvCinema.'], skip:['nvCinema.tmdb'], db:'nvCinema', stores:['titles', 'files', 'watch', 'kv'], main:'titles', word:['title', 'titles']},
     print3d:{title:'3D Print', ls:['nvPrint.'], db:'nvPrint', stores:['models', 'extras', 'prints', 'kv'], main:'models', word:['model', 'models']},
     hub:{title:'The Nightvault', ls:['nvHub.', 'nvOffline'], word:['setting', 'settings']}

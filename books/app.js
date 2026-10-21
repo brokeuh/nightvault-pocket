@@ -93,6 +93,7 @@ function srcFromLink(f){ return {size:f.size, name:f.name, url:linkUrl(f.uri, f.
 function srcFromBlob(b, name){ return {size:b.size, name:name || b.name || '', read:(a, z) => b.slice(a, z).arrayBuffer(), blob:async () => b} }
 async function bookSource(b){
   if(b.src.kind === 'link') return srcFromLink(b.src);
+  if(b.src.kind === 'blob') return srcFromBlob(b.src.blob, b.name);   // handed over by another app (Boardgames' files), see openHanded
   const f = await dbGet('files', b.src.fid); if(!f) throw new Error('The copy of this book is missing'); return srcFromBlob(f.blob, b.name) }
 
 /* ---------- pictures: the right type for every page (a page inside a ZIP/RAR has no type, and AVIF/WebP need one) ---------- */
@@ -261,6 +262,7 @@ const pageList = entries => entries.filter(x => IMG_RE.test(x.name) && !skipName
 
 /* ---------- a book opened for reading: {n, page(i, width) → Blob, toc, text(i)?, flow?} ---------- */
 async function openDoc(b){
+  if(b.fmt === 'imgs' && b.src.kind === 'blob') return {n:1, toc:[], async page(){ const u8 = new Uint8Array(await b.src.blob.slice(0, 16).arrayBuffer()); return new Blob([b.src.blob], {type:sniff(u8) || MIME[ext(b.name)] || 'image/jpeg'}) }};
   if(b.fmt === 'imgs'){
     const files = b.src.kind === 'link' ? b.src.files.slice().sort((x, y) => pageSort(x.name, y.name)) : b.src.fids.slice().sort((x, y) => pageSort(x.name, y.name));
     return {n:files.length, toc:[], async page(i){ const f = files[i];
@@ -871,7 +873,7 @@ async function openReader(b, mark){ if(!b) return;
   let doc; try{ doc = await openDoc(b) }catch(e){ LE('reader', 'could not open ' + b.name, e); $('#rspin').hidden = true; toast(e.message || String(e), 5000); closeReader(); return }
   if(doc.flow){ $('#reader').hidden = true; const keep = R; R = null; return openEpub(b, doc.ep, mark) }
   R.doc = doc; R.n = doc.n;
-  if(b.pages !== doc.n || b.later){ b.pages = doc.n; if(b.later){ b.later = false; doc.page(0, 400).then(thumb).then(t => setCover(b.id, t)).catch(() => {}) } dbPut('books', b).catch(() => {}) }
+  if((b.pages !== doc.n || b.later) && !b.handed){ b.pages = doc.n; if(b.later){ b.later = false; doc.page(0, 400).then(thumb).then(t => setCover(b.id, t)).catch(() => {}) } dbPut('books', b).catch(() => {}) }
   const s = st(b.id); let start = mark && mark.p != null ? mark.p : s.finished ? 0 : Math.min(s.page || 0, doc.n - 1);
   if(s.finished && !mark){ s.finished = false; saveState(b.id) }
   const sl = $('#rslider'); sl.max = R.n; sl.style.direction = R.rtl ? 'rtl' : 'ltr';
@@ -882,7 +884,7 @@ async function openReader(b, mark){ if(!b) return;
 async function closeReader(quiet){ if(!R) return; const r = R; R = null; if(r.b) saveState(r.b.id, true);
   for(const p of r.cache.values()) p.then(m => URL.revokeObjectURL(m.url)).catch(() => {}); if(r.hi) URL.revokeObjectURL(r.hi);
   try{ r.doc && r.doc.close && r.doc.close() }catch(e){}
-  $('#reader').hidden = true; rp().innerHTML = ''; document.body.classList.remove('reading'); awake(false); if(!quiet) draw() }
+  $('#reader').hidden = true; rp().innerHTML = ''; document.body.classList.remove('reading'); awake(false); if(!quiet){ if(r.b && r.b.handed) return leaveHanded(); draw() } }
 
 function errPage(msg){ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900"><rect width="600" height="900" fill="#1a1f28"/><text x="300" y="430" fill="#ef8a8f" font-family="sans-serif" font-size="28" text-anchor="middle">This page could not be shown</text><text x="300" y="480" fill="#9aa7b5" font-family="sans-serif" font-size="20" text-anchor="middle">${esc(String(msg).slice(0, 50))}</text></svg>`;
   return new Blob([svg], {type:'image/svg+xml'}) }
@@ -1104,7 +1106,8 @@ function eKey(e){ if(!E || sheetOpen()) return; const win = $('#eframe').content
   else if(e.key === 'ArrowLeft' || e.key === 'PageUp'){ e.preventDefault(); win.scrollBy(0, -(win.innerHeight - 48)) }
   else if(e.key === 'Escape') closeEpub() }
 document.addEventListener('keydown', e => { if(E && !$('#ereader').hidden && !/input|textarea|select/i.test(e.target.tagName || '')) eKey(e) });
-async function closeEpub(){ if(!E) return; ePos(); saveState(E.b.id, true); for(const u of Object.values(E.res)) URL.revokeObjectURL(u); E = null; $('#eframe').srcdoc = ''; $('#ereader').hidden = true; document.body.classList.remove('reading'); awake(false); draw() }
+async function closeEpub(){ if(!E) return; ePos(); saveState(E.b.id, true); for(const u of Object.values(E.res)) URL.revokeObjectURL(u); const handed = E.b.handed; E = null;
+  if(handed){ $('#eframe').srcdoc = ''; $('#ereader').hidden = true; document.body.classList.remove('reading'); awake(false); return leaveHanded() } $('#eframe').srcdoc = ''; $('#ereader').hidden = true; document.body.classList.remove('reading'); awake(false); draw() }
 $('#eclose').onclick = () => closeEpub();
 $('#eprev').onclick = () => { if(E && E.ch > 0) eLoad(E.ch - 1, 0) };
 $('#enext').onclick = () => { if(E && E.ch < E.n - 1) eLoad(E.ch + 1, 0) };
@@ -1246,6 +1249,7 @@ document.addEventListener('visibilitychange', () => { if(document.hidden){ if(R)
 (async () => {
   try{ await openDB(); await loadLib() }catch(e){ $('#body').innerHTML = `<p class="muted">Bookcase could not open its storage: ${esc(e.message || e)}</p>`; return }
   const P = new URLSearchParams(location.search), sh = P.get('shelf');
+  if(/^board:/.test(P.get('open') || '')){ draw(); try{ await openHanded(P.get('open').slice(6)) }catch(e){ LE('handed', 'could not open', e); toast(e.message || String(e), 5000); setTimeout(leaveHanded, 2500) } return }
   if(sh && shelves(true).some(s => s.id === sh)) V.push({v:'shelf', shelf:sh});
   draw(); L('start', `${BOOKS.length} books`);
   window.NVBOOKS = {get books(){ return BOOKS }, openDoc, readMeta, parseName, zipOpen, openReader, draw};   // for testing
@@ -1816,3 +1820,22 @@ function drawArc(v){ const a = ARCS[v.aid]; if(!a){ V.pop(); return draw() } con
     $('#arnew').onclick = async () => { closeSheet(); try{ const f2 = await arcFetch(a.aid); Object.assign(a, f2, {at:Date.now()}); await dbPut('kv', a); draw(); toast(plural(a.items.length, 'issue') + ' in this reading order') }catch(e){ toast(e.message || String(e), 5000) } };
     $('#arcopy').onclick = () => copyText(a.items.filter(it => !st.m[it.iid] && !st.P(it)).map(it => `${it.vname} ${it.label}`).join('\n'));
     $('#ardel').onclick = async () => { if(!confirm(`Remove the reading order “${a.name}”? Your comics stay.`)) return; await dbDel('kv', a.id); delete ARCS[a.aid]; closeSheet(); V.pop(); draw() } } }
+
+/* ---------- a file handed over by another app: Boardgames' rulebooks, errata and fan-made files (plans/boardgames.md) ----------
+   books/index.html?open=board:<file id> reads the file from Boardgames' own storage (IndexedDB nvBoard: files = details, blobs = the file)
+   and opens it in this reader. It is NOT put on a shelf; only the reading place and bookmarks are kept (state 'board:<id>').
+   Closing the reader goes back to Boardgames. */
+async function openHanded(id){
+  const d = await new Promise(ok => { try{ const r = indexedDB.open('nvBoard'); r.onupgradeneeded = () => { try{ r.transaction.abort() }catch(e){} }; r.onsuccess = () => ok(r.result); r.onerror = () => ok(null) }catch(e){ ok(null) } });
+  if(!d || !d.objectStoreNames.contains('files') || !d.objectStoreNames.contains('blobs')){ if(d) d.close(); throw new Error('This file is not on this device any more') }
+  const get = (s, k) => new Promise((ok, no) => { const q = d.transaction(s).objectStore(s).get(k); q.onsuccess = () => ok(q.result); q.onerror = () => no(q.error) });
+  let f, bl; try{ f = await get('files', id); bl = await get('blobs', id) }finally{ d.close() }
+  if(!f || !bl || !bl.blob) throw new Error('This file is not on this device any more');
+  const blob = bl.blob, name = f.fname || f.name || 'file', src = srcFromBlob(blob, name);
+  const fmt = IMG_RE.test(name) || /^image\//.test(blob.type) ? 'imgs' : await realFmt(src, name);
+  if(!fmt) throw new Error('Bookcase cannot show this kind of file');
+  const b = {id:'board:' + id, shelf:'rulebooks', handed:true, fmt, title:f.name || name, name, size:blob.size, pages:0, src:{kind:'blob', blob}};
+  BK[b.id] = b;                                    // not in BOOKS, so it shows on no shelf
+  document.title = b.title + ' · Boardgames';
+  await openReader(b) }
+function leaveHanded(){ if(history.length > 1) history.back(); else location.replace('../boardgames/index.html') }
