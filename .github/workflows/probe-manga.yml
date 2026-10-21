@@ -1,0 +1,75 @@
+# Looks at what MangaDex and AniList answer for a few manga (for building Bookcase: manga series with every volume).
+# Run by hand; prints the answers in the job log and saves them on the branch probe-manga. Changes nothing else.
+name: Bookcase - look at MangaDex and AniList
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask
+        run: |
+          set +e
+          mkdir -p /tmp/raw
+          python3 - <<'PY' > /tmp/out.txt 2>&1
+          import json, urllib.request, urllib.parse, time
+          UA = {"User-Agent": "NightvaultBookcase/1.0 (personal app; github.com/brokeuh)", "Origin": "https://localhost"}
+          KEEP = ("access", "x-rate", "retry", "content-type", "x-ratelimit")
+          def get(u, f=None, data=None, method=None, extra=None):
+              time.sleep(0.8)
+              h = dict(UA); h.update(extra or {})
+              try:
+                  req = urllib.request.Request(u, headers=h, data=data, method=method)
+                  r = urllib.request.urlopen(req, timeout=40); b = r.read().decode(); hd = dict(r.headers); code = r.status
+              except urllib.error.HTTPError as e:
+                  b = e.read().decode(); hd = dict(e.headers); code = e.code
+              except Exception as e:
+                  print("ERR", u, e); return ""
+              print(code, method or ("POST" if data else "GET"), u, {k: v for k, v in hd.items() if k.lower().startswith(KEEP)})
+              if f: open("/tmp/raw/" + f, "w").write(b)
+              return b
+          MD = "https://api.mangadex.org"
+          ids = {}
+          for t in ["Naruto", "One Piece", "Berserk", "Dragon Ball", "Vagabond", "Blue Lock", "Chainsaw Man"]:
+              b = get(MD + "/manga?" + urllib.parse.urlencode([("title", t), ("limit", 5), ("order[relevance]", "desc"), ("includes[]", "cover_art"), ("contentRating[]", "safe"), ("contentRating[]", "suggestive"), ("contentRating[]", "erotica")]), "md_search_" + t.replace(" ", "_") + ".json")
+              try:
+                  j = json.loads(b)
+                  for m in j.get("data", [])[:3]:
+                      a = m["attributes"]
+                      print("   ", m["id"], a["title"], a.get("year"), a.get("status"), "lastVolume=", a.get("lastVolume"), "links=", {k: a["links"].get(k) for k in ("al", "mal", "amz", "bw")} if a.get("links") else None)
+                  if j.get("data"): ids[t] = j["data"][0]["id"]
+              except Exception as e: print("parse", e)
+          for t, i in list(ids.items())[:5]:
+              get(MD + "/cover?" + urllib.parse.urlencode([("manga[]", i), ("limit", 100), ("order[volume]", "asc")]), "md_cover_" + t.replace(" ", "_") + ".json")
+              get(MD + "/manga/" + i + "/aggregate", "md_aggr_" + t.replace(" ", "_") + ".json")
+              get(MD + "/manga/" + i + "?includes[]=author&includes[]=artist&includes[]=cover_art", "md_manga_" + t.replace(" ", "_") + ".json")
+          # a cover picture: size and CORS
+          try:
+              j = json.loads(open("/tmp/raw/md_cover_Naruto.json").read()); c = j["data"][0]["attributes"]["fileName"]
+              get("https://uploads.mangadex.org/covers/" + ids["Naruto"] + "/" + c + ".256.jpg")
+          except Exception as e: print("cover", e)
+          # a preflight like a phone browser would send
+          get(MD + "/manga?title=naruto&limit=1", method="OPTIONS", extra={"Access-Control-Request-Method": "GET"})
+          # AniList
+          AL = "https://graphql.anilist.co"
+          Q = "query($s:String){Page(perPage:5){media(search:$s,type:MANGA,sort:SEARCH_MATCH){id idMal title{romaji english native} format status volumes chapters startDate{year} endDate{year} genres averageScore popularity description(asHtml:false) coverImage{large extraLarge color} bannerImage staff(perPage:6){edges{role node{name{full}}}} siteUrl countryOfOrigin}}}"
+          for t in ["Naruto", "One Piece", "Berserk", "Dragon Ball", "Vagabond", "Blue Lock"]:
+              body = json.dumps({"query": Q, "variables": {"s": t}}).encode()
+              get(AL, "al_" + t.replace(" ", "_") + ".json", data=body, extra={"Content-Type": "application/json", "Accept": "application/json"})
+          get(AL, method="OPTIONS", extra={"Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"})
+          # one by id (what a saved series would use)
+          body = json.dumps({"query": "query($id:Int){Media(id:$id,type:MANGA){id title{romaji english} volumes chapters status description coverImage{large} staff{edges{role node{name{full}}}} genres}}", "variables": {"id": 30002}}).encode()
+          get(AL, "al_id30002.json", data=body, extra={"Content-Type": "application/json", "Accept": "application/json"})
+          PY
+          cat /tmp/out.txt | head -150
+      - name: Save the answers on the branch probe-manga (not main)
+        run: |
+          cd /tmp && rm -rf p && mkdir p && cd p && git init -q && cp /tmp/out.txt answers.txt && cp -r /tmp/raw raw
+          git config user.name card-bot; git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A && git commit -q -m "MangaDex / AniList answers"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:refs/heads/probe-manga
