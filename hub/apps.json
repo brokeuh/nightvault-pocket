@@ -30,14 +30,14 @@
     },
     {
      "path": "hub/nvbackup.js",
-     "size": 20907
+     "size": 20916
     }
    ],
    "provides": [],
    "uses": [],
-   "size": 105470,
-   "hash": "e1b0edbb9a87",
-   "version": "2026.10.21.0712",
+   "size": 105479,
+   "hash": "a8b8e167844b",
+   "version": "2026.10.21.0724",
    "updated": "2026-10-21"
   },
   {
@@ -224,7 +224,7 @@
     },
     {
      "path": "books/app.js",
-     "size": 240336
+     "size": 243100
     },
     {
      "path": "books/manifest.webmanifest",
@@ -274,9 +274,9 @@
    "uses": [],
    "entry": "books/?nv=hub",
    "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted.",
-   "size": 2365418,
-   "hash": "fbc9c1b66cf2",
-   "version": "2026.10.21.0712",
+   "size": 2368182,
+   "hash": "4c34c0aa53b5",
+   "version": "2026.10.21.0724",
    "updated": "2026-10-21"
   },
   {
@@ -369,11 +369,11 @@
    "files": [
     {
      "path": "boardgames/index.html",
-     "size": 14132
+     "size": 14382
     },
     {
      "path": "boardgames/app.js",
-     "size": 85018
+     "size": 96751
     },
     {
      "path": "boardgames/manifest.webmanifest",
@@ -386,9 +386,9 @@
    "uses": [],
    "entry": "boardgames/?nv=hub",
    "keepsData": "Your plays, games added by hand, pictures and groups stay on this device. Games from BoardGameGeek come back by themselves.",
-   "size": 99717,
-   "hash": "8c8d01052eac",
-   "version": "2026.10.21.0712",
+   "size": 111700,
+   "hash": "7a997fb5eb13",
+   "version": "2026.10.21.0724",
    "updated": "2026-10-21"
   },
   {
