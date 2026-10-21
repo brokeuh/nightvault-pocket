@@ -344,8 +344,10 @@ function addSheet(){
     <p class="muted small" style="margin:0 0 12px">CBZ, CBR, PDF, EPUB, and folders of pictures (JPG, PNG, WebP, AVIF). Series and volume numbers come from the file (ComicInfo.xml, the EPUB's details) or the file and folder names.</p>
     <div class="mlist">${NvFiles ? `<button class="btn primary" id="adl">Use a folder on this phone</button><div class="muted small" style="margin:-2px 0 6px">Nothing is copied: the books are read from that folder. Pick your ${esc(sh.name.toLowerCase())} folder - all folders inside it are read.</div>` : ''}
       <button class="btn ${NvFiles ? '' : 'primary'}" id="adf">${NvFiles ? 'Copy books into the app' : 'Pick books'}</button><div class="muted small" style="margin:-2px 0 0">${NvFiles ? 'Takes extra space.' : 'They are copied into the app, so they work without internet.'}</div>
+      ${window.NVPC && NVPC.native ? '<button class="btn" id="adpc">From my PC</button><div class="muted small" style="margin:-2px 0 0">What the Nightvault PC app has: pick books, a range or a full series to keep on the phone.</div>' : ''}
       ${dirOK ? '<button class="btn" id="add">Pick a whole folder</button><div class="muted small" style="margin:-2px 0 0">Folders of pictures become one book each.</div>' : ''}</div>`);
   if($('#adl')) $('#adl').onclick = () => { closeSheet(); addFolder(sh.id) };
+  if($('#adpc')) $('#adpc').onclick = () => pcSheet(sh.id);
   $('#adf').onclick = () => { closeSheet(); const i = $('#pickfiles'); i.value = ''; i.onchange = e => addFiles([...e.target.files], sh.id); i.click() };
   if($('#add')) $('#add').onclick = () => { closeSheet(); const i = $('#pickdir'); i.value = ''; i.onchange = e => addFiles([...e.target.files], sh.id); i.click() } }
 
@@ -362,6 +364,84 @@ function toItems(list){ // list: [{f (File | link {uri,name,size}), path}]
 async function addFiles(files, shelf){ if(!files.length) return;
   const list = files.map(f => ({f, path:f.webkitRelativePath ? f.webkitRelativePath.split('/').slice(1).join('/') : f.name}));
   const {items, notyet} = toItems(list); scan(items, shelf, null, notyet) }
+
+/* ---------- On my PC: what the Nightvault PC app has (comics, manga, books, RPG) – save to the phone book by book, a range ("1-12, 15") or the whole series ----------
+   Needs the Android app + the PC paired (The Nightvault > Take with me, shared ../hub/nvpc.js). A saved book is an ordinary book copied into the app, so it works offline. */
+let PCB = null, PCBAT = 0, PCALL = false, PCQ = '';
+const pcKinds = sh => sh === 'manga' || isManga(sh) ? ['manga'] : sh === 'comics' ? ['comic'] : sh === 'books' ? ['book'] : sh === 'rulebooks' || sh === 'rpg' ? ['rpg'] : null;
+const pcKey = f => f.name + '|' + f.size;
+const pcHave = () => new Set(BOOKS.filter(b => b.fmt !== 'imgs').map(b => b.name + '|' + b.size));
+async function pcList(fresh){
+  if(PCB && !fresh && Date.now() - PCBAT < 60000) return PCB;
+  const j = await NVPC.list('books', null, fresh); PCB = j.items || []; PCBAT = Date.now(); return PCB }
+async function pcSheet(shelf){
+  if(!(window.NVPC && NVPC.native && NVPC.pc)){ sheet(`<h3>On my PC</h3><p class="muted">Connect the Nightvault PC app first: open <b>The Nightvault</b> → <b>Take with me</b> and pair it with the code from the PC (Settings → Phone access).</p><button class="btn primary" style="width:100%" id="pcok">OK</button>`); $('#pcok').onclick = closeSheet; return }
+  sheet(`<h3>On my PC</h3><div class="prog busy"><i></i></div><div class="muted small" id="pcst">Asking the PC…</div>`, true);
+  let list; try{ list = await pcList(true) }catch(e){ sheet(`<h3>On my PC</h3><p class="muted">${esc(/Failed to fetch|NetworkError|timeout/i.test(e.message || '') ? 'Can\'t reach the PC. Is the phone on the home Wi-Fi and is Nightvault running on the PC?' : e.message || String(e))}</p><button class="btn primary" style="width:100%" id="pcok">OK</button>`); $('#pcok').onclick = closeSheet; return }
+  pcListDraw(shelf) }
+function pcListDraw(shelf){
+  const kinds = pcKinds(shelf), have = pcHave(), sh = shelfOf(shelf);
+  let rows = (PCB || []).filter(s => PCALL || !kinds || kinds.includes(s.kind));
+  const q = norm(PCQ); if(q) rows = rows.filter(s => norm(s.name).includes(q));
+  const row = s => { const on = s.files.filter(f => have.has(pcKey(f))).length;
+    return `<div class="pcr" data-sid="${esc(s.id)}" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer">
+      <div style="width:42px;height:60px;border-radius:5px;background:#252d3a;overflow:hidden;flex:none">${s.cover ? `<img src="${NVPC.url('/nv/bcover?id=' + s.id)}" loading="lazy" style="width:100%;height:100%;object-fit:cover" onerror="this.remove()">` : ''}</div>
+      <div style="min-width:0;flex:1"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name)}</div>
+      <div class="muted small">${plural(s.count, 'book')} · ${mb(s.size)}${on ? ` · ${on} on the phone` : ''}</div><div class="muted small">${esc(s.collname)}</div></div></div>` };
+  sheet(`<h3>On my PC → ${esc(sh.name)}</h3>
+    <input type="search" id="pcq" placeholder="Search the PC's library" value="${esc(PCQ)}">
+    <label class="muted small" style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="pcall" ${PCALL || !kinds ? 'checked' : ''}> Show everything on the PC, not just ${esc(sh.name.toLowerCase())}</label>
+    <div style="max-height:56vh;overflow:auto" id="pclist">${rows.length ? rows.map(row).join('') : `<p class="muted">${(PCB || []).length ? 'Nothing here matches.' : 'The PC has no comics, manga or books yet.'}</p>`}</div>
+    <button class="btn" style="width:100%;margin-top:10px" id="pcx">Close</button>`, true);
+  $('#pcx').onclick = closeSheet;
+  $('#pcall').onchange = e => { PCALL = e.target.checked; pcListDraw(shelf) };
+  let t = 0; $('#pcq').oninput = e => { PCQ = e.target.value; clearTimeout(t); t = setTimeout(() => { pcListDraw(shelf); const i = $('#pcq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length) }, 250) };
+  $('#pclist').onclick = e => { const r = e.target.closest('.pcr'); if(r) pcSeries(shelf, r.dataset.sid) } }
+/* "1-12, 15" → the files with those numbers */
+function pcRange(txt, files){ const want = [];
+  for(const part of String(txt).split(/[,;\s]+/).filter(Boolean)){ const m = part.match(/^(\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+(?:\.\d+)?))?$/); if(!m) return null; want.push([+m[1], m[2] != null ? +m[2] : +m[1]]) }
+  return files.filter(f => f.number != null && want.some(([a, b]) => f.number >= Math.min(a, b) && f.number <= Math.max(a, b))) }
+function pcSeries(shelf, sid){
+  const s = (PCB || []).find(x => x.id === sid); if(!s) return;
+  const have = pcHave(), todo = s.files.filter(f => !have.has(pcKey(f))), W2 = s.kind === 'manga' ? 'volume' : s.kind === 'comic' ? 'issue' : 'book';
+  const lab = f => f.number != null ? `${W2[0].toUpperCase() + W2.slice(1)} ${f.number}` : f.name.replace(/\.[^.]+$/, '');
+  sheet(`<h3>${esc(s.name)}</h3><div class="muted small" style="margin:-6px 0 8px">${plural(s.count, 'book')} · ${mb(s.size)} · ${plural(s.count - todo.length, 'one')} already on the phone</div>
+    <div class="mlist"><button class="btn primary" id="pcfull" ${todo.length ? '' : 'disabled'}>Save the full series (${todo.length} not on the phone yet · ${mb(todo.reduce((n, f) => n + f.size, 0))})</button>
+    <div style="display:flex;gap:8px"><input id="pcrng" placeholder="Range, like 1-12, 15" style="flex:1" inputmode="text"><button class="btn" id="pcrg">Save range</button></div></div>
+    <div class="muted small" style="margin:12px 0 4px">Or tick single books:</div>
+    <div id="pcfiles" style="max-height:38vh;overflow:auto">${s.files.map((f, i) => { const on = have.has(pcKey(f));
+      return `<label class="opt" style="display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)"><input type="checkbox" data-i="${i}" ${on ? 'checked disabled' : ''}><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lab(f))}</span><span class="muted small">${on ? '✓ on phone' : mb(f.size)}</span></label>` }).join('')}</div>
+    <div class="mlist" style="margin-top:10px"><button class="btn" id="pcsel">Save the ticked books</button><button class="btn" id="pcback">Back</button></div>`, true);
+  $('#pcback').onclick = () => pcListDraw(shelf);
+  const go = fs => { fs = fs.filter(f => !have.has(pcKey(f))); if(!fs.length){ toast('Nothing new to save'); return } pcSave(shelf, s, fs) };
+  $('#pcfull').onclick = () => go(s.files);
+  $('#pcrg').onclick = () => { const r = pcRange($('#pcrng').value, s.files); if(!r){ toast('Type numbers like 1-12, 15'); return } if(!r.length){ toast('No ' + W2 + 's with those numbers'); return } go(r) };
+  $('#pcsel').onclick = () => { const fs = [...document.querySelectorAll('#pcfiles input:checked:not(:disabled)')].map(c => s.files[+c.dataset.i]); if(!fs.length){ toast('Tick at least one book'); return } go(fs) } }
+/* download one at a time (the PC sends it over the home Wi-Fi), put each on the shelf as soon as it is there */
+let PCDL = null;
+async function pcSave(shelf, s, fs){
+  const me = PCDL = {stop:false}, total = fs.reduce((n, f) => n + f.size, 0); let done = 0, bytes = 0, added = 0, failed = 0; const errs = [];
+  try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist(); const e = await navigator.storage.estimate();
+    if(e && e.quota && e.quota - e.usage < total * 1.1){ toast(`Not enough space: ${mb(total)} needed, ${mb(e.quota - e.usage)} free`, 5000); return } }catch(e){}
+  awake(true);
+  sheet(`<h3>Saving to the phone…</h3><div class="prog"><i id="pcp"></i></div><div class="muted small" id="pct" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">0 of ${fs.length}</div>
+    <p class="muted small">Keep the app open and stay on the home Wi-Fi. Books are on the shelf as soon as each one is there.</p><button class="btn" id="pcstop" style="width:100%">Stop (keep what is saved)</button>`, true);
+  $('#pcstop').onclick = () => { me.stop = true; $('#pcstop').disabled = true; $('#pcstop').textContent = 'Stopping…' };
+  const draw2 = (extra) => { const p = $('#pcp'), t = $('#pct'); if(p) p.style.width = (100 * (bytes + (extra || 0)) / Math.max(1, total)) + '%'; if(t) t.textContent = `${done} of ${fs.length} · ${mb(bytes + (extra || 0))} of ${mb(total)}` };
+  for(const f of fs){ if(me.stop) break;
+    try{ const r = await fetch(NVPC.url('/nv/file?id=' + encodeURIComponent(f.id)), {cache:'no-store'}); if(!r.ok) throw new Error('The PC answered ' + r.status);
+      const parts = []; let got = 0;
+      if(r.body && r.body.getReader){ const rd = r.body.getReader(); for(;;){ const {done:d, value} = await rd.read(); if(d) break; parts.push(value); got += value.length; draw2(got); if(me.stop){ try{ rd.cancel() }catch(e){} break } } }
+      else { parts.push(await r.arrayBuffer()); got = parts[0].byteLength }
+      if(me.stop) break;
+      const file = new File(parts, f.name, {type:'application/octet-stream'});
+      if(f.size && Math.abs(file.size - f.size) > 16) throw new Error('only part of the file arrived');
+      const {items, notyet} = toItems([{f:file, path:f.name}]);
+      added += (await scan(items, shelf, null, notyet, true)) || 0; bytes += f.size; done++; draw2() }
+    catch(e){ failed++; done++; errs.push(f.name + ': ' + (e.message || e)); LE('pc', 'could not save ' + f.name, e) } }
+  PCDL = null; awake(false); closeSheet(); draw();
+  toast(`${plural(added, 'book')} saved to the phone${me.stop ? ' (stopped)' : ''}${failed ? ` · ${failed} failed` : ''}`, 6000);
+  if(failed) setTimeout(() => { sheet(`<h3>${plural(failed, 'book')} could not be saved</h3><div style="max-height:46vh;overflow:auto;font-size:12.5px" class="muted">${errs.slice(0, 40).map(esc).join('<br>')}</div><button class="btn primary" style="width:100%;margin-top:12px" id="errok">OK</button>`); $('#errok').onclick = closeSheet }, 400) }
 
 let wakeS = null;
 async function awake(on){ try{ if(NvFiles && NvFiles.keepAwake) await NvFiles.keepAwake({on}) }catch(e){}
@@ -385,7 +465,7 @@ async function addFolder(shelf, f){
 
 /* read every new book (2 at a time), save as they come; looking at a folder again also drops books that are gone */
 let SCAN = null;
-async function scan(items, shelf, folder, notyet){
+async function scan(items, shelf, folder, notyet, quiet){
   const key = it => folder ? (it.kind === 'imgs' ? folder.tree + '|' + it.path : it.f.uri) : (it.kind === 'imgs' ? 'dir|' + it.path + '|' + it.files.length : it.f.name + '|' + it.f.size);
   const bkey = b => b.src.kind === 'link' ? (b.fmt === 'imgs' ? b.src.tree + '|' + b.dir2 : b.src.uri) : (b.fmt === 'imgs' ? 'dir|' + b.dir2 + '|' + b.src.fids.length : b.name + '|' + b.size);
   const same = new Set(BOOKS.filter(b => b.shelf === shelf && b.fmt !== 'imgs').map(b => b.name + '|' + b.size));   // the same file through another folder (a folder inside a folder you added)
@@ -393,14 +473,15 @@ async function scan(items, shelf, folder, notyet){
   let removed = 0;
   if(folder){ const seen = new Set(items.map(key)), gone = BOOKS.filter(b => b.shelf === shelf && b.src.kind === 'link' && b.src.tree === folder.tree && !seen.has(bkey(b)));
     if(gone.length){ removed = gone.length; await dbDelMany('books', gone.map(b => b.id)); const g = new Set(gone.map(b => b.id)); BOOKS = BOOKS.filter(b => !g.has(b.id)); for(const id of g) delete BK[id] } }
+  if(!fresh.length && quiet) return 0;
   if(!fresh.length){ awake(false); closeSheet(); draw(); toast(items.length || removed ? `No new books${removed ? ` · ${plural(removed, 'book')} that are gone were removed` : ''}` : `No books found there${notyet ? ` (${notyet} in a format Bookcase can't read yet: CB7, MOBI …)` : ''}`, 5000); return }
   if(!folder){ const total = fresh.reduce((a, it) => a + (it.kind === 'imgs' ? it.files.reduce((n, f) => n + f.size, 0) : it.f.size), 0);
     try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist() }catch(e){}
     try{ const e = await navigator.storage.estimate(); if(e && e.quota && e.quota - e.usage < total * 1.05){ closeSheet(); toast(`Not enough space: ${mb(total)} needed, ${mb(e.quota - e.usage)} free`, 5000); return } }catch(e){} }
-  SCAN = {stop:false}; const me = SCAN; awake(true);
-  sheet(`<h3>${folder ? 'Reading your books…' : 'Copying books into the app…'}</h3><div class="prog"><i id="sp"></i></div><div class="muted small" id="stx" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">0 of ${fresh.length} · starting…</div>
+  SCAN = {stop:false}; const me = SCAN; if(!quiet) awake(true);
+  if(!quiet) sheet(`<h3>${folder ? 'Reading your books…' : 'Copying books into the app…'}</h3><div class="prog"><i id="sp"></i></div><div class="muted small" id="stx" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">0 of ${fresh.length} · starting…</div>
     <p class="muted small">The screen stays on while books are added.</p><button class="btn" id="sstop" style="width:100%">Stop (keep what is read so far)</button>`, true);
-  $('#sstop').onclick = () => { me.stop = true; $('#sstop').disabled = true; $('#sstop').textContent = 'Stopping…' };
+  if(!quiet) $('#sstop').onclick = () => { me.stop = true; $('#sstop').disabled = true; $('#sstop').textContent = 'Stopping…' };
   let done = 0, added = 0, failed = 0, i = 0; const now = Date.now(), errs = [], tops = pubTops(items.map(it => it.dir).concat(BOOKS.filter(b => b.shelf === shelf).map(b => b.dir)));
   const one = async it => {
     const b = {id:uid(), shelf, added:now, dir:it.dir || '', dir2:it.path, pubDir:pubFolder(it.dir, tops)};
@@ -419,7 +500,8 @@ async function scan(items, shelf, folder, notyet){
       try{ await one(it) }catch(err){ failed++; errs.push(nm + ': ' + (err.message || err)); LE('add', 'could not add ' + nm, err); if(err && err.name === 'QuotaExceededError'){ me.stop = true; toast('The phone is full', 5000) } }
       done++; const p = $('#sp'), s = $('#stx'); if(p) p.style.width = (100 * done / fresh.length) + '%'; if(s) s.textContent = `${done} of ${fresh.length} · ${nm}` } };
   await Promise.all([work(), work()]);
-  SCAN = null; awake(false); closeSheet(); draw();
+  SCAN = null; if(quiet){ regroup(); draw(); return added }
+  awake(false); closeSheet(); draw();
   L('add', `${added} added, ${failed} failed`, errs.slice(0, 20));
   { regroup(); const nb = BOOKS.filter(b => b.shelf === shelf && b.added === now); L('add', 'publishers', nb.map(b => `${b.name} → ${pubSource(b).p || '-'} (${pubSource(b).how || 'none'})`).slice(0, 200)) }
   toast(`${plural(added, 'book')} added${removed ? ` · ${removed} gone` : ''}${failed ? ` · ${failed} could not be read` : ''}${notyet ? ` · ${notyet} in a format not supported yet` : ''}`, 6000);

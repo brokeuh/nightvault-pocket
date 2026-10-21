@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 95,
+   "date": "2026-10-21",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: take comics, manga and books from your PC",
+   "items": [
+    "New: Add → From my PC shows the comics, manga, books and RPG books of the Nightvault PC app, with their covers.",
+    "Save a series to the phone for offline reading: book by book, a range like 1-12, 15, or the full series. Books you already have are marked.",
+    "PC install needed: copy vault.py and vault_phone.py from the private source repo to the PC and restart Nightvault."
+   ]
+  },
+  {
    "id": 94,
    "date": "2026-10-21",
    "where": [
