@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 88,
+   "date": "2026-10-21",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: Up next and Reading orders",
+   "items": [
+    "Up next: a row on the home screen and on each shelf with the next comic of every series you're reading. When the next number is one you don't have yet, it shows grey – tap it to find it.",
+    "Reading orders: a new tab next to Collection lists. Find a big story or event (Secret Wars, House of X, Court of Owls …) on Comic Vine and see all its issues in the order to read them, across all series – yours in colour, the others grey, with a Read next button."
+   ]
+  },
+  {
    "id": 87,
    "date": "2026-10-20",
    "where": [

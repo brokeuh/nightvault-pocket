@@ -559,12 +559,13 @@ const passFilter = (b, f) => f === 'nopub' ? !publisherOf(b) : f === 'reading' ?
 
 function draw(){
   const v = cur(), body = $('#body'); $('#vback').hidden = V.length < 2; $('#addbtn').hidden = !(v.v === 'shelf' || v.v === 'group');
-  if(['col', 'colser', 'disc', 'cvser'].includes(v.v)) $('#addbtn').hidden = true;
+  if(['col', 'colser', 'disc', 'cvser', 'arcs', 'arc'].includes(v.v)) $('#addbtn').hidden = true;
   $('#hubback').hidden = !(fromHub() && V.length < 2);
   let h = '';
   if(v.v === 'shelves'){ $('#vtitle').textContent = 'Bookcase'; document.title = 'Nightvault Bookcase';
     const last = BOOKS.filter(b => started(b) && !STATE[b.id].finished).sort((a, b) => STATE[b.id].last - STATE[a.id].last)[0];
     if(last) h += contCard(last, true);
+    h += upNextHTML(null, last);
     h += '<div class="shelves">' + shelves().map(s => { const bs = inShelf(s.id), rd = bs.filter(b => started(b) && !STATE[b.id].finished).length;
         const fan = bs.filter(b => COV.has(b.id)).sort((a, b) => (lastRead(b) - lastRead(a)) || (b.added - a.added)).slice(0, 3);
         return `<div class="shelf" data-shelf="${esc(s.id)}" style="background:linear-gradient(150deg,${s.c[0]},${s.c[1]})"><div class="ic">${shelfIcon(s)}</div><div class="fan">${fan.map(b => `<img data-fan="${esc(b.id)}" alt="">`).join('')}</div>
@@ -585,7 +586,7 @@ function draw(){
       if(!gm.length && !bm.length) h += '<p class="muted" style="text-align:center;margin-top:30px">Nothing found.</p>';
       if(gm.length) h += `<div class="sec">Groups</div><div class="grid">${gm.map(g => groupTile(s.id, g).replace(/<div class="a">[^<]*<\/div>/, g.parent ? `<div class="a">in ${esc(G.path(gs.find(x => x.key === g.parent), gs))}</div>` : '$&')).join('')}</div>`;
       if(bm.length) h += `<div class="sec">Books</div><div class="grid">${bm.slice(0, 300).map(b => bookTile(b).replace(/<div class="a">[^<]*<\/div>/, where[b.id] ? `<div class="a">in ${esc(where[b.id])}</div>` : '$&')).join('')}</div>` }
-    else { const lastS = all.filter(b => started(b) && !STATE[b.id].finished).sort((a, b) => STATE[b.id].last - STATE[a.id].last)[0]; if(lastS && f === 'all') h += contCard(lastS);
+    else { const lastS = all.filter(b => started(b) && !STATE[b.id].finished).sort((a, b) => STATE[b.id].last - STATE[a.id].last)[0]; if(lastS && f === 'all') h += contCard(lastS); if(f === 'all') h += upNextHTML(s.id, lastS);
       h += `<div class="chips">${FILTERS.concat(s.byPub && all.some(b => !publisherOf(b)) ? [[FILTER_NOPUB[0], `${FILTER_NOPUB[1]} (${all.filter(b => !publisherOf(b)).length})`]] : []).map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-filter="${k}">${t}</button>`).join('')}</div>`;
       const grouped = S.grouped[s.id] !== false;
       h += `<div class="mbar"><select id="grouped" aria-label="Groups"><option value="1" ${grouped ? 'selected' : ''}>Grouped</option><option value="0" ${!grouped ? 'selected' : ''}>All books</option></select>${sortSel('shelf', 'shelf:' + s.id)}<span style="flex:1"></span><button class="btn sm" data-selstart="1">Select</button><button class="btn sm" id="newgrp">+ Group</button></div>`;
@@ -634,7 +635,9 @@ function draw(){
   if(v.v === 'col') return drawCol(v);
   if(v.v === 'colser') return drawColSer(v);
   if(v.v === 'disc') return drawDisc(v);
-  if(v.v === 'cvser') return drawCvSer(v) }
+  if(v.v === 'cvser') return drawCvSer(v);
+  if(v.v === 'arcs') return drawArcs(v);
+  if(v.v === 'arc') return drawArc(v) }
 function contCard(b, withShelf){ const s = STATE[b.id], p = progress(b);
   return `<div class="cont" data-read="${esc(b.id)}">${coverHTML(b)}<div style="flex:1;min-width:0"><small>CONTINUE READING${withShelf ? ' · ' + esc(shelfOf(b.shelf).name.toUpperCase()) : ''}</small><b>${esc(dispTitle(b))}</b>
     <div class="muted small">${b.fmt === 'epub' && s.flow ? Math.round(p * 100) + '%' : `Page ${s.page + 1} of ${s.pages || b.pages || '?'}`}</div><div class="pbar"><i style="width:${Math.round(p * 100)}%"></i></div></div></div>` }
@@ -656,7 +659,8 @@ $('#body').addEventListener('click', e => {
   if(el.dataset.gotogrp){ V.pop(); if(cur().v !== 'group' || cur().key !== el.dataset.gotogrp) V.push({v:'group', shelf:v.shelf, key:el.dataset.gotogrp}); return draw() }
   if(el.dataset.filter){ S.filter[v.shelf] = el.dataset.filter; saveS(); return draw() }
   if(el.dataset.selstart) return selStart();
-  if(el.dataset.tabgo){ if(el.dataset.tabgo === 'col' && v.v !== 'col') go({v:'col', shelf:v.shelf}); else if(el.dataset.tabgo === 'books' && v.v === 'col'){ V.pop(); draw() } return }
+  if(el.dataset.tabgo){ const t = el.dataset.tabgo; if(t === v.v) return; if(t === 'books'){ if(v.v === 'col' || v.v === 'arcs'){ V.pop(); draw() } return }
+    if(v.v === 'col' || v.v === 'arcs'){ V[V.length - 1] = {v:t, shelf:v.shelf}; draw() } else go({v:t, shelf:v.shelf}); return }
   if(el.dataset.col) return go({v:'colser', shelf:v.shelf, vid:vidOf(el.dataset.col)});
   if(el.dataset.allis){ const vid = vidOf(el.dataset.allis), b = BOOKS.find(x => x.cv && x.cv.id === vid); if(COLS[vid]) return go({v:'colser', shelf:v.shelf, vid});
     colAdd(v.shelf, {id:vid, name:b.cv.name, start:b.cv.start, pub:b.cvPub || publisherOf(b)}).then(c => go({v:'colser', shelf:v.shelf, vid:c.vid})).catch(err => { closeSheet(); toast(err.message || String(err), 5000) }) } });
@@ -1506,7 +1510,7 @@ async function findSeries(sh, books, force){ const k = cvKeyOf(books[0]), c = CV
    phys:{'<num>':{price, at}}, at}. Digital = a book of this shelf with b.cv.id = vid (or the same series name when it was never looked up).
    ===================================================================================================================== */
 let COLS = {};
-async function loadCols(){ COLS = {}; for(const r of await dbAll('kv')) if(String(r.id).startsWith('col:')) COLS[r.vid] = r }
+async function loadCols(){ COLS = {}; for(const r of await dbAll('kv')) if(String(r.id).startsWith('col:')) COLS[r.vid] = r; await loadArcs() }
 const colSave = c => dbPut('kv', c);
 const colsOf = sh => Object.values(COLS).filter(c => c.shelf === sh);
 const numKey = n => String(parseFloat(n));
@@ -1547,8 +1551,8 @@ function drawCol(v){ const s = shelfOf(v.shelf), cs = colsOf(v.shelf), q = norm(
   const byPub = {}; for(const c of cs) if(!q || norm(c.name + ' ' + c.pub).includes(q)) (byPub[cleanPub(c.pub) || 'Other'] = byPub[cleanPub(c.pub) || 'Other'] || []).push(c);
   for(const p of Object.keys(byPub).sort(coll.compare)) h += `<div class="sec">${esc(p)}</div><div class="grid">${byPub[p].sort((a, b) => coll.compare(a.name, b.name) || (+a.start || 0) - (+b.start || 0)).map(colTile).join('')}</div>`;
   $('#body').innerHTML = h; lazyCovers($('#body')); hookCol(v) }
-const colTabs = (sh, on) => `<div class="chips"><button class="chip ${on === 'books' ? 'on' : ''}" data-tabgo="books">My ${esc(shelfOf(sh).name.toLowerCase())}</button><button class="chip ${on === 'col' ? 'on' : ''}" data-tabgo="col">Collection lists${colsOf(sh).length ? ' (' + colsOf(sh).length + ')' : ''}</button></div>`;
-const showColTabs = sh => colsOf(sh).length || shelfOf(sh).byPub;
+const colTabs = (sh, on) => `<div class="chips"><button class="chip ${on === 'books' ? 'on' : ''}" data-tabgo="books">My ${esc(shelfOf(sh).name.toLowerCase())}</button><button class="chip ${on === 'col' ? 'on' : ''}" data-tabgo="col">Collection lists${colsOf(sh).length ? ' (' + colsOf(sh).length + ')' : ''}</button><button class="chip ${on === 'arcs' ? 'on' : ''}" data-tabgo="arcs">Reading orders${arcsOf(sh).length ? ' (' + arcsOf(sh).length + ')' : ''}</button></div>`;
+const showColTabs = sh => colsOf(sh).length || arcsOf(sh).length || shelfOf(sh).byPub;
 function hookCol(v){ const a = $('#coladd'); if(a) a.onclick = () => colSearch(v.shelf); const dz = $('#coldisc'); if(dz) dz.onclick = () => CV.key() ? go({v:'disc', shelf:v.shelf, tab:'week'}) : cvKeySheet(() => go({v:'disc', shelf:v.shelf, tab:'week'})); const m = $('#colmine'); if(m) m.onclick = () => colMine(v.shelf);
   const q = $('#colq'); if(q) q.oninput = () => { Q['col:' + v.shelf] = q.value; clearTimeout(q._t); q._t = setTimeout(() => { const p = q.selectionStart; draw(); const n = $('#colq'); if(n){ n.focus(); try{ n.setSelectionRange(p, p) }catch(e){} } }, 250) } }
 /* + Add a series: search Comic Vine, GCD or Wikipedia, tap one */
@@ -1713,3 +1717,102 @@ function drawCvSer(v){ if(COLS[v.vid]){ V[V.length - 1] = {v:'colser', shelf:v.s
         $('#cst').textContent = `You have ${Object.keys(d).length} of ${issues.length}`; $('#cvsgrid').innerHTML = issueGridHTML(tmp, () => true); lazyCovers($('#cvsgrid'));
         $('#cvsgrid').querySelectorAll('[data-iss]').forEach(el => el.onclick = () => { const b = d[el.dataset.iss]; if(b) go({v:'book', id:b.id}); else issueSheet(tmp, issues.find(i => numKey(i.num) === el.dataset.iss)) }) }catch(e){ const el = $('#cst'); if(el) el.textContent = e.message || String(e) } } }
     catch(e){ const el = $('#cst'); if(el) el.textContent = e.message || String(e) } })() }
+
+/* =====================================================================================================================
+   UP NEXT (owner, 21 Oct – idea from Marvel Unlimited): a row on the home screen and on a shelf with, for every series you are reading,
+   the next one: the comic you are in, else the next one you have that is not read yet. When the next NUMBER is missing (a collection
+   list knows it, and it's not on paper) a grey tile shows it – tap = Find it. Newest read series first, at most 15.
+   ===================================================================================================================== */
+const listFor = b => (b.cv && COLS[b.cv.id]) || (b.series ? colsOf(b.shelf).find(c => bare(c.name) === bare(b.series)) : null) || null;
+function upNext(sh, skip){ const out = [], seen = new Set();
+  const touched = (sh ? inShelf(sh) : BOOKS).filter(b => b.series && started(b)).sort((a, b) => lastRead(b) - lastRead(a));
+  for(const b of touched){ const key = b.shelf + '|' + norm(b.series); if(seen.has(key)) continue; seen.add(key);
+    const l = seriesList(b); let hi = -1; l.forEach((x, i) => { if(started(x)) hi = Math.max(hi, i) }); const at = l[hi] || b;
+    const nxt = !(STATE[at.id] || {}).finished ? at : l.slice(hi + 1).find(x => !(STATE[x.id] || {}).finished) || null;
+    const c = at.num != null && (STATE[at.id] || {}).finished ? listFor(at) : null;
+    if(c){ const d = colDigital(c), P = c.phys || {}, want = c.issues.find(i => i.num > at.num && !P[numKey(i.num)]);
+      if(want && !d[numKey(want.num)] && (!nxt || nxt.num == null || nxt.num > want.num)){ out.push({miss:true, c, i:want, b:at}); if(out.length >= 15) break; continue } }
+    if(nxt && nxt !== skip) out.push({b:nxt}); if(out.length >= 15) break }
+  return out }
+function upNextHTML(sh, skip){ const l = upNext(sh, skip); if(!l.length) return '';
+  UPN = l; return `<div class="sec">Up next</div><div class="hrow">${l.map((x, n) => x.miss
+      ? `<div class="bk iss miss" data-upmiss="${n}"><div class="cv">${x.i.thumb ? `<img class="b" src="${esc(x.i.thumb)}" alt="" loading="lazy"><img class="f" src="${esc(x.i.thumb)}" alt="" loading="lazy">` : phHTML({title:x.c.name, shelf:x.c.shelf}, x.c.name)}<span class="vol">${esc(x.i.label)}</span></div><div class="t">${esc(x.b.series)} ${esc(x.i.label)}</div><div class="a">You don't have it yet</div></div>`
+      : bookTile(x.b)).join('')}</div>` }
+let UPN = [];
+document.addEventListener('click', e => { const t = e.target.closest('[data-upmiss]'); if(!t) return; const x = UPN[+t.dataset.upmiss]; if(x) issueSheet(x.c, x.i) });
+
+/* =====================================================================================================================
+   READING ORDERS (owner, 21 Oct – idea from Marvel Unlimited's reading guides): a story arc or event from Comic Vine (Secret Wars,
+   House of X …) as one list across several series, in reading order: yours in colour (tap = read), the others grey (tap = Find it).
+   Comic Vine: search?resources=story_arc → story_arc/4045-<id> (its issues) → issues?filter=id:a|b|c (number, series, date, cover,
+   100 per request). Order: by cover date (year-month), Comic Vine's own order inside a month (tie-ins come out together).
+   Stored in kv 'arc:<id>' = {id, aid, shelf, name, pub, deck, img, items:[{iid, vid, vname, num, label, name, date, img, thumb}], at}.
+   ===================================================================================================================== */
+let ARCS = {};
+async function loadArcs(){ ARCS = {}; for(const r of await dbAll('kv')) if(String(r.id).startsWith('arc:')) ARCS[r.aid] = r }
+const arcsOf = sh => Object.values(ARCS).filter(a => a.shelf === sh);
+/* your comic for an item of an order: the same Comic Vine series and number, else the same series name and number */
+function arcOwned(a){ const by = {}, byName = {};
+  for(const b of inShelf(a.shelf)){ if(b.num == null) continue; if(b.cv && srcOf(b.cv.id) === 'cv') by[b.cv.id + '|' + numKey(b.num)] = by[b.cv.id + '|' + numKey(b.num)] || b;
+    else if(b.series) byName[bare(b.series) + '|' + numKey(b.num)] = byName[bare(b.series) + '|' + numKey(b.num)] || b }
+  const m = {}; for(const it of a.items){ const b = by[it.vid + '|' + numKey(it.num)] || byName[bare(it.vname) + '|' + numKey(it.num)]; if(b) m[it.iid] = b } return m }
+function arcStats(a){ const m = arcOwned(a), P = it => ((COLS[it.vid] || {}).phys || {})[numKey(it.num)];
+  return {total:a.items.length, have:a.items.filter(it => m[it.iid] || P(it)).length, read:a.items.filter(it => m[it.iid] && (STATE[m[it.iid].id] || {}).finished).length, m, P} }
+async function arcFetch(aid, onStep){ const j = await cvGet('story_arc/4045-' + aid, {field_list:'id,name,deck,description,publisher,image,issues'}), r = j.results || {};
+  const ids = (r.issues || []).map(x => x.id), info = {};
+  for(let i = 0; i < ids.length; i += 100){ onStep && onStep(i, ids.length);
+    const k = await cvGet('issues', {filter:'id:' + ids.slice(i, i + 100).join('|'), limit:100, field_list:'id,issue_number,name,cover_date,store_date,image,volume'});
+    for(const x of k.results || []) info[x.id] = x }
+  const items = ids.map((id, n) => { const x = info[id]; if(!x || !x.volume) return null; const num = parseFloat(x.issue_number);
+      return {iid:id, vid:x.volume.id, vname:x.volume.name, num:isNaN(num) ? 0 : num, label:'#' + x.issue_number, name:x.name || '', date:x.cover_date || x.store_date || '', img:x.image && (x.image.medium_url || x.image.small_url) || '', thumb:x.image && (x.image.small_url || x.image.thumb_url) || '', n} }).filter(Boolean)
+    .sort((a, b) => (a.date.slice(0, 7) || '9999').localeCompare(b.date.slice(0, 7) || '9999') || a.n - b.n);
+  return {name:r.name, pub:r.publisher && r.publisher.name || '', deck:cvStrip(r.deck || r.description).slice(0, 1500), img:r.image && (r.image.medium_url || r.image.small_url) || '', items} }
+async function arcAdd(sh, aid){ if(ARCS[aid]) return ARCS[aid];
+  sheet(`<h3>Getting the reading order…</h3><div class="prog busy"><i></i></div><div class="muted small" id="aas"></div>`, true);
+  try{ const f = await arcFetch(aid, (n, t) => { const s = $('#aas'); if(s) s.textContent = `${n} of ${t} issues`; });
+    const a = Object.assign({id:'arc:' + aid, aid, shelf:sh, at:Date.now()}, f); ARCS[aid] = a; await dbPut('kv', a); closeSheet(); return a }
+  catch(e){ closeSheet(); throw e } }
+function arcTile(a){ const st = arcStats(a), first = a.items.find(it => st.m[it.iid]);
+  const cov = first ? coverHTML(st.m[first.iid]) : `<div class="cv">${a.img || (a.items[0] || {}).thumb ? `<img class="b" src="${esc(a.img || a.items[0].thumb)}" alt="" loading="lazy"><img class="f" src="${esc(a.img || a.items[0].thumb)}" alt="" loading="lazy">` : phHTML({title:a.name, shelf:a.shelf}, a.name)}</div>`;
+  return `<div class="bk stack" data-arc="${a.aid}">${cov}<span class="cdl">${st.have} of ${st.total}</span><div class="pbar"><i style="width:${st.total ? Math.round(100 * st.read / st.total) : 0}%"></i></div><div class="t">${esc(a.name)}</div><div class="a">${esc([cleanPub(a.pub), st.read ? st.read + ' read' : ''].filter(Boolean).join(' · ') || ' ')}</div></div>` }
+function drawArcs(v){ const s = shelfOf(v.shelf), as = arcsOf(v.shelf).sort((a, b) => coll.compare(a.name, b.name));
+  $('#vtitle').textContent = s.name; document.title = 'Reading orders · ' + s.name;
+  let h = colTabs(v.shelf, 'arcs') + `<div class="mbar"><button class="btn primary sm" id="arcadd">+ Find a reading order</button></div>`;
+  h += as.length ? `<div class="mtot">${plural(as.length, 'reading order')}</div><div class="grid">${as.map(arcTile).join('')}</div>`
+    : `<div class="empty"><h2 style="margin:4px 0;font-size:17px">No reading orders yet</h2><p class="muted small" style="margin:0">A reading order is a big story or event told over several series (like <b>Secret Wars</b>, <b>House of X</b> or <b>Court of Owls</b>), in the order to read it: yours in colour, the others grey. Tap <b>+ Find a reading order</b>. (Comic Vine)</p></div>`;
+  $('#body').innerHTML = h; lazyCovers($('#body'));
+  $('#arcadd').onclick = () => arcSearch(v.shelf);
+  $('#body').querySelectorAll('[data-arc]').forEach(el => el.onclick = () => go({v:'arc', shelf:v.shelf, aid:+el.dataset.arc})) }
+function arcSearch(sh){ if(!CV.key()) return cvKeySheet(() => arcSearch(sh)); let res = [];
+  sheet(`<h3>Find a reading order</h3><div style="display:flex;gap:8px"><input type="search" id="asq" placeholder="An event or story, like Secret Wars or Civil War"><button class="btn primary" id="asgo">Search</button></div><div class="muted small" id="asst" style="margin:6px 0">Reading orders come from Comic Vine's story arcs.</div><div id="asres"></div><button class="btn" style="width:100%;margin-top:10px" onclick="closeSheet()">Close</button>`);
+  const run = async () => { const q = $('#asq').value.trim(); if(!q) return; $('#asst').textContent = 'Searching…'; $('#asres').innerHTML = '';
+    try{ const j = await cvGet('search', {resources:'story_arc', query:q, limit:30, field_list:'id,name,publisher,image,deck,count_of_isssue_appearances'}); res = j.results || [];
+      $('#asst').textContent = res.length ? 'Tap one to get its reading order' : 'Nothing found - try other words';
+      $('#asres').innerHTML = res.map((r, n) => `<div class="li" data-ares="${n}"><span class="th"><div class="cv">${r.image && r.image.thumb_url ? `<img class="f" src="${esc(r.image.thumb_url)}" alt="" style="object-fit:cover">` : ''}</div></span><div class="n"><div>${esc(r.name)}</div><div class="s">${esc(cleanPub(r.publisher && r.publisher.name) || '?')}${r.count_of_isssue_appearances ? ' · ' + plural(r.count_of_isssue_appearances, 'issue') : ''}</div></div><span class="r">${ARCS[r.id] ? '✓ yours' : ''}</span></div>`).join('') }
+    catch(e){ $('#asst').textContent = e.message || String(e) } };
+  $('#asgo').onclick = run; $('#asq').onkeydown = e => { if(e.key === 'Enter') run() }; setTimeout(() => $('#asq').focus(), 50);
+  $('#asres').onclick = async e => { const r = e.target.closest('[data-ares]'); if(!r) return; const x = res[+r.dataset.ares];
+    try{ const a = await arcAdd(sh, x.id); go({v:'arc', shelf:sh, aid:a.aid}) }catch(err){ toast(err.message || String(err), 5000) } } }
+function drawArc(v){ const a = ARCS[v.aid]; if(!a){ V.pop(); return draw() } const st = arcStats(a), f = S.filter['arc'] || 'all';
+  $('#vtitle').textContent = ''; document.title = a.name + ' · Reading order';
+  const next = a.items.find(it => st.m[it.iid] && !(STATE[st.m[it.iid].id] || {}).finished), nb = next && st.m[next.iid];
+  let h = `<div class="alhead" style="align-items:center"><div style="min-width:0;flex:1"><b>${esc(a.name)}</b><div class="muted small">${esc(cleanPub(a.pub))}${a.pub ? ' · ' : ''}reading order of ${plural(st.total, 'issue')}</div>
+    <div class="muted small">you have ${st.have} · read ${st.read}</div><div class="pbar" style="max-width:260px"><i style="width:${st.total ? Math.round(100 * st.read / st.total) : 0}%"></i></div></div><button class="ib" id="armenu" aria-label="More for this reading order">${IC_DOTS}</button></div>`;
+  if(nb) h += `<div class="mbar"><button class="btn primary" data-read="${esc(nb.id)}" style="flex:1;min-width:0"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${started(nb) ? 'Continue' : 'Read next'}: ${esc(next.vname)} ${esc(next.label)}</span></button></div>`;
+  if(a.deck) h += `<div class="desc clip" id="arab" style="margin-bottom:8px">${esc(a.deck)}</div>`;
+  h += `<div class="chips">${[['all', 'All'], ['have', 'I have'], ['miss', 'Missing'], ['unread', 'Not read yet']].map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-arf="${k}">${t}</button>`).join('')}</div>`;
+  const pass = it => { const b = st.m[it.iid], p = st.P(it); return f === 'have' ? b || p : f === 'miss' ? !b && !p : f === 'unread' ? !(b && (STATE[b.id] || {}).finished) : true };
+  h += `<div class="grid">${a.items.map((it, n) => [it, n]).filter(([it]) => pass(it)).map(([it, n]) => { const b = st.m[it.iid], p = st.P(it), done = b && (STATE[b.id] || {}).finished;
+      const cov = b ? coverHTML(b) : `<div class="cv">${it.thumb ? `<img class="b" src="${esc(it.thumb)}" alt="" loading="lazy"><img class="f" src="${esc(it.thumb)}" alt="" loading="lazy">` : phHTML({title:it.vname, shelf:a.shelf}, it.vname)}</div>`;
+      return `<div class="bk iss ${b || p ? '' : 'miss'}" data-ait="${n}">${cov.replace(/<\/div>$/, `<span class="vol">${n + 1}</span>${b ? '<span class="bd dg">D</span>' : ''}${p ? `<span class="bd pp${b ? '' : ' solo'}">P</span>` : ''}${done ? '<span class="done">READ</span>' : ''}</div>`)}<div class="t">${esc(it.vname)} ${esc(it.label)}</div><div class="a">${esc([it.date.slice(0, 7), it.name].filter(Boolean).join(' · ') || ' ')}</div></div>` }).join('')}</div>`;
+  $('#body').innerHTML = h; lazyCovers($('#body'));
+  if($('#arab')) $('#arab').onclick = e => e.currentTarget.classList.toggle('clip');
+  $('#body').querySelectorAll('[data-arf]').forEach(b => b.onclick = () => { S.filter['arc'] = b.dataset.arf; saveS(); draw() });
+  $('#body').querySelectorAll('[data-ait]').forEach(el => el.onclick = () => { const it = a.items[+el.dataset.ait], b = st.m[it.iid]; if(b) return go({v:'book', id:b.id});
+    const c = COLS[it.vid] || {vid:it.vid, shelf:a.shelf, name:it.vname, issues:[], phys:{}}, i = (c.issues || []).find(x => numKey(x.num) === numKey(it.num)) || {num:it.num, label:it.label, name:it.name, date:it.date, img:it.img, thumb:it.thumb};
+    issueSheet(c, i); if(!COLS[it.vid]) $('.sheet').insertAdjacentHTML('beforeend', `<button class="btn" id="araddser" style="width:100%;margin-top:8px">Add ${esc(it.vname)} to my collection lists</button>`);
+    const ad = $('#araddser'); if(ad) ad.onclick = async () => { try{ await colAdd(a.shelf, {id:it.vid, name:it.vname}); toast(`${it.vname} added to your lists`); draw() }catch(e){ toast(e.message || String(e), 5000) } } });
+  $('#armenu').onclick = () => { sheet(`<h3>${esc(a.name)}</h3><div class="mlist"><button class="btn" id="arnew">Check Comic Vine again</button><button class="btn" id="arcopy">Copy the missing issues as a list</button><button class="btn danger" id="ardel">Remove this reading order</button></div><p class="muted small">Removing it keeps your comics.</p>`);
+    $('#arnew').onclick = async () => { closeSheet(); try{ const f2 = await arcFetch(a.aid); Object.assign(a, f2, {at:Date.now()}); await dbPut('kv', a); draw(); toast(plural(a.items.length, 'issue') + ' in this reading order') }catch(e){ toast(e.message || String(e), 5000) } };
+    $('#arcopy').onclick = () => copyText(a.items.filter(it => !st.m[it.iid] && !st.P(it)).map(it => `${it.vname} ${it.label}`).join('\n'));
+    $('#ardel').onclick = async () => { if(!confirm(`Remove the reading order “${a.name}”? Your comics stay.`)) return; await dbDel('kv', a.id); delete ARCS[a.aid]; closeSheet(); V.pop(); draw() } } }
