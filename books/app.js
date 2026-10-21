@@ -97,6 +97,7 @@ function srcFromLink(f){ return {size:f.size, name:f.name, url:linkUrl(f.uri, f.
   blob:async () => { const r = await fetch(linkUrl(f.uri, f.name), {cache:'no-store'}); if(!r.ok) throw new Error('Cannot read ' + f.name); return r.blob() }} }
 function srcFromBlob(b, name){ return {size:b.size, name:name || b.name || '', read:(a, z) => b.slice(a, z).arrayBuffer(), blob:async () => b} }
 async function bookSource(b){
+  if(b.src.kind === 'drive'){ if(b.src.fid){ const f = await dbGet('files', b.src.fid).catch(() => null); if(f) return srcFromBlob(f.blob, b.name) } return srcFromDrive(b.src) }
   if(b.src.kind === 'link') return srcFromLink(b.src);
   if(b.src.kind === 'blob') return srcFromBlob(b.src.blob, b.name);   // handed over by another app (Boardgames' files), see openHanded
   const f = await dbGet('files', b.src.fid); if(!f) throw new Error('The copy of this book is missing'); return srcFromBlob(f.blob, b.name) }
@@ -269,9 +270,10 @@ const pageList = entries => entries.filter(x => IMG_RE.test(x.name) && !skipName
 async function openDoc(b){
   if(b.fmt === 'imgs' && b.src.kind === 'blob') return {n:1, toc:[], async page(){ const u8 = new Uint8Array(await b.src.blob.slice(0, 16).arrayBuffer()); return new Blob([b.src.blob], {type:sniff(u8) || MIME[ext(b.name)] || 'image/jpeg'}) }};
   if(b.fmt === 'imgs'){
-    const files = b.src.kind === 'link' ? b.src.files.slice().sort((x, y) => pageSort(x.name, y.name)) : b.src.fids.slice().sort((x, y) => pageSort(x.name, y.name));
+    const files = b.src.kind === 'link' || b.src.kind === 'drive' ? b.src.files.slice().sort((x, y) => pageSort(x.name, y.name)) : b.src.fids.slice().sort((x, y) => pageSort(x.name, y.name));
     return {n:files.length, toc:[], async page(i){ const f = files[i];
       if(b.src.kind === 'link'){ const u8 = new Uint8Array(await linkRead(f.uri, f.name, 0, f.size)); return imgBlob(u8, f.name) }
+      if(b.src.kind === 'drive'){ const u8 = new Uint8Array(await driveRead(f.id, 0, f.size)); return imgBlob(u8, f.name) }
       const r = await dbGet('files', f.fid); const u8 = new Uint8Array(await r.blob.slice(0, 16).arrayBuffer()); return new Blob([r.blob], {type:sniff(u8) || MIME[ext(f.name)] || 'image/jpeg'}) }} }
   const src = await bookSource(b), fmt = await realFmt(src, b.name) || b.fmt;
   if(fmt === 'pdf'){ const pdf = await pdfOpen(src), toc = await pdfToc(pdf);
@@ -344,10 +346,12 @@ function addSheet(){
     <p class="muted small" style="margin:0 0 12px">CBZ, CBR, PDF, EPUB, and folders of pictures (JPG, PNG, WebP, AVIF). Series and volume numbers come from the file (ComicInfo.xml, the EPUB's details) or the file and folder names.</p>
     <div class="mlist">${NvFiles ? `<button class="btn primary" id="adl">Use a folder on this phone</button><div class="muted small" style="margin:-2px 0 6px">Nothing is copied: the books are read from that folder. Pick your ${esc(sh.name.toLowerCase())} folder - all folders inside it are read.</div>` : ''}
       <button class="btn ${NvFiles ? '' : 'primary'}" id="adf">${NvFiles ? 'Copy books into the app' : 'Pick books'}</button><div class="muted small" style="margin:-2px 0 0">${NvFiles ? 'Takes extra space.' : 'They are copied into the app, so they work without internet.'}</div>
+      <button class="btn" id="adgd">From Google Drive</button><div class="muted small" style="margin:-2px 0 0">A Drive folder of yours that is shared with a link: read from Drive, Download keeps a copy on the phone.</div>
       ${window.NVPC && NVPC.native ? '<button class="btn" id="adpc">From my PC</button><div class="muted small" style="margin:-2px 0 0">What the Nightvault PC app has: pick books, a range or a full series to keep on the phone.</div>' : ''}
       ${dirOK ? '<button class="btn" id="add">Pick a whole folder</button><div class="muted small" style="margin:-2px 0 0">Folders of pictures become one book each.</div>' : ''}</div>`);
   if($('#adl')) $('#adl').onclick = () => { closeSheet(); addFolder(sh.id) };
   if($('#adpc')) $('#adpc').onclick = () => pcSheet(sh.id);
+  $('#adgd').onclick = () => driveSheet(sh.id);
   $('#adf').onclick = () => { closeSheet(); const i = $('#pickfiles'); i.value = ''; i.onchange = e => addFiles([...e.target.files], sh.id); i.click() };
   if($('#add')) $('#add').onclick = () => { closeSheet(); const i = $('#pickdir'); i.value = ''; i.onchange = e => addFiles([...e.target.files], sh.id); i.click() } }
 
@@ -470,11 +474,11 @@ async function addFolder(shelf, f){
 let SCAN = null;
 async function scan(items, shelf, folder, notyet, quiet){
   const key = it => folder ? (it.kind === 'imgs' ? folder.tree + '|' + it.path : it.f.uri) : (it.kind === 'imgs' ? 'dir|' + it.path + '|' + it.files.length : it.f.name + '|' + it.f.size);
-  const bkey = b => b.src.kind === 'link' ? (b.fmt === 'imgs' ? b.src.tree + '|' + b.dir2 : b.src.uri) : (b.fmt === 'imgs' ? 'dir|' + b.dir2 + '|' + b.src.fids.length : b.name + '|' + b.size);
+  const bkey = b => b.src.kind === 'link' || b.src.kind === 'drive' ? (b.fmt === 'imgs' ? b.src.tree + '|' + b.dir2 : b.src.uri) : (b.fmt === 'imgs' ? 'dir|' + b.dir2 + '|' + b.src.fids.length : b.name + '|' + b.size);
   const same = new Set(BOOKS.filter(b => b.shelf === shelf && b.fmt !== 'imgs').map(b => b.name + '|' + b.size));   // the same file through another folder (a folder inside a folder you added)
   const have = new Set(BOOKS.filter(b => b.shelf === shelf).map(bkey)), fresh = items.filter(it => !have.has(key(it)) && !(it.kind === 'file' && same.has(it.f.name + '|' + it.f.size)));
   let removed = 0;
-  if(folder){ const seen = new Set(items.map(key)), gone = BOOKS.filter(b => b.shelf === shelf && b.src.kind === 'link' && b.src.tree === folder.tree && !seen.has(bkey(b)));
+  if(folder){ const seen = new Set(items.map(key)), gone = BOOKS.filter(b => b.shelf === shelf && (b.src.kind === 'link' || b.src.kind === 'drive') && b.src.tree === folder.tree && !seen.has(bkey(b)));
     if(gone.length){ removed = gone.length; await dbDelMany('books', gone.map(b => b.id)); const g = new Set(gone.map(b => b.id)); BOOKS = BOOKS.filter(b => !g.has(b.id)); for(const id of g) delete BK[id] } }
   if(!fresh.length && quiet) return 0;
   if(!fresh.length){ awake(false); closeSheet(); draw(); toast(items.length || removed ? `No new books${removed ? ` · ${plural(removed, 'book')} that are gone were removed` : ''}` : `No books found there${notyet ? ` (${notyet} in a format Bookcase can't read yet: CB7, MOBI …)` : ''}`, 5000); return }
@@ -490,12 +494,12 @@ async function scan(items, shelf, folder, notyet, quiet){
     const b = {id:uid(), shelf, added:now, dir:it.dir || '', dir2:it.path, pubDir:pubFolder(it.dir, tops)};
     if(it.kind === 'imgs'){ const fs = it.files.slice().sort((x, y) => pageSort(x.name, y.name)), p = parseName(it.name, it.dir);
       Object.assign(b, {fmt:'imgs', name:it.name, title:p.title || (p.series ? '' : p.clean), series:p.series, num:p.num, vol:p.vol, year:p.year, pages:fs.length, size:fs.reduce((n, f) => n + f.size, 0)});
-      if(folder) b.src = {kind:'link', tree:folder.tree, files:fs.map(f => ({uri:f.uri, name:f.name, size:f.size}))};
+      if(folder) b.src = folder.drive ? {kind:'drive', tree:folder.tree, files:fs.map(f => ({uri:f.uri, id:f.id, name:f.name, size:f.size}))} : {kind:'link', tree:folder.tree, files:fs.map(f => ({uri:f.uri, name:f.name, size:f.size}))};
       else { const fids = []; for(const f of fs){ const fid = uid(); await dbPut('files', {id:fid, blob:f}); fids.push({fid, name:f.name}) } b.src = {kind:'copy', fids} }
-      try{ const f0 = fs.find(f => /cover|front/i.test(f.name)) || fs[0]; const u8 = folder ? new Uint8Array(await linkRead(f0.uri, f0.name, 0, f0.size)) : new Uint8Array(await f0.arrayBuffer()); await setCover(b.id, await thumb(imgBlob(u8, f0.name))) }catch(e){} }
-    else { const f = it.f, src = folder ? srcFromLink(f) : srcFromBlob(f, f.name), md = await readMeta(src, f.name, it.dir);
+      try{ const f0 = fs.find(f => /cover|front/i.test(f.name)) || fs[0]; const u8 = folder ? new Uint8Array(folder.drive ? await driveRead(f0.id, 0, f0.size) : await linkRead(f0.uri, f0.name, 0, f0.size)) : new Uint8Array(await f0.arrayBuffer()); await setCover(b.id, await thumb(imgBlob(u8, f0.name))) }catch(e){} }
+    else { const f = it.f, src = folder ? (folder.drive ? srcFromDrive(f) : srcFromLink(f)) : srcFromBlob(f, f.name), md = folder && folder.drive ? await driveMeta(src, f, it.dir) : await readMeta(src, f.name, it.dir);
       Object.assign(b, {fmt:md.fmt, name:f.name, size:f.size, publisher:md.publisher || '', title:md.title, series:md.series, num:md.num, vol:md.vol, writer:md.writer, artist:md.artist, year:md.year, desc:md.desc, pages:md.pages, rtl:md.rtl, later:md.later || false});
-      if(folder) b.src = {kind:'link', uri:f.uri, name:f.name, size:f.size, tree:folder.tree};
+      if(folder) b.src = folder.drive ? {kind:'drive', uri:f.uri, id:f.id, name:f.name, size:f.size, tree:folder.tree} : {kind:'link', uri:f.uri, name:f.name, size:f.size, tree:folder.tree};
       else { const fid = uid(); await dbPut('files', {id:fid, blob:f}); b.src = {kind:'copy', fid} }
       if(md.cover) try{ await setCover(b.id, await thumb(md.cover)) }catch(e){ LE('cover', 'could not make the cover of ' + f.name, e) } }
     await dbPut('books', b); BOOKS.push(b); BK[b.id] = b; added++ };
@@ -513,7 +517,7 @@ async function scan(items, shelf, folder, notyet, quiet){
   if(!failed && isManga(shelf) && shelfOf(shelf).fullSeries && canLookOnline(shelf) && BOOKS.some(b => b.shelf === shelf && b.added === now && !b.cv)) setTimeout(() => { const n = new Set(BOOKS.filter(b => b.shelf === shelf && b.added === now && !b.cv).map(b => norm(b.series || b.title))).size;
     sheet(`<h3>Look them up online?</h3><p class="muted small">Bookcase can look up ${plural(n, 'series', 'series')} of what you just added: every volume with its cover (the ones you don't have show grey), the story, writer and artist. It uses ${esc(srcOrder(shelf).map(x => SRC_NAME[x]).join(' and '))} – no key needed.</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Not now</button><button class="btn primary" style="flex:2" id="cvnow">Look them up</button></div>`); $('#cvnow').onclick = () => cvLookup(shelf, false) }, 700);
   if(failed) setTimeout(() => sheet(`<h3>${plural(failed, 'file')} could not be read</h3><div style="max-height:46vh;overflow:auto;font-size:12.5px" class="muted">${errs.slice(0, 60).map(esc).join('<br>')}</div><button class="btn primary" style="width:100%;margin-top:12px" id="errok">OK</button>`), 400), setTimeout(() => { const b = $('#errok'); if(b) b.onclick = closeSheet }, 500) }
-async function lookAgain(f){ if(!NvFiles) return; await addFolder(f.shelf, {tree:f.tree, name:f.name}) }
+async function lookAgain(f){ if(/^gd:/.test(f.tree)) return driveAdd(f.shelf, {id:f.tree.slice(3), name:f.name}); if(!NvFiles) return; await addFolder(f.shelf, {tree:f.tree, name:f.name}) }
 
 /* ---------- groups: the shared way of every Nightvault app (../hub/nvgroups.js, plans/shared-groups.md) – one engine per shelf ----------
    automatic group = the series (Naruto, Saga, …); on the Books shelf a writer's books without a series make a tile too */
@@ -798,7 +802,7 @@ function hookGrid(sh){ document.querySelectorAll('#body .grid').forEach(gr => {
 function drawBook(id){ const b = BK[id]; if(!b){ V.pop(); return draw() }
   const s = STATE[b.id], p = progress(b), g = groupOfBook(b), prev = nextInSeries(b, -1), next = nextInSeries(b, 1), sh = shelfOf(b.shelf);
   $('#vtitle').textContent = ''; document.title = dispTitle(b) + ' · Bookcase';
-  const where = b.src.kind === 'link' ? 'In a folder on this phone' : 'Copied into the app';
+  const where = b.src.kind === 'link' ? 'In a folder on this phone' : b.src.kind === 'drive' ? 'On Google Drive' + (b.src.fid ? ' · downloaded to this phone' : '') : 'Copied into the app';
   const facts = [['Publisher', (() => { const x = pubSource(b); return x.p ? esc(x.p) + ({folder:' <span class="muted">· from the folder</span>', name:' <span class="muted">· from the file name</span>', online:' <span class="muted">· from Comic Vine</span>', series:' <span class="muted">· like the rest of this series</span>', guess:' <span class="muted">· guessed from the name – fix it with Edit details</span>'}[x.how] || '') : '' })()], ['Series', b.series ? `<span class="lnk" data-gotogrp2="1">${esc(b.series)}</span>${b.vol ? ' · ' + esc(b.vol) : ''}` : ''], ['Writer', esc(b.writer)], ['Artist', esc(b.artist)], ['Year', esc(b.year)],
     ['Pages', b.pages ? String(b.pages) : ''], ['Reading', b.rtl ? 'Right to left (manga)' : b.rtl === false ? 'Left to right' : ''], ['Online', b.cv ? esc(b.cv.name) + (b.cv.start ? ` (${b.cv.start})` : '') + ` <span class="muted">· ${SRC_NAME[srcOf(b.cv.id)]}</span>` : ''], ['File', `${esc((b.fmt || '').toUpperCase())}${b.size ? ' · ' + mb(b.size) : ''}`], ['Where', where + (b.dir ? ` · <span class="muted">${esc(b.dir)}</span>` : '')], ['Shelf', esc(sh.name)]].filter(x => x[1]);
   const nx = (x, lbl) => x ? `<div class="nx" data-book="${esc(x.id)}">${coverHTML(x)}<div class="n"><small>${lbl}</small><div>${esc(x.vol || x.title)}</div></div></div>` : '<div></div>';
@@ -832,17 +836,20 @@ function bookMenu(b){ const G = grOf(b.shelf), s = STATE[b.id], pin = G.isPinned
     <button class="btn" id="bmg">Put in a group…</button><button class="btn" id="bms">Move to another shelf…</button><button class="btn" id="bme">Edit details</button>
     <button class="btn" id="bmr">${s && s.finished ? 'Mark as not read' : 'Mark as read'}</button><button class="btn" id="bmp">${pin ? '★ Unpin from the top' : '★ Pin to the top'}</button>
     <button class="btn" id="bmcv">Look up online…</button><button class="btn" id="bmc">Change the cover</button><button class="btn" id="bmprint">Print…</button>
-    <button class="btn danger" id="bmx">${b.src.kind === 'link' ? 'Remove from Bookcase (the file stays)' : 'Remove from Bookcase'}</button></div>`);
+    ${b.src.kind === 'drive' ? `<button class="btn" id="bmdl">${b.src.fid ? 'Remove the downloaded copy' : 'Download to this phone (offline)'}</button>` : ''}
+    <button class="btn danger" id="bmx">${b.src.kind === 'link' || b.src.kind === 'drive' ? 'Remove from Bookcase (the file stays)' : 'Remove from Bookcase'}</button></div>`);
   $('#bmg').onclick = () => groupPicker(b); $('#bms').onclick = () => shelfPicker([b.id]); $('#bme').onclick = () => editBook(b);
   $('#bmr').onclick = () => { const x = st(b.id); x.finished = !x.finished; if(x.finished){ x.last = x.last || Date.now(); x.page = Math.max(0, (x.pages || b.pages || 1) - 1) } else x.page = 0; saveState(b.id, true); closeSheet(); draw() };
   $('#bmp').onclick = () => { G.togglePin(['it:' + b.id], !pin); closeSheet(); draw(); toast(pin ? 'Unpinned' : 'Pinned: it shows first') };
   $('#bmcv').onclick = () => cvChoose(b);
   $('#bmc').onclick = () => coverSheet(b); $('#bmprint').onclick = () => { closeSheet(); printSheet(b) };
+  if($('#bmdl')) $('#bmdl').onclick = () => { closeSheet(); b.src.fid ? driveUndownload([b]) : driveDownload([b]) };
   $('#bmx').onclick = () => removeBooks([b.id]) }
 async function removeBooks(ids){ const bs = ids.map(id => BK[id]).filter(Boolean); if(!bs.length) return;
   const cp = bs.filter(b => b.src.kind === 'copy').length;
   if(!confirm(`Remove ${bs.length === 1 ? '“' + dispTitle(bs[0]) + '”' : plural(bs.length, 'book')} from Bookcase?${cp ? `\n\nThe ${cp === 1 ? 'copy' : cp + ' copies'} in the app will be deleted.` : ''}${bs.length - cp ? '\n\nFiles in phone folders stay where they are.' : ''}`)) return;
-  for(const b of bs){ if(b.src.kind === 'copy'){ if(b.src.fid) await dbDel('files', b.src.fid).catch(() => {}); if(b.src.fids) await dbDelMany('files', b.src.fids.map(x => x.fid)).catch(() => {}) }
+  for(const b of bs){ if(b.src.kind === 'drive' && b.src.fid) await dbDel('files', b.src.fid).catch(() => {});
+    if(b.src.kind === 'copy'){ if(b.src.fid) await dbDel('files', b.src.fid).catch(() => {}); if(b.src.fids) await dbDelMany('files', b.src.fids.map(x => x.fid)).catch(() => {}) }
     await dbDel('books', b.id).catch(() => {}); await dbDel('covers', b.id).catch(() => {}); await dbDel('state', b.id).catch(() => {}); COV.delete(b.id); delete STATE[b.id]; delete BK[b.id] }
   const g = new Set(bs.map(b => b.id)); BOOKS = BOOKS.filter(b => !g.has(b.id)); regroup(); closeSheet(); selEnd(true);
   if(cur().v === 'book' && g.has(cur().id)) V.pop(); draw(); toast(plural(bs.length, 'book') + ' removed') }
@@ -950,8 +957,9 @@ function selMoveSheet(){ const {sh, gs, its, grs} = selParts(), G = grOf(sh), ba
   $('.sheet').addEventListener('click', e => { const r = e.target.closest('[data-sm]'); if(!r) return; const t = gs.find(x => x.key === r.dataset.sm); if(t) doit(t, `“${t.name}”`) }) }
 function selTakeOut(){ const {sh, gs, its, grs} = selParts(), G = grOf(sh), here = gs.find(x => x.key === cur().key), up = here && here.parent ? gs.find(x => x.key === here.parent) : null, n = SEL.size;
   grChange(sh, () => { G.put(its, up || 'none'); for(const k of grs) up ? G.setParent(k, up.key) : toTop(G, k) }, `${plural(n, 'tile')} taken out${up ? ' to “' + up.name + '”' : ' to the main page'}`); selEnd(true); draw() }
-function selMore(){ const {sh, books} = selParts(), G = grOf(sh), ids = [...SEL], allPinned = ids.every(x => G.isPinned(x));
-  sheet(`<h3>${plural(ids.length, 'tile')} · ${plural(books.length, 'book')}</h3><div class="mlist"><button class="btn" id="smpin">${allPinned ? '★ Unpin' : '★ Pin to the top'}</button><button class="btn" id="smread">Mark as read</button><button class="btn" id="smunread">Mark as not read</button><button class="btn" id="smpub">Set the publisher…</button><button class="btn" id="smshelf">Move to another shelf…</button><button class="btn danger" id="smdel">Remove from Bookcase</button></div>`);
+function selMore(){ const {sh, books} = selParts(), BS = () => books.map(id => BK[id]).filter(Boolean), G = grOf(sh), ids = [...SEL], allPinned = ids.every(x => G.isPinned(x));
+  sheet(`<h3>${plural(ids.length, 'tile')} · ${plural(books.length, 'book')}</h3><div class="mlist"><button class="btn" id="smpin">${allPinned ? '★ Unpin' : '★ Pin to the top'}</button><button class="btn" id="smread">Mark as read</button><button class="btn" id="smunread">Mark as not read</button><button class="btn" id="smpub">Set the publisher…</button><button class="btn" id="smshelf">Move to another shelf…</button>${BS().some(b => b.src.kind === 'drive' && !b.src.fid && b.fmt !== 'imgs') ? `<button class="btn" id="smdl">Download to this phone (${mb(BS().filter(b => b.src.kind === 'drive' && !b.src.fid).reduce((a, b) => a + (b.size || 0), 0))})</button>` : ''}${BS().some(b => b.src.kind === 'drive' && b.src.fid) ? '<button class="btn" id="smundl">Remove the downloaded copies</button>' : ''}<button class="btn danger" id="smdel">Remove from Bookcase</button></div>`);
+  if($('#smdl')) $('#smdl').onclick = () => { selEnd(true); driveDownload(BS()) }; if($('#smundl')) $('#smundl').onclick = () => { closeSheet(); selEnd(true); driveUndownload(BS()) };
   $('#smpin').onclick = () => { G.togglePin(ids, !allPinned); closeSheet(); selEnd(true); draw() };
   const mark = on => { for(const id of books){ const x = st(id); x.finished = on; if(on){ x.last = x.last || Date.now(); x.page = Math.max(0, (x.pages || BK[id].pages || 1) - 1) } else x.page = 0; saveState(id, true) } closeSheet(); selEnd(true); draw() };
   $('#smread').onclick = () => mark(true); $('#smunread').onclick = () => mark(false);
@@ -1309,7 +1317,8 @@ function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh), folders = lsGet
     <div class="opt"><label for="ss_full">Show every ${W(sh).i} of a series, the ones you don't have grey (looked up online)</label><input type="checkbox" id="ss_full" ${s.fullSeries ? 'checked' : ''}></div>
     <div class="opt"><label for="ss_pub">Bundle series by publisher (Marvel › Spider-Man › …)</label><input type="checkbox" id="ss_pub" ${s.byPub ? 'checked' : ''}></div>
     <div class="opt"><label for="ss_aut">A writer's books without a series make one tile</label><input type="checkbox" id="ss_aut" ${s.authors ? 'checked' : ''}></div>
-    ${NvFiles ? `<div class="sec">Folders on this phone</div>${folders.map((f, i) => `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(inShelf(sh).filter(b => b.src.kind === 'link' && b.src.tree === f.tree).length, 'book')}</div></div><button class="btn sm" data-look="${i}">Look again</button><button class="btn sm danger" data-forget="${i}">Stop</button></div>`).join('') || '<p class="muted small">None yet - Add → Use a folder on this phone.</p>'}` : ''}
+    ${NvFiles ? `<div class="sec">Folders on this phone</div>${folders.map((f, i) => /^gd:/.test(f.tree) ? '' : `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(inShelf(sh).filter(b => b.src.kind === 'link' && b.src.tree === f.tree).length, 'book')}</div></div><button class="btn sm" data-look="${i}">Look again</button><button class="btn sm danger" data-forget="${i}">Stop</button></div>`).join('') || '<p class="muted small">None yet - Add → Use a folder on this phone.</p>'}` : ''}
+    ${folders.some(f => /^gd:/.test(f.tree)) ? `<div class="sec">Google Drive folders</div>${folders.map((f, i) => /^gd:/.test(f.tree) ? `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(inShelf(sh).filter(b => b.src.kind === 'drive' && b.src.tree === f.tree).length, 'book')} · ${inShelf(sh).filter(b => b.src.kind === 'drive' && b.src.tree === f.tree && b.src.fid).length} downloaded</div></div><button class="btn sm" data-look="${i}">Look again</button><button class="btn sm danger" data-forget="${i}">Stop</button></div>` : '').join('')}<button class="btn sm" id="ss_gdkey" style="margin-top:6px">Google key</button>` : ''}
     <div class="sec">Online</div><div class="opt"><label for="ss_kind">What is on this shelf</label><select id="ss_kind"><option value="comics" ${isManga(sh) ? '' : 'selected'}>Comics</option><option value="manga" ${isManga(sh) ? 'selected' : ''}>Manga</option></select></div>
     <div class="opt"><label for="ss_src">Where to look</label><select id="ss_src">${(isManga(sh) ? [['auto', 'MangaDex, then AniList'], ['mdx', 'Only MangaDex'], ['anl', 'Only AniList']] : [['auto', 'Comic Vine, then GCD, then Wikipedia'], ['cv', 'Only Comic Vine'], ['gcd', 'Only GCD (comics.org)'], ['wiki', 'Only Wikipedia (Dutch)']]).map(([k, t]) => `<option value="${k}" ${srcPref(sh) === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
     ${isManga(sh) ? `<div class="muted small" style="margin:-4px 0 8px">MangaDex has every volume cover of most manga, AniList has the story, writer and artist. Neither needs a key. Only official volumes are used – never chapter scans.</div><div class="mlist"><button class="btn primary" id="ss_cv">Look up the manga that are not looked up yet</button><button class="btn" id="ss_cvall">Look up all manga on this shelf</button><div class="muted small" style="margin:-2px 0 0">Once per series; the results are remembered. Needs the internet only while it looks.</div></div>` : `<div class="muted small" style="margin:-4px 0 8px">Comic Vine knows most American comics (needs your free key). GCD and Wikipedia also know Flemish and Dutch comics (Suske en Wiske, Jommeke, De Kiekeboes …) and need no key; GCD works in the Android app. The first one whose list holds all your numbers is used.</div><div class="mlist"><button class="btn primary" id="ss_cv">Look up the comics without a publisher</button><button class="btn" id="ss_cvall">Look up all comics on this shelf</button><button class="btn" id="ss_cvkey">${CV.key() ? 'Change your Comic Vine key' : 'Type your Comic Vine key'}</button><div class="muted small" style="margin:-2px 0 0">Once per series; the results are remembered. Needs the internet only while it looks.</div></div>`}
@@ -1326,12 +1335,14 @@ function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh), folders = lsGet
   $('#ss_aut').onchange = e => { shelfSet(sh, {authors:e.target.checked}); delete GRS[sh]; regroup(); draw(); toast('Saved') };
   $('.sheet').addEventListener('click', async e => { const lk = e.target.closest('[data-look]'), fg = e.target.closest('[data-forget]');
     if(lk){ closeSheet(); lookAgain(folders[+lk.dataset.look]) }
-    if(fg){ const f = folders[+fg.dataset.forget], bs = inShelf(sh).filter(b => b.src.kind === 'link' && b.src.tree === f.tree);
-      if(!confirm(`Stop using “${f.name}” for ${s.name}?${bs.length ? `\n\nIts ${plural(bs.length, 'book')} leave Bookcase (the files stay on the phone).` : ''}`)) return;
+    if(fg){ const f = folders[+fg.dataset.forget], bs = inShelf(sh).filter(b => (b.src.kind === 'link' || b.src.kind === 'drive') && b.src.tree === f.tree);
+      if(!confirm(`Stop using “${f.name}” for ${s.name}?${bs.length ? `\n\nIts ${plural(bs.length, 'book')} leave Bookcase (the files stay ${/^gd:/.test(f.tree) ? 'on Google Drive; downloaded copies are deleted' : 'on the phone'}).` : ''}`)) return;
+      for(const b of bs) if(b.src.fid) await dbDel('files', b.src.fid).catch(() => {});
       await dbDelMany('books', bs.map(b => b.id)); const g = new Set(bs.map(b => b.id)); BOOKS = BOOKS.filter(b => !g.has(b.id)); for(const id of g) delete BK[id]; regroup();
       lsSet('nvBooks.folders', lsGet('nvBooks.folders', []).filter(x => !(x.tree === f.tree && x.shelf === sh)));
-      if(NvFiles && NvFiles.forget && !lsGet('nvBooks.folders', []).some(x => x.tree === f.tree)) NvFiles.forget({tree:f.tree}).catch(() => {});
+      if(NvFiles && NvFiles.forget && !/^gd:/.test(f.tree) && !lsGet('nvBooks.folders', []).some(x => x.tree === f.tree)) NvFiles.forget({tree:f.tree}).catch(() => {});
       closeSheet(); draw(); toast('Folder removed') } });
+  if($('#ss_gdkey')) $('#ss_gdkey').onclick = () => driveKeySheet();
   $('#ss_save').onclick = async () => { try{ const r = await G.saveBackup(); if(r !== 'cancelled') toast('Groups saved') }catch(e){ toast(e.message || String(e), 4000) } };
   $('#ss_load').onclick = async () => { const t = await G.pickFile(); if(!t) return; const c = G.checkBackup(t); if(!c.ok){ toast(c.msg, 5000); return }
     if(!confirm(c.msg + '\n\nPut these groups back? (Undo is possible right after.)')) return; G.applyBackup(c.d); regroup(); closeSheet(); draw(); G.undoToast('Groups loaded', () => { regroup(); draw() }) };
@@ -2115,3 +2126,77 @@ async function openHanded(id){
   document.title = b.title + ' · Boardgames';
   await openReader(b) }
 function leaveHanded(){ if(history.length > 1) history.back(); else location.replace('../boardgames/index.html') }
+
+/* =====================================================================================================================
+   GOOGLE DRIVE AS A SOURCE (owner, 21 Oct): a Drive folder of YOUR OWN, shared with "Anyone with the link can view", works like a phone
+   folder – Bookcase looks through it and its subfolders and fills the shelf; you read straight from Drive (PDF/CBZ in parts with Range,
+   no full download to open a book); "Download to this phone" keeps a copy for offline / print (b.src.fid; Remove the downloaded copy).
+   Drive API v3 with the owner's own API key (restricted to the Drive API; kept on this device: nvBooks.gkey, never in the code).
+   Checked 21 Oct (probe-drive.yml): CORS ok (also the Range preflight), alt=media + Range → 206, thumbnailLink = a ready cover (CORS *).
+   Folders are remembered in nvBooks.folders as {tree:'gd:<folder id>', name, shelf}; a book: src {kind:'drive', uri:'gd:<file id>', id, name, size, tree}.
+   No "share with friends": this is for your own folder only (owner agreed, 21 Oct).
+   ===================================================================================================================== */
+const GD = 'https://www.googleapis.com/drive/v3/', gkey = () => lsGet('nvBooks.gkey', '');
+const gdFolderId = t => { t = String(t || '').trim(); const m = t.match(/folders\/([A-Za-z0-9_-]{10,})/) || t.match(/[?&]id=([A-Za-z0-9_-]{10,})/) || t.match(/^([A-Za-z0-9_-]{20,})$/); return m ? m[1] : '' };
+async function gdFetch(url, hdr){ let r;
+  try{ r = await fetch(url, {headers:hdr || {}, cache:'no-store'}) }catch(e){ throw new Error('Google Drive could not be reached – no internet?') }
+  if(r.status === 403 || r.status === 400){ let m = ''; try{ m = ((await r.json()).error || {}).message || '' }catch(e){} throw new Error(/key/i.test(m) ? 'Google says the key is not right (Bookcase ⚙ → Google key)' : /rate|quota|limit/i.test(m) ? 'Google says: too many requests – try again in a few minutes' : 'Google Drive refused: ' + (m || r.status)) }
+  if(r.status === 404) throw new Error('Not found on Google Drive – is the folder shared with “Anyone with the link”?');
+  if(!r.ok && r.status !== 206) throw new Error('Google Drive answered ' + r.status); return r }
+async function driveRead(id, a, z){ if(z <= a) return new ArrayBuffer(0);
+  for(let t = 0; ; t++){ try{ const r = await gdFetch(`${GD}files/${id}?alt=media&key=${encodeURIComponent(gkey())}`, {Range:`bytes=${a}-${z - 1}`}), b = await r.arrayBuffer();
+      return r.status === 200 && b.byteLength > z - a ? b.slice(a, z) : b }catch(e){ if(t >= 2 || /key|refused|Not found/.test(e.message)) throw e; await sleep(800 * (t + 1)) } } }
+function srcFromDrive(f){ return {size:f.size, name:f.name, read:(a, z) => driveRead(f.id, a, Math.min(z, f.size)),
+  blob:async () => (await gdFetch(`${GD}files/${f.id}?alt=media&key=${encodeURIComponent(gkey())}`)).blob()} }
+/* every file in a folder and its subfolders (one request per folder, 1000 per page) */
+async function driveList(root, onStep){ const out = [], todo = [{id:root, path:''}]; let folders = 0;
+  while(todo.length){ const d = todo.shift(); folders++; let tok = '';
+    do{ const q = new URLSearchParams({q:`'${d.id}' in parents and trashed = false`, key:gkey(), pageSize:'1000', fields:'nextPageToken,files(id,name,mimeType,size,thumbnailLink)', supportsAllDrives:'true', includeItemsFromAllDrives:'true'});
+      if(tok) q.set('pageToken', tok); const j = await (await gdFetch(GD + 'files?' + q)).json();
+      for(const f of j.files || []){ if(f.mimeType === 'application/vnd.google-apps.folder') todo.push({id:f.id, path:d.path + f.name + '/'});
+        else if(f.size) out.push({f:{uri:'gd:' + f.id, id:f.id, name:f.name, size:+f.size, thumb:f.thumbnailLink || ''}, path:d.path + f.name}) }
+      tok = j.nextPageToken || ''; onStep && onStep(out.length, folders) }while(tok) }
+  return out }
+/* details of a Drive book without downloading it: PDF / EPUB from the name + Drive's own cover picture (fast for 1000s of books);
+   CBZ / CBR are read in parts like a phone file (ComicInfo.xml, cover page) */
+async function driveMeta(src, f, dir){ const e = ext(f.name);
+  if(e === 'pdf' || e === 'epub'){ const p = parseName(f.name, dir), md = {fmt:e, series:p.series, num:p.num, vol:p.vol, title:p.title || (p.series ? '' : p.clean), year:p.year, publisher:'', writer:'', artist:'', desc:'', pages:0, rtl:null, cover:null};
+    if(f.thumb) try{ const r = await fetch(f.thumb.replace(/=s\d+$/, '=s600')); if(r.ok) md.cover = await r.blob() }catch(x){}
+    if(!md.cover && e === 'pdf') try{ const m2 = await readMeta(src, f.name, dir); md.cover = m2.cover; md.pages = m2.pages }catch(x){}
+    return md }
+  const md = await readMeta(src, f.name, dir);
+  if(!md.cover && f.thumb) try{ const r = await fetch(f.thumb.replace(/=s\d+$/, '=s600')); if(r.ok) md.cover = await r.blob() }catch(x){}
+  return md }
+function driveKeySheet(then){
+  sheet(`<h3>Google Drive key</h3><p class="muted small" style="margin:0 0 10px">Your own Google API key (it starts with AIza), restricted to the Google Drive API. It only lets Bookcase see Drive folders that are shared with a link. It stays on this phone.</p>
+    <div class="field"><label>Your key</label><input type="text" id="gdk" value="${esc(gkey())}" placeholder="AIza…" autocomplete="off" spellcheck="false"></div>
+    <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="gdksave">Save</button></div>`);
+  $('#gdksave').onclick = () => { const k = $('#gdk').value.trim().replace(/\s+/g, ''); if(!/^AIza[0-9A-Za-z_-]{30,}$/.test(k)){ toast('That does not look like a Google key (it starts with AIza)', 4000); return } lsSet('nvBooks.gkey', k); closeSheet(); toast('Key saved'); if(then) then() } }
+function driveSheet(shelf){ if(!gkey()) return driveKeySheet(() => driveSheet(shelf));
+  sheet(`<h3>From Google Drive</h3><p class="muted small" style="margin:0 0 10px">In Google Drive: the folder → Share → General access: <b>Anyone with the link</b> (Viewer) → Copy link. Paste the link here. All folders inside it are read too.</p>
+    <div class="field"><label>Folder link</label><input type="text" id="gdl" placeholder="https://drive.google.com/drive/folders/…" autocomplete="off" spellcheck="false"></div>
+    <div class="field"><label>Name (optional)</label><input type="text" id="gdn" placeholder="Like My colouring books"></div>
+    <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="gdgo">Look in this folder</button></div>
+    <button class="btn sm" id="gdkey2" style="margin-top:10px">Change the Google key</button>`);
+  $('#gdkey2').onclick = () => driveKeySheet(() => driveSheet(shelf));
+  $('#gdgo').onclick = () => { const id = gdFolderId($('#gdl').value); if(!id){ toast('That is not a Drive folder link', 4000); return } driveAdd(shelf, {id, name:$('#gdn').value.trim() || 'Google Drive'}) } }
+async function driveAdd(shelf, f){ const tree = 'gd:' + f.id;
+  awake(true); sheet(`<h3>Looking in “${esc(f.name)}” on Google Drive…</h3><div class="prog busy"><i></i></div><div class="small" id="gdst">Starting…</div><p class="muted small">Only the list of files is read now – books are read from Drive when you open them.</p>`, true);
+  let list; try{ list = await driveList(f.id, (n, d) => { const e = $('#gdst'); if(e) e.textContent = `${plural(n, 'file')} · ${plural(d, 'folder')}` }) }
+  catch(e){ awake(false); closeSheet(); toast(e.message || String(e), 6000); LE('drive', 'list ' + f.name, e); return }
+  const fl = lsGet('nvBooks.folders', []); if(!fl.some(x => x.tree === tree && x.shelf === shelf)){ fl.push({tree, name:f.name, shelf}); lsSet('nvBooks.folders', fl) }
+  L('drive', `“${f.name}” for ${shelf}: ${list.length} files`);
+  const {items, notyet} = toItems(list); scan(items, shelf, {tree, name:f.name, drive:true}, notyet) }
+/* Download to this phone / remove the downloaded copy (the book stays, read from Drive again) */
+async function driveDownload(bs){ bs = bs.filter(b => b.src.kind === 'drive' && !b.src.fid && b.fmt !== 'imgs'); if(!bs.length) return;
+  const need = bs.reduce((a, b) => a + (b.size || 0), 0);
+  try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist(); const e = await navigator.storage.estimate(); if(e && e.quota && e.quota - e.usage < need * 1.05){ toast(`Not enough space: ${mb(need)} needed, ${mb(e.quota - e.usage)} free`, 5000); return } }catch(e){}
+  let stop = false, n = 0; awake(true);
+  sheet(`<h3>Downloading ${plural(bs.length, 'book')} (${mb(need)})…</h3><div class="prog"><i id="gdp"></i></div><div class="muted small" id="gds"></div><button class="btn" id="gdstop" style="width:100%;margin-top:8px">Stop</button>`, true);
+  $('#gdstop').onclick = () => { stop = true };
+  for(const b of bs){ if(stop) break; const s = $('#gds'); if(s) s.textContent = `${n + 1} of ${bs.length} · ${b.name}`;
+    try{ const blob = await srcFromDrive(b.src).blob(), fid = uid(); await dbPut('files', {id:fid, blob}); b.src.fid = fid; await dbPut('books', b) }
+    catch(e){ toast(`${b.name}: ${e.message || e}`, 5000); LE('drive', 'download ' + b.name, e); if(/key|refused|too many/.test(e.message || '')) break }
+    n++; const p = $('#gdp'); if(p) p.style.width = (100 * n / bs.length) + '%' }
+  awake(false); closeSheet(); draw(); toast(`${plural(bs.filter(b => b.src.fid).length, 'book')} on this phone – they work without internet now`, 4000) }
+async function driveUndownload(bs){ for(const b of bs) if(b.src.kind === 'drive' && b.src.fid){ await dbDel('files', b.src.fid).catch(() => {}); delete b.src.fid; await dbPut('books', b) } draw(); toast('Downloaded copy removed – the book stays, read from Drive') }

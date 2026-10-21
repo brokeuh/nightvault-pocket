@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 99,
+   "date": "2026-10-21",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: books from your Google Drive",
+   "items": [
+    "Add → From Google Drive: paste the link of one of your Drive folders (shared with “Anyone with the link”). Bookcase looks through it and all folders inside and fills the shelf, with covers – nothing is downloaded yet.",
+    "Books open straight from Drive (only the pages you look at are fetched). Book ⋯ → Download to this phone keeps a copy for offline reading and printing; Select several to download them at once.",
+    "Shelf ⚙ → Google Drive folders: look again for new books, stop using a folder, or change your Google key (asked once, kept on this phone)."
+   ]
+  },
+  {
    "id": 98,
    "date": "2026-10-21",
    "where": [
