@@ -644,7 +644,7 @@ function bookTile(b){ const p = progress(b), s = STATE[b.id], G = grOf(b.shelf);
   return `<div class="bk" data-book="${esc(b.id)}">${coverHTML(b, '', (G.isPinned('it:' + b.id) ? PINB : '') + (s && s.finished ? '<span class="done">READ</span>' : '') + (b.vol ? `<span class="vol">${esc(b.vol)}</span>` : ''))}
     ${p > 0 && p < 1 ? `<div class="pbar"><i style="width:${Math.round(p * 100)}%"></i></div>` : ''}<div class="t">${esc(dispTitle(b))}</div><div class="a">${esc(dispSub(b) || ' ')}</div></div>` }
 function groupTile(sh, g){ const all = g.all || g.items, k = (g.kids || []).length, rd = all.filter(b => STATE[b.id] && STATE[b.id].finished).length, G = grOf(sh);
-  return `<div class="bk stack" data-grp="${esc(g.key)}">${groupCoverHTML(sh, g)}${G.isPinned('gr:' + g.key) ? PINB : ''}<span class="cdl">${(() => { const c = g.kind === 'series' && shelfOf(sh).fullSeries && COLS[grVid(g)]; return c ? (st => `${st.have} of ${st.total}`)(colStats(c)) : all.length ? plural(all.length, 'book') : 'empty' })()}</span>
+  return `<div class="bk stack" data-grp="${esc(g.key)}">${groupCoverHTML(sh, g)}${newBadge(grNew(g))}${G.isPinned('gr:' + g.key) ? PINB : ''}<span class="cdl">${(() => { const c = g.kind === 'series' && shelfOf(sh).fullSeries && COLS[grVid(g)]; return c ? (st => `${st.have} of ${st.total}`)(colStats(c)) : all.length ? plural(all.length, 'book') : 'empty' })()}</span>
     <div class="t">${esc(g.name)}</div><div class="a">${esc([G.label(g), k ? plural(k, 'group') : '', rd ? rd + ' of ' + all.length + ' read' : ''].filter(Boolean).join(' · '))}</div></div>` }
 
 /* ---------- screens: a stack of views ---------- */
@@ -691,7 +691,7 @@ function draw(){
   if(v.v === 'shelf'){ const s = shelfOf(v.shelf), all = inShelf(s.id), q = norm(Q[s.id] || ''), f = S.filter[s.id] || 'all', G = grOf(s.id);
     $('#vtitle').textContent = s.name; document.title = s.name + ' · Bookcase';
     if(!all.length){ body.innerHTML = `<div class="empty">${shelfIcon(s, 48)}<h2 style="margin:8px 0 4px;font-size:18px">No ${esc(s.name.toLowerCase())} yet</h2><p class="muted small" style="margin:0 0 14px">${NvFiles ? 'Tap <b>Add</b> and pick the folder on this phone where they are. Nothing is copied.' : 'Tap <b>Add</b> and pick books. They are copied into the app.'}</p><button class="btn primary" id="emptyadd">Add ${esc(s.name.toLowerCase())}</button></div>`; $('#emptyadd').onclick = addSheet; return }
-    if(showColTabs(s.id)) h += colTabs(s.id, 'books');
+    if(showColTabs(s.id)) h += colTabs(s.id, 'books') + (s.fullSeries ? newBar(s.id) : '');
     h += `<input type="search" id="q" placeholder="Search ${esc(s.name.toLowerCase())}, series, writers" value="${esc(Q[s.id] || '')}" style="margin:2px 0 8px">`;
     if(q){ const {groups:gs} = groupsOf(s.id), where = {}; for(const g of gs) for(const b of g.items) where[b.id] = G.path(g, gs);
       const gm = gs.filter(g => norm(g.name).includes(q)).slice(0, 12), bm = all.filter(b => norm([b.title, b.series, b.writer, b.artist, b.name, publisherOf(b)].join(' ')).includes(q)).sort(seriesOrder);
@@ -710,7 +710,7 @@ function draw(){
       tiles = G.pinFirst(tiles, x => (x.items ? 'gr:' : 'it:') + (x.items ? x.key : x.id));
       h += `<div class="grid">${tiles.map(x => x.items ? groupTile(s.id, x) : bookTile(x)).join('')}</div>` }
     h += storeLine(s.id);
-    body.innerHTML = h; lazyCovers(body); hookShelf(s); return }
+    body.innerHTML = h; lazyCovers(body); hookShelf(s); hookNew(s.id); return }
   if(v.v === 'group'){ const G = grOf(v.shelf), g = groupByKey(v.shelf, v.key); if(!g){ V.pop(); return draw() }
     const gs = groupsOf(v.shelf).groups, all = g.all, rd = all.filter(b => (STATE[b.id] || {}).finished).length, ord = all.slice().sort(seriesOrder);
     const nextB = ord.find(b => started(b) && !STATE[b.id].finished) || ord.find(b => !(STATE[b.id] || {}).finished);
@@ -1365,6 +1365,7 @@ document.addEventListener('visibilitychange', () => { if(document.hidden){ if(R)
   if(/^board:/.test(P.get('open') || '')){ draw(); try{ await openHanded(P.get('open').slice(6)) }catch(e){ LE('handed', 'could not open', e); toast(e.message || String(e), 5000); setTimeout(leaveHanded, 2500) } return }
   if(sh && shelves(true).some(s => s.id === sh)) V.push({v:'shelf', shelf:sh});
   draw(); L('start', `${BOOKS.length} books`);
+  setTimeout(() => { checkNew(false, true).catch(e => LE('new', 'daily check', e)) }, 4000);
   window.NVBOOKS = {get books(){ return BOOKS }, openDoc, readMeta, parseName, zipOpen, openReader, draw};   // for testing
 })();
 
@@ -1763,21 +1764,66 @@ async function colAdd(sh, v, quiet){ /* v: {id, name, start_year|start, publishe
   if(isManga(sh)) try{ c.info = await mangaInfo(vid) }catch(e){ LE('manga', 'details ' + v.name, e) }
   COLS[vid] = c; await colSave(c); if(!quiet) closeSheet(); return c }
 
+/* ---------- New volumes / issues: a daily check of the lists you keep, marked NEW on the tiles ----------
+   A list (COLS) remembers what it had; the check fetches it again and anything new is kept in c.newN (numbers) until you own it or tap Seen. */
+const NEWKEY = 'nvBooks.newCheck';
+const newKeys = c => (c.newN || []).filter(k => { const d = colDigital(c); return !d[k] && !(c.phys || {})[k] });
+const newCount = c => newKeys(c).length;
+const colsNew = sh => colsOf(sh).filter(newCount);
+const newBadge = n => n ? `<span class="newb">NEW${n > 1 ? ' · ' + n : ''}</span>` : '';
+/* a tile for a group (a series, or a group holding series): how many new volumes are inside */
+function grNew(g){ const all = g.all || g.items || [], seen = new Set(); let n = 0;
+  for(const b of all){ const id = b.cv && b.cv.id; if(!id || seen.has(id) || !COLS[id]) continue; seen.add(id); n += newCount(COLS[id]) }
+  return n }
+function missingOf(c){ const st = colStats(c); return Math.max(0, st.total - st.have) }
+async function checkList(c){
+  const old = new Set(c.issues.map(i => numKey(i.num)));
+  if(srcOf(c.vid) === 'anl') await dbDel('kv', 'disc:anlm:' + String(c.vid).slice(1)).catch(() => {});
+  const fresh = await allIssues(c.vid, null, true);
+  c.chk = Date.now();
+  if(!fresh || !fresh.length || fresh.length < c.issues.length){ await colSave(c); return 0 }
+  const add = fresh.map(i => numKey(i.num)).filter(k => !old.has(k));
+  if(add.length){ c.issues = fresh; c.count = fresh.length; c.newN = [...new Set([...(c.newN || []), ...add])]; c.newAt = Date.now() }
+  else if(fresh.length === c.issues.length) c.issues = fresh;      // same numbers: take the newer covers and names
+  await colSave(c); return add.length }
+const colDue = c => { const done = c.info && /finish|complete|cancel/i.test(c.info.status || ''); return Date.now() - (c.chk || 0) > (done ? 7 * 864e5 : 20 * 36e5) }
+let NEWRUN = null;
+async function checkNew(force, quiet){
+  if(NEWRUN) return NEWRUN;
+  return NEWRUN = (async () => { let n = 0, series = 0, tried = 0, bad = 0; const list = Object.values(COLS).filter(c => force || colDue(c)), bad2 = new Set();
+    for(const c of list){ const s = srcOf(c.vid); if(bad2.has(s) || BLOCK[s] > Date.now()) continue;
+      tried++; try{ const a = await checkList(c); if(a){ n += a; series++ } }catch(e){ bad++; bad2.add(s); LE('new', 'check ' + c.name, e) }
+      if(!quiet && tried % 5 === 0) toast(`Checking for new ones… ${tried} of ${list.length}`, 1500);
+      await sleep(400) }
+    try{ localStorage.setItem(NEWKEY, String(Date.now())) }catch(e){}
+    L('new', `checked ${tried} lists, ${n} new in ${series} series, ${bad} could not be reached`);
+    if(tried || force){ draw(); if(!quiet || n) toast(n ? `${plural(n, 'new volume or issue', 'new volumes or issues')} in ${plural(series, 'series', 'series')}` : bad ? 'Could not reach the online sources – a work or school wifi may block them' : 'Nothing new', 5000) }
+    return {n, series, tried, bad} })().finally(() => { NEWRUN = null }) }
+/* the strip on top of a shelf / its lists: what is new + Check now */
+function newBar(sh){ const cs = colsNew(sh); if(!colsOf(sh).length) return '';
+  let last = 0; try{ last = +localStorage.getItem(NEWKEY) || 0 }catch(e){}
+  const when = last ? (Date.now() - last < 36e5 ? 'just now' : Date.now() - last < 864e5 ? 'today' : Math.round((Date.now() - last) / 864e5) + ' days ago') : 'never';
+  return `<div class="newbar${cs.length ? ' on' : ''}">${cs.length ? `<div class="nbt"><b>${plural(cs.length, 'series', 'series')} with new ${isManga(sh) ? 'volumes' : 'issues'}</b>
+    <div class="nbl">${cs.slice(0, 8).map(c => `<button class="chip" data-newgo="${esc(c.vid)}">${esc(c.name)} · ${newCount(c)}</button>`).join('')}${cs.length > 8 ? `<span class="muted small">+${cs.length - 8} more</span>` : ''}</div></div>` : `<div class="muted small nbt">Nothing new · checked ${when}</div>`}
+    <button class="btn sm" id="newcheck">${NEWRUN ? 'Checking…' : 'Check now'}</button></div>` }
+function hookNew(sh){ const b = $('#newcheck'); if(b) b.onclick = async () => { b.disabled = true; b.textContent = 'Checking…'; toast('Looking for new ones – this can take a minute', 3000); await checkNew(true) };
+  document.querySelectorAll('[data-newgo]').forEach(el => el.onclick = () => go({v:'colser', shelf:sh, vid:el.dataset.newgo})) }
+
 /* the Collection lists page of a shelf: per publisher, a tile per series with "12 of 40" */
 function colTile(c){ const st = colStats(c), d = colDigital(c), first = c.issues.find(i => d[numKey(i.num)]) ;
   const cov = first ? coverHTML(d[numKey(first.num)]) : `<div class="cv">${c.issues[0] && c.issues[0].thumb ? `${remImg(c.issues[0].thumb)}` : phHTML({title:c.name, shelf:c.shelf}, c.name)}</div>`;
-  return `<div class="bk stack" data-col="${c.vid}">${cov}<span class="cdl">${st.have} of ${st.total}</span><div class="pbar"><i style="width:${st.total ? Math.round(100 * st.have / st.total) : 0}%"></i></div><div class="t">${esc(c.name)}${c.start ? ` (${esc(c.start)})` : ''}</div>
-    <div class="a">${[st.dig ? st.dig + ' D' : '', st.phys ? st.phys + ' P' : '', money(st.price)].filter(Boolean).join(' · ') || 'none yet'}</div></div>` }
+  return `<div class="bk stack" data-col="${c.vid}">${cov}${newBadge(newCount(c))}<span class="cdl">${st.have} of ${st.total}</span><div class="pbar"><i style="width:${st.total ? Math.round(100 * st.have / st.total) : 0}%"></i></div><div class="t">${esc(c.name)}${c.start ? ` (${esc(c.start)})` : ''}</div>
+    <div class="a">${[st.dig ? st.dig + ' D' : '', st.phys ? st.phys + ' P' : '', money(st.price), st.total > st.have && st.have ? (st.total - st.have) + ' missing' : ''].filter(Boolean).join(' · ') || 'none yet'}</div></div>` }
 function drawCol(v){ const s = shelfOf(v.shelf), cs = colsOf(v.shelf), q = norm(Q['col:' + v.shelf] || '');
   $('#vtitle').textContent = s.name; document.title = 'Collection · ' + s.name;
-  let h = colTabs(v.shelf, 'col');
+  let h = colTabs(v.shelf, 'col') + newBar(v.shelf);
   h += `<div class="mbar"><button class="btn primary sm" id="coladd">+ Add a series</button>${isManga(v.shelf) ? '' : '<button class="btn sm" id="coldisc">Discover</button>'}<button class="btn sm" id="colmine">Add the series I have</button></div>`;
   if(!cs.length){ h += `<div class="empty"><h2 style="margin:4px 0;font-size:17px">No collection lists yet</h2><p class="muted small" style="margin:0 0 6px">${isManga(v.shelf) ? `A list shows every volume of a series (from MangaDex and AniList): grey when you don't have it, in colour when you do (D = digital, P = on paper).` : `A list shows every issue of a series (from Comic Vine, GCD or Wikipedia): grey when you don't have it, in colour when you do (D = digital, P = on paper).`}</p><p class="muted small" style="margin:0">Tap <b>+ Add a series</b> to pick one, or <b>Add the series I have</b> for the series of your ${W(v.shelf).cs} that were looked up online.</p></div>`; $('#body').innerHTML = h; hookCol(v); return }
   const all = cs.map(colStats), tot = all.reduce((a, x) => ({have:a.have + x.have, total:a.total + x.total, price:a.price + x.price}), {have:0, total:0, price:0});
   h += `<input type="search" id="colq" placeholder="Search your lists" value="${esc(Q['col:' + v.shelf] || '')}" style="margin:2px 0 8px"><div class="mtot">${plural(cs.length, 'series', 'series')} · ${tot.have} of ${tot.total} issues${tot.price ? ' · paper ' + money(tot.price) : ''}</div>`;
   const byPub = {}; for(const c of cs) if(!q || norm(c.name + ' ' + c.pub).includes(q)) (byPub[cleanPub(c.pub) || (isManga(v.shelf) ? 'Manga' : 'Other')] = byPub[cleanPub(c.pub) || (isManga(v.shelf) ? 'Manga' : 'Other')] || []).push(c);
   for(const p of Object.keys(byPub).sort(coll.compare)) h += `<div class="sec">${esc(p)}</div><div class="grid">${byPub[p].sort((a, b) => coll.compare(a.name, b.name) || (+a.start || 0) - (+b.start || 0)).map(colTile).join('')}</div>`;
-  $('#body').innerHTML = h; lazyCovers($('#body')); hookCol(v) }
+  $('#body').innerHTML = h; lazyCovers($('#body')); hookCol(v); hookNew(v.shelf) }
 const colTabs = (sh, on) => `<div class="chips"><button class="chip ${on === 'books' ? 'on' : ''}" data-tabgo="books">My ${esc(shelfOf(sh).name.toLowerCase())}</button><button class="chip ${on === 'col' ? 'on' : ''}" data-tabgo="col">Collection lists${colsOf(sh).length ? ' (' + colsOf(sh).length + ')' : ''}</button>${isManga(sh) ? '' : `<button class="chip ${on === 'arcs' ? 'on' : ''}" data-tabgo="arcs">Reading orders${arcsOf(sh).length ? ' (' + arcsOf(sh).length + ')' : ''}</button>`}</div>`;
 const showColTabs = sh => colsOf(sh).length || arcsOf(sh).length || shelfOf(sh).byPub || shelfOf(sh).fullSeries;
 function hookCol(v){ const a = $('#coladd'); if(a) a.onclick = () => colSearch(v.shelf); const dz = $('#coldisc'); if(dz) dz.onclick = () => CV.key() ? go({v:'disc', shelf:v.shelf, tab:'week'}) : cvKeySheet(() => go({v:'disc', shelf:v.shelf, tab:'week'})); const m = $('#colmine'); if(m) m.onclick = () => colMine(v.shelf);
@@ -1815,17 +1861,19 @@ async function colMine(sh){
 function issueGridHTML(c, pass){ const d = colDigital(c), P = c.phys || {};
   return `<div class="grid">${c.issues.filter(pass).map(i => { const k = numKey(i.num), b = d[k], p = P[k], own = b || p;
       const cov = b ? coverHTML(b) : `<div class="cv">${i.thumb ? `${remImg(i.thumb)}` : phHTML({title:c.name, shelf:c.shelf}, c.name)}</div>`;
-      return `<div class="bk iss ${own ? '' : 'miss'}" data-iss="${esc(k)}">${cov.replace(/<\/div>$/, `<span class="vol">${esc(i.label)}</span>${b ? '<span class="bd dg">D</span>' : ''}${p ? `<span class="bd pp${b ? '' : ' solo'}">P</span>` : ''}</div>`)}<div class="t">${esc(i.name || c.name + ' ' + i.label)}</div><div class="a">${esc([i.date.slice(0, 4), p && p.price ? money(+p.price) : ''].filter(Boolean).join(' · ') || ' ')}</div></div>` }).join('')}</div>`; }
+      return `<div class="bk iss ${own ? '' : 'miss'}" data-iss="${esc(k)}">${cov.replace(/<\/div>$/, `${(c.newN || []).includes(k) && !own ? '<span class="newb in">NEW</span>' : ''}<span class="vol">${esc(i.label)}</span>${b ? '<span class="bd dg">D</span>' : ''}${p ? `<span class="bd pp${b ? '' : ' solo'}">P</span>` : ''}</div>`)}<div class="t">${esc(i.name || c.name + ' ' + i.label)}</div><div class="a">${esc([i.date.slice(0, 4), p && p.price ? money(+p.price) : ''].filter(Boolean).join(' · ') || ' ')}</div></div>` }).join('')}</div>`; }
 function drawColSer(v){ const c = COLS[v.vid]; if(!c){ V.pop(); return draw() } const d = colDigital(c), st = colStats(c), f = S.filter['colser'] || 'all';
   $('#vtitle').textContent = ''; document.title = c.name + ' · Collection';
   let h = `<div class="alhead" style="align-items:center"><div style="min-width:0;flex:1"><b>${esc(c.name)}${c.start ? ` (${esc(c.start)})` : ''}</b><div class="muted small">${esc(cleanPub(c.pub) || '')}${c.pub ? ' · ' : ''}${st.have} of ${st.total} ${W(c.shelf).is}</div>
     <div class="muted small">${st.dig} digital · ${st.phys} on paper${st.price ? ' · ' + money(st.price) : ''}</div><div class="pbar" style="max-width:260px"><i style="width:${st.total ? Math.round(100 * st.have / st.total) : 0}%"></i></div></div><button class="ib" id="csmenu" aria-label="More for this list">${IC_DOTS}</button></div>`;
+  { const nk = newKeys(c); if(nk.length) h += `<div class="newbar on"><div class="nbt"><b>${plural(nk.length, 'new ' + W(c.shelf).i, 'new ' + W(c.shelf).is)}: ${nk.slice(0, 8).join(', ')}${nk.length > 8 ? ' …' : ''}</b><div class="muted small">Not in your ${W(c.shelf).cs} yet. It goes away when you add it.</div></div><button class="btn sm" id="newseen">Seen</button></div>` }
   h += infoHTML(c);
   h += `<div class="chips">${[['all', 'All'], ['have', 'I have'], ['miss', 'Missing'], ['dig', 'Digital'], ['phys', 'On paper']].map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-csf="${k}">${t}</button>`).join('')}</div>`;
   const P = c.phys || {}, pass = i => { const k = numKey(i.num), D = !!d[k], Pp = !!P[k]; return f === 'have' ? D || Pp : f === 'miss' ? !D && !Pp : f === 'dig' ? D : f === 'phys' ? Pp : true };
   h += issueGridHTML(c, pass);
   $('#body').innerHTML = h; lazyCovers($('#body'));
   $('#csmenu').onclick = () => colMenu(c);
+  if($('#newseen')) $('#newseen').onclick = async () => { c.newN = []; await colSave(c); draw() };
   $('#body').querySelectorAll('[data-csf]').forEach(b => b.onclick = () => { S.filter['colser'] = b.dataset.csf; saveS(); draw() });
   $('#body').querySelectorAll('[data-iss]').forEach(el => el.onclick = () => issueSheet(c, c.issues.find(i => numKey(i.num) === el.dataset.iss))) }
 function issueSheet(c, i){ const k = numKey(i.num), b = colDigital(c)[k], p = (c.phys || {})[k], title = `${c.name} ${i.label}`;

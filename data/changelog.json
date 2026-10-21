@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 96,
+   "date": "2026-10-21",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: NEW marks for new volumes and issues",
+   "items": [
+    "Once a day (and with Check now) Bookcase looks online for new volumes or issues of the series on your collection lists.",
+    "Series with something new get a bold red NEW tile, a bar on top lists them, and inside the series the new volumes are marked. Tap Seen, or just add the book, and the mark goes away.",
+    "Tiles also show how many are still missing."
+   ]
+  },
+  {
    "id": 95,
    "date": "2026-10-21",
    "where": [
