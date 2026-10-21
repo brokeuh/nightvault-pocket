@@ -13,6 +13,7 @@
 <script src="core.js"></script>
 <script src="nvlog.js"></script>
 <script src="nvpc.js"></script>
+<script src="nvbackup.js"></script>
 <style>
 :root{--bg:#0b0e13;--pan:#151a22;--pan2:#10141b;--line:#232b36;--text:#e9edf2;--dim:#9aa7b5;--dim2:#8fa0b2;--accent:#5fe0b0;--accentd:#2a8f6a;--amber:#f1dc6b;--red:#ef8a8f}
 *{box-sizing:border-box}
@@ -90,6 +91,7 @@ a.app:active{transform:scale(.985)}a.app:hover{border-color:#33404f}
     <div class="logo" id="lg2"></div>
     <div style="flex:1;min-width:0"><div class="word">THE NIGHTVAULT</div><div class="sub">Your apps · test version</div></div>
     <button class="ib" id="pcbtn" aria-label="My PC and downloads" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></svg></button>
+    <button class="ib" id="bkbtn" aria-label="Backups"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"></path><path d="M8.5 12l2.5 2.5 4.5-5"></path></svg></button>
     <button class="ib" id="appsbtn" aria-label="Apps"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><path d="M17 14v6M14 17h6" stroke-linecap="round"></path></svg></button>
   </div>
   <div id="upd"></div>
@@ -115,6 +117,11 @@ a.app:active{transform:scale(.985)}a.app:hover{border-color:#33404f}
 <div class="sheet" id="pcsheet" hidden><div>
   <div class="top"><button class="btn sm" id="pcdone">Done</button><div style="flex:1;text-align:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;margin-right:64px">My PC</div></div>
   <div id="pcbody"></div>
+</div></div>
+<!-- Backups of every app (nvbackup.js) -->
+<div class="sheet" id="bksheet" hidden><div>
+  <div class="top"><button class="btn sm" id="bkdone">Done</button><div style="flex:1;text-align:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;margin-right:64px">Backups</div></div>
+  <div id="bkbody"></div>
 </div></div>
 <div id="toast"></div>
 
@@ -281,6 +288,49 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden) check
   if(!get('nvHub.setupDone', null) && !Object.keys(NV.installed()).length) setup(); else home();
 })();
 /* Android app: the hub is the first screen; back closes the Apps screen, otherwise the app goes to the background */
+/* ---------- Backups: every app backs itself up now and then (nvbackup.js); here you pick the folder, see them and put one back ---------- */
+const BKAPP = id => id === 'binder' ? 'scanner' : id;
+const bkApps = () => { const inst = NV.installed(), ids = [...new Set(Object.keys(inst).map(BKAPP))].filter(id => NVBACKUP.apps[id]); return ids.concat('hub') };
+const ago = t => { const d = Math.round((Date.now() - t) / 864e5); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago' };
+$('#bkbtn').onclick = () => { $('#bksheet').hidden = false; drawBk() };
+$('#bkdone').onclick = () => { $('#bksheet').hidden = true };
+async function drawBk(){
+  const el = $('#bkbody'), f = NVBACKUP.folder, err = get('nvBackup.folderErr', null);
+  let h = `<p class="meta" style="font-size:14px;margin:6px 0 12px">Every app makes a backup of its lists by itself every few days (songs, playlists, favourites, play counts, groups, books, games, plays, films, models …). Your files themselves stay in their folders.</p>`;
+  if(NVBACKUP.native) h += `<div class="row" style="display:block"><b>Backups folder</b>${f ? `<div class="meta" style="margin-top:4px">“${esc(f.name)}” - a copy is saved there too, so the backups survive even removing the app.${err ? `<br><span style="color:#f19a9a">Last time it couldn't save there: ${esc(err.msg)}</span>` : ''}</div>
+      <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" id="bkpick">Change the folder</button></div>`
+    : `<div class="meta" style="margin-top:4px;color:var(--text)">Not chosen yet. Pick a folder outside the app, best a new folder “Nightvault backups” on the SD card (in the picker: ⋮ / the folder icon → New folder). Without it, the backups are only inside the app.</div><button class="btn primary" id="bkpick" style="width:100%;margin-top:10px">Choose the backups folder</button>`}</div>`;
+  h += `<button class="btn primary" id="bknow" style="width:100%;margin:4px 0 12px">Back up everything now</button><div id="bkrows"><p class="meta">…</p></div>
+    <label class="btn" style="width:100%;margin-top:6px;display:flex;align-items:center;justify-content:center">Open a backup file…<input type="file" id="bkfile" accept=".gz,.json,application/gzip,application/json" hidden></label>
+    <p class="meta" style="margin-top:12px">Not in a backup: the songs, books, films and models themselves, pictures and covers (found again), files copied into an app, and your own API keys.</p>`;
+  el.innerHTML = h;
+  if($('#bkpick')) $('#bkpick').onclick = async () => { try{ await NVBACKUP.pickFolder(); toast('Backups folder chosen - saving a copy there now'); drawBk(); for(const a of bkApps()) if(await NVBACKUP.count(a).catch(() => 0)) await NVBACKUP.save(a, 'folder picked').catch(() => {}); drawBk() }catch(e){ if(!/cancel|No folder/i.test(e.message || '')) toast(e.message || String(e)) } };
+  $('#bknow').onclick = async () => { const b = $('#bknow'); b.disabled = true; let n = 0;
+    for(const a of bkApps()){ b.textContent = 'Backing up ' + NVBACKUP.apps[a].title + '…'; try{ if(await NVBACKUP.count(a)){ await NVBACKUP.save(a, 'by hand'); n++ } }catch(e){ toast(NVBACKUP.apps[a].title + ': ' + (e.message || e)) } }
+    toast(`${n} ${n === 1 ? 'app' : 'apps'} backed up`); drawBk() };
+  $('#bkfile').onchange = async e => { const file = e.target.files[0]; if(!file) return; try{ const d = await NVBACKUP.load({where:'file', file}); const m = NVBACKUP.check(d); if(m) return toast(m); putBack(d.app, d) }catch(x){ toast('This is not a Nightvault backup file.') } };
+  const rows = [];
+  for(const a of bkApps()){ const A = NVBACKUP.apps[a], L = NVBACKUP.last(a), n = await NVBACKUP.count(a).catch(() => 0);
+    rows.push(`<div class="row"><div style="flex:1;min-width:0"><b>${esc(A.title)}</b><div class="meta">${n ? 'Now ' + esc(NVBACKUP.plural(n, A.word)) + ' · ' : ''}${L ? 'last backup ' + ago(L.at) + (L.folder ? ' (also in the folder)' : '') : 'no backup yet'}</div></div><button class="btn sm" data-bkapp="${a}">Put back…</button></div>`) }
+  $('#bkrows').innerHTML = rows.join('');
+  $('#bkrows').onclick = e => { const b = e.target.closest('[data-bkapp]'); if(b) pickBackup(b.dataset.bkapp) } }
+async function pickBackup(app){ const A = NVBACKUP.apps[app], all = await NVBACKUP.list(app);
+  $('#bkbody').innerHTML = `<button class="btn sm" id="bkback" style="margin-bottom:10px">‹ Backups</button><h3 style="margin:4px 0 8px">${esc(A.title)}: pick a backup</h3>`
+    + (all.length ? all.map((x, i) => `<div class="row" data-bki="${i}" style="cursor:pointer"><div style="flex:1;min-width:0"><b>${new Date(x.at).toLocaleString()}</b><div class="meta">${x.info ? esc(x.info.text) + ' · ' : ''}${x.where === 'app' ? 'inside the app' : 'in the folder'}${x.info && x.info.why && x.info.why !== 'auto' ? ' · ' + esc(x.info.why) : ''}</div></div><span>›</span></div>`).join('') : '<p class="meta">No backups of this app yet.</p>');
+  $('#bkback').onclick = () => drawBk();
+  $('#bkbody').onclick = async e => { const r = e.target.closest('[data-bki]'); if(!r) return; try{ putBack(app, await NVBACKUP.load(all[+r.dataset.bki])) }catch(x){ toast('Could not read this backup: ' + (x.message || x)) } } }
+function putBack(app, d){ const A = NVBACKUP.apps[app];
+  $('#bkbody').onclick = null;
+  $('#bkbody').innerHTML = `<button class="btn sm" id="bkback" style="margin-bottom:10px">‹ Backups</button><h3 style="margin:4px 0 6px">Put back ${esc(A.title)}?</h3>
+    <p class="meta" style="font-size:14px">Backup from <b>${new Date(d.saved).toLocaleString()}</b>: ${esc(NVBACKUP.describe(d))}.</p>
+    <button class="btn primary" id="bkmiss" style="width:100%;margin-top:8px">Add what is missing (recommended)</button><p class="meta" style="margin:6px 0 12px">Adds songs, playlists, plays … that are not there now and fills empty settings. Nothing is overwritten.</p>
+    <button class="btn" id="bkrepl" style="width:100%">Make it exactly like the backup</button><p class="meta" style="margin:6px 0 0">Everything since then is replaced. A backup of how it is now is made first, so you can go back.</p>`;
+  $('#bkback').onclick = () => drawBk();
+  const go = async mode => { try{ const r = await NVBACKUP.restore(app, d, mode); toast(`${A.title}: put back (${r.records} ${r.records === 1 ? 'item' : 'items'}${r.settings ? ', ' + r.settings + ' settings' : ''})`); drawBk() }catch(e){ toast(e.message || String(e)) } };
+  $('#bkmiss').onclick = () => go('missing'); $('#bkrepl').onclick = () => go('replace') }
+/* the hub opens first every time: back up whatever is due (quietly, after the screen is up) */
+setTimeout(() => NVBACKUP.auto(bkApps()).catch(() => {}), 6000);
+
 /* ---------- My PC (Take with me) ---------- */
 const APPNAME = {music:'Music', audiobooks:'Audiobooks', bookcase:'Bookcase', cinema:'Cinema'};
 if(window.NVPC && NVPC.native) $('#pcbtn').hidden = false;
@@ -322,7 +372,7 @@ async function pcState(force){ const el = $('#pcst'); if(!el) return; el.classNa
   const ok = await NVPC.reachable(force); if(!$('#pcst')) return; el.className = 'pcst ' + (ok ? 'ok' : 'no'); el.innerHTML = '<i></i>' + (ok ? 'Connected' : 'Not reachable') }
 
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(!$('#pcsheet').hidden){ $('#pcdone').click(); return } if(!$('#wnsheet').hidden){ $('#wndone').click(); return } if(!$('#appsheet').hidden){ $('#appsdone').click(); return } if(arranging){ $('#arrange').click(); return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
+  A.addListener('backButton', () => { if(!$('#bksheet').hidden){ $('#bkdone').click(); return } if(!$('#pcsheet').hidden){ $('#pcdone').click(); return } if(!$('#wnsheet').hidden){ $('#wndone').click(); return } if(!$('#appsheet').hidden){ $('#appsdone').click(); return } if(arranging){ $('#arrange').click(); return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 window.addEventListener('pageshow', e => { if(e.persisted && CAT.length && !$('#home').hidden) home() });
 </script>
 </body>

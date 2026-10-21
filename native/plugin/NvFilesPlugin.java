@@ -28,6 +28,7 @@ import java.io.FileInputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -83,7 +84,7 @@ public class NvFilesPlugin extends Plugin {
             try {
                 Uri tree = Uri.parse(t);
                 JSArray out = new JSArray();
-                listStop = false; listFolders = 0; listAudio = 0; lastNote = 0;
+                listStop = false; listFolders = 0; listAudio = 0; lastNote = 0; listDepth = Math.max(0, Math.min(8, call.getInt("depth", 8)));
                 walk(getContext().getContentResolver(), tree, DocumentsContract.getTreeDocumentId(tree), nameOf(tree), out, 0);
                 note(out, "", true);
                 JSObject o = new JSObject();
@@ -102,6 +103,7 @@ public class NvFilesPlugin extends Plugin {
 
     /* progress while listing a big folder (an SD card can take minutes): event "listProgress" about twice a second */
     private volatile boolean listStop = false;
+    private int listDepth = 8;   // list({depth:0}) = only the files right in the folder (the backups folder)
     private int listFolders = 0, listAudio = 0;
     private long lastNote = 0;
     private static final java.util.regex.Pattern AUDIO = java.util.regex.Pattern.compile("(?i).*\\.(mp3|m4a|m4b|mp4|aac|ogg|oga|opus|flac|wav|webm|mka)$");
@@ -132,7 +134,7 @@ public class NvFilesPlugin extends Plugin {
     public void stopList(PluginCall call) { listStop = true; call.resolve(); }
 
     private void walk(ContentResolver cr, Uri tree, String docId, String path, JSArray out, int depth) {
-        if (listStop || depth > 8 || out.length() > 20000) return;
+        if (listStop || depth > listDepth || out.length() > 20000) return;
         listFolders++; note(out, path, false);
         Uri kids = DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId);
         String[] cols = {DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME,
@@ -179,6 +181,41 @@ public class NvFilesPlugin extends Plugin {
     public void forget(PluginCall call) {
         try { getContext().getContentResolver().releasePersistableUriPermission(Uri.parse(call.getString("tree", "")), Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception e) {}
         call.resolve();
+    }
+
+    /** writes one file right in a picked folder (replaces a file with the same name): {tree, name, data (base64), mime} → {uri}.
+        Used for the automatic backups (hub/nvbackup.js) - a file in a folder the owner picked survives even removing the app. */
+    @PluginMethod
+    public void write(PluginCall call) {
+        String t = call.getString("tree", ""), name = call.getString("name", ""), data = call.getString("data", ""), mime = call.getString("mime", "application/octet-stream");
+        if (t.isEmpty() || name.isEmpty() || name.contains("/")) { call.reject("No folder or name"); return; }
+        new Thread(() -> {
+            try {
+                ContentResolver cr = getContext().getContentResolver();
+                Uri tree = Uri.parse(t);
+                String root = DocumentsContract.getTreeDocumentId(tree), have = null;
+                try (Cursor q = cr.query(DocumentsContract.buildChildDocumentsUriUsingTree(tree, root),
+                        new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME}, null, null, null)) {
+                    if (q == null) throw new IllegalStateException("The folder can't be reached right now - is the SD card in the phone?");
+                    while (q.moveToNext()) if (name.equals(q.getString(1))) { have = q.getString(0); break; }
+                }
+                Uri f = have != null ? DocumentsContract.buildDocumentUriUsingTree(tree, have)
+                        : DocumentsContract.createDocument(cr, DocumentsContract.buildDocumentUriUsingTree(tree, root), mime, name);
+                if (f == null) throw new IOException("the folder did not make the file");
+                try (OutputStream o = cr.openOutputStream(f, "wt")) {
+                    if (o == null) throw new IOException("the file can't be written");
+                    o.write(Base64.decode(data, Base64.DEFAULT));
+                }
+                JSObject r = new JSObject();
+                r.put("uri", f.toString());
+                r.put("name", name);
+                call.resolve(r);
+            } catch (SecurityException e) {
+                call.reject("Nightvault may not write in this folder - pick it again", "permission");
+            } catch (IllegalStateException e) {
+                call.reject(e.getMessage(), "unreachable");
+            } catch (Exception e) { call.reject("Could not save the file: " + e.getMessage()); }
+        }).start();
     }
 
     /** deletes one file in a picked folder (Cinema: "Remove the phone copy" of a video saved from the PC) */

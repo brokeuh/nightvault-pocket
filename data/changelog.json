@@ -3,6 +3,33 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 91,
+   "date": "2026-10-21",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub",
+    "music",
+    "audiobooks",
+    "bookcase",
+    "games",
+    "boardgames",
+    "cinema",
+    "print3d",
+    "scanner"
+   ],
+   "title": "Automatic backups of every app",
+   "items": [
+    "Every app now makes a backup of its lists by itself every few days: songs, playlists, favourites, play counts, groups, books, games, plays, films, models and your cards.",
+    "The Nightvault → the shield button → Backups: choose a backups folder once (best a new folder “Nightvault backups” on the SD card). A copy is saved there too, so the backups survive even removing the app.",
+    "When an app opens empty while a backup has things in it, it asks: “Put it back?” Only what is missing is added.",
+    "In Backups you can also back up everything now, and put back any backup of any app (add what is missing, or make it exactly like the backup).",
+    "Not in a backup: the files themselves (they stay in your folders), pictures and covers (found again) and your own API keys."
+   ]
+  },
+  {
    "id": 90,
    "date": "2026-10-21",
    "where": [
