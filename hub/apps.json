@@ -22,7 +22,7 @@
     },
     {
      "path": "hub/nvpc.js",
-     "size": 6307
+     "size": 8330
     },
     {
      "path": "hub/nvgroups.js",
@@ -35,9 +35,9 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 105479,
-   "hash": "a8b8e167844b",
-   "version": "2026.10.21.0724",
+   "size": 107502,
+   "hash": "8cc6779f78c3",
+   "version": "2026.10.21.1025",
    "updated": "2026-10-21"
   },
   {
@@ -339,11 +339,15 @@
    "files": [
     {
      "path": "cinema/index.html",
-     "size": 20745
+     "size": 21923
     },
     {
      "path": "cinema/app.js",
-     "size": 159559
+     "size": 175036
+    },
+    {
+     "path": "cinema/tv.js",
+     "size": 20010
     },
     {
      "path": "cinema/manifest.webmanifest",
@@ -356,9 +360,9 @@
    "uses": [],
    "entry": "cinema/?nv=hub",
    "keepsData": "Your list, what you watched, groups and TMDB key stay on this device. Video files are never deleted.",
-   "size": 180852,
-   "hash": "e36469df8072",
-   "version": "2026.10.21.0712",
+   "size": 217517,
+   "hash": "5ef6440ecf6e",
+   "version": "2026.10.21.1025",
    "updated": "2026-10-21"
   },
   {
