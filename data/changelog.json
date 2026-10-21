@@ -3,6 +3,26 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 93,
+   "date": "2026-10-21",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: manga get the whole series",
+   "items": [
+    "Manga now work like comics: open a manga series and you see every volume – the ones you have in colour, the ones you don't have grey.",
+    "Volume covers come from MangaDex, and the story, writer, artist, genres and status from AniList. No key needed, and only official volumes are used.",
+    "After you add manga, Bookcase offers to look them up. You can also pick a series by hand (a book's ⋯ → Look up online, or Collection lists → + Add a series, with MangaDex or AniList).",
+    "Collection lists, \"Up next\" (a grey tile when the next volume is missing) and \"Find it\" (Google, plus BookWalker and bol.com if you add them) work for manga too. Mark volumes you have on paper with the P badge.",
+    "On your own shelves you can switch what the shelf holds (Comics or Manga) in the shelf's settings → Online.",
+    "Books (Open Library / Hardcover) come next."
+   ]
+  },
+  {
    "id": 92,
    "date": "2026-10-21",
    "where": [
