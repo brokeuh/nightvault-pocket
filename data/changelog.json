@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 97,
+   "date": "2026-10-21",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase + PC: overnight check for new volumes",
+   "items": [
+    "The PC app now looks every night for new volumes (manga: MangaDex and AniList) and issues (comics: GCD) of the series in your library and marks them with a red NEW on the PC cards.",
+    "On the phone, Add → From my PC shows the same NEW marks and which numbers are not on the PC yet. 'Check the PC for new releases' starts a check right away.",
+    "PC install needed: copy vault.py, vault_phone.py, vault_news.py and vault_ui.html from the private source repo to the PC and restart Nightvault."
+   ]
+  },
+  {
    "id": 96,
    "date": "2026-10-21",
    "where": [

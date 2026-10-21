@@ -367,7 +367,7 @@ async function addFiles(files, shelf){ if(!files.length) return;
 
 /* ---------- On my PC: what the Nightvault PC app has (comics, manga, books, RPG) – save to the phone book by book, a range ("1-12, 15") or the whole series ----------
    Needs the Android app + the PC paired (The Nightvault > Take with me, shared ../hub/nvpc.js). A saved book is an ordinary book copied into the app, so it works offline. */
-let PCB = null, PCBAT = 0, PCALL = false, PCQ = '';
+let PCB = null, PCBAT = 0, PCALL = false, PCQ = '', PCN = {};
 const pcKinds = sh => sh === 'manga' || isManga(sh) ? ['manga'] : sh === 'comics' ? ['comic'] : sh === 'books' ? ['book'] : sh === 'rulebooks' || sh === 'rpg' ? ['rpg'] : null;
 const pcKey = f => f.name + '|' + f.size;
 const pcHave = () => new Set(BOOKS.filter(b => b.fmt !== 'imgs').map(b => b.name + '|' + b.size));
@@ -378,22 +378,25 @@ async function pcSheet(shelf){
   if(!(window.NVPC && NVPC.native && NVPC.pc)){ sheet(`<h3>On my PC</h3><p class="muted">Connect the Nightvault PC app first: open <b>The Nightvault</b> → <b>Take with me</b> and pair it with the code from the PC (Settings → Phone access).</p><button class="btn primary" style="width:100%" id="pcok">OK</button>`); $('#pcok').onclick = closeSheet; return }
   sheet(`<h3>On my PC</h3><div class="prog busy"><i></i></div><div class="muted small" id="pcst">Asking the PC…</div>`, true);
   let list; try{ list = await pcList(true) }catch(e){ sheet(`<h3>On my PC</h3><p class="muted">${esc(/Failed to fetch|NetworkError|timeout/i.test(e.message || '') ? 'Can\'t reach the PC. Is the phone on the home Wi-Fi and is Nightvault running on the PC?' : e.message || String(e))}</p><button class="btn primary" style="width:100%" id="pcok">OK</button>`); $('#pcok').onclick = closeSheet; return }
+  try{ const r = await fetch(NVPC.url('/nv/news'), {cache:'no-store'}); PCN = r.ok ? ((await r.json()).items || {}) : {} }catch(e){ PCN = {} }
   pcListDraw(shelf) }
+const pcNewN = s => { const n = PCN[s.gid]; return n ? (Array.isArray(n.new) ? n.new.length : n.new || 0) : 0 };
 function pcListDraw(shelf){
   const kinds = pcKinds(shelf), have = pcHave(), sh = shelfOf(shelf);
   let rows = (PCB || []).filter(s => PCALL || !kinds || kinds.includes(s.kind));
   const q = norm(PCQ); if(q) rows = rows.filter(s => norm(s.name).includes(q));
   const row = s => { const on = s.files.filter(f => have.has(pcKey(f))).length;
     return `<div class="pcr" data-sid="${esc(s.id)}" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer">
-      <div style="width:42px;height:60px;border-radius:5px;background:#252d3a;overflow:hidden;flex:none">${s.cover ? `<img src="${NVPC.url('/nv/bcover?id=' + s.id)}" loading="lazy" style="width:100%;height:100%;object-fit:cover" onerror="this.remove()">` : ''}</div>
+      <div style="width:42px;height:60px;border-radius:5px;background:#252d3a;overflow:hidden;flex:none;position:relative">${pcNewN(s) ? `<span class="newb" style="top:3px;left:3px;font-size:9.5px;padding:1px 6px">NEW</span>` : ''}${s.cover ? `<img src="${NVPC.url('/nv/bcover?id=' + s.id)}" loading="lazy" style="width:100%;height:100%;object-fit:cover" onerror="this.remove()">` : ''}</div>
       <div style="min-width:0;flex:1"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name)}</div>
-      <div class="muted small">${plural(s.count, 'book')} · ${mb(s.size)}${on ? ` · ${on} on the phone` : ''}</div><div class="muted small">${esc(s.collname)}</div></div></div>` };
+      <div class="muted small">${plural(s.count, 'book')} · ${mb(s.size)}${on ? ` · ${on} on the phone` : ''}</div><div class="muted small">${esc(s.collname)}${pcNewN(s) ? ` · <b style="color:#ff6b86">${pcNewN(s)} new online, not on the PC yet</b>` : ''}</div></div></div>` };
   sheet(`<h3>On my PC → ${esc(sh.name)}</h3>
     <input type="search" id="pcq" placeholder="Search the PC's library" value="${esc(PCQ)}">
     <label class="muted small" style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="pcall" ${PCALL || !kinds ? 'checked' : ''}> Show everything on the PC, not just ${esc(sh.name.toLowerCase())}</label>
     <div style="max-height:56vh;overflow:auto" id="pclist">${rows.length ? rows.map(row).join('') : `<p class="muted">${(PCB || []).length ? 'Nothing here matches.' : 'The PC has no comics, manga or books yet.'}</p>`}</div>
-    <button class="btn" style="width:100%;margin-top:10px" id="pcx">Close</button>`, true);
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" id="pcnews">Check the PC for new releases</button><button class="btn" style="flex:1" id="pcx">Close</button></div>`, true);
   $('#pcx').onclick = closeSheet;
+  $('#pcnews').onclick = async () => { try{ await fetch(NVPC.url('/nv/news?run=1'), {cache:'no-store'}); toast('The PC is checking – look again in a few minutes (the PC does it every night as well)', 5000) }catch(e){ toast('Can\'t reach the PC') } };
   $('#pcall').onchange = e => { PCALL = e.target.checked; pcListDraw(shelf) };
   let t = 0; $('#pcq').oninput = e => { PCQ = e.target.value; clearTimeout(t); t = setTimeout(() => { pcListDraw(shelf); const i = $('#pcq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length) }, 250) };
   $('#pclist').onclick = e => { const r = e.target.closest('.pcr'); if(r) pcSeries(shelf, r.dataset.sid) } }
@@ -405,7 +408,7 @@ function pcSeries(shelf, sid){
   const s = (PCB || []).find(x => x.id === sid); if(!s) return;
   const have = pcHave(), todo = s.files.filter(f => !have.has(pcKey(f))), W2 = s.kind === 'manga' ? 'volume' : s.kind === 'comic' ? 'issue' : 'book';
   const lab = f => f.number != null ? `${W2[0].toUpperCase() + W2.slice(1)} ${f.number}` : f.name.replace(/\.[^.]+$/, '');
-  sheet(`<h3>${esc(s.name)}</h3><div class="muted small" style="margin:-6px 0 8px">${plural(s.count, 'book')} · ${mb(s.size)} · ${plural(s.count - todo.length, 'one')} already on the phone</div>
+  sheet(`<h3>${esc(s.name)}</h3><div class="muted small" style="margin:-6px 0 8px">${plural(s.count, 'book')} · ${mb(s.size)} · ${plural(s.count - todo.length, 'one')} already on the phone</div>${(n => n && n.new && (n.new.length || n.new > 0) ? `<div class="newbar on" style="margin:0 0 10px"><div class="nbt"><b>New online: ${Array.isArray(n.new) ? n.new.slice(0, 10).join(', ') : n.new + ' more'}</b><div class="muted small">Not on your PC yet – add ${Array.isArray(n.new) && n.new.length === 1 ? 'it' : 'them'} to the server.</div></div></div>` : '')(PCN[s.gid])}
     <div class="mlist"><button class="btn primary" id="pcfull" ${todo.length ? '' : 'disabled'}>Save the full series (${todo.length} not on the phone yet · ${mb(todo.reduce((n, f) => n + f.size, 0))})</button>
     <div style="display:flex;gap:8px"><input id="pcrng" placeholder="Range, like 1-12, 15" style="flex:1" inputmode="text"><button class="btn" id="pcrg">Save range</button></div></div>
     <div class="muted small" style="margin:12px 0 4px">Or tick single books:</div>
