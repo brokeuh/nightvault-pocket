@@ -10,7 +10,7 @@
    "files": [
     {
      "path": "hub/index.html",
-     "size": 37580
+     "size": 45026
     },
     {
      "path": "hub/core.js",
@@ -27,14 +27,18 @@
     {
      "path": "hub/nvgroups.js",
      "size": 14397
+    },
+    {
+     "path": "hub/nvbackup.js",
+     "size": 20907
     }
    ],
    "provides": [],
    "uses": [],
-   "size": 77117,
-   "hash": "9e42ec35a205",
-   "version": "2026.10.19.1203",
-   "updated": "2026-10-19"
+   "size": 105470,
+   "hash": "e1b0edbb9a87",
+   "version": "2026.10.21.0712",
+   "updated": "2026-10-21"
   },
   {
    "id": "scanner",
@@ -216,7 +220,7 @@
    "files": [
     {
      "path": "books/index.html",
-     "size": 22165
+     "size": 22208
     },
     {
      "path": "books/app.js",
@@ -270,9 +274,9 @@
    "uses": [],
    "entry": "books/?nv=hub",
    "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted.",
-   "size": 2365375,
-   "hash": "ab61fff37cd7",
-   "version": "2026.10.21.0843",
+   "size": 2365418,
+   "hash": "fbc9c1b66cf2",
+   "version": "2026.10.21.0712",
    "updated": "2026-10-21"
   },
   {
@@ -284,7 +288,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 262017
+     "size": 262060
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -296,9 +300,9 @@
     "music"
    ],
    "uses": [],
-   "size": 262578,
-   "hash": "0ccf3455edaa",
-   "version": "2026.10.21.0646",
+   "size": 262621,
+   "hash": "f44703ca7bd0",
+   "version": "2026.10.21.0712",
    "updated": "2026-10-21"
   },
   {
@@ -310,7 +314,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 262017
+     "size": 262060
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -322,9 +326,9 @@
     "audiobooks"
    ],
    "uses": [],
-   "size": 262578,
-   "hash": "0ccf3455edaa",
-   "version": "2026.10.21.0646",
+   "size": 262621,
+   "hash": "f44703ca7bd0",
+   "version": "2026.10.21.0712",
    "updated": "2026-10-21"
   },
   {
@@ -335,7 +339,7 @@
    "files": [
     {
      "path": "cinema/index.html",
-     "size": 20702
+     "size": 20745
     },
     {
      "path": "cinema/app.js",
@@ -352,10 +356,10 @@
    "uses": [],
    "entry": "cinema/?nv=hub",
    "keepsData": "Your list, what you watched, groups and TMDB key stay on this device. Video files are never deleted.",
-   "size": 180809,
-   "hash": "7a2b03101e92",
-   "version": "2026.10.19.1203",
-   "updated": "2026-10-19"
+   "size": 180852,
+   "hash": "e36469df8072",
+   "version": "2026.10.21.0712",
+   "updated": "2026-10-21"
   },
   {
    "id": "boardgames",
@@ -365,7 +369,7 @@
    "files": [
     {
      "path": "boardgames/index.html",
-     "size": 14089
+     "size": 14132
     },
     {
      "path": "boardgames/app.js",
@@ -382,10 +386,10 @@
    "uses": [],
    "entry": "boardgames/?nv=hub",
    "keepsData": "Your plays, games added by hand, pictures and groups stay on this device. Games from BoardGameGeek come back by themselves.",
-   "size": 99674,
-   "hash": "ffe79c233bba",
-   "version": "2026.10.19.0940",
-   "updated": "2026-10-19"
+   "size": 99717,
+   "hash": "8c8d01052eac",
+   "version": "2026.10.21.0712",
+   "updated": "2026-10-21"
   },
   {
    "id": "print3d",
@@ -395,7 +399,7 @@
    "files": [
     {
      "path": "print3d/index.html",
-     "size": 17967
+     "size": 18010
     },
     {
      "path": "print3d/app.js",
@@ -416,10 +420,10 @@
    "uses": [],
    "entry": "print3d/?nv=hub",
    "keepsData": "Your models list, prints, tags, groups and copies in the app stay on this device. Files in phone folders are never deleted.",
-   "size": 149638,
-   "hash": "03a414ac517a",
-   "version": "2026.10.19.1725",
-   "updated": "2026-10-19"
+   "size": 149681,
+   "hash": "2c506a1135ff",
+   "version": "2026.10.21.0712",
+   "updated": "2026-10-21"
   },
   {
    "id": "collectables",
@@ -445,7 +449,7 @@
    "files": [
     {
      "path": "games/index.html",
-     "size": 15284
+     "size": 15327
     },
     {
      "path": "games/app.js",
@@ -466,10 +470,10 @@
    "uses": [],
    "entry": "games/?nv=hub",
    "keepsData": "Your games, copies, wishlist, groups and keys stay on this device.",
-   "size": 147448,
-   "hash": "32a06ed10954",
-   "version": "2026.10.20.0734",
-   "updated": "2026-10-20"
+   "size": 147491,
+   "hash": "1cde75650d49",
+   "version": "2026.10.21.0712",
+   "updated": "2026-10-21"
   }
  ]
 }
