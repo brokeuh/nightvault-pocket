@@ -179,6 +179,7 @@
       "files": [
         "cinema/index.html",
         "cinema/app.js",
+        "cinema/tv.js",
         "cinema/manifest.webmanifest"
       ],
       "provides": [

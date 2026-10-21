@@ -181,6 +181,14 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 #player #pcue{position:absolute;left:0;right:0;bottom:calc(9% + env(safe-area-inset-bottom,0px));text-align:center;pointer-events:none;padding:0 8%;font-size:clamp(16px,3.6vmin,30px);line-height:1.35;font-weight:600;transition:bottom .25s}
 #player:not(.hideui) #pcue{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 #player #pcue span{background:#000b;color:#fff;padding:2px 10px;border-radius:6px;-webkit-box-decoration-break:clone;box-decoration-break:clone;text-shadow:0 1px 2px #000}
+/* Play on TV: the remote */
+#tvr{position:fixed;inset:0;z-index:120;background:var(--bg);overflow:auto}
+#tvr .tvbg{position:absolute;inset:0 0 auto 0;height:300px;background-size:cover;background-position:center;opacity:.25;filter:blur(3px);mask-image:linear-gradient(#000 30%,transparent)}
+#tvr .tvin{position:relative;max-width:560px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(30px + env(safe-area-inset-bottom,0px))}
+#tvr .time{font-size:13px;font-variant-numeric:tabular-nums;color:var(--dim)}
+#tvr input[type=range]{accent-color:var(--accentb);height:30px}
+#tvr .tvb{width:62px;height:62px;border-radius:50%;font-weight:800;font-size:15px}#tvr .tvb.big{width:78px;height:78px;background:var(--accentd);border-color:var(--accentb);color:#fff}#tvr .tvb svg{width:30px;height:30px}
+#tvmini{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));width:min(560px,calc(100% - 24px));display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;background:#3a1620f5;border:1px solid var(--accentb);z-index:90;cursor:pointer;box-shadow:0 8px 30px #0009}
 #player .menu .h{font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim2);padding:8px 12px 4px}
 </style>
 </head>
@@ -201,5 +209,6 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 <div id="toast"></div>
 
 <script src="app.js"></script>
+<script src="tv.js"></script>
 </body>
 </html>

@@ -3,7 +3,10 @@
      NVPC.native                  – true inside the Android app (the only place it works: the web view can't load http from the PC itself)
      NVPC.pc                      – the paired PC {base, name, kinds, at} or null
      NVPC.pair(address, code)     – checks the PC and remembers it;  NVPC.forget()
-     NVPC.reachable(force)        – is the PC there right now (home network, PC on)? cached for 30 s
+     NVPC.reachable(force)        – is the PC there right now (home network, PC on)? cached for 30 s. Away from home it tries the PC's
+                                    other addresses (Tailscale, learned from the PC's hello or typed in) and switches to the one that answers
+     NVPC.away / NVPC.home        – true when connected through an away address / the PC's home address (http://192.168.x.x:8766)
+     NVPC.setAway(address)        – an extra address to try away from home ('' = only the learned ones);  NVPC.key() – the pairing code
      NVPC.url(path)               – address for the page: NVPC.url('/nv/file?id=..') → '/_nvpc_/nv/file?id=..' (Android fetches it from the PC)
      NVPC.list(kind, onProgress)  – the PC's library of one kind ('music', later 'audiobooks', 'books', 'video'); waits while the PC builds it
      NVPC.offline                 – ONE list of offline copies for all apps (localStorage nvOffline):
@@ -30,15 +33,19 @@
       if(key.length < 6) throw new Error('Type the code the PC shows (8 letters and numbers)');
       let h; try{ h = await P.hello({base, key, timeout:6000}) }catch(e){ log('pair failed', {base, err:e.message || String(e)});
         throw new Error(/code/i.test(e.message || '') ? 'The code is not right - look in Nightvault on the PC: Settings > Phone access.' : 'Can\'t reach the PC at ' + norm(address) + '. Is the phone on the same Wi-Fi, is Nightvault running on the PC, and is Phone access switched on?') }
-      await P.set({base, key}); set(KEY, {base, name:h.name || 'PC', kinds:h.kinds || [], at:Date.now()}); reach = {at:Date.now(), ok:true, p:null};
+      await P.set({base, key}); set(KEY, {base, home:base, alts:awayAddrs(h), name:h.name || 'PC', kinds:h.kinds || [], cinema:h.cinema || 0, at:Date.now()}); reach = {at:Date.now(), ok:true, p:null};
       log('paired', {base, name:h.name}); return NVPC.pc },
     async forget(){ if(P) await P.forget().catch(() => {}); set(KEY, null); reach = {at:0, ok:null, p:null} },
     async reachable(force){
       if(!P || !NVPC.pc) return false;
       if(!force && reach.ok != null && Date.now() - reach.at < 30000) return reach.ok;
       if(reach.p) return reach.p;
-      reach.p = P.hello({timeout:2500}).then(() => true, () => false).then(ok => { reach = {at:Date.now(), ok, p:null}; return ok });
+      reach.p = tryAll().then(ok => { reach = {at:Date.now(), ok, p:null}; return ok });
       return reach.p },
+    get home(){ const pc = NVPC.pc; return pc ? pc.home || pc.base : '' },
+    get away(){ const pc = NVPC.pc; return !!(pc && pc.home && pc.base !== pc.home) },
+    async key(){ try{ return P ? (await P.get()).key || '' : '' }catch(e){ return '' } },
+    setAway(address){ const pc = NVPC.pc; if(!pc) return; pc.own = address ? 'http://' + norm(address) : ''; set(KEY, pc); reach = {at:0, ok:null, p:null} },
     url(path){ return '/_nvpc_' + (path.startsWith('/') ? path : '/' + path) },
     async list(kind, onProgress, fresh){
       for(let i = 0; i < 600; i++){
@@ -66,5 +73,18 @@
             const t = db.transaction(d.store, 'readwrite'), st = t.objectStore(d.store); for(const k of d.ids || []) st.delete(k); t.oncomplete = t.onerror = t.onabort = () => { db.close(); ok() } } }catch(e){ ok() } });
         NVPC.offline.keep(app, id); log('offline copy removed', {app, id, title:rec.title}) } }
   };
+  /* the PC's addresses for away from home: Tailscale (100.64.0.0/10) from the PC's hello */
+  function awayAddrs(h){ return ((h && h.addrs) || []).filter(a => /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(a)).map(a => 'http://' + norm(a)) }
+  /* the address it uses now first, then home, then the away addresses; the first that answers becomes the one to use */
+  async function tryAll(){
+    const pc = NVPC.pc; if(!pc) return false;
+    const home = pc.home || pc.base, list = [...new Set([pc.base, home, ...(pc.alts || []), pc.own].filter(Boolean))];
+    for(const base of list){
+      let h = null; try{ h = await P.hello(base === pc.base ? {timeout:2500} : {base, timeout:2500}) }catch(e){ continue }
+      const now = NVPC.pc || pc; if(!now.home) now.home = home;
+      const learned = awayAddrs(h); if(learned.length) now.alts = learned; if(h && h.cinema != null) now.cinema = h.cinema;
+      if(base !== now.base){ try{ const k = (await P.get()).key; await P.set({base, key:k}); now.base = base; log(base === now.home ? 'back home' : 'away: connected through ' + base) }catch(e){ continue } }
+      set(KEY, now); return true }
+    return false }
   window.NVPC = NVPC;
 })();

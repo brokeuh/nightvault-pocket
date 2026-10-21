@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 J=android/app/src/main/java/be/brokeuh/nightvault
 mkdir -p "$J"
-cp plugin/MainActivity.java plugin/NvOcrPlugin.java plugin/NvUpdatePlugin.java plugin/NvCapturePlugin.java plugin/NvCaptureService.java plugin/NvMediaPlugin.java plugin/NvMediaService.java plugin/NvFilesPlugin.java plugin/NvLogPlugin.java plugin/NvPcPlugin.java plugin/NvPrintPlugin.java plugin/NvBggPlugin.java plugin/NvLaunchPlugin.java "$J/"
+cp plugin/MainActivity.java plugin/NvOcrPlugin.java plugin/NvUpdatePlugin.java plugin/NvCapturePlugin.java plugin/NvCaptureService.java plugin/NvMediaPlugin.java plugin/NvMediaService.java plugin/NvFilesPlugin.java plugin/NvLogPlugin.java plugin/NvPcPlugin.java plugin/NvPrintPlugin.java plugin/NvBggPlugin.java plugin/NvLaunchPlugin.java plugin/NvTvPlugin.java "$J/"
 # Google ML Kit text recognition (the model is inside the app, works without internet)
 sed -i "s#^dependencies {#dependencies {\n    implementation 'com.google.mlkit:text-recognition:16.0.1'#" android/app/build.gradle
 # version shown in Android settings: the build number
@@ -22,6 +22,9 @@ grep -q '<queries>' "$M" || sed -i "s#</manifest>#    <queries>~${Q}    </querie
 sed -i 's#~#\n#g' "$M"
 ! grep -q 'QUERY_ALL_PACKAGES' "$M"
 grep -q 'com.retroarch' "$M"
+# Cinema "Play on TV": find the TVs on the Wi-Fi (SSDP multicast needs a multicast lock)
+grep -q 'CHANGE_WIFI_MULTICAST_STATE' "$M" || sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />\n    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />#' "$M"
+grep -q 'CHANGE_WIFI_MULTICAST_STATE' "$M"
 # icon
 R=android/app/src/main/res
 rm -rf "$R/mipmap-anydpi-v26"

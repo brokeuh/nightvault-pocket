@@ -3,6 +3,28 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 98,
+   "date": "2026-10-21",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "cinema",
+    "hub"
+   ],
+   "title": "Cinema: play on your TV, watch away from home, subtitles found online",
+   "items": [
+    "Play on TV: ⋯ → Play on TV (or the TV button in the player). The phone finds your Samsung, LG or other TV on the Wi‑Fi and tells it what to play - the TV fetches the film itself in full quality (this is not screen casting). The phone becomes the remote.",
+    "Subtitles on the TV: Samsung shows the subtitle file itself; on LG and other TVs your PC puts them in the picture. Dutch first, else English.",
+    "A film saved on your phone can play on a friend's TV too - the phone sends it to the TV.",
+    "Watch your PC's films away from home: install the free Tailscale app on the PC and on your phone (same account) - Cinema finds the PC by itself. Away it plays in 720p to save data; pick Original, 1080p, 720p or 480p in the player's ⚙ or in Cinema ⚙.",
+    "Subtitles found online: set up your free OpenSubtitles account once (Cinema ⚙ → Subtitles online). When a film has no Dutch or English subtitles, the PC finds them, lines them up with the film's sound and keeps them next to the video. Or tap Subtitles → Find online.",
+    "Subtitles a bit early or late? Subtitles → Earlier / Later 0.5 s - remembered per film. Subtitles are now on by default.",
+    "Needs the newest PC app files: vault.py, vault_phone.py and the new vault_cinema.py."
+   ]
+  },
+  {
    "id": 97,
    "date": "2026-10-21",
    "where": [

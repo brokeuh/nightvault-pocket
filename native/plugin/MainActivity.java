@@ -20,6 +20,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NvPrintPlugin.class);
         registerPlugin(NvBggPlugin.class);
         registerPlugin(NvLaunchPlugin.class);
+        registerPlugin(NvTvPlugin.class);          // Cinema: play on the TV (DLNA)
         super.onCreate(savedInstanceState);
         // files in folders the owner picked (NvFiles) are played straight from there, with byte ranges for seeking
         bridge.setWebViewClient(new BridgeWebViewClient(bridge) {

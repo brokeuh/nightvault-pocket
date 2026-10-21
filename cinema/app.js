@@ -24,7 +24,8 @@ window.toast = toast;
 const L = (a, t, d) => { try{ window.NVLOG && NVLOG.log(a, t, d) }catch(e){} }, LE = (a, t, d) => { try{ window.NVLOG && NVLOG.error(a, t, d) }catch(e){} };
 const lsGet = (k, d) => { try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v) }catch(e){ return d } };
 const lsSet = (k, v) => { try{ v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)) }catch(e){} };
-const S = Object.assign({sort:{}, grouped:{}, filter:{}, src:{}, guess:true, lang:'en-US', subOn:false, autoNext:true, rate:1, fit:false}, lsGet('nvCinema.settings', {}));
+const S = Object.assign({sort:{}, grouped:{}, filter:{}, src:{}, guess:true, lang:'en-US', subOn:true, subLangs:['nl', 'en'], autoSubs:true, qHome:0, qAway:720, autoNext:true, rate:1, fit:false}, lsGet('nvCinema.settings', {}));
+if(!S.v2){ S.v2 = 1; S.subOn = true; try{ localStorage.setItem('nvCinema.settings', JSON.stringify(S)) }catch(e){} }   // 21 Oct: subtitles on by default (Dutch, else English)
 const saveS = () => lsSet('nvCinema.settings', S);
 const fromHub = () => { try{ return sessionStorage.getItem('nvHub') === '1' }catch(e){ return false } };
 try{ if(new URLSearchParams(location.search).get('nv') === 'hub') sessionStorage.setItem('nvHub', '1'); if(fromHub()) $('#hubback').hidden = false }catch(e){}
@@ -572,7 +573,7 @@ const ask = (title, ph, val, btn) => new Promise(ok => { sheet(`<h3>${title}</h3
 function titleMenu(t, sh){ const G = grOf(t.shelf), pin = G.isPinned('it:' + t.id), fs = filesOf(t), pcOnly = fs.filter(f => f.pc && !f.local && !f.src), saved = fs.filter(f => f.local), seen = seenState(t) === 'seen';
   sheet(`<h3>${esc(t.name)}</h3><div class="mlist">
     ${pcOnly.length ? `<button class="btn primary" id="tmsave">Save to phone (for a trip)</button>` : ''}${saved.length ? `<button class="btn" id="tmunsave">Remove the phone copy (${mb(saved.reduce((n, f) => n + (f.local.size || f.size || 0), 0))})</button>` : ''}
-    <button class="btn" id="tmseen">${seen ? 'Mark as not watched' : 'Mark as watched'}</button>
+    ${window.NvTvP ? '<button class="btn" id="tmtv">📺 Play on TV</button>' : ''}<button class="btn" id="tmseen">${seen ? 'Mark as not watched' : 'Mark as watched'}</button>
     <button class="btn" id="tmg">Put in a group…</button><button class="btn" id="tmp">${pin ? '★ Unpin from the top' : '★ Pin to the top'}</button>
     <button class="btn" id="tme">Edit details</button>${TKEY() ? `<button class="btn" id="tml">${t.tmdb ? 'Find the right title again (TMDB)' : 'Find it on TMDB'}</button>` : ''}
     <button class="btn" id="tmc">Change the poster</button><button class="btn" id="tmsh">Move to another shelf</button>
@@ -581,6 +582,7 @@ function titleMenu(t, sh){ const G = grOf(t.shelf), pin = G.isPinned('it:' + t.i
     <p class="muted small" style="margin:10px 0 0">Groups are per shelf: this changes “${esc(shelfOf(t.shelf).name)}”. Removing never deletes the video files themselves (only copies made inside the app).</p>`);
   if($('#tmsave')) $('#tmsave').onclick = () => saveSheet(t, pcOnly);
   if($('#tmunsave')) $('#tmunsave').onclick = () => unsave(saved);
+  if($('#tmtv')) $('#tmtv').onclick = () => { const f = nextUp(t) || mainFiles(t)[0]; if(f) tvSheet(f) };
   $('#tmseen').onclick = async () => { for(const f of mainFiles(t)) seen ? await clearWatch(f) : await setWatch(f, 0, (W(f) || {}).dur, true); closeSheet(); draw(); toast(seen ? 'Marked as not watched' : 'Marked as watched') };
   $('#tmg').onclick = () => groupPicker(t, t.shelf);
   $('#tmp').onclick = () => { G.togglePin(['it:' + t.id], !pin); closeSheet(); draw(); toast(pin ? 'Unpinned' : 'Pinned: it shows first') };
@@ -597,14 +599,14 @@ async function removeTitles(ids){ const ts = ids.map(id => TM[id]).filter(Boolea
   closeSheet(); selEnd(true); if(cur().v === 'title' && !TM[cur().id]) V.pop(); draw(); toast(plural(ts.length, 'title') + ' removed') }
 function fileMenu(t, f){ const w = W(f), done = isDone(f);
   sheet(`<h3>${esc(fileLabel(t, f, (EPI[t.id + ':' + f.s] || []).find(x => x.e === f.e)))}</h3><p class="muted small" style="margin:0 0 8px;overflow-wrap:anywhere">${esc((f.dir ? f.dir + '/' : '') + f.name)}${f.size ? ' · ' + mb(f.size) : ''}<br>${esc(whereText(f))}</p><div class="mlist">
-    <button class="btn primary" id="fmplay">${w && !w.done && w.pos > 20 ? 'Continue at ' + tfmt(w.pos) : 'Play'}</button>${w && !w.done && w.pos > 20 ? '<button class="btn" id="fmstart">Play from the start</button>' : ''}
+    <button class="btn primary" id="fmplay">${w && !w.done && w.pos > 20 ? 'Continue at ' + tfmt(w.pos) : 'Play'}</button>${window.NvTvP ? '<button class="btn" id="fmtv">📺 Play on TV</button>' : ''}${w && !w.done && w.pos > 20 ? '<button class="btn" id="fmstart">Play from the start</button>' : ''}
     <button class="btn" id="fmseen">${done ? 'Mark as not watched' : 'Mark as watched'}</button>
     ${t.kind === 'show' ? '<button class="btn" id="fmupto">Mark all before this one as watched</button>' : ''}
     ${f.pc && !f.local && !f.src ? '<button class="btn" id="fmsave">Save to phone</button>' : ''}${f.local ? '<button class="btn" id="fmunsave">Remove the phone copy</button>' : ''}
     <button class="btn" id="fmnum">${t.kind === 'show' ? 'Change season / episode number' : 'Change the part number'}</button>
     <button class="btn" id="fmmove">Belongs to another title…</button>
     ${f.src || f.local ? '<button class="btn danger" id="fmx">Remove this video from Cinema</button>' : ''}</div>`);
-  $('#fmplay').onclick = () => { closeSheet(); play(f) }; if($('#fmstart')) $('#fmstart').onclick = () => { closeSheet(); play(f, {from:0}) };
+  $('#fmplay').onclick = () => { closeSheet(); play(f) }; if($('#fmtv')) $('#fmtv').onclick = () => tvSheet(f); if($('#fmstart')) $('#fmstart').onclick = () => { closeSheet(); play(f, {from:0}) };
   $('#fmseen').onclick = async () => { done ? await clearWatch(f) : await setWatch(f, 0, (w || {}).dur, true); closeSheet(); draw() };
   if($('#fmupto')) $('#fmupto').onclick = async () => { const fs = filesOf(t), i = fs.indexOf(f); for(const x of fs.slice(0, i)) if(!isDone(x) && (x.s !== 0 || f.s === 0)) await setWatch(x, 0, (W(x) || {}).dur, true); closeSheet(); draw(); toast('Marked as watched') };
   if($('#fmsave')) $('#fmsave').onclick = () => saveSheet(t, [f]);
@@ -889,7 +891,11 @@ const IC = {
   next:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 5.5v13a1 1 0 0 0 1.5.86L16 13.5V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.5L6.5 4.64A1 1 0 0 0 5 5.5z"/></svg>',
   cc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10.5 10.2a2.4 2.4 0 1 0 0 3.6M17 10.2a2.4 2.4 0 1 0 0 3.6"/></svg>',
   gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>',
-  fit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>'};
+  fit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+  tv:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>'};
+/* the PC's Cinema extras (vault_cinema.py): 2 = quality, TV, subtitles online. Older PC apps: 0 */
+const pcv = () => (window.NVPC && NVPC.pc && NVPC.pc.cinema) || 0;
+const qNow = () => window.NVPC && NVPC.away ? +S.qAway || 0 : +S.qHome || 0;
 const pv = () => $('#pvid');
 const ptime = () => { const v = pv(); if(!v) return 0; return P.mode === 'conv' ? P.off + (v.currentTime || 0) : (v.currentTime || 0) };
 const pdur = () => { const v = pv(); if(!v) return P.dur || 0; return P.dur || (isFinite(v.duration) ? v.duration : 0) };
@@ -903,7 +909,7 @@ async function pcInfo(f){ if(VINFO[f.pc.id]) return VINFO[f.pc.id]; const r = aw
   if(!r.ok) throw new Error(j.error || 'The PC answered ' + r.status); return VINFO[f.pc.id] = j }
 
 function playerHTML(){ return `<video id="pvid" playsinline preload="auto"></video><div class="wait" id="pwait" hidden></div><span class="seekfx" id="pfxl" style="left:12%"></span><span class="seekfx" id="pfxr" style="right:12%"></span>
-  <div class="ui" id="pui"><div class="pt"><button class="pi" id="pclose" aria-label="Close">${IC.back}</button><div class="n"><b id="pname"></b><span id="psub"></span></div><button class="pi txt" id="pstart" hidden>Start over</button><button class="pi" id="pfit" aria-label="Fill the screen">${IC.fit}</button><button class="pi" id="pcc" aria-label="Subtitles">${IC.cc}</button><button class="pi" id="pset" aria-label="Settings">${IC.gear}</button></div>
+  <div class="ui" id="pui"><div class="pt"><button class="pi" id="pclose" aria-label="Close">${IC.back}</button><div class="n"><b id="pname"></b><span id="psub"></span></div><button class="pi txt" id="pstart" hidden>Start over</button>${window.NvTvP ? `<button class="pi" id="ptv" aria-label="Play on the TV">${IC.tv}</button>` : ''}<button class="pi" id="pfit" aria-label="Fill the screen">${IC.fit}</button><button class="pi" id="pcc" aria-label="Subtitles">${IC.cc}</button><button class="pi" id="pset" aria-label="Settings">${IC.gear}</button></div>
     <div class="mid"><button class="pi" id="prw" aria-label="10 seconds back">${IC.rw}</button><button class="pi big" id="ppp" aria-label="Play or pause">${IC.play}</button><button class="pi" id="pff" aria-label="10 seconds forward">${IC.ff}</button></div>
     <div class="pb"><div class="row"><span class="time" id="pcur">0:00</span><input type="range" id="pseek" min="0" max="1000" value="0" step="1" aria-label="Position"><span class="time" id="pdur" style="text-align:right">0:00</span><button class="pi" id="pnext" aria-label="Next" hidden>${IC.next}</button></div></div></div>
   <div class="menu" id="pmenu" hidden></div><div class="nextup" id="pnextup" hidden></div><div class="msg" id="pmsg" hidden></div>` }
@@ -933,12 +939,13 @@ async function play(f, opts){ opts = opts || {};
   if(!f.pc){ pMsg(`<b>This video can’t be found</b><p class="muted small">${f.src ? 'Is the folder still on the phone?' : ''}</p><button class="btn" onclick="pClose()">Close</button>`); return }
   if(!(await NVPC.reachable(true))){ PCON = false; pMsg(`<b>Your PC is not reachable</b><p class="muted small">Are you at home on the same Wi‑Fi, and is Nightvault running on the PC with Phone access on?</p><div style="display:flex;gap:8px;justify-content:center"><button class="btn" onclick="pClose()">Close</button><button class="btn primary" id="pretry">Try again</button></div>`); $('#pretry').onclick = () => play(f, opts); return }
   PCON = true; let info; try{ info = await pcInfo(f) }catch(e){ LE('play', 'vinfo', e); pMsg(`<b>The PC could not open this video</b><p class="muted small">${esc(e.message)}</p><button class="btn" onclick="pClose()">Close</button>`); return }
-  if(tok !== P.tok) return; P.info = info; P.dur = info.duration || 0;
-  P.mode = (S.conv === 'always' || (info.mode === 'transcode' && S.conv !== 'never') || opts.conv) && info.ffmpeg ? 'conv' : 'direct';
-  loadSubs(f, info); pLoad(null, from) }
+  if(tok !== P.tok) return; P.info = info; P.dur = info.duration || 0; P.h = pcv() >= 2 ? qNow() : 0;
+  P.mode = (P.h || S.conv === 'always' || (info.mode === 'transcode' && S.conv !== 'never') || opts.conv) && info.ffmpeg ? 'conv' : 'direct';
+  if(P.h && info.ffmpeg && NVPC.away) toast(`Away from home: ${P.h}p (change it in ⚙ › Quality)`, 3000);
+  loadSubs(f, info); pLoad(null, from); autoFindSubs(f) }
 /* (re)load the source; for a converted stream: ask the PC to start at second s */
 function pLoad(url, s){ const v = pv(), f = P.f; $('#pwait').hidden = false; pMsg('');
-  if(P.mode === 'conv'){ P.off = Math.max(0, s || 0); v.src = NVPC.url(`/nv/vstream?id=${encodeURIComponent(f.pc.id)}&start=${P.off.toFixed(1)}&a=${P.audio}`); P._seekTo = null }
+  if(P.mode === 'conv'){ P.off = Math.max(0, s || 0); v.src = NVPC.url(pcv() >= 2 ? `/nv/cin/stream?id=${encodeURIComponent(f.pc.id)}&start=${P.off.toFixed(1)}&a=${P.audio}&h=${P.h || 0}` : `/nv/vstream?id=${encodeURIComponent(f.pc.id)}&start=${P.off.toFixed(1)}&a=${P.audio}`); P._seekTo = null }
   else { if(url || P.mode === 'direct'){ v.src = url || NVPC.url('/nv/file?id=' + encodeURIComponent(f.pc.id)) } P.off = 0; P._seekTo = s > 1 ? s : null }
   v.playbackRate = S.rate || 1; const pr = v.play(); if(pr) pr.catch(() => {}); applyCues() }
 function pSeek(to){ const d = pdur(); to = Math.max(0, d ? Math.min(d - 1, to) : to);
@@ -998,6 +1005,7 @@ function hookPlayer(){ const v = pv(), el = $('#player');
   sk.oninput = () => { P.dragging = true; const d = pdur(); $('#pcur').textContent = tfmt(d * sk.value / 1000) };
   sk.onchange = () => { P.dragging = false; const d = pdur(); if(d) pSeek(d * sk.value / 1000) };
   $('#pcc').onclick = () => subMenu(); $('#pset').onclick = () => setMenu();
+  if($('#ptv')) $('#ptv').onclick = async () => { const f = P.f, at = ptime(); await pClose(); tvSheet(f, {from:at}) };
   document.addEventListener('keydown', e => { if($('#player').hidden || e.target.matches('input[type=text],input[type=search],textarea')) return;
     if(e.key === ' '){ e.preventDefault(); $('#ppp').click() } else if(e.key === 'ArrowLeft') jump(-10); else if(e.key === 'ArrowRight') jump(10); else if(e.key === 'Escape') pClose() }) }
 let jumpAcc = 0, jumpT = 0;
@@ -1006,14 +1014,18 @@ function jump(s){ const fx = $(s < 0 ? '#pfxl' : '#pfxr'); jumpAcc = Math.sign(j
   /* a converted stream: wait until the taps stop, then ask the PC once */
   clearTimeout(jumpT); const base = ptime(); jumpT = setTimeout(() => { const to = base + jumpAcc; jumpAcc = 0; document.querySelectorAll('.seekfx').forEach(x => x.classList.remove('on')); pSeek(to) }, 650) }
 function menu(html){ const m = $('#pmenu'); m.innerHTML = html; m.hidden = false; clearTimeout(P.uiT); $('#player').classList.remove('hideui') }
-function setMenu(){ const v = pv(), rates = [0.75, 1, 1.25, 1.5, 1.75, 2], f = P.f, info = P.info;
+const QUALS = [[0, 'Original'], [1080, '1080p'], [720, '720p'], [480, '480p (saves data)']];
+function setMenu(){ const v = pv(), rates = [0.75, 1, 1.25, 1.5, 1.75, 2], f = P.f, info = P.info, away = !!(window.NVPC && NVPC.away);
   menu(`<div class="h">Speed</div>${rates.map(r => `<button data-rate="${r}" class="${(S.rate || 1) === r ? 'on' : ''}">${r === 1 ? 'Normal' : r + '×'}</button>`).join('')}
+    ${f && f.pc && info && info.ffmpeg && pcv() >= 2 && P.mode !== 'file' ? `<div class="h">Quality ${away ? '(away from home)' : '(at home)'}</div>${QUALS.map(([q, t]) => `<button data-q="${q}" class="${(P.h || 0) === q ? 'on' : ''}">${t}</button>`).join('')}` : ''}
     ${info && info.audio && info.audio.length > 1 ? `<div class="h">Sound</div>${info.audio.map((a, i) => `<button data-aud="${i}" class="${P.audio === i ? 'on' : ''}">${esc(a)}</button>`).join('')}` : ''}
-    ${f && f.pc && info ? `<div class="h">From the PC</div><button data-conv="direct" class="${P.mode === 'direct' ? 'on' : ''}">As it is (best picture)</button>${info.ffmpeg ? `<button data-conv="conv" class="${P.mode === 'conv' ? 'on' : ''}">Converted by the PC (plays everything)</button>` : ''}` : ''}
+    ${f && f.pc && info && !P.h ? `<div class="h">From the PC</div><button data-conv="direct" class="${P.mode === 'direct' ? 'on' : ''}">As it is (best picture)</button>${info.ffmpeg ? `<button data-conv="conv" class="${P.mode === 'conv' ? 'on' : ''}">Converted by the PC (plays everything)</button>` : ''}` : ''}
     ${f && f.pc && onPhone(f) ? `<div class="h">Play from</div><button data-from="phone" class="${P.mode === 'file' ? 'on' : ''}">This phone</button><button data-from="pc" class="${P.mode !== 'file' ? 'on' : ''}">The PC</button>` : ''}
     <div class="h">After an episode</div><button data-auto="1" class="${S.autoNext ? 'on' : ''}">Play the next one by itself</button><button data-auto="0" class="${!S.autoNext ? 'on' : ''}">Stop</button>`);
   $('#pmenu').onclick = e => { const b = e.target.closest('button'); if(!b) return; const at = ptime();
     if(b.dataset.rate){ S.rate = +b.dataset.rate; saveS(); v.playbackRate = S.rate }
+    if(b.dataset.q != null){ const q = +b.dataset.q; S[away ? 'qAway' : 'qHome'] = q; saveS(); P.h = q;
+      P.mode = q || (info.mode === 'transcode' && S.conv !== 'never') || S.conv === 'always' ? 'conv' : 'direct'; pLoad(null, at); toast(q ? `${q}p - the PC makes it smaller while you watch` : 'Original quality') }
     if(b.dataset.aud){ P.audio = +b.dataset.aud; if(P.mode !== 'conv'){ if(!info.ffmpeg){ toast('Changing the sound needs ffmpeg on the PC'); return } P.mode = 'conv' } pLoad(null, at) }
     if(b.dataset.conv){ if(b.dataset.conv !== P.mode){ P.mode = b.dataset.conv; pLoad(null, at) } }
     if(b.dataset.from){ play(f, {from:at, pc:b.dataset.from === 'pc'}); }
@@ -1021,22 +1033,78 @@ function setMenu(){ const v = pv(), rates = [0.75, 1, 1.25, 1.5, 1.75, 2], f = P
     $('#pmenu').hidden = true; pShow(true) } }
 
 /* ---------- subtitles: SRT / VTT / ASS (from the phone) or the PC's tracks (as WebVTT) ---------- */
+/* which language a subtitle is, from its name ("Movie.nl.srt" → nl, "Nederlands", "English (forced)", "eng") */
+const LANG_OF = {nl:'nl', nld:'nl', dut:'nl', nederlands:'nl', dutch:'nl', vlaams:'nl', flemish:'nl', en:'en', eng:'en', english:'en', fr:'fr', fre:'fr', fra:'fr', francais:'fr', french:'fr',
+  de:'de', ger:'de', deu:'de', deutsch:'de', german:'de', es:'es', spa:'es', espanol:'es', spanish:'es', it:'it', ita:'it', italiano:'it', italian:'it', ja:'ja', jpn:'ja', japanese:'ja'};
+const LANG_NAME = {nl:'Nederlands', en:'English', fr:'Français', de:'Deutsch', es:'Español', it:'Italiano', ja:'日本語'};
+function langOf(label){ for(const w of norm(label).split(' ')) if(LANG_OF[w]) return LANG_OF[w]; return '' }
+const prettySub = label => { const l = langOf(label), rest = norm(label).split(' ').filter(w => !LANG_OF[w]).join(' '); return l ? LANG_NAME[l] + (rest ? ' · ' + rest : '') : label };
+const subDelay = f => (lsGet('nvCinema.subDelay', {})[f.id] || 0);
+function setSubDelay(f, d){ const all = lsGet('nvCinema.subDelay', {}); d = Math.round(d * 10) / 10; if(d) all[f.id] = d; else delete all[f.id]; lsSet('nvCinema.subDelay', all) }
 function loadSubs(f, info){ const l = [];
   for(const s of (f.local && f.local.subs) || []) l.push({label:s.label || 'Subtitles', get:() => fetch(linkUrl(s.uri, s.name)).then(r => r.text())});
   for(const s of f.subs || []) l.push({label:s.label || 'Subtitles', get:async () => s.kind === 'copy' ? (await dbGet('blobs', s.bid)).blob.text() : fetch(linkUrl(s.uri, s.name)).then(r => r.text())});
-  if(info && f.pc) for(const s of info.subs || []) l.push({label:s.label, pc:1, get:() => fetch(NVPC.url(`/nv/vsub?id=${encodeURIComponent(f.pc.id)}&s=${encodeURIComponent(s.id)}`)).then(r => { if(!r.ok) throw new Error('The PC answered ' + r.status); return r.text() })});
-  P.subs = l; P.sub = -1; P.cues = []; $('#pcc').style.opacity = l.length ? 1 : .45;
-  /* switched on before: take the one with the same name as last time, else the first */
-  if(S.subOn && l.length){ const i = Math.max(0, l.findIndex(x => norm(x.label) === norm(S.subLabel || ''))); pickSub(i, true) } }
-function subMenu(){ if(!P.subs.length){ toast('No subtitles for this video. Put an .srt file with the same name next to it.', 4000); return }
-  menu(`<div class="h">Subtitles</div><button data-sub="-1" class="${P.sub < 0 ? 'on' : ''}">Off</button>${P.subs.map((s, i) => `<button data-sub="${i}" class="${P.sub === i ? 'on' : ''}">${esc(s.label)}${s.pc ? ' <span class="muted small">(PC)</span>' : ''}</button>`).join('')}
+  if(info && f.pc) for(const s of info.subs || []) l.push({label:s.label, pc:1, pcid:s.id, get:() => fetch(NVPC.url(`/nv/vsub?id=${encodeURIComponent(f.pc.id)}&s=${encodeURIComponent(s.id)}`)).then(r => { if(!r.ok) throw new Error('The PC answered ' + r.status); return r.text() })});
+  P.subs = l; P.sub = -1; P.cues = []; if($('#pcc')) $('#pcc').style.opacity = l.length ? 1 : .45;
+  /* on: the same one as last time, else the first in the language order (Dutch, then English), synced ones first */
+  if(S.subOn && l.length){ const i = bestSub(l); if(i >= 0) pickSub(i, true) } }
+function bestSub(l){ let i = l.findIndex(x => norm(x.label) === norm(S.subLabel || '')); if(i >= 0) return i;
+  for(const lang of S.subLangs || ['nl', 'en']){ const c = l.map((x, n) => [x, n]).filter(([x]) => langOf(x.label) === lang); if(c.length) return (c.find(([x]) => /synced|sync/i.test(x.label)) || c[c.length - 1])[1] }
+  return -1 }
+function subMenu(){ const f = P.f, d = f ? subDelay(f) : 0, cur0 = P.subs[P.sub], online = pcv() >= 2 && (f.pc || onPhone(f));
+  menu(`<div class="h">Subtitles</div><button data-sub="-1" class="${P.sub < 0 ? 'on' : ''}">Off</button>${P.subs.map((s, i) => `<button data-sub="${i}" class="${P.sub === i ? 'on' : ''}">${esc(prettySub(s.label))}${s.pc ? ' <span class="muted small">(PC)</span>' : ''}</button>`).join('')}
+    ${online ? `<button data-find="1">🔍 Find ${esc((S.subLangs || ['nl', 'en']).map(l => LANG_NAME[l] || l).join(' / '))} online…</button>` : ''}
+    ${cur0 && cur0.pc && P.mode !== 'file' ? '<button data-sync="1">Sync these to the film (the PC listens)</button>' : ''}
+    ${P.sub >= 0 ? `<div class="h">Timing · ${d ? (d > 0 ? 'later ' : 'earlier ') + Math.abs(d).toFixed(1) + ' s' : 'as in the file'}</div><button data-dl="-0.5">◀ Earlier 0.5 s</button><button data-dl="0.5">Later 0.5 s ▶</button>${d ? '<button data-dl="0">Back to the file’s timing</button>' : ''}` : ''}
     <div class="h">Size</div><button data-sz="-1">Smaller</button><button data-sz="1">Bigger</button>`);
   $('#pmenu').onclick = e => { const b = e.target.closest('button'); if(!b) return;
     if(b.dataset.sz){ S.subSize = Math.max(-3, Math.min(4, (S.subSize || 0) + +b.dataset.sz)); saveS(); applyCues(); return }
-    const i = +b.dataset.sub; $('#pmenu').hidden = true; pShow(true); if(i < 0){ P.sub = -1; P.cues = []; S.subOn = false; saveS(); showCue(); return } S.subOn = true; S.subLabel = P.subs[i].label; saveS(); pickSub(i) } }
+    if(b.dataset.dl != null){ setSubDelay(f, +b.dataset.dl === 0 ? 0 : subDelay(f) + +b.dataset.dl); showCue(); subMenu(); return }
+    $('#pmenu').hidden = true; pShow(true);
+    if(b.dataset.find){ findSubsNow(f); return }
+    if(b.dataset.sync){ syncSubNow(f, cur0); return }
+    const i = +b.dataset.sub; if(i < 0){ P.sub = -1; P.cues = []; S.subOn = false; saveS(); showCue(); return } S.subOn = true; S.subLabel = P.subs[i].label; saveS(); pickSub(i) } }
 async function pickSub(i, quiet){ const s = P.subs[i], f = P.f; P.sub = i; P.cues = [];
-  try{ const txt = await s.get(); if(P.f !== f || P.sub !== i) return; P.cues = parseSubs(txt); if(!P.cues.length) throw new Error('empty'); if(!quiet) toast('Subtitles: ' + s.label) }
+  try{ const txt = await s.get(); if(P.f !== f || P.sub !== i) return; P.cues = parseSubs(txt); if(!P.cues.length) throw new Error('empty'); if(!quiet) toast('Subtitles: ' + prettySub(s.label)) }
   catch(e){ LE('subs', 'could not read ' + s.label, e); if(!quiet) toast('Could not read these subtitles', 3500) } showCue() }
+
+/* ---------- subtitles found online (OpenSubtitles, through the PC: it has the file, syncs it and keeps it next to the video) ---------- */
+const AUTOSUB = {}; let SUBSETUP = null;
+async function subsReady(){ if(SUBSETUP != null) return SUBSETUP; if(pcv() < 2) return false;
+  try{ const r = await fetch(NVPC.url('/nv/cin/subs/setup')); SUBSETUP = !!(await r.json()).ok }catch(e){ return false } return SUBSETUP }
+/* OpenSubtitles' fingerprint of a video on the phone: its size + the 64-bit sums of the first and last 64 KB */
+async function phoneHash(f){ let size = (f.local && f.local.size) || f.size || 0, head, tail;
+  if(f.src && f.src.kind === 'copy' && !f.local){ const b = (await dbGet('blobs', f.src.bid)).blob; size = b.size; head = await b.slice(0, 65536).arrayBuffer(); tail = await b.slice(Math.max(0, size - 65536)).arrayBuffer() }
+  else { const u = phoneUrl(f); head = await (await fetch(u, {headers:{Range:'bytes=0-65535'}})).arrayBuffer(); tail = await (await fetch(u, {headers:{Range:`bytes=${Math.max(0, size - 65536)}-${size - 1}`}})).arrayBuffer() }
+  let h = BigInt(size); const M = (1n << 64n) - 1n;
+  for(const buf of [head, tail]){ const dv = new DataView(buf.slice(0, buf.byteLength - buf.byteLength % 8)); for(let i = 0; i < dv.byteLength; i += 8) h = (h + dv.getBigUint64(i, true)) & M }
+  return h.toString(16).padStart(16, '0') }
+async function findSubsOnline(f){ const t = TM[f.tid], langs = (S.subLangs || ['nl', 'en']).join(',');
+  if(pcv() < 2 || !(await NVPC.reachable())) throw new Error('Finding subtitles online goes through your PC (The Nightvault › My PC, with the newest PC app).');
+  if(!(await subsReady())) throw new Error('Set up OpenSubtitles first: Cinema ⚙ › Subtitles online.');
+  const qs = new URLSearchParams({langs, query:t.name}); if(t.tmdb) qs.set('tmdb', t.tmdb.id); if(t.kind === 'show' && f.e != null){ qs.set('season', f.s); qs.set('episode', f.e) }
+  if(f.pc && !(P.f === f && P.mode === 'file')){ qs.set('id', f.pc.id); const r = await fetch(NVPC.url('/nv/cin/subs/find?' + qs)), j = await r.json().catch(() => ({}));
+    if(!j.ok) throw new Error(j.error || 'The PC answered ' + r.status); delete VINFO[f.pc.id]; return Object.assign(j, {where:'pc'}) }
+  qs.set('hash', await phoneHash(f)); qs.set('name', f.name);
+  const r = await fetch(NVPC.url('/nv/cin/subs/hashfind?' + qs)), j = await r.json().catch(() => ({})); if(!j.ok) throw new Error(j.error || 'The PC answered ' + r.status);
+  const bid = 'b' + uid(), label = (LANG_NAME[j.lang] || j.lang) + ' (online)'; await dbPut('blobs', {id:bid, blob:new Blob([j.text], {type:'text/plain'}), name:f.name + '.' + j.lang + '.srt'});
+  f.subs = (f.subs || []).concat({kind:'copy', bid, label}); await dbPut('files', f);
+  return Object.assign(j, {where:'phone', label, how:j.hash ? 'made for this exact file' : 'for this title', sync:'not synced (use Earlier / Later if needed)'}) }
+async function findSubsNow(f, quiet){ if(!quiet) toast('Looking for subtitles online… (the PC also syncs them, this can take a minute)', 6000);
+  try{ const j = await findSubsOnline(f); L('subs', 'found online', j);
+    if(P.f === f){ if(j.where === 'pc'){ P.info = await pcInfo(f); loadSubs(f, P.info); const stem = f.pc.name.replace(/\.[^.]+$/, ''), lab = j.file.replace(/\.srt$/i, '').slice(stem.length).replace(/^[\s._-]+/, ''); const i = P.subs.findIndex(x => x.label === lab); if(i >= 0){ S.subOn = true; S.subLabel = lab; saveS(); pickSub(i, true) } }
+      else { loadSubs(f, P.info); const i = P.subs.findIndex(x => x.label === j.label); if(i >= 0) pickSub(i, true) } }
+    toast(`${LANG_NAME[j.lang] || j.lang} subtitles found (${j.how})${j.sync ? ' · ' + j.sync : ''}`, 6000); return true }
+  catch(e){ LE('subs', 'find online', e); if(!quiet) toast(e.message || String(e), 6000); return false } }
+async function syncSubNow(f, s){ toast('The PC listens to the film and lines the subtitles up… (up to a minute)', 6000);
+  try{ const r = await fetch(NVPC.url(`/nv/cin/subs/sync?id=${encodeURIComponent(f.pc.id)}&s=${encodeURIComponent(s.pcid)}&lang=${langOf(s.label) || 'sub'}&a=${P.audio || 0}`)), j = await r.json().catch(() => ({}));
+    if(!j.ok) throw new Error(j.error || 'The PC answered ' + r.status); delete VINFO[f.pc.id];
+    if(P.f === f){ P.info = await pcInfo(f); loadSubs(f, P.info); const stem = f.pc.name.replace(/\.[^.]+$/, ''), lab = j.file.replace(/\.srt$/i, '').slice(stem.length).replace(/^[\s._-]+/, ''), i = P.subs.findIndex(x => x.label === lab); if(i >= 0){ S.subLabel = lab; saveS(); pickSub(i, true) } }
+    setSubDelay(f, 0); toast('Synced: ' + j.sync, 5000) }catch(e){ LE('subs', 'sync', e); toast(e.message || String(e), 6000) } }
+/* a PC film without Dutch / English subtitles: look for them by itself (once per film per session) */
+async function autoFindSubs(f){ if(!S.autoSubs || !S.subOn || !f.pc || AUTOSUB[f.id] || pcv() < 2) return; AUTOSUB[f.id] = 1;
+  if(P.subs.some(s => (S.subLangs || ['nl', 'en']).includes(langOf(s.label)))) return;
+  if(!(await subsReady())) return; findSubsNow(f, true) }
 function parseSubs(txt){ txt = String(txt || '').replace(/^﻿/, '').replace(/\r\n?/g, '\n'); const out = [];
   const ts = s => { const m = s.trim().match(/^(?:(\d+):)?(\d{1,2}):(\d{2})[.,:](\d{1,3})$/); return m ? (+(m[1] || 0)) * 3600 + (+m[2]) * 60 + (+m[3]) + (+m[4].padEnd(3, '0')) / 1000 : null };
   if(/^\[Script Info\]/m.test(txt) || /^Dialogue:/m.test(txt)){   /* ASS / SSA: the Dialogue lines; styling and drawings are left out */
@@ -1054,7 +1122,7 @@ function parseSubs(txt){ txt = String(txt || '').replace(/^﻿/, '').replace(/\r
 function applyCues(){ let el = $('#pcue'); if(!el && $('#player') && !$('#player').hidden){ el = document.createElement('div'); el.id = 'pcue'; $('#player').insertBefore(el, $('#pui')) }
   if(el) el.style.fontSize = `calc(clamp(16px,3.6vmin,30px) * ${Math.pow(1.15, S.subSize || 0).toFixed(3)})`; showCue() }
 function showCue(){ const el = $('#pcue'); if(!el || !pv()) return; if(P.sub < 0 || !P.cues.length){ el.innerHTML = ''; return }
-  const t = ptime(), c = P.cues.filter(x => x.a <= t && x.b > t).map(x => x.text); const h = c.map(x => esc(x).replace(/&lt;(\/?[ibu])&gt;/gi, '<$1>').replace(/\n/g, '<br>')).join('<br>');
+  const t = ptime() - subDelay(P.f), c = P.cues.filter(x => x.a <= t && x.b > t).map(x => x.text); const h = c.map(x => esc(x).replace(/&lt;(\/?[ibu])&gt;/gi, '<$1>').replace(/\n/g, '<br>')).join('<br>');
   if(el.dataset.h !== h){ el.dataset.h = h; el.innerHTML = h ? `<span>${h}</span>` : '' } }
 
 /* =====================================================================================================================
@@ -1131,10 +1199,18 @@ function appSettings(){ const all = shelves(true), fl = FOLDERS();
   sheet(`<h3>Cinema</h3><div class="mlist"><button class="btn primary" id="as_tmdb">TMDB (posters and info)${TKEY() ? ' ✓' : ''}</button>${TKEY() ? '<button class="btn" id="as_fill">Fill in missing details (TMDB)</button>' : ''}</div>
     ${NvFiles ? `<div class="sec">Folders on this phone</div>${fl.map((f, i) => `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(FILES.filter(x => x.src && x.src.tree === f.tree).length, 'video')}</div></div><button class="btn sm" data-fscan="${i}">Look for new</button><button class="btn sm" data-fdel="${i}">Forget</button></div>`).join('') || '<p class="muted small">None yet.</p>'}<button class="btn" id="as_fold" style="width:100%;margin-top:6px">Add a folder</button>` : ''}
     ${window.NVPC && NVPC.native ? `<div class="sec">My PC</div>${NVPC.pc ? `<div class="muted small">${esc(NVPC.pc.name || 'PC')} · ${plural(TITLES.filter(titleOnPc).length, 'title')} from the PC</div><button class="btn" id="as_pc" style="width:100%;margin-top:6px">Get the PC's newest list</button>` : '<div class="muted small">Not connected.</div>'}<a class="btn" href="../hub/index.html" style="width:100%;margin-top:6px;text-decoration:none">The Nightvault › My PC (pair, phone copies)</a>
+      ${NVPC.pc ? `<div class="sec">Away from home</div><div class="muted small">${NVPC.away ? '● Now connected through ' + esc(NVPC.pc.base.replace(/^http:\/\//, '')) + '. ' : ''}${(NVPC.pc.alts || []).length || NVPC.pc.own ? 'Away addresses: ' + esc([...(NVPC.pc.alts || []), NVPC.pc.own].filter(Boolean).map(a => a.replace(/^http:\/\//, '')).join(', ')) : 'Install <b>Tailscale</b> (free) on the PC and this phone and log in with the same account on both - Cinema then finds the PC away from home by itself.'}</div>
+        <div class="opt"><label for="as_qa">Quality away from home</label><select id="as_qa">${QUALS.map(([q, t]) => `<option value="${q}" ${+S.qAway === q ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div class="opt"><label for="as_qh">Quality at home</label><select id="as_qh">${QUALS.map(([q, t]) => `<option value="${q}" ${+S.qHome === q ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <button class="btn sm" id="as_away" style="margin-top:4px">Type an away address…</button>` : ''}
       ${lsGet('nvCinema.saveFolder', null) ? `<div class="muted small" style="margin-top:6px">Saved videos go into “${esc(lsGet('nvCinema.saveFolder', {}).name)}”. <span class="lnk" id="as_sfx">Change</span></div>` : ''}` : ''}
     <div class="sec">Playing</div>
     <div class="opt"><label for="as_next">Play the next episode by itself</label><input type="checkbox" id="as_next" ${S.autoNext ? 'checked' : ''}></div>
     ${window.NVPC && NVPC.native ? `<div class="opt"><label for="as_conv">Videos from the PC</label><select id="as_conv"><option value="auto" ${!S.conv || S.conv === 'auto' ? 'selected' : ''}>Convert only when needed</option><option value="always" ${S.conv === 'always' ? 'selected' : ''}>Always convert (smaller, steady)</option><option value="never" ${S.conv === 'never' ? 'selected' : ''}>Never convert</option></select></div>` : ''}
+    <div class="sec">Subtitles</div>
+    <div class="opt"><label for="as_sl">Language</label><select id="as_sl">${[['nl,en', 'Nederlands, else English'], ['en,nl', 'English, else Nederlands'], ['nl', 'Only Nederlands'], ['en', 'Only English']].map(([k, t]) => `<option value="${k}" ${(S.subLangs || []).join(',') === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    <div class="opt"><label for="as_son">Subtitles on when a film starts</label><input type="checkbox" id="as_son" ${S.subOn ? 'checked' : ''}></div>
+    ${window.NVPC && NVPC.native ? `<div class="opt"><label for="as_auto">Find them online by themselves when a PC film has none (synced by the PC)</label><input type="checkbox" id="as_auto" ${S.autoSubs ? 'checked' : ''}></div><button class="btn" id="as_os" style="width:100%;margin-top:6px">Subtitles online (OpenSubtitles)…</button>` : ''}
     <div class="opt"><label for="as_guess">Guess the film series from the name (Shrek 2 → Shrek) when TMDB has none</label><input type="checkbox" id="as_guess" ${S.guess ? 'checked' : ''}></div>
     <div class="sec">Shelves (tap ↑ to move one up)</div>
     ${all.map((s, i) => `<div class="li" style="cursor:default"><span style="width:30px;display:flex;justify-content:center">${shelfIcon(s, 20)}</span><div class="n"><div>${esc(s.name)}</div><div class="s">${unit(s.id, inShelf(s.id).length)}${s.hidden ? ' · hidden' : ''}</div></div><button class="btn sm" data-up="${i}" ${i ? '' : 'disabled'}>↑</button><button class="btn sm" data-eye="${esc(s.id)}">${s.hidden ? 'Show' : 'Hide'}</button></div>`).join('')}
@@ -1147,6 +1223,14 @@ function appSettings(){ const all = shelves(true), fl = FOLDERS();
   if($('#as_pc')) $('#as_pc').onclick = () => { closeSheet(); pcSync(true) };
   if($('#as_sfx')) $('#as_sfx').onclick = async () => { try{ const f = await NvFiles.pickFolder(); lsSet('nvCinema.saveFolder', f); appSettings() }catch(e){} };
   $('#as_next').onchange = e => { S.autoNext = e.target.checked; saveS() };
+  $('#as_sl').onchange = e => { S.subLangs = e.target.value.split(','); saveS() };
+  $('#as_son').onchange = e => { S.subOn = e.target.checked; saveS() };
+  if($('#as_auto')) $('#as_auto').onchange = e => { S.autoSubs = e.target.checked; saveS() };
+  if($('#as_os')) $('#as_os').onclick = () => osSheet();
+  if($('#as_qa')) $('#as_qa').onchange = e => { S.qAway = +e.target.value; saveS() };
+  if($('#as_qh')) $('#as_qh').onchange = e => { S.qHome = +e.target.value; saveS() };
+  if($('#as_away')) $('#as_away').onclick = async () => { const a = await ask('PC address away from home', 'Tailscale address, like 100.101.102.103 or my-pc', (NVPC.pc.own || '').replace(/^http:\/\//, ''), 'Save'); if(a == null) return;
+    NVPC.setAway(a); const ok = await NVPC.reachable(true); toast(ok ? (NVPC.away ? 'Connected through ' + a : 'Saved - at home it uses the home address') : 'Saved - the PC does not answer right now', 4500); appSettings() };
   if($('#as_conv')) $('#as_conv').onchange = e => { S.conv = e.target.value; saveS() };
   $('#as_guess').onchange = e => { S.guess = e.target.checked; saveS(); regroup(); draw() };
   $('#as_shelf').onclick = async () => { const n = await ask('Name of the new shelf', 'Like Documentaries or Kids', '', 'Make it'); if(n){ addOwnShelf(n); draw(); appSettings() } };
@@ -1160,6 +1244,24 @@ function appSettings(){ const all = shelves(true), fl = FOLDERS();
       lsSet('nvCinema.folders', FOLDERS().filter(x => x.tree !== f.tree)); if(NvFiles && !lsGet('nvMusic.folders', []).concat(lsGet('nvAudio.folders', [])).some(x => x.tree === f.tree)) NvFiles.forget({tree:f.tree}).catch(() => {});
       reindex(); appSettings(); draw(); toast('Folder forgotten') } });
   $('#as_save').onclick = () => saveBackup(); $('#as_load').onclick = () => loadBackup() }
+/* OpenSubtitles: the owner's own free account, kept on the PC (it does the searching, downloading and syncing) */
+async function pcPost(path, data){ const H = NATIVE && Capacitor.Plugins && Capacitor.Plugins.CapacitorHttp, key = await NVPC.key();
+  if(!H) throw new Error('Only in the Nightvault Android app');
+  const r = await H.request({url:NVPC.pc.base + path + (path.includes('?') ? '&' : '?') + 'k=' + encodeURIComponent(key), method:'POST', headers:{'Content-Type':'application/json'}, data});
+  const j = typeof r.data === 'string' ? JSON.parse(r.data || '{}') : r.data || {}; if(r.status >= 400) throw new Error(j.error || 'The PC answered ' + r.status); return j }
+async function osSheet(){
+  if(pcv() < 2 || !(await NVPC.reachable(true))){ toast('This needs your PC with the newest PC app (vault_cinema.py) - at home or through Tailscale.', 5000); return }
+  let st = {}; try{ st = await (await fetch(NVPC.url('/nv/cin/subs/setup'))).json() }catch(e){}
+  sheet(`<h3>Subtitles online (OpenSubtitles)</h3><p class="note">Kept on your PC (not on this phone, not on GitHub). The PC searches, downloads, lines them up with the film and saves them next to the video.</p>
+    <div class="field"><label>API key</label><input type="password" id="os_k" placeholder="${st.key ? '(saved - type to change)' : ''}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+    <div class="field"><label>User name</label><input type="text" id="os_u" value="${esc(st.user || '')}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+    <div class="field"><label>Password</label><input type="password" id="os_p" placeholder="${st.user ? '(saved - type to change)' : ''}" autocomplete="off"></div>
+    <p class="muted small" style="margin:0 0 8px">Free: make an account at <a href="https://www.opensubtitles.com" target="_blank" rel="noopener">opensubtitles.com</a>, then in your profile “API consumers” › New consumer, and copy its API key. A free account can download a few subtitles a day - each one is downloaded once and kept.</p>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" style="flex:1" id="os_go">Save and test</button><button class="btn" style="flex:1" onclick="closeSheet()">Close</button></div><div id="os_res" class="small" style="margin-top:8px"></div>`, true);
+  $('#os_go').onclick = async () => { const el = $('#os_res'); el.innerHTML = '<div class="prog busy"><i></i></div>'; const d = {user:$('#os_u').value.trim()};
+    if($('#os_k').value.trim()) d.apikey = $('#os_k').value.trim(); if($('#os_p').value) d.password = $('#os_p').value;
+    try{ const j = await pcPost('/nv/cin/subs/setup', d); SUBSETUP = null; el.innerHTML = j.ok ? `<div class="ok">✓ OpenSubtitles works${j.user ? ' (logged in as ' + esc(j.user) + ')' : ''}</div>` : `<div class="bad">✗ ${esc(j.error || 'did not work')}</div>` }
+    catch(e){ el.innerHTML = `<div class="bad">✗ ${esc(e.message)}</div>` } } }
 function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh);
   sheet(`<h3>${esc(s.name)}</h3>
     <div class="sec" style="margin-top:4px">Your groups on this shelf</div><div class="mlist"><button class="btn" id="ss_save">Save my groups</button><button class="btn" id="ss_load">Load from a file</button></div>
