@@ -65,6 +65,25 @@ jobs:
           # one by id (what a saved series would use)
           body = json.dumps({"query": "query($id:Int){Media(id:$id,type:MANGA){id title{romaji english} volumes chapters status description coverImage{large} staff{edges{role node{name{full}}}} genres}}", "variables": {"id": 30002}}).encode()
           get(AL, "al_id30002.json", data=body, extra={"Content-Type": "application/json", "Accept": "application/json"})
+          # --- Dandadan: which volumes have a cover, and do the pictures load (with a Referer like the app sends)? ---
+          b = get(MD + "/manga?" + urllib.parse.urlencode([("title", "Dandadan"), ("limit", 3), ("order[relevance]", "desc"), ("includes[]", "cover_art")]), "md_search_Dandadan.json")
+          did = json.loads(b)["data"][0]["id"]; print("DANDADAN", did)
+          allc = []
+          for off in (0, 100):
+              j = json.loads(get(MD + "/cover?" + urllib.parse.urlencode([("manga[]", did), ("limit", 100), ("offset", off), ("order[volume]", "asc")]), "md_cover_Dandadan_%d.json" % off) or "{}")
+              allc += j.get("data", []); print("total", j.get("total"))
+              if off + 100 >= j.get("total", 0): break
+          for c in allc:
+              a = c["attributes"]; print("   vol", a.get("volume"), a.get("locale"), a.get("fileName"))
+          import urllib.error
+          for c in allc[:40]:
+              a = c["attributes"]; u = "https://uploads.mangadex.org/covers/" + did + "/" + a["fileName"] + ".256.jpg"
+              time.sleep(0.4)
+              try:
+                  r = urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": UA["User-Agent"], "Referer": "https://localhost/"}), timeout=30); d = r.read()
+                  print("IMG vol", a.get("volume"), r.status, len(d), r.headers.get("content-type"), r.headers.get("cache-control"), r.headers.get("access-control-allow-origin"), r.headers.get("x-cache"))
+              except Exception as e:
+                  print("IMG vol", a.get("volume"), "ERR", e)
           PY
           cat /tmp/out.txt | head -150
       - name: Save the answers on the branch probe-manga (not main)
