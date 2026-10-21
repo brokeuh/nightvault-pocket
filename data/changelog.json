@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 90,
+   "date": "2026-10-21",
+   "where": [
+    "android"
+   ],
+   "apps": [
+    "music",
+    "bookcase",
+    "cinema",
+    "print3d",
+    "audiobooks"
+   ],
+   "title": "All apps: an SD card that isn't ready no longer looks like an empty folder",
+   "items": [
+    "When a phone folder can't be reached (SD card out or not ready yet), the apps now get “can't be reached right now” instead of “no files”, so looking for changes can't remove your songs, books, films or models by mistake."
+   ]
+  },
+  {
    "id": 89,
    "date": "2026-10-21",
    "where": [

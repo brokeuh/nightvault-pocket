@@ -92,6 +92,8 @@ public class NvFilesPlugin extends Plugin {
                 call.resolve(o);
             } catch (SecurityException e) {
                 call.reject("Nightvault may no longer read this folder - pick it again", "permission");
+            } catch (IllegalStateException e) {
+                call.reject(e.getMessage(), "unreachable");
             } catch (Exception e) {
                 call.reject("Could not read the folder: " + e.getMessage());
             }
@@ -136,7 +138,9 @@ public class NvFilesPlugin extends Plugin {
         String[] cols = {DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME,
                 DocumentsContract.Document.COLUMN_MIME_TYPE, DocumentsContract.Document.COLUMN_SIZE, DocumentsContract.Document.COLUMN_LAST_MODIFIED};
         try (Cursor c = cr.query(kids, cols, null, null, null)) {
-            if (c == null) return;
+            // the folder itself gives no answer (SD card out or not ready yet, folder gone): say so instead of "no files",
+            // otherwise an app looking for changes thinks everything was deleted and drops its whole list (Music, 21 Oct)
+            if (c == null) { if (depth == 0) throw new IllegalStateException("The folder can't be reached right now - is the SD card in the phone?"); return; }
             while (c.moveToNext()) {
                 if (listStop) return;
                 String id = c.getString(0), name = c.getString(1), mime = c.getString(2);
