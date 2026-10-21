@@ -246,11 +246,11 @@ function comicInfo(text){ try{ const d = xml(text), g = n => { const el = d.quer
       rtl:/righttoleft/i.test(g('Manga')) ? true : null, cover:(() => { const p = d.querySelector('Page[Type="FrontCover"]'); return p ? parseInt(p.getAttribute('Image')) : null })()} }catch(e){ return null } }
 
 /* ---------- covers: a small picture per book (about 400 px wide) ---------- */
-async function thumb(blob){
+async function thumb(blob, maxW, q){
   let bm; try{ bm = await createImageBitmap(blob) }catch(e){ const u = URL.createObjectURL(blob); try{ const im = new Image(); im.src = u; await im.decode(); bm = im }finally{ setTimeout(() => URL.revokeObjectURL(u), 1000) } }
-  const w = Math.min(400, bm.width), h = Math.round(bm.height * w / bm.width), c = document.createElement('canvas'); c.width = w; c.height = h;
+  const w = Math.min(maxW || 400, bm.width), h = Math.round(bm.height * w / bm.width), c = document.createElement('canvas'); c.width = w; c.height = h;
   const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(bm, 0, 0, w, h); if(bm.close) bm.close();
-  return new Promise(ok => c.toBlob(b => ok(b), 'image/webp', .82)) }
+  return new Promise(ok => c.toBlob(b => ok(b), 'image/webp', q || .82)) }
 const COV = new Set(), COVURL = {};
 async function coverUrl(id){ if(!COV.has(id)) return null; if(COVURL[id]) return COVURL[id]; const c = await dbGet('covers', id).catch(() => null); if(!c){ COV.delete(id); return null } return COVURL[id] = URL.createObjectURL(c.blob) }
 async function setCover(id, blob){ await dbPut('covers', {id, blob}); COV.add(id); if(COVURL[id]){ URL.revokeObjectURL(COVURL[id]); delete COVURL[id] } }
@@ -516,12 +516,33 @@ const groupOfBook = b => groupsOf(b.shelf).groups.find(g => g.items.includes(b))
 const seriesList = b => { const g = groupOfBook(b); if(!g) return [b]; const l = g.kind === 'series' ? g.items : b.series ? g.items.filter(x => norm(x.series) === norm(b.series)) : [b]; return l.slice().sort(seriesOrder) };
 const nextInSeries = (b, d) => { const l = seriesList(b), i = l.indexOf(b); return i < 0 ? null : l[i + d] || null };
 
+/* ---------- remote covers (a volume of a list: MangaDex …) ----------
+   Shown from the address at once in a browser. In the Android app the ones from MangaDex are fetched ONE BY ONE (two at a time, a small pause, 3 tries;
+   CapacitorHttp = no CORS), shrunk to a small WebP and kept on the phone (covers store, id 'rc:<address>'): MangaDex's picture server stopped answering after
+   about 14 pictures when the web view asked for a whole series at once (owner, 21 Oct), and now the grey covers also show without internet (a work wifi
+   that blocks MangaDex). A picture that still fails falls back to the plain address. */
+let RC_ON = NATIVE; const RCQ = {run:0, q:[], p:{}, ok:0, fail:0};
+const rcWant = u => RC_ON && /^https:\/\/uploads\.mangadex\.org\//.test(String(u));
+const rcId = u => 'rc:' + String(u).replace(/^https?:\/\//, '');
+const remImg = u => rcWant(u) ? `<img class="b" data-rc="${esc(u)}" alt=""><img class="f" data-rc="${esc(u)}" alt="">` : `<img class="b" src="${esc(u)}" alt="" loading="lazy"><img class="f" src="${esc(u)}" alt="" loading="lazy">`;
+const rcIO = 'IntersectionObserver' in window ? new IntersectionObserver(es => { for(const e of es) if(e.isIntersecting){ rcIO.unobserve(e.target); rcLoad(e.target) } }, {rootMargin:'400px'}) : null;
+function lazyRemote(root){ (root || document).querySelectorAll('img[data-rc]').forEach(im => { if(im.dataset.rcd) return; if(COV.has(rcId(im.dataset.rc)) || !rcIO) rcLoad(im); else rcIO.observe(im) }) }
+async function rcLoad(im){ if(im.dataset.rcd) return; im.dataset.rcd = '1'; const u = im.dataset.rc, id = rcId(u);
+  const show = url => document.querySelectorAll('img[data-rc]').forEach(x => { if(x.dataset.rc === u && x.getAttribute('src') !== url){ x.dataset.rcd = '1'; x.src = url } });
+  let url = await coverUrl(id); if(!url){ const b = await rcFetch(u); if(b){ try{ await setCover(id, b); url = await coverUrl(id) }catch(e){ LE('manga', 'cover not saved', e) } } }
+  show(url || u) }
+function rcFetch(u){ return RCQ.p[u] || (RCQ.p[u] = new Promise(ok => { RCQ.q.push({u, ok, n:0}); rcPump() }).then(b => { delete RCQ.p[u]; return b })) }
+async function rcPump(){ if(RCQ.run >= 2) return; const j = RCQ.q.shift(); if(!j) return; RCQ.run++;
+  try{ const t = await thumb(await cvImage(j.u), 240, .78); RCQ.ok++; j.ok(t) }
+  catch(e){ if(++j.n < 3) setTimeout(() => { RCQ.q.push(j); rcPump() }, 1500 * j.n); else { RCQ.fail++; if(RCQ.fail <= 5) LE('manga', 'cover failed ' + j.u, e); j.ok(null) } }
+  RCQ.run--; await sleep(120); if(RCQ.q.length) rcPump(); else if(!RCQ.run) L('manga', 'covers kept on the phone', {ok:RCQ.ok, failed:RCQ.fail}) }
+
 /* ---------- covers on screen (filled in when they scroll into view) ---------- */
 const covIO = 'IntersectionObserver' in window ? new IntersectionObserver(es => { for(const e of es) if(e.isIntersecting){ covIO.unobserve(e.target); fillCov(e.target) } }, {rootMargin:'300px'}) : null;
 function phHTML(b, label){ const h = hue((b.series || b.title || '') + b.shelf); return `<div class="ph" style="--c1:hsl(${h} 45% 28%);--c2:hsl(${(h + 40) % 360} 40% 14%)"><i>${esc((b.fmt || '').toUpperCase())}</i>${esc(label || dispTitle(b))}<span>${esc(b.writer || '')}</span></div>` }
 function coverHTML(b, cls, extra){ return `<div class="cv ${cls || ''}" data-cov="${esc(b.id)}">${phHTML(b)}${extra || ''}</div>` }
 async function fillCov(el){ const u = await coverUrl(el.dataset.cov); if(!u) return; const ph = el.querySelector('.ph'); if(ph) ph.remove(); el.querySelectorAll('img').forEach(i => i.remove()); el.insertAdjacentHTML('afterbegin', `<img class="b" src="${u}" alt=""><img class="f" src="${u}" alt="">`) }
-function lazyCovers(root){ (root || document).querySelectorAll('[data-cov]').forEach(el => { if(!COV.has(el.dataset.cov)) return; covIO ? covIO.observe(el) : fillCov(el) }) }
+function lazyCovers(root){ lazyRemote(root); (root || document).querySelectorAll('[data-cov]').forEach(el => { if(!COV.has(el.dataset.cov)) return; covIO ? covIO.observe(el) : fillCov(el) }) }
 const RNDCOV = {};
 function groupCoverHTML(sh, g){ const G = grOf(sh), c = G.cover(g.key), all = (g.all || g.items).slice().sort(seriesOrder), wc = all.filter(b => COV.has(b.id));
   if(c.t === 'pic' && COV.has('grp:' + sh + ':' + g.key)) return `<div class="cv" data-cov="grp:${esc(sh)}:${esc(g.key)}">${phHTML({title:g.name, shelf:sh}, g.name)}</div>`;
@@ -1322,7 +1343,7 @@ async function cvSeries(books, force){
 /* the issues of a Comic Vine series: number → {desc, year, img} */
 async function cvIssues(vid){ const j = await cvGet('issues', {filter:'volume:' + vid, limit:100, field_list:'id,issue_number,name,cover_date,description,deck,image'});
   const out = {}; for(const i of j.results || []) out[parseFloat(i.issue_number)] = {name:i.name, year:(i.cover_date || '').slice(0, 4), desc:cvStrip(i.deck || i.description).slice(0, 4000), img:i.image && (i.image.medium_url || i.image.small_url)}; return out }
-async function cvImage(url){ const H = cvHttp(); if(H){ const r = await H.get({url, responseType:'blob'}); const bin = atob(String(r.data).replace(/^data:[^,]*,/, '')), u = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], {type:'image/jpeg'}) }
+async function cvImage(url){ const H = cvHttp(); if(H){ const r = await H.get({url, headers:{'User-Agent':UA, Accept:'image/*'}, responseType:'blob'}); const bin = atob(String(r.data).replace(/^data:[^,]*,/, '')), u = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], {type:'image/jpeg'}) }
   return (await fetch(url)).blob() }
 async function cvApply(books, hit, withIssues){ if(!hit || !hit.id) return 0; let n = 0, iss = null;
   if(withIssues && srcOf(hit.id) === 'cv' && books.some(b => !b.desc || !COV.has(b.id) || !b.year)) try{ iss = await cvIssues(hit.id) }catch(e){ if(e.limit) throw e; LE('cv', 'issues', e) }
@@ -1512,11 +1533,11 @@ const cap = s => String(s || '').charAt(0).toUpperCase() + String(s || '').slice
 const MSTAT = {FINISHED:'Finished', RELEASING:'Ongoing', NOT_YET_RELEASED:'Not out yet', CANCELLED:'Cancelled', HIATUS:'On hiatus', completed:'Finished', ongoing:'Ongoing', hiatus:'On hiatus', cancelled:'Cancelled'};
 async function mdxGet(path, params){ const qs = new URLSearchParams(); for(const [k, v] of (params || [])) qs.append(k, v);
   const url = 'https://api.mangadex.org/' + path + (params && params.length ? '?' + qs : '');
-  return polite(MDX, 350, async () => { let r; try{ r = await fetch(url, {headers:{Accept:'application/json'}}) }catch(e){ LE('manga', 'MangaDex fetch ' + path, e); throw new Error('MangaDex could not be reached – no internet?') }
+  return polite(MDX, 350, async () => { let r; try{ r = await fetch(url, {headers:{Accept:'application/json'}}) }catch(e){ LE('manga', 'MangaDex fetch ' + path, e); throw new Error('MangaDex could not be reached from this network – a work or school wifi often blocks it, try mobile data') }
     if(r.status === 429) throw Object.assign(new Error('MangaDex says: too many requests – try again in a few minutes'), {limit:true});
     if(r.status === 404) return null; if(!r.ok) throw new Error('MangaDex answered ' + r.status); return r.json() }) }
 async function anlGet(query, variables){
-  return polite(ANL, 2200, async () => { let r; try{ r = await fetch('https://graphql.anilist.co', {method:'POST', headers:{'Content-Type':'application/json', Accept:'application/json'}, body:JSON.stringify({query, variables})}) }catch(e){ LE('manga', 'AniList fetch', e); throw new Error('AniList could not be reached – no internet?') }
+  return polite(ANL, 2200, async () => { let r; try{ r = await fetch('https://graphql.anilist.co', {method:'POST', headers:{'Content-Type':'application/json', Accept:'application/json'}, body:JSON.stringify({query, variables})}) }catch(e){ LE('manga', 'AniList fetch', e); throw new Error('AniList could not be reached from this network – a work or school wifi may block it, try mobile data') }
     if(r.status === 429) throw Object.assign(new Error('AniList says: too many requests – try again in a minute'), {limit:true});
     if(r.status === 404) return null; let j = null; try{ j = await r.json() }catch(e){}
     if(!r.ok || !j) throw new Error('AniList answered ' + r.status); if(j.errors && !j.data) throw new Error('AniList: ' + ((j.errors[0] || {}).message || 'error')); return j.data }) }
@@ -1662,7 +1683,7 @@ async function colAdd(sh, v, quiet){ /* v: {id, name, start_year|start, publishe
 
 /* the Collection lists page of a shelf: per publisher, a tile per series with "12 of 40" */
 function colTile(c){ const st = colStats(c), d = colDigital(c), first = c.issues.find(i => d[numKey(i.num)]) ;
-  const cov = first ? coverHTML(d[numKey(first.num)]) : `<div class="cv">${c.issues[0] && c.issues[0].thumb ? `<img class="b" src="${esc(c.issues[0].thumb)}" alt="" loading="lazy"><img class="f" src="${esc(c.issues[0].thumb)}" alt="" loading="lazy">` : phHTML({title:c.name, shelf:c.shelf}, c.name)}</div>`;
+  const cov = first ? coverHTML(d[numKey(first.num)]) : `<div class="cv">${c.issues[0] && c.issues[0].thumb ? `${remImg(c.issues[0].thumb)}` : phHTML({title:c.name, shelf:c.shelf}, c.name)}</div>`;
   return `<div class="bk stack" data-col="${c.vid}">${cov}<span class="cdl">${st.have} of ${st.total}</span><div class="pbar"><i style="width:${st.total ? Math.round(100 * st.have / st.total) : 0}%"></i></div><div class="t">${esc(c.name)}${c.start ? ` (${esc(c.start)})` : ''}</div>
     <div class="a">${[st.dig ? st.dig + ' D' : '', st.phys ? st.phys + ' P' : '', money(st.price)].filter(Boolean).join(' · ') || 'none yet'}</div></div>` }
 function drawCol(v){ const s = shelfOf(v.shelf), cs = colsOf(v.shelf), q = norm(Q['col:' + v.shelf] || '');
@@ -1711,7 +1732,7 @@ async function colMine(sh){
 /* one series: every issue */
 function issueGridHTML(c, pass){ const d = colDigital(c), P = c.phys || {};
   return `<div class="grid">${c.issues.filter(pass).map(i => { const k = numKey(i.num), b = d[k], p = P[k], own = b || p;
-      const cov = b ? coverHTML(b) : `<div class="cv">${i.thumb ? `<img class="b" src="${esc(i.thumb)}" alt="" loading="lazy"><img class="f" src="${esc(i.thumb)}" alt="" loading="lazy">` : phHTML({title:c.name, shelf:c.shelf}, c.name)}</div>`;
+      const cov = b ? coverHTML(b) : `<div class="cv">${i.thumb ? `${remImg(i.thumb)}` : phHTML({title:c.name, shelf:c.shelf}, c.name)}</div>`;
       return `<div class="bk iss ${own ? '' : 'miss'}" data-iss="${esc(k)}">${cov.replace(/<\/div>$/, `<span class="vol">${esc(i.label)}</span>${b ? '<span class="bd dg">D</span>' : ''}${p ? `<span class="bd pp${b ? '' : ' solo'}">P</span>` : ''}</div>`)}<div class="t">${esc(i.name || c.name + ' ' + i.label)}</div><div class="a">${esc([i.date.slice(0, 4), p && p.price ? money(+p.price) : ''].filter(Boolean).join(' · ') || ' ')}</div></div>` }).join('')}</div>`; }
 function drawColSer(v){ const c = COLS[v.vid]; if(!c){ V.pop(); return draw() } const d = colDigital(c), st = colStats(c), f = S.filter['colser'] || 'all';
   $('#vtitle').textContent = ''; document.title = c.name + ' · Collection';
@@ -1810,7 +1831,7 @@ function drawDisc(v){ const s = shelfOf(v.shelf); $('#vtitle').textContent = 'Di
   if(v.tab === 'week' || v.tab === 'month') discNew(v.tab === 'week' ? 7 : 31).then(list => { if(cur() !== me) return;
       const seen = new Set(), l = list.filter(i => i.vid && !seen.has(i.vid + '|' + i.num) && seen.add(i.vid + '|' + i.num));
       st(`${plural(l.length, 'new comic')} · tap one to see its whole series${l.length >= 400 ? ' (the newest 400)' : ''}`);
-      $('#dbody').innerHTML = `<div class="grid">${l.map(i => `<div class="bk" data-cvs="${i.vid}"><div class="cv">${i.thumb ? `<img class="b" src="${esc(i.thumb)}" alt="" loading="lazy"><img class="f" src="${esc(i.thumb)}" alt="" loading="lazy">` : phHTML({title:i.vname, shelf:v.shelf}, i.vname)}<span class="vol">#${esc(i.num)}</span>${mine.has(i.vid) || COLS[i.vid] ? '<span class="bd dg">✓</span>' : ''}</div><div class="t">${esc(i.vname)}</div><div class="a">${esc(i.date || '')}</div></div>`).join('')}</div>` }).catch(e => st(e.message || String(e)));
+      $('#dbody').innerHTML = `<div class="grid">${l.map(i => `<div class="bk" data-cvs="${i.vid}"><div class="cv">${i.thumb ? `${remImg(i.thumb)}` : phHTML({title:i.vname, shelf:v.shelf}, i.vname)}<span class="vol">#${esc(i.num)}</span>${mine.has(i.vid) || COLS[i.vid] ? '<span class="bd dg">✓</span>' : ''}</div><div class="t">${esc(i.vname)}</div><div class="a">${esc(i.date || '')}</div></div>`).join('')}</div>` }).catch(e => st(e.message || String(e)));
   if(v.tab === 'pub'){ const seenP = new Set(), pubs = DISC_PUBS.concat(BOOKS.filter(b => b.shelf === v.shelf).map(publisherOf).filter(Boolean)).filter(p => { const k = norm(cleanPub(p)); if(seenP.has(k)) return false; seenP.add(k); return true });
     v.pub = v.pub || pubs[0];
     $('#dbody').innerHTML = `<div class="chips">${pubs.map(p => `<button class="chip ${cleanPub(p) === cleanPub(v.pub) ? 'on' : ''}" data-dpub="${esc(p)}">${esc(cleanPub(p))}</button>`).join('')}</div><input type="search" id="dq" placeholder="Search in this publisher's series" value="${esc(v.q || '')}" style="margin:4px 0 8px"><div id="dlist"></div>`;
@@ -1862,7 +1883,7 @@ function upNext(sh, skip){ const out = [], seen = new Set();
   return out }
 function upNextHTML(sh, skip){ const l = upNext(sh, skip); if(!l.length) return '';
   UPN = l; return `<div class="sec">Up next</div><div class="hrow">${l.map((x, n) => x.miss
-      ? `<div class="bk iss miss" data-upmiss="${n}"><div class="cv">${x.i.thumb ? `<img class="b" src="${esc(x.i.thumb)}" alt="" loading="lazy"><img class="f" src="${esc(x.i.thumb)}" alt="" loading="lazy">` : phHTML({title:x.c.name, shelf:x.c.shelf}, x.c.name)}<span class="vol">${esc(x.i.label)}</span></div><div class="t">${esc(x.b.series)} ${esc(x.i.label)}</div><div class="a">You don't have it yet</div></div>`
+      ? `<div class="bk iss miss" data-upmiss="${n}"><div class="cv">${x.i.thumb ? `${remImg(x.i.thumb)}` : phHTML({title:x.c.name, shelf:x.c.shelf}, x.c.name)}<span class="vol">${esc(x.i.label)}</span></div><div class="t">${esc(x.b.series)} ${esc(x.i.label)}</div><div class="a">You don't have it yet</div></div>`
       : bookTile(x.b)).join('')}</div>` }
 let UPN = [];
 document.addEventListener('click', e => { const t = e.target.closest('[data-upmiss]'); if(!t) return; const x = UPN[+t.dataset.upmiss]; if(x) issueSheet(x.c, x.i) });
@@ -1899,7 +1920,7 @@ async function arcAdd(sh, aid){ if(ARCS[aid]) return ARCS[aid];
     const a = Object.assign({id:'arc:' + aid, aid, shelf:sh, at:Date.now()}, f); ARCS[aid] = a; await dbPut('kv', a); closeSheet(); return a }
   catch(e){ closeSheet(); throw e } }
 function arcTile(a){ const st = arcStats(a), first = a.items.find(it => st.m[it.iid]);
-  const cov = first ? coverHTML(st.m[first.iid]) : `<div class="cv">${a.img || (a.items[0] || {}).thumb ? `<img class="b" src="${esc(a.img || a.items[0].thumb)}" alt="" loading="lazy"><img class="f" src="${esc(a.img || a.items[0].thumb)}" alt="" loading="lazy">` : phHTML({title:a.name, shelf:a.shelf}, a.name)}</div>`;
+  const cov = first ? coverHTML(st.m[first.iid]) : `<div class="cv">${a.img || (a.items[0] || {}).thumb ? `${remImg(a.img || a.items[0].thumb)}` : phHTML({title:a.name, shelf:a.shelf}, a.name)}</div>`;
   return `<div class="bk stack" data-arc="${a.aid}">${cov}<span class="cdl">${st.have} of ${st.total}</span><div class="pbar"><i style="width:${st.total ? Math.round(100 * st.read / st.total) : 0}%"></i></div><div class="t">${esc(a.name)}</div><div class="a">${esc([cleanPub(a.pub), st.read ? st.read + ' read' : ''].filter(Boolean).join(' · ') || ' ')}</div></div>` }
 function drawArcs(v){ const s = shelfOf(v.shelf), as = arcsOf(v.shelf).sort((a, b) => coll.compare(a.name, b.name));
   $('#vtitle').textContent = s.name; document.title = 'Reading orders · ' + s.name;
@@ -1929,7 +1950,7 @@ function drawArc(v){ const a = ARCS[v.aid]; if(!a){ V.pop(); return draw() } con
   h += `<div class="chips">${[['all', 'All'], ['have', 'I have'], ['miss', 'Missing'], ['unread', 'Not read yet']].map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-arf="${k}">${t}</button>`).join('')}</div>`;
   const pass = it => { const b = st.m[it.iid], p = st.P(it); return f === 'have' ? b || p : f === 'miss' ? !b && !p : f === 'unread' ? !(b && (STATE[b.id] || {}).finished) : true };
   h += `<div class="grid">${a.items.map((it, n) => [it, n]).filter(([it]) => pass(it)).map(([it, n]) => { const b = st.m[it.iid], p = st.P(it), done = b && (STATE[b.id] || {}).finished;
-      const cov = b ? coverHTML(b) : `<div class="cv">${it.thumb ? `<img class="b" src="${esc(it.thumb)}" alt="" loading="lazy"><img class="f" src="${esc(it.thumb)}" alt="" loading="lazy">` : phHTML({title:it.vname, shelf:a.shelf}, it.vname)}</div>`;
+      const cov = b ? coverHTML(b) : `<div class="cv">${it.thumb ? `${remImg(it.thumb)}` : phHTML({title:it.vname, shelf:a.shelf}, it.vname)}</div>`;
       return `<div class="bk iss ${b || p ? '' : 'miss'}" data-ait="${n}">${cov.replace(/<\/div>$/, `<span class="vol">${n + 1}</span>${b ? '<span class="bd dg">D</span>' : ''}${p ? `<span class="bd pp${b ? '' : ' solo'}">P</span>` : ''}${done ? '<span class="done">READ</span>' : ''}</div>`)}<div class="t">${esc(it.vname)} ${esc(it.label)}</div><div class="a">${esc([it.date.slice(0, 7), it.name].filter(Boolean).join(' · ') || ' ')}</div></div>` }).join('')}</div>`;
   $('#body').innerHTML = h; lazyCovers($('#body'));
   if($('#arab')) $('#arab').onclick = e => e.currentTarget.classList.toggle('clip');

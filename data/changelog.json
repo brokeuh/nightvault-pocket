@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 94,
+   "date": "2026-10-21",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: manga covers load reliably",
+   "items": [
+    "The grey covers of a long manga series no longer stop after about 14 volumes: the app now fetches them one by one, makes them small and keeps them on the phone.",
+    "Once a cover has been shown it also appears without internet (for example on a work wifi that blocks MangaDex).",
+    "If MangaDex or AniList can't be reached, the message now says a work or school wifi may block them and suggests mobile data."
+   ]
+  },
+  {
    "id": 93,
    "date": "2026-10-21",
    "where": [
