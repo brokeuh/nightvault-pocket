@@ -1345,8 +1345,17 @@ async function musicScan(items, folder){
   const have = new Set(TR.filter(t => t.uri).map(t => t.uri));
   const copied = new Set(TR.filter(t => t.fid).map(t => t.name + '|' + t.size)), fresh = folder ? audio.filter(x => !have.has(x.f.uri)) : audio.filter(x => !copied.has(x.f.name + '|' + x.f.size));
   let removed = 0;
-  if(folder){ const seen = new Set(audio.map(x => x.f.uri)), gone = TR.filter(t => t.tree === folder.tree && !seen.has(t.uri));
-    if(gone.length){ removed = gone.length; await dbDelMany('tracks', gone.map(t => t.id)); const g = new Set(gone.map(t => t.id)); TR = TR.filter(t => !g.has(t.id)) } }
+  if(folder){ const seen = new Set(audio.map(x => x.f.uri)), mine = TR.filter(t => t.tree === folder.tree), gone = mine.filter(t => !seen.has(t.uri));
+    /* safety: when a look finds far fewer songs than before (SD card out or not ready yet, the permission lost, a listing that stopped
+       half-way, the folder renamed) the songs are NOT dropped without asking - otherwise one bad look empties the whole library */
+    let drop = gone.length > 0;
+    if(gone.length && (gone.length >= 25 || gone.length > mine.length * 0.2)){ L('folder', `look found ${audio.length} songs, ${gone.length} of ${mine.length} known songs missing - asking`, {folder:folder.name});
+      drop = await new Promise(ok => { sheet(`<h3>${plural(gone.length, 'song')} not found</h3><p class="muted small">Music looked in “${esc(folder.name)}” and found ${plural(audio.length, 'song')}, but ${gone.length === mine.length ? 'none' : 'not ' + plural(gone.length, 'song')} of the ${plural(mine.length, 'song')} it knew from there.</p>
+        <p class="muted small">Is the SD card in the phone, and is the folder still there with the same name? If it is just not reachable right now, keep them - nothing is lost and the next look finds them again.</p>
+        <div class="mlist"><button class="btn primary" id="gnkeep">Keep them (recommended)</button><button class="btn danger" id="gndrop">They are really gone - remove them</button></div>`, true);
+        $('#gnkeep').onclick = () => { closeSheet(); ok(false) }; $('#gndrop').onclick = () => { closeSheet(); ok(true) } });
+      L('folder', drop ? 'owner removed the missing songs' : 'kept the missing songs') }
+    if(drop){ removed = gone.length; await dbDelMany('tracks', gone.map(t => t.id)); const g = new Set(gone.map(t => t.id)); TR = TR.filter(t => !g.has(t.id)) } }
   if(!fresh.length){ if(folder) scanDone(folder); musicIndex(); const nc = await folderCovers(pics); closeSheet(); drawM();
     toast(audio.length || removed ? `No new songs${nc ? ` · ${plural(nc, 'cover')} from the folder` : ''}${removed ? ` · ${plural(removed, 'song')} that are gone were removed` : ''}${bad ? ` · ${bad} can't play on a phone` : ''}` : bad ? `${bad} songs found, but this phone can't play their format (WMA, APE …)` : 'No songs found there', 5000); return }
   if(!folder){ const total = fresh.reduce((a, x) => a + x.f.size, 0);

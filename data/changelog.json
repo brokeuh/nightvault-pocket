@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 89,
+   "date": "2026-10-21",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music"
+   ],
+   "title": "Music: one bad folder look can no longer empty your library",
+   "items": [
+    "When “Look for changes” finds far fewer songs than before (SD card out or not ready, folder renamed, permission lost), Music no longer removes them by itself. It asks first, and “Keep them” is the safe choice."
+   ]
+  },
+  {
    "id": 88,
    "date": "2026-10-21",
    "where": [
