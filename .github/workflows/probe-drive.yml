@@ -1,0 +1,77 @@
+# Checks what Google Drive answers for a shared folder (for building Bookcase's "Google Drive" source). Run by hand; changes nothing.
+# The key comes in as an input, is masked in the log and replaced by KEY in the answers. Answers go to the branch probe-drive.
+name: Bookcase - look at a Google Drive folder
+
+on:
+  workflow_dispatch:
+    inputs:
+      folder:
+        description: Drive folder id
+        required: true
+      key:
+        description: Google API key (Drive only)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask
+        env:
+          KEY: ${{ github.event.inputs.key }}
+          FOLDER: ${{ github.event.inputs.folder }}
+        run: |
+          echo "::add-mask::$KEY"
+          python3 - <<'PY' > /tmp/out.txt 2>&1
+          import json, os, urllib.request, urllib.parse, urllib.error
+          K, F = os.environ["KEY"], os.environ["FOLDER"]
+          A = "https://www.googleapis.com/drive/v3/"
+          def get(url, hdr=None, n=4000):
+              rq = urllib.request.Request(url, headers=dict({"Origin": "https://brokeuh.github.io"}, **(hdr or {})))
+              try:
+                  r = urllib.request.urlopen(rq, timeout=60); b = r.read(n); h = dict(r.headers); st = r.status
+              except urllib.error.HTTPError as e:
+                  b = e.read(n); h = dict(e.headers); st = e.code
+              print("\n=====", url.replace(K, "KEY"), hdr or "", "->", st)
+              print({k: v for k, v in h.items() if k.lower().startswith(("access-control", "content-range", "content-length", "content-type", "accept-ranges"))})
+              return st, h, b
+          fields = "nextPageToken,files(id,name,mimeType,size,modifiedTime,thumbnailLink,iconLink)"
+          def lst(fid):
+              out, tok = [], None
+              while True:
+                  q = {"q": f"'{fid}' in parents and trashed = false", "key": K, "pageSize": 1000, "fields": fields, "supportsAllDrives": "true", "includeItemsFromAllDrives": "true"}
+                  if tok: q["pageToken"] = tok
+                  st, h, b = get(A + "files?" + urllib.parse.urlencode(q), n=10**7)
+                  if st != 200: print(b[:800].decode(errors="replace")); return out
+                  j = json.loads(b); out += j.get("files", []); tok = j.get("nextPageToken")
+                  if not tok: return out
+          top = lst(F); allf = []; print("\nTOP:", len(top))
+          for f in top:
+              print(" ", f["mimeType"], f.get("size"), f["name"])
+              if f["mimeType"] == "application/vnd.google-apps.folder":
+                  sub = lst(f["id"]); print("   sub:", len(sub), [x["name"] for x in sub[:5]]); allf += sub[:3]
+              else: allf.append(f)
+          files = [f for f in allf if f["mimeType"] != "application/vnd.google-apps.folder"]
+          print("\nFILES sample:", [(f["name"], f["mimeType"], f.get("size"), bool(f.get("thumbnailLink"))) for f in files[:15]])
+          if files:
+              f = files[0]
+              st, h, b = get(A + "files/" + f["id"] + "?alt=media&key=" + K, {"Range": "bytes=0-1023"})
+              print("first bytes:", b[:16])
+              sz = int(f.get("size") or 0)
+              if sz > 70000: st, h, b = get(A + "files/" + f["id"] + "?alt=media&key=" + K, {"Range": f"bytes={sz-65536}-{sz-1}"}, n=10**6); print("tail len", len(b))
+              if f.get("thumbnailLink"): get(f["thumbnailLink"], n=200)
+          rq = urllib.request.Request(A + "files/" + (files[0]["id"] if files else F) + "?alt=media&key=" + K, method="OPTIONS", headers={"Origin": "https://brokeuh.github.io", "Access-Control-Request-Method": "GET", "Access-Control-Request-Headers": "range"})
+          try:
+              r = urllib.request.urlopen(rq, timeout=30); print("\nPREFLIGHT", r.status, {k: v for k, v in r.headers.items() if k.lower().startswith("access-control")})
+          except urllib.error.HTTPError as e: print("\nPREFLIGHT", e.code, dict(e.headers))
+          PY
+          sed -i "s/${KEY}/KEY/g" /tmp/out.txt
+      - name: Save the answers on the branch probe-drive (not main)
+        run: |
+          cd /tmp && rm -rf p && mkdir p && cd p && git init -q && cp /tmp/out.txt answers.txt
+          git config user.name card-bot; git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A && git commit -q -m "Drive answers"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:refs/heads/probe-drive
