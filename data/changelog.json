@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 100,
+   "date": "2026-10-22",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: adding a big Google Drive folder works better",
+   "items": [
+    "Adding from Google Drive no longer opens every big PDF to make its cover: it uses Drive's own picture, and books without one get their cover the first time you open them. Much faster for 1000s of books.",
+    "Picture folders on Drive use Drive's small picture for the cover too.",
+    "One file that doesn't answer can no longer stop the whole import: after 3 minutes it is skipped and the rest goes on. The log (🐞) now shows the progress every 25 books."
+   ]
+  },
+  {
    "id": 99,
    "date": "2026-10-21",
    "where": [

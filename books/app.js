@@ -496,7 +496,8 @@ async function scan(items, shelf, folder, notyet, quiet){
       Object.assign(b, {fmt:'imgs', name:it.name, title:p.title || (p.series ? '' : p.clean), series:p.series, num:p.num, vol:p.vol, year:p.year, pages:fs.length, size:fs.reduce((n, f) => n + f.size, 0)});
       if(folder) b.src = folder.drive ? {kind:'drive', tree:folder.tree, files:fs.map(f => ({uri:f.uri, id:f.id, name:f.name, size:f.size}))} : {kind:'link', tree:folder.tree, files:fs.map(f => ({uri:f.uri, name:f.name, size:f.size}))};
       else { const fids = []; for(const f of fs){ const fid = uid(); await dbPut('files', {id:fid, blob:f}); fids.push({fid, name:f.name}) } b.src = {kind:'copy', fids} }
-      try{ const f0 = fs.find(f => /cover|front/i.test(f.name)) || fs[0]; const u8 = folder ? new Uint8Array(folder.drive ? await driveRead(f0.id, 0, f0.size) : await linkRead(f0.uri, f0.name, 0, f0.size)) : new Uint8Array(await f0.arrayBuffer()); await setCover(b.id, await thumb(imgBlob(u8, f0.name))) }catch(e){} }
+      try{ const f0 = fs.find(f => /cover|front/i.test(f.name)) || fs[0]; const dt = folder && folder.drive && f0.thumb ? await gdThumb(f0.thumb) : null; if(dt){ await setCover(b.id, await thumb(dt)); throw 0 }
+        const u8 = folder ? new Uint8Array(folder.drive ? await driveRead(f0.id, 0, f0.size) : await linkRead(f0.uri, f0.name, 0, f0.size)) : new Uint8Array(await f0.arrayBuffer()); await setCover(b.id, await thumb(imgBlob(u8, f0.name))) }catch(e){} }
     else { const f = it.f, src = folder ? (folder.drive ? srcFromDrive(f) : srcFromLink(f)) : srcFromBlob(f, f.name), md = folder && folder.drive ? await driveMeta(src, f, it.dir) : await readMeta(src, f.name, it.dir);
       Object.assign(b, {fmt:md.fmt, name:f.name, size:f.size, publisher:md.publisher || '', title:md.title, series:md.series, num:md.num, vol:md.vol, writer:md.writer, artist:md.artist, year:md.year, desc:md.desc, pages:md.pages, rtl:md.rtl, later:md.later || false});
       if(folder) b.src = folder.drive ? {kind:'drive', uri:f.uri, id:f.id, name:f.name, size:f.size, tree:folder.tree} : {kind:'link', uri:f.uri, name:f.name, size:f.size, tree:folder.tree};
@@ -504,8 +505,9 @@ async function scan(items, shelf, folder, notyet, quiet){
       if(md.cover) try{ await setCover(b.id, await thumb(md.cover)) }catch(e){ LE('cover', 'could not make the cover of ' + f.name, e) } }
     await dbPut('books', b); BOOKS.push(b); BK[b.id] = b; added++ };
   const work = async () => { while(i < fresh.length && !me.stop){ const it = fresh[i++], nm = it.kind === 'imgs' ? it.name : it.f.name;
-      try{ await one(it) }catch(err){ failed++; errs.push(nm + ': ' + (err.message || err)); LE('add', 'could not add ' + nm, err); if(err && err.name === 'QuotaExceededError'){ me.stop = true; toast('The phone is full', 5000) } }
-      done++; const p = $('#sp'), s = $('#stx'); if(p) p.style.width = (100 * done / fresh.length) + '%'; if(s) s.textContent = `${done} of ${fresh.length} · ${nm}` } };
+      try{ await Promise.race([one(it), new Promise((ok, no) => setTimeout(() => no(new Error('took too long – skipped (try “Look again” later)')), 180000))]) }catch(err){ failed++; errs.push(nm + ': ' + (err.message || err)); LE('add', 'could not add ' + nm, err); if(err && err.name === 'QuotaExceededError'){ me.stop = true; toast('The phone is full', 5000) } }
+      done++; if(done % 25 === 0 || done === fresh.length) L('add', `${done} of ${fresh.length} read (${added} added, ${failed} failed)`, errs.slice(-3));
+      const p = $('#sp'), s = $('#stx'); if(p) p.style.width = (100 * done / fresh.length) + '%'; if(s) s.textContent = `${done} of ${fresh.length} · ${nm}` } };
   await Promise.all([work(), work()]);
   SCAN = null; if(quiet){ regroup(); draw(); return added }
   awake(false); closeSheet(); draw();
@@ -2138,8 +2140,9 @@ function leaveHanded(){ if(history.length > 1) history.back(); else location.rep
    ===================================================================================================================== */
 const GD = 'https://www.googleapis.com/drive/v3/', gkey = () => lsGet('nvBooks.gkey', '');
 const gdFolderId = t => { t = String(t || '').trim(); const m = t.match(/folders\/([A-Za-z0-9_-]{10,})/) || t.match(/[?&]id=([A-Za-z0-9_-]{10,})/) || t.match(/^([A-Za-z0-9_-]{20,})$/); return m ? m[1] : '' };
-async function gdFetch(url, hdr){ let r;
-  try{ r = await fetch(url, {headers:hdr || {}, cache:'no-store'}) }catch(e){ throw new Error('Google Drive could not be reached – no internet?') }
+const fetchT = (url, opt, ms) => { const c = new AbortController(), t = setTimeout(() => c.abort(), ms); return fetch(url, Object.assign({}, opt || {}, {signal:c.signal})).finally(() => clearTimeout(t)) };
+async function gdFetch(url, hdr, ms){ let r;
+  try{ r = await fetchT(url, {headers:hdr || {}, cache:'no-store'}, ms || 60000) }catch(e){ throw new Error(e && e.name === 'AbortError' ? 'Google Drive took too long to answer' : 'Google Drive could not be reached – no internet?') }
   if(r.status === 403 || r.status === 400){ let m = ''; try{ m = ((await r.json()).error || {}).message || '' }catch(e){} throw new Error(/key/i.test(m) ? 'Google says the key is not right (Bookcase ⚙ → Google key)' : /rate|quota|limit/i.test(m) ? 'Google says: too many requests – try again in a few minutes' : 'Google Drive refused: ' + (m || r.status)) }
   if(r.status === 404) throw new Error('Not found on Google Drive – is the folder shared with “Anyone with the link”?');
   if(!r.ok && r.status !== 206) throw new Error('Google Drive answered ' + r.status); return r }
@@ -2147,7 +2150,8 @@ async function driveRead(id, a, z){ if(z <= a) return new ArrayBuffer(0);
   for(let t = 0; ; t++){ try{ const r = await gdFetch(`${GD}files/${id}?alt=media&key=${encodeURIComponent(gkey())}`, {Range:`bytes=${a}-${z - 1}`}), b = await r.arrayBuffer();
       return r.status === 200 && b.byteLength > z - a ? b.slice(a, z) : b }catch(e){ if(t >= 2 || /key|refused|Not found/.test(e.message)) throw e; await sleep(800 * (t + 1)) } } }
 function srcFromDrive(f){ return {size:f.size, name:f.name, read:(a, z) => driveRead(f.id, a, Math.min(z, f.size)),
-  blob:async () => (await gdFetch(`${GD}files/${f.id}?alt=media&key=${encodeURIComponent(gkey())}`)).blob()} }
+  blob:async () => (await gdFetch(`${GD}files/${f.id}?alt=media&key=${encodeURIComponent(gkey())}`, null, 30 * 60000)).blob()} }
+const gdThumb = async u => { try{ const r = await fetchT(String(u).replace(/=s\d+$/, '=s600'), {}, 20000); return r.ok ? await r.blob() : null }catch(e){ return null } };
 /* every file in a folder and its subfolders (one request per folder, 1000 per page) */
 async function driveList(root, onStep){ const out = [], todo = [{id:root, path:''}]; let folders = 0;
   while(todo.length){ const d = todo.shift(); folders++; let tok = '';
@@ -2161,11 +2165,11 @@ async function driveList(root, onStep){ const out = [], todo = [{id:root, path:'
    CBZ / CBR are read in parts like a phone file (ComicInfo.xml, cover page) */
 async function driveMeta(src, f, dir){ const e = ext(f.name);
   if(e === 'pdf' || e === 'epub'){ const p = parseName(f.name, dir), md = {fmt:e, series:p.series, num:p.num, vol:p.vol, title:p.title || (p.series ? '' : p.clean), year:p.year, publisher:'', writer:'', artist:'', desc:'', pages:0, rtl:null, cover:null};
-    if(f.thumb) try{ const r = await fetch(f.thumb.replace(/=s\d+$/, '=s600')); if(r.ok) md.cover = await r.blob() }catch(x){}
-    if(!md.cover && e === 'pdf') try{ const m2 = await readMeta(src, f.name, dir); md.cover = m2.cover; md.pages = m2.pages }catch(x){}
+    if(f.thumb) md.cover = await gdThumb(f.thumb);
+    if(!md.cover) md.later = true;   // no picture from Drive: the cover is made from page 1 when you first open it (opening a 60 MB PDF for every book made adding very slow)
     return md }
   const md = await readMeta(src, f.name, dir);
-  if(!md.cover && f.thumb) try{ const r = await fetch(f.thumb.replace(/=s\d+$/, '=s600')); if(r.ok) md.cover = await r.blob() }catch(x){}
+  if(!md.cover && f.thumb) md.cover = await gdThumb(f.thumb);
   return md }
 function driveKeySheet(then){
   sheet(`<h3>Google Drive key</h3><p class="muted small" style="margin:0 0 10px">Your own Google API key (it starts with AIza), restricted to the Google Drive API. It only lets Bookcase see Drive folders that are shared with a link. It stays on this phone.</p>
