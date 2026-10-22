@@ -48,21 +48,15 @@ jobs:
                   if st != 200: print(b[:800].decode(errors="replace")); return out
                   j = json.loads(b); out += j.get("files", []); tok = j.get("nextPageToken")
                   if not tok: return out
-          top = lst(F); allf = []; print("\nTOP:", len(top))
-          for f in top:
-              print(" ", f["mimeType"], f.get("size"), f["name"])
-              if f["mimeType"] == "application/vnd.google-apps.folder":
-                  sub = lst(f["id"]); print("   sub:", len(sub), [x["name"] for x in sub[:5]]); allf += sub[:3]
-              else: allf.append(f)
-          files = [f for f in allf if f["mimeType"] != "application/vnd.google-apps.folder"]
-          print("\nFILES sample:", [(f["name"], f["mimeType"], f.get("size"), bool(f.get("thumbnailLink"))) for f in files[:15]])
-          if files:
-              f = files[0]
-              st, h, b = get(A + "files/" + f["id"] + "?alt=media&key=" + K, {"Range": "bytes=0-1023"})
-              print("first bytes:", b[:16])
-              sz = int(f.get("size") or 0)
-              if sz > 70000: st, h, b = get(A + "files/" + f["id"] + "?alt=media&key=" + K, {"Range": f"bytes={sz-65536}-{sz-1}"}, n=10**6); print("tail len", len(b))
-              if f.get("thumbnailLink"): get(f["thumbnailLink"], n=200)
+          everything, todo = [], [(F, "")]
+          while todo:
+              fid, path = todo.pop(0)
+              for f in lst(fid):
+                  if f["mimeType"] == "application/vnd.google-apps.folder": todo.append((f["id"], path + f["name"] + "/"))
+                  else: everything.append({"path": path + f["name"], "id": f["id"], "mime": f["mimeType"], "size": int(f.get("size") or 0), "thumb": bool(f.get("thumbnailLink"))})
+          json.dump(everything, open("/tmp/list.json", "w"), ensure_ascii=False)
+          print("\nALL FILES:", len(everything))
+          files = [{"id": x["id"], "size": x["size"]} for x in everything[:1]]
           rq = urllib.request.Request(A + "files/" + (files[0]["id"] if files else F) + "?alt=media&key=" + K, method="OPTIONS", headers={"Origin": "https://brokeuh.github.io", "Access-Control-Request-Method": "GET", "Access-Control-Request-Headers": "range"})
           try:
               r = urllib.request.urlopen(rq, timeout=30); print("\nPREFLIGHT", r.status, {k: v for k, v in r.headers.items() if k.lower().startswith("access-control")})
@@ -71,7 +65,7 @@ jobs:
           sed -i "s/${KEY}/KEY/g" /tmp/out.txt
       - name: Save the answers on the branch probe-drive (not main)
         run: |
-          cd /tmp && rm -rf p && mkdir p && cd p && git init -q && cp /tmp/out.txt answers.txt
+          cd /tmp && rm -rf p && mkdir p && cd p && git init -q && cp /tmp/out.txt answers.txt && cp /tmp/list.json list.json
           git config user.name card-bot; git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A && git commit -q -m "Drive answers"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:refs/heads/probe-drive
