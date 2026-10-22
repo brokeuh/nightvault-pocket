@@ -11,6 +11,9 @@ on:
       key:
         description: Google API key (Drive only)
         required: true
+      file:
+        description: one file id to try (then only that)
+        required: false
 
 permissions:
   contents: write
@@ -23,6 +26,7 @@ jobs:
         env:
           KEY: ${{ github.event.inputs.key }}
           FOLDER: ${{ github.event.inputs.folder }}
+          FILE: ${{ github.event.inputs.file }}
         run: |
           echo "::add-mask::$KEY"
           python3 - <<'PY' > /tmp/out.txt 2>&1
@@ -38,6 +42,16 @@ jobs:
               print("\n=====", url.replace(K, "KEY"), hdr or "", "->", st)
               print({k: v for k, v in h.items() if k.lower().startswith(("access-control", "content-range", "content-length", "content-type", "accept-ranges"))})
               return st, h, b
+          if os.environ.get("FILE"):
+              fid = os.environ["FILE"]
+              for hdr in ({"Range": "bytes=0-1023"}, {"Range": "bytes=262144-5767167"}, {}):
+                  st, h, b = get(A + "files/" + fid + "?alt=media&key=" + K, hdr, n=600)
+                  print(b[:600] if st >= 400 else len(b))
+              rq = urllib.request.Request(A + "files/" + fid + "?alt=media&key=" + K, headers={"Range": "bytes=0-1023"})
+              try: r = urllib.request.urlopen(rq, timeout=60); print("NO ORIGIN", r.status)
+              except urllib.error.HTTPError as e: print("NO ORIGIN", e.code, e.read(600))
+              st, h, b = get(A + "files/" + fid + "?key=" + K + "&fields=id,name,size,capabilities,copyRequiresWriterPermission,contentRestrictions,downloadRestrictions", n=3000); print(b.decode())
+              raise SystemExit
           fields = "nextPageToken,files(id,name,mimeType,size,modifiedTime,thumbnailLink,iconLink)"
           def lst(fid):
               out, tok = [], None
