@@ -1,0 +1,70 @@
+
+===== https://www.googleapis.com/drive/v3/files/1EiOXwSu_LysGQXZ0ooH3yn8BKnoPDygd?alt=media&key=KEY {'Range': 'bytes=0-1023'} -> 206
+{'Content-Type': 'application/pdf', 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Origin': 'https://brokeuh.github.io', 'Access-Control-Expose-Headers': 'Content-Disposition, Content-Length, Date, Server, Transfer-Encoding, X-GUploader-UploadID, X-Google-Trace, date, server, vary', 'Content-Range': 'bytes 0-1023/18681391', 'Content-Length': '1024'}
+600
+
+===== https://www.googleapis.com/drive/v3/files/1EiOXwSu_LysGQXZ0ooH3yn8BKnoPDygd?alt=media&key=KEY {'Range': 'bytes=262144-5767167'} -> 206
+{'Content-Type': 'application/pdf', 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Origin': 'https://brokeuh.github.io', 'Access-Control-Expose-Headers': 'Content-Disposition, Content-Length, Date, Server, Transfer-Encoding, X-GUploader-UploadID, X-Google-Trace, date, server, vary', 'Content-Range': 'bytes 262144-5767167/18681391', 'Content-Length': '5505024'}
+600
+
+===== https://www.googleapis.com/drive/v3/files/1EiOXwSu_LysGQXZ0ooH3yn8BKnoPDygd?alt=media&key=KEY  -> 200
+{'Content-Type': 'application/pdf', 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Origin': 'https://brokeuh.github.io', 'Access-Control-Expose-Headers': 'Content-Disposition, Content-Length, Date, Server, Transfer-Encoding, X-GUploader-UploadID, X-Google-Trace, date, server, vary', 'Content-Length': '18681391'}
+600
+NO ORIGIN 206
+
+===== https://www.googleapis.com/drive/v3/files/1EiOXwSu_LysGQXZ0ooH3yn8BKnoPDygd?key=KEY&fields=id,name,size,capabilities,copyRequiresWriterPermission,contentRestrictions,downloadRestrictions  -> 200
+{'Content-Type': 'application/json; charset=UTF-8', 'Access-Control-Allow-Origin': 'https://brokeuh.github.io', 'Access-Control-Expose-Headers': 'vary,date,content-encoding,server,content-length,vary', 'Accept-Ranges': 'none'}
+{
+  "id": "1EiOXwSu_LysGQXZ0ooH3yn8BKnoPDygd",
+  "name": "0eb7711c_fe33_472d_a157_6d2b16df1160_f0b81b67_2f81_461e_a0dc_ee18e99b9d65.pdf",
+  "downloadRestrictions": {
+    "itemDownloadRestriction": {
+      "restrictedForReaders": false,
+      "restrictedForWriters": false
+    },
+    "effectiveDownloadRestrictionWithContext": {
+      "restrictedForReaders": false,
+      "restrictedForWriters": false
+    }
+  },
+  "capabilities": {
+    "canAcceptOwnership": false,
+    "canAccessViaGenAi": true,
+    "canAddChildren": false,
+    "canAddMyDriveParent": false,
+    "canChangeCopyRequiresWriterPermission": false,
+    "canChangeItemDownloadRestriction": false,
+    "canChangeSecurityUpdateEnabled": false,
+    "canChangeViewersCanCopyContent": false,
+    "canComment": true,
+    "canCopy": false,
+    "canDelete": false,
+    "canDisableInheritedPermissions": false,
+    "canDownload": true,
+    "canEdit": true,
+    "canEnableInheritedPermissions": true,
+    "canListChildren": false,
+    "canModifyContent": true,
+    "canModifyContentRestriction": true,
+    "canModifyEditorContentRestriction": true,
+    "canModifyOwnerContentRestriction": false,
+    "canModifyLabels": false,
+    "canMoveChildrenWithinDrive": false,
+    "canMoveItemIntoTeamDrive": false,
+    "canMoveItemOutOfDrive": false,
+    "canMoveItemWithinDrive": true,
+    "canReadLabels": false,
+    "canReadRevisions": true,
+    "canRemoveChildren": false,
+    "canRemoveContentRestriction": false,
+    "canRemoveMyDriveParent": true,
+    "canRename": true,
+    "canShare": true,
+    "canTrash": false,
+    "canUntrash": false,
+    "canStartApproval": false
+  },
+  "copyRequiresWriterPermission": false,
+  "size": "18681391"
+}
+
