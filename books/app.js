@@ -2146,11 +2146,23 @@ async function gdFetch(url, hdr, ms){ let r;
   if(r.status === 403 || r.status === 400){ let m = ''; try{ m = ((await r.json()).error || {}).message || '' }catch(e){} throw new Error(/key/i.test(m) ? 'Google says the key is not right (Bookcase ⚙ → Google key)' : /rate|quota|limit/i.test(m) ? 'Google says: too many requests – try again in a few minutes' : 'Google Drive refused: ' + (m || r.status)) }
   if(r.status === 404) throw new Error('Not found on Google Drive – is the folder shared with “Anyone with the link”?');
   if(!r.ok && r.status !== 206) throw new Error('Google Drive answered ' + r.status); return r }
+/* The Android app reads Drive with Android's own connection (CapacitorHttp): from the app's web view (origin https://localhost) Drive's
+   file downloads failed with "Failed to fetch" (owner's log, 22 Oct) – listing and covers worked. A browser uses fetch (CORS is fine there). */
+const b64u8 = d => { const bin = atob(String(d || '').replace(/^data:[^,]*,/, '')), u8 = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return u8 };
 async function driveRead(id, a, z){ if(z <= a) return new ArrayBuffer(0);
-  for(let t = 0; ; t++){ try{ const r = await gdFetch(`${GD}files/${id}?alt=media&key=${encodeURIComponent(gkey())}`, {Range:`bytes=${a}-${z - 1}`}), b = await r.arrayBuffer();
+  const url = `${GD}files/${id}?alt=media&key=${encodeURIComponent(gkey())}`, H = cvHttp();
+  for(let t = 0; ; t++){ try{
+      if(H){ let r; try{ r = await H.get({url, headers:{Range:`bytes=${a}-${z - 1}`}, responseType:'blob', connectTimeout:30000, readTimeout:90000}) }catch(e){ throw new Error('Google Drive could not be reached – no internet?') }
+        if(r.status === 403 || r.status === 400) throw new Error(/key/i.test(JSON.stringify(r.data || '')) ? 'Google says the key is not right (Bookcase ⚙ → Google key)' : 'Google Drive refused (' + r.status + ') – maybe too many downloads today, try later');
+        if(r.status === 404) throw new Error('Not found on Google Drive – is the folder still shared with “Anyone with the link”?');
+        if(r.status >= 400) throw new Error('Google Drive answered ' + r.status);
+        const u8 = b64u8(r.data); return (r.status === 200 && u8.length > z - a ? u8.slice(a, z) : u8).buffer }
+      const r = await gdFetch(url, {Range:`bytes=${a}-${z - 1}`}), b = await r.arrayBuffer();
       return r.status === 200 && b.byteLength > z - a ? b.slice(a, z) : b }catch(e){ if(t >= 2 || /key|refused|Not found/.test(e.message)) throw e; await sleep(800 * (t + 1)) } } }
-function srcFromDrive(f){ return {size:f.size, name:f.name, read:(a, z) => driveRead(f.id, a, Math.min(z, f.size)),
-  blob:async () => (await gdFetch(`${GD}files/${f.id}?alt=media&key=${encodeURIComponent(gkey())}`, null, 30 * 60000)).blob()} }
+/* the whole file (Download to this phone): in 8 MB parts, so a big PDF never has to fit in one answer */
+async function driveBlob(f, onPart){ const parts = []; for(let a = 0; a < f.size; a += 8 * 1048576){ parts.push(await driveRead(f.id, a, Math.min(f.size, a + 8 * 1048576))); onPart && onPart(Math.min(f.size, a + 8 * 1048576), f.size) }
+  return new Blob(parts, {type:f.name && /\.pdf$/i.test(f.name) ? 'application/pdf' : 'application/octet-stream'}) }
+function srcFromDrive(f){ return {size:f.size, name:f.name, read:(a, z) => driveRead(f.id, a, Math.min(z, f.size)), blob:() => driveBlob(f)} }
 const gdThumb = async u => { try{ const r = await fetchT(String(u).replace(/=s\d+$/, '=s600'), {}, 20000); return r.ok ? await r.blob() : null }catch(e){ return null } };
 /* every file in a folder and its subfolders (one request per folder, 1000 per page) */
 async function driveList(root, onStep){ const out = [], todo = [{id:root, path:''}]; let folders = 0;
@@ -2199,7 +2211,7 @@ async function driveDownload(bs){ bs = bs.filter(b => b.src.kind === 'drive' && 
   sheet(`<h3>Downloading ${plural(bs.length, 'book')} (${mb(need)})…</h3><div class="prog"><i id="gdp"></i></div><div class="muted small" id="gds"></div><button class="btn" id="gdstop" style="width:100%;margin-top:8px">Stop</button>`, true);
   $('#gdstop').onclick = () => { stop = true };
   for(const b of bs){ if(stop) break; const s = $('#gds'); if(s) s.textContent = `${n + 1} of ${bs.length} · ${b.name}`;
-    try{ const blob = await srcFromDrive(b.src).blob(), fid = uid(); await dbPut('files', {id:fid, blob}); b.src.fid = fid; await dbPut('books', b) }
+    try{ const blob = await driveBlob(b.src, (d, t) => { const e = $('#gds'); if(e) e.textContent = `${n + 1} of ${bs.length} · ${b.name} · ${mb(d)} of ${mb(t)}` }), fid = uid(); await dbPut('files', {id:fid, blob}); b.src.fid = fid; await dbPut('books', b) }
     catch(e){ toast(`${b.name}: ${e.message || e}`, 5000); LE('drive', 'download ' + b.name, e); if(/key|refused|too many/.test(e.message || '')) break }
     n++; const p = $('#gdp'); if(p) p.style.width = (100 * n / bs.length) + '%' }
   awake(false); closeSheet(); draw(); toast(`${plural(bs.filter(b => b.src.fid).length, 'book')} on this phone – they work without internet now`, 4000) }

@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 101,
+   "date": "2026-10-22",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: Google Drive books open in the Android app",
+   "items": [
+    "In the Android app, books on Google Drive are now read through Android's own connection. Before, opening or adding them got stuck (\"Google Drive could not be reached\"), while the list and covers worked.",
+    "Download to this phone fetches big books in parts of 8 MB and shows how far it is."
+   ]
+  },
+  {
    "id": 100,
    "date": "2026-10-22",
    "where": [
