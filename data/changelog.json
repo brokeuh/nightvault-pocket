@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 104,
+   "date": "2026-10-22",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub",
+    "bookcase"
+   ],
+   "title": "Back where you were after switching apps",
+   "items": [
+    "When Android closes The Nightvault in the background and you open it again, it now goes straight back to the app you were in instead of the home screen (within 3 hours).",
+    "Bookcase also puts back the screens you had open and the book you were reading, at your page."
+   ]
+  },
+  {
    "id": 103,
    "date": "2026-10-22",
    "where": [

@@ -85,3 +85,22 @@
   if(on()){ add('info', 'start', location.pathname + location.search, {native:!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()), ua:navigator.userAgent.slice(0, 120)});
     if(document.body) ui(); else addEventListener('DOMContentLoaded', ui) }
 })();
+
+/* Back where you were (owner, 22 Oct 2026): Android may close the Nightvault app while it is in the background (it needs the memory);
+   opening it again then started on the hub. Every app page writes down where it is when it goes to the background (localStorage
+   nvHere); when the Android app starts fresh on the hub (a new session) within 3 hours, the hub goes straight back to that page with
+   ?nvresume=1, and an app that knows how (Bookcase) also puts back its screens and the open book. Going back to the hub on purpose
+   clears it. Shared by every app because every page loads this file. */
+(function(){
+  const K = 'nvHere', native = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+  const onHub = /\/hub\/(index\.html)?$/.test(location.pathname);
+  if(!onHub){
+    const mark = () => { if(/[?&]open=/.test(location.search)) return; try{ localStorage.setItem(K, JSON.stringify({url:location.pathname + location.search.replace(/[?&]nvresume=1/, ''), at:Date.now()})) }catch(e){} };
+    document.addEventListener('visibilitychange', () => { if(document.hidden) mark() }); addEventListener('pagehide', mark);
+    return }
+  let fresh = false; try{ fresh = !sessionStorage.getItem('nvSession'); sessionStorage.setItem('nvSession', '1') }catch(e){}
+  let h = null; try{ h = JSON.parse(localStorage.getItem(K) || 'null'); localStorage.removeItem(K) }catch(e){}
+  if(native && fresh && h && h.url && Date.now() - (h.at || 0) < 3 * 3600e3 && /^\/[\w-]+\//.test(h.url) && !/^\/hub\//.test(h.url)){
+    try{ window.NVLOG && NVLOG.log('resume', 'back to ' + h.url) }catch(e){}
+    location.replace(h.url + (h.url.includes('?') ? '&' : '?') + 'nvresume=1') }
+})();

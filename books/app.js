@@ -1321,7 +1321,7 @@ function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh), folders = lsGet
     <div class="opt"><label for="ss_pub">Bundle series by publisher (Marvel › Spider-Man › …)</label><input type="checkbox" id="ss_pub" ${s.byPub ? 'checked' : ''}></div>
     <div class="opt"><label for="ss_aut">A writer's books without a series make one tile</label><input type="checkbox" id="ss_aut" ${s.authors ? 'checked' : ''}></div>
     ${NvFiles ? `<div class="sec">Folders on this phone</div>${folders.map((f, i) => /^gd:/.test(f.tree) ? '' : `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(inShelf(sh).filter(b => b.src.kind === 'link' && b.src.tree === f.tree).length, 'book')}</div></div><button class="btn sm" data-look="${i}">Look again</button><button class="btn sm danger" data-forget="${i}">Stop</button></div>`).join('') || '<p class="muted small">None yet - Add → Use a folder on this phone.</p>'}` : ''}
-    ${folders.some(f => /^gd:/.test(f.tree)) ? `<div class="sec">Google Drive folders</div>${folders.map((f, i) => /^gd:/.test(f.tree) ? `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(inShelf(sh).filter(b => b.src.kind === 'drive' && b.src.tree === f.tree).length, 'book')} · ${inShelf(sh).filter(b => b.src.kind === 'drive' && b.src.tree === f.tree && b.src.fid).length} downloaded</div></div><button class="btn sm" data-look="${i}">Look again</button><button class="btn sm danger" data-forget="${i}">Stop</button></div>` : '').join('')}<button class="btn sm" id="ss_gdkey" style="margin-top:6px">Google key</button>` : ''}
+    ${folders.some(f => /^gd:/.test(f.tree)) ? `<div class="sec">Google Drive folders</div>${folders.map((f, i) => /^gd:/.test(f.tree) ? `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(inShelf(sh).filter(b => b.src.kind === 'drive' && b.src.tree === f.tree).length, 'book')} · ${inShelf(sh).filter(b => b.src.kind === 'drive' && b.src.tree === f.tree && b.src.fid).length} downloaded</div></div><button class="btn sm" data-look="${i}">Look again</button><button class="btn sm danger" data-forget="${i}">Stop</button></div>` : '').join('')}<button class="btn sm" id="ss_gdkey" style="margin-top:6px">Google key</button> <button class="btn sm" id="ss_gdc" style="margin-top:6px">Clear the kept parts (${mb(Object.values(lsGet('nvBooks.gdcache', {})).reduce((a, x) => a + x.n.length * 4 * 1048576, 0))})</button><div class="muted small" style="margin-top:4px">Books you open are kept on the phone in parts (up to 600 MB, oldest go first), so opening them again doesn't ask Google.</div>` : ''}
     <div class="sec">Online</div><div class="opt"><label for="ss_kind">What is on this shelf</label><select id="ss_kind"><option value="comics" ${isManga(sh) ? '' : 'selected'}>Comics</option><option value="manga" ${isManga(sh) ? 'selected' : ''}>Manga</option></select></div>
     <div class="opt"><label for="ss_src">Where to look</label><select id="ss_src">${(isManga(sh) ? [['auto', 'MangaDex, then AniList'], ['mdx', 'Only MangaDex'], ['anl', 'Only AniList']] : [['auto', 'Comic Vine, then GCD, then Wikipedia'], ['cv', 'Only Comic Vine'], ['gcd', 'Only GCD (comics.org)'], ['wiki', 'Only Wikipedia (Dutch)']]).map(([k, t]) => `<option value="${k}" ${srcPref(sh) === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
     ${isManga(sh) ? `<div class="muted small" style="margin:-4px 0 8px">MangaDex has every volume cover of most manga, AniList has the story, writer and artist. Neither needs a key. Only official volumes are used – never chapter scans.</div><div class="mlist"><button class="btn primary" id="ss_cv">Look up the manga that are not looked up yet</button><button class="btn" id="ss_cvall">Look up all manga on this shelf</button><div class="muted small" style="margin:-2px 0 0">Once per series; the results are remembered. Needs the internet only while it looks.</div></div>` : `<div class="muted small" style="margin:-4px 0 8px">Comic Vine knows most American comics (needs your free key). GCD and Wikipedia also know Flemish and Dutch comics (Suske en Wiske, Jommeke, De Kiekeboes …) and need no key; GCD works in the Android app. The first one whose list holds all your numbers is used.</div><div class="mlist"><button class="btn primary" id="ss_cv">Look up the comics without a publisher</button><button class="btn" id="ss_cvall">Look up all comics on this shelf</button><button class="btn" id="ss_cvkey">${CV.key() ? 'Change your Comic Vine key' : 'Type your Comic Vine key'}</button><div class="muted small" style="margin:-2px 0 0">Once per series; the results are remembered. Needs the internet only while it looks.</div></div>`}
@@ -1346,6 +1346,7 @@ function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh), folders = lsGet
       if(NvFiles && NvFiles.forget && !/^gd:/.test(f.tree) && !lsGet('nvBooks.folders', []).some(x => x.tree === f.tree)) NvFiles.forget({tree:f.tree}).catch(() => {});
       closeSheet(); draw(); toast('Folder removed') } });
   if($('#ss_gdkey')) $('#ss_gdkey').onclick = () => driveKeySheet();
+  if($('#ss_gdc')) $('#ss_gdc').onclick = () => { for(const id of Object.keys(lsGet('nvBooks.gdcache', {}))) gdcDrop(id); toast('Kept parts cleared'); closeSheet() };
   $('#ss_save').onclick = async () => { try{ const r = await G.saveBackup(); if(r !== 'cancelled') toast('Groups saved') }catch(e){ toast(e.message || String(e), 4000) } };
   $('#ss_load').onclick = async () => { const t = await G.pickFile(); if(!t) return; const c = G.checkBackup(t); if(!c.ok){ toast(c.msg, 5000); return }
     if(!confirm(c.msg + '\n\nPut these groups back? (Undo is possible right after.)')) return; G.applyBackup(c.d); regroup(); closeSheet(); draw(); G.undoToast('Groups loaded', () => { regroup(); draw() }) };
@@ -1373,7 +1374,10 @@ if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App)
   A.addListener('backButton', () => { if(sheetOpen()){ if(!$('#scrim').dataset.sticky) closeSheet(); return }
     if(R && !$('#rend').hidden){ $('#rend').hidden = true; return } if(R){ closeReader(); return } if(E){ closeEpub(); return }
     if(back()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
-document.addEventListener('visibilitychange', () => { if(document.hidden){ if(R) saveState(R.b.id, true); if(E) ePos() } else if(R || E) awake(true) });
+document.addEventListener('visibilitychange', () => { if(document.hidden){ if(R) saveState(R.b.id, true); if(E) ePos(); saveHere() } else if(R || E) awake(true) });
+addEventListener('pagehide', () => saveHere());
+/* where you are, for coming back after Android closed the app in the background (see the start) */
+function saveHere(){ try{ const rb = R && R.b && !R.b.handed ? R.b : E && E.b && !E.b.handed ? E.b : null; lsSet('nvBooks.here', {V, read:rb ? rb.id : null, at:Date.now()}) }catch(e){} }
 
 /* ---------- start ---------- */
 (async () => {
@@ -1381,7 +1385,14 @@ document.addEventListener('visibilitychange', () => { if(document.hidden){ if(R)
   const P = new URLSearchParams(location.search), sh = P.get('shelf');
   if(/^board:/.test(P.get('open') || '')){ draw(); try{ await openHanded(P.get('open').slice(6)) }catch(e){ LE('handed', 'could not open', e); toast(e.message || String(e), 5000); setTimeout(leaveHanded, 2500) } return }
   if(sh && shelves(true).some(s => s.id === sh)) V.push({v:'shelf', shelf:sh});
-  draw(); L('start', `${BOOKS.length} books`);
+  /* back where you were (owner, 22 Oct): Android may close the app in the background; The Nightvault then reopens this page with
+     ?nvresume=1 (../hub/nvlog.js) and Bookcase puts back the screens you had open – and the book you were reading, at your page. */
+  let resumeBook = null;
+  if(P.get('nvresume')){ const h = lsGet('nvBooks.here', null);
+    if(h && Date.now() - (h.at || 0) < 3 * 3600e3 && Array.isArray(h.V) && h.V.length){ V = h.V; if(h.read && BK[h.read]) resumeBook = BK[h.read] }
+    try{ P.delete('nvresume'); history.replaceState(null, '', location.pathname + (P.toString() ? '?' + P : '')) }catch(e){} }
+  draw(); L('start', `${BOOKS.length} books${resumeBook || V.length > 1 ? ' – back where you were' : ''}`);
+  if(resumeBook) openReader(resumeBook).catch(e => LE('start', 'could not reopen the book', e));
   setTimeout(() => { checkNew(false, true).catch(e => LE('new', 'daily check', e)) }, 4000);
   window.NVBOOKS = {get books(){ return BOOKS }, openDoc, readMeta, parseName, zipOpen, openReader, draw};   // for testing
 })();
@@ -2167,9 +2178,27 @@ async function driveRead(id, a, z){ if(z <= a) return new ArrayBuffer(0); if(GDB
       const r = await gdFetch(url, {Range:`bytes=${a}-${z - 1}`}), b = await r.arrayBuffer();
       return r.status === 200 && b.byteLength > z - a ? b.slice(a, z) : b }catch(e){ if(t >= 2 || /key|refused|Not found|pausing/.test(e.message)) throw e; await sleep(800 * (t + 1)) } } }
 /* the whole file (Download to this phone): in 8 MB parts, so a big PDF never has to fit in one answer */
-async function driveBlob(f, onPart){ const parts = []; for(let a = 0; a < f.size; a += 8 * 1048576){ parts.push(await driveRead(f.id, a, Math.min(f.size, a + 8 * 1048576))); onPart && onPart(Math.min(f.size, a + 8 * 1048576), f.size) }
+async function driveBlob(f, onPart){ const parts = []; for(let n = 0; n * GDC_BLK < f.size; n++){ parts.push(await gdcBlock(f, n)); onPart && onPart(Math.min(f.size, (n + 1) * GDC_BLK), f.size) }
   return new Blob(parts, {type:f.name && /\.pdf$/i.test(f.name) ? 'application/pdf' : 'application/octet-stream'}) }
-function srcFromDrive(f){ return {size:f.size, name:f.name, read:(a, z) => driveRead(f.id, a, Math.min(z, f.size)), blob:() => driveBlob(f)} }
+/* Fewer requests to Google (owner, 22 Oct: "could open 2 books, then a timeout"): a book is fetched in parts of 4 MB, and every part is kept
+   on the phone (IndexedDB 'files' as 'gdc:<file id>:<n>', newest 600 MB, oldest books dropped first). A 50 MB PDF = at most 13 requests,
+   and opening it again asks Google nothing. Parts being fetched are shared, so the reader asking for the same part twice = one request. */
+const gdcDrop = id => { const c = lsGet('nvBooks.gdcache', {}); if(c[id]){ dbDelMany('files', c[id].n.map(i => `gdc:${id}:${i}`)).catch(() => {}); delete c[id]; lsSet('nvBooks.gdcache', c) } };
+const GDC_BLK = 4 * 1048576, GDC_MAX = 600 * 1048576, GDC_FLY = {};
+function gdcNote(id, n){ const c = lsGet('nvBooks.gdcache', {}), e = c[id] || {n:[], at:0}; if(!e.n.includes(n)) e.n.push(n); e.at = Date.now(); c[id] = e;
+  let total = Object.values(c).reduce((a, x) => a + x.n.length * GDC_BLK, 0); const old = Object.keys(c).filter(k => k !== id).sort((a, b) => c[a].at - c[b].at);
+  while(total > GDC_MAX && old.length){ const k = old.shift(); dbDelMany('files', c[k].n.map(i => `gdc:${k}:${i}`)).catch(() => {}); total -= c[k].n.length * GDC_BLK; delete c[k] }
+  lsSet('nvBooks.gdcache', c) }
+async function gdcBlock(f, n){ const key = `gdc:${f.id}:${n}`; if(GDC_FLY[key]) return GDC_FLY[key];
+  return GDC_FLY[key] = (async () => { try{ const r = await dbGet('files', key).catch(() => null); if(r && r.blob) return r.blob instanceof Blob ? await r.blob.arrayBuffer() : r.blob;
+      const buf = await driveRead(f.id, n * GDC_BLK, Math.min(f.size, (n + 1) * GDC_BLK)); dbPut('files', {id:key, blob:new Blob([buf])}).then(() => gdcNote(f.id, n)).catch(() => {}); return buf }
+    finally{ setTimeout(() => delete GDC_FLY[key], 50) } })() }
+async function gdcRead(f, a, z){ z = Math.min(z, f.size); if(z <= a) return new ArrayBuffer(0);
+  const b0 = Math.floor(a / GDC_BLK), b1 = Math.floor((z - 1) / GDC_BLK), out = new Uint8Array(z - a);
+  const parts = await Promise.all(Array.from({length:b1 - b0 + 1}, (_, i) => gdcBlock(f, b0 + i)));
+  parts.forEach((buf, i) => { const start = (b0 + i) * GDC_BLK, from = Math.max(a, start) - start, to = Math.min(z, start + buf.byteLength) - start; if(to > from) out.set(new Uint8Array(buf, from, to - from), Math.max(a, start) - a) });
+  return out.buffer }
+function srcFromDrive(f){ return {size:f.size, name:f.name, read:(a, z) => gdcRead(f, a, z), blob:() => driveBlob(f)} }
 const gdThumb = async u => { try{ const r = await fetchT(String(u).replace(/=s\d+$/, '=s600'), {}, 20000); return r.ok ? await r.blob() : null }catch(e){ return null } };
 /* every file in a folder and its subfolders (one request per folder, 1000 per page) */
 async function driveList(root, onStep){ const out = [], todo = [{id:root, path:''}]; let folders = 0;
@@ -2218,7 +2247,7 @@ async function driveDownload(bs){ bs = bs.filter(b => b.src.kind === 'drive' && 
   sheet(`<h3>Downloading ${plural(bs.length, 'book')} (${mb(need)})…</h3><div class="prog"><i id="gdp"></i></div><div class="muted small" id="gds"></div><button class="btn" id="gdstop" style="width:100%;margin-top:8px">Stop</button>`, true);
   $('#gdstop').onclick = () => { stop = true };
   for(const b of bs){ if(stop) break; const s = $('#gds'); if(s) s.textContent = `${n + 1} of ${bs.length} · ${b.name}`;
-    try{ const blob = await driveBlob(b.src, (d, t) => { const e = $('#gds'); if(e) e.textContent = `${n + 1} of ${bs.length} · ${b.name} · ${mb(d)} of ${mb(t)}` }), fid = uid(); await dbPut('files', {id:fid, blob}); b.src.fid = fid; await dbPut('books', b) }
+    try{ const blob = await driveBlob(b.src, (d, t) => { const e = $('#gds'); if(e) e.textContent = `${n + 1} of ${bs.length} · ${b.name} · ${mb(d)} of ${mb(t)}` }), fid = uid(); await dbPut('files', {id:fid, blob}); b.src.fid = fid; await dbPut('books', b); gdcDrop(b.src.id) }
     catch(e){ toast(`${b.name}: ${e.message || e}`, 5000); LE('drive', 'download ' + b.name, e); if(/key|refused|too many/.test(e.message || '')) break }
     n++; const p = $('#gdp'); if(p) p.style.width = (100 * n / bs.length) + '%' }
   awake(false); closeSheet(); draw(); toast(`${plural(bs.filter(b => b.src.fid).length, 'book')} on this phone – they work without internet now`, 4000) }

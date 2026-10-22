@@ -18,7 +18,7 @@
     },
     {
      "path": "hub/nvlog.js",
-     "size": 11808
+     "size": 13511
     },
     {
      "path": "hub/nvpc.js",
@@ -35,10 +35,10 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 107502,
-   "hash": "8cc6779f78c3",
-   "version": "2026.10.21.1025",
-   "updated": "2026-10-21"
+   "size": 109205,
+   "hash": "ef2eea603c77",
+   "version": "2026.10.22.1523",
+   "updated": "2026-10-22"
   },
   {
    "id": "scanner",
@@ -224,7 +224,7 @@
     },
     {
      "path": "books/app.js",
-     "size": 300512
+     "size": 304453
     },
     {
      "path": "books/manifest.webmanifest",
@@ -274,9 +274,9 @@
    "uses": [],
    "entry": "books/?nv=hub",
    "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted.",
-   "size": 2426462,
-   "hash": "a247afb05ecf",
-   "version": "2026.10.22.1312",
+   "size": 2430403,
+   "hash": "bc4c58a69e95",
+   "version": "2026.10.22.1523",
    "updated": "2026-10-22"
   },
   {
