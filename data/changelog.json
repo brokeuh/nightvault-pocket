@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 103,
+   "date": "2026-10-22",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: gentler with Google Drive",
+   "items": [
+    "When Google pauses downloads (its \"Sorry… unusual traffic\" robot check), Bookcase says so in plain words and stops asking for half an hour, so the pause doesn't last longer.",
+    "Looking through a big Drive folder now goes a bit slower on purpose, so Google doesn't think it's a robot."
+   ]
+  },
+  {
    "id": 102,
    "date": "2026-10-22",
    "where": [
