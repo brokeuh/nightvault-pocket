@@ -69,12 +69,18 @@ const SHELF_ICON = {
   tv:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 21h8M9 3l3 3 3-3"/>',
   star:'<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
   spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/>',
-  own:'<path d="M4 5h16v14H4z"/><path d="M4 9h16"/>'};
+  own:'<path d="M4 5h16v14H4z"/><path d="M4 9h16"/>',
+  eye:'<path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 function shelves(all){ const set = lsGet('nvCinema.shelves', {}), hid = set.hidden || {};
   let list = BASE.map(s => Object.assign({}, s, (set[s.id] || {}).name ? {name:set[s.id].name} : {})).concat((set._own || []).map(s => Object.assign({c:['#2a2f3a', '#1a1f2e'], s:'#c4cdd8', icon:'own', unit:['title', 'titles']}, s)));
   const ord = set._order || []; list = list.map((s, i) => [s, i]).sort((a, b) => (((ord.indexOf(a[0].id) + 1) || 999) - ((ord.indexOf(b[0].id) + 1) || 999)) || a[1] - b[1]).map(x => x[0]);
+  if(TITLES.some(isWant)) list.push(WANT_SHELF);
   for(const s of list) s.hidden = !!hid[s.id];
   return all ? list : list.filter(s => !s.hidden) }
+/* "want to see" (calendar, 22 Oct): a title from TMDB without a video yet - it keeps its real shelf and moves there when the video comes */
+const isWant = t => !!t.want && !filesOf(t).length;
+const WANT_SHELF = {id:'want', name:'Want to see', c:['#3a1626', '#2a1f36'], s:'#ff9db7', icon:'eye', unit:['title', 'titles']};
 const shelfOf = id => shelves(true).find(s => s.id === id) || {id, name:id, c:['#2a2f3a', '#1a1f2e'], s:'#c4cdd8', icon:'own', unit:['title', 'titles']};
 const shelfIcon = (s, size) => `<svg width="${size || 26}" height="${size || 26}" viewBox="0 0 24 24" fill="none" stroke="${s.s}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${SHELF_ICON[s.icon] || SHELF_ICON.own}</svg>`;
 const unit = (sh, n) => { const u = shelfOf(sh).unit || ['title', 'titles']; return plural(n, u[0], u[1]) };
@@ -172,6 +178,7 @@ async function applyTm(t, x, over){
   if(d.genres && d.genres.length && (over || !t.genres.length)) t.genres = d.genres.map(g => g.name);
   if(d.runtime) t.runtime = d.runtime; if(d.episode_run_time && d.episode_run_time[0]) t.runtime = d.episode_run_time[0];
   if(x.type === 'movie' && d.belongs_to_collection && d.belongs_to_collection.name && (over || !t.saga)) t.saga = sagaName(d.belongs_to_collection.name);
+  if(x.type === 'movie') t.collId = d.belongs_to_collection ? d.belongs_to_collection.id : 0;
   if(x.type === 'tv' && d.seasons) t.seasons = Object.fromEntries(d.seasons.map(z => [z.season_number, {name:z.name, count:z.episode_count, poster:z.poster_path || ''}]));
   if(t.poster) keepPoster(t) }
 /* episode names of one season (kept for a month) */
@@ -260,7 +267,7 @@ async function mergePc(j){ const groups = Object.fromEntries((j.groups || []).ma
   for(const it of j.items || []){ const g = groups[it.gid]; if(!g) continue; seen.add(it.id);
     let t = byGid[g.gid];
     if(!t){ const shelf = pcShelf(g), p = {kind:g.kind === 'show' ? 'show' : 'movie', name:g.name || it.title || it.name, year:g.year || null};
-      t = findTitle(shelf, p) || newTitle(p, shelf); t.pcGid = g.gid; byGid[g.gid] = t; if(!TM[t.id]){ TITLES.push(t); TM[t.id] = t } }
+      t = findTitle(shelf, p) || TITLES.find(x => x.want && x.kind === p.kind && norm(x.name) === norm(p.name)) || newTitle(p, shelf); t.pcGid = g.gid; if(t.want){ t.want = false; t.shelf = shelf } byGid[g.gid] = t; if(!TM[t.id]){ TITLES.push(t); TM[t.id] = t } }
     if(!tset.includes(t)) tset.push(t);
     t.pcCover = g.cover ? g.gid : ''; if(!t.overview && g.overview) t.overview = g.overview; if(!t.genres.length && g.genres) t.genres = g.genres;
     if(!t.tmdb && g.tmdb) t.tmdb = {type:g.tmdb.type, id:+g.tmdb.id}; if(!t.saga && g.saga) t.saga = g.saga; if(!t.year && g.year) t.year = g.year;
@@ -302,7 +309,7 @@ function grOf(sh){ if(GRS[sh]) return GRS[sh]; const s = shelfOf(sh);
     onRekey:async (from, to) => { const id = 'grp:' + sh + ':' + from; if(!COV.has(id)) return; const c = await dbGet('covers', id).catch(() => null); if(c){ await setCover('grp:' + sh + ':' + to, c.blob); draw() } }}) }
 let GROUPCACHE = {};
 const regroup = () => { GROUPCACHE = {}; SNAMES = null };
-const inShelf = sh => TITLES.filter(t => t.shelf === sh && filesOf(t).length);
+const inShelf = sh => sh === 'want' ? TITLES.filter(isWant) : TITLES.filter(t => t.shelf === sh && filesOf(t).length);
 const groupsOf = sh => GROUPCACHE[sh] || (GROUPCACHE[sh] = grOf(sh).build(inShelf(sh)));
 const toTop = (G, key) => G.setParent(key, null);
 const grChange = (sh, fn, msg) => { const G = grOf(sh); G.change(fn); regroup(); G.undoToast(msg, () => { regroup(); selEnd(true); draw() }) };
@@ -359,7 +366,7 @@ setInterval(() => { if(document.hidden || !$('#player').hidden) return;
 
 /* ---------- tiles ---------- */
 function titleTile(t, sh){ const G = grOf(sh || t.shelf), st = seenState(t), fs = mainFiles(t), ph = titleOnPhone(t), pc = titleOnPc(t);
-  const marks = [!ph && pc ? '<span class="pc">PC</span>' : '', ph && filesOf(t).some(f => f.local) ? '<span class="ok">SAVED</span>' : '', t.kind === 'show' && fs.length ? `<span>${plural(fs.length, 'ep')}</span>` : ''].filter(Boolean).join('');
+  const marks = [window.calIsNew && calIsNew(t) ? '<span class="ok">NEW EP</span>' : '', isWant(t) ? '<span style="color:#ff9db7">WANT</span>' : '', !ph && pc ? '<span class="pc">PC</span>' : '', ph && filesOf(t).some(f => f.local) ? '<span class="ok">SAVED</span>' : '', t.kind === 'show' && fs.length ? `<span>${plural(fs.length, 'ep')}</span>` : ''].filter(Boolean).join('');
   const prog = t.kind === 'movie' && st === 'started' ? `<span class="pbar"><i style="width:${Math.round(100 * frac(fs[0] || {id:''}))}%"></i></span>` : t.kind === 'show' && st === 'started' ? `<span class="pbar"><i style="width:${Math.round(100 * fs.filter(isDone).length / fs.length)}%"></i></span>` : '';
   const seasons = new Set(fs.map(f => f.s).filter(s => s)).size;
   return `<div class="bk${!ph && pc && PCON === false ? ' off' : ''}" data-title="${esc(t.id)}">${coverHTML(t, '', (G.isPinned('it:' + t.id) ? PINB : '') + (st === 'seen' ? '<span class="seen">✓</span>' : '') + (marks ? `<span class="vol">${marks}</span>` : '') + prog)}
@@ -414,10 +421,10 @@ function draw(){
   if(v.v === 'shelves'){ $('#vtitle').textContent = 'Cinema'; document.title = 'Nightvault Cinema';
     const q = norm(Q._all || '');
     h += `<input type="search" id="q" placeholder="Search films, shows, series, genres" value="${esc(Q._all || '')}" style="margin:2px 0 8px">`;
-    if(q){ const hits = TITLES.filter(t => filesOf(t).length && hayOf(t).includes(q)).sort(byName);
+    if(q){ const hits = TITLES.filter(t => (filesOf(t).length || t.want) && hayOf(t).includes(q)).sort(byName);
       h += hits.length ? `<div class="mtot">${plural(hits.length, 'title')}</div><div class="grid">${hits.slice(0, 300).map(t => titleTile(t, t.shelf).replace(/<div class="a">[^<]*<\/div>/, `<div class="a">${esc([t.year, shelfOf(t.shelf).name].filter(Boolean).join(' · '))}</div>`)).join('')}</div>` : '<p class="muted" style="text-align:center;margin-top:30px">Nothing found.</p>';
       body.innerHTML = h; lazyCovers(body); hookSearch('_all'); hookGrid(null); return }
-    h += pcLineHTML() + contHTML();
+    h += pcLineHTML() + contHTML() + (window.calTeaserHTML ? calTeaserHTML() : '');
     h += '<div class="shelves">' + shelves().map(s => { const ts = inShelf(s.id), eps = ts.filter(t => t.kind === 'show').length;
         const fan = ts.filter(hasCover).sort((a, b) => b.added - a.added).slice(0, 3);
         return `<div class="shelf" data-shelf="${esc(s.id)}" style="background:linear-gradient(150deg,${s.c[0]},${s.c[1]})"><div class="ic">${shelfIcon(s)}</div><div class="fan">${fan.map(t => `<img data-fan="${esc(t.id)}" alt="">`).join('')}</div>
@@ -467,6 +474,7 @@ function draw(){
     if(!all.length) h += `<p class="muted small" style="margin-top:12px">Empty. Tap ⋯ → <b>Add…</b> to put titles in it.</p>`;
     body.innerHTML = h; lazyCovers(body); hookGrid(v.shelf); $('#gmenu').onclick = () => groupMenu(v.shelf, g);
     if($('#gplay')) $('#gplay').onclick = () => play(nextUp(nx)); return }
+  if(v.v === 'cal') return drawCal();
   if(v.v === 'title') return drawTitle(v.id, v.shelf) }
 function storeLine(sh){ const ts = sh ? inShelf(sh) : TITLES.filter(t => filesOf(t).length); if(!ts.length) return '';
   const fs = ts.flatMap(filesOf), ph = fs.filter(onPhone), sz = ph.reduce((n, f) => n + (f.src && f.src.kind === 'copy' || f.local ? f.size || 0 : 0), 0);
@@ -517,7 +525,7 @@ function drawTitle(id, sh){ const t = TM[id]; if(!t){ V.pop(); return draw() }
     <div class="muted small">${esc([t.year, t.genres.slice(0, 3).join(', '), t.runtime ? mins(t.runtime * 60) + (t.kind === 'show' ? ' per episode' : '') : ''].filter(Boolean).join(' · '))}</div>
     <div style="margin-top:6px">${titleOnPhone(t) ? '<span class="tag ok">On this phone</span>' : ''}${titleOnPc(t) ? `<span class="tag pc">On my PC${PCON === false ? ' (not reachable)' : ''}</span>` : ''}${st === 'seen' ? '<span class="tag ok">✓ Watched</span>' : ''}</div></div></div></div>`;
   const nw = nx && W(nx), left = nw && nw.dur && !nw.done && nw.pos > 20 ? nw.dur - nw.pos : 0;
-  h += `<div class="mbar">${nx ? `<button class="btn primary playbig" id="tplay">${IC_PLAY.replace('<svg ', '<svg width="20" height="20" ')}${left ? 'Continue' : st === 'seen' ? 'Watch again' : 'Play'}${t.kind === 'show' ? ' ' + esc(epName(t, nx)) : nx.part ? ' part ' + nx.part : ''}</button>` : `<button class="btn primary playbig" id="tplay" ${fs.length ? '' : 'disabled'}>${IC_PLAY.replace('<svg ', '<svg width="20" height="20" ')}Watch again</button>`}<button class="ib" id="tmenu" aria-label="More for this title">${IC_DOTS}</button></div>`;
+  h += `<div class="mbar">${nx ? `<button class="btn primary playbig" id="tplay">${IC_PLAY.replace('<svg ', '<svg width="20" height="20" ')}${left ? 'Continue' : st === 'seen' ? 'Watch again' : 'Play'}${t.kind === 'show' ? ' ' + esc(epName(t, nx)) : nx.part ? ' part ' + nx.part : ''}</button>` : (isWant(t) ? `<button class="btn playbig" id="tplay" disabled>♥ On your want-to-see list</button>` : `<button class="btn primary playbig" id="tplay" ${fs.length ? '' : 'disabled'}>${IC_PLAY.replace('<svg ', '<svg width="20" height="20" ')}Watch again</button>`)}<button class="ib" id="tmenu" aria-label="More for this title">${IC_DOTS}</button></div>`;
   if(left) h += `<div class="prog2"><i style="width:${Math.round(100 * nw.pos / nw.dur)}%"></i></div><div class="muted small" style="margin-top:4px">${mins(left)} left${t.kind === 'show' ? ' · ' + esc(fileLabel(t, nx)) : ''}</div>`;
   if(t.kind === 'show'){ const seasons = [...new Set(fs.map(f => f.s))].sort((a, b) => (a === 0 ? 999 : a) - (b === 0 ? 999 : b)), cs = V[V.length - 1].season != null && seasons.includes(V[V.length - 1].season) ? V[V.length - 1].season : (nx ? nx.s : seasons[0]);
     cur().season = cs;
@@ -525,6 +533,7 @@ function drawTitle(id, sh){ const t = TM[id]; if(!t){ V.pop(); return draw() }
     if(seasons.length > 1) h += `<div class="chips">${seasons.map(s => { const n = fs.filter(f => f.s === s), d = n.filter(isDone).length; return `<button class="chip ${s === cs ? 'on' : ''}" data-season="${s}">${s === 0 ? 'Specials' : (t.seasons[s] && t.seasons[s].name && !/^season \d+$/i.test(t.seasons[s].name) ? esc(t.seasons[s].name) : 'Season ' + s)}${d === n.length ? ' ✓' : ''}</button>` }).join('')}</div>`;
     h += `<div id="eps">${epsHTML(t, cs)}</div>` }
   else if(fs.length > 1){ h += `<div class="sec">Files</div>${fs.map(f => fileRow(t, f)).join('')}` }
+  h += '<div id="tcal"></div>';
   if(t.overview) h += `<div class="sec">Story</div><div class="desc clip" id="tdesc">${esc(t.overview)}</div>${t.overview.length > 260 ? '<button class="btn sm" id="tmore" style="margin-top:6px">More</button>' : ''}`;
   const facts = [['Series', ser ? esc(ser) + (t.saga ? '' : ' <span class="muted">(guessed from the name)</span>') : ''], ['Year', esc(t.year || '')], ['Genres', esc(t.genres.join(', '))],
     ['Shelf', esc(shelfOf(t.shelf).name)], ['Videos', fs.length > 1 || t.kind === 'show' ? `${fs.length}${size ? ' · ' + mb(size) : ''}` : size ? mb(size) : ''],
@@ -543,6 +552,7 @@ function drawTitle(id, sh){ const t = TM[id]; if(!t){ V.pop(); return draw() }
   if($('#tgrp')) $('#tgrp').onclick = () => { if(grp) go({v:'group', shelf:t.shelf, key:grp.key}) };
   $('#body').querySelectorAll('[data-season]').forEach(b => b.onclick = () => { cur().season = +b.dataset.season; drawTitle(id, sh) });
   hookFiles(t);
+  if(window.calTitle) calTitle(t);
   if(t.kind === 'show') loadEpInfo(t, cur().season) }
 function fileRow(t, f){ const w = W(f), p = w && w.dur && !w.done ? Math.round(100 * w.pos / w.dur) : 0, ok = playable(f);
   return `<div class="ep${isDone(f) ? ' seen' : ''}${ok ? '' : ' off'}" data-file="${esc(f.id)}"><div class="no">${f.part ? 'Part ' + f.part : IC_PLAY.replace('<svg ', '<svg width="20" height="20" ')}${p ? `<span class="bar"><i style="width:${p}%"></i></span>` : ''}</div>
@@ -578,7 +588,7 @@ function titleMenu(t, sh){ const G = grOf(t.shelf), pin = G.isPinned('it:' + t.i
     <button class="btn" id="tme">Edit details</button>${TKEY() ? `<button class="btn" id="tml">${t.tmdb ? 'Find the right title again (TMDB)' : 'Find it on TMDB'}</button>` : ''}
     <button class="btn" id="tmc">Change the poster</button><button class="btn" id="tmsh">Move to another shelf</button>
     ${t.kind === 'movie' ? '<button class="btn" id="tmk">This is a TV show (episodes)</button>' : '<button class="btn" id="tmk">This is a film, not a show</button>'}
-    <button class="btn danger" id="tmx">Remove from Cinema</button></div>
+    <button class="btn danger" id="tmx">${isWant(t) ? 'Take it off my want-to-see list' : 'Remove from Cinema'}</button></div>
     <p class="muted small" style="margin:10px 0 0">Groups are per shelf: this changes “${esc(shelfOf(t.shelf).name)}”. Removing never deletes the video files themselves (only copies made inside the app).</p>`);
   if($('#tmsave')) $('#tmsave').onclick = () => saveSheet(t, pcOnly);
   if($('#tmunsave')) $('#tmunsave').onclick = () => unsave(saved);
@@ -591,7 +601,7 @@ function titleMenu(t, sh){ const G = grOf(t.shelf), pin = G.isPinned('it:' + t.i
   $('#tmk').onclick = async () => { t.kind = t.kind === 'movie' ? 'show' : 'movie';
     for(const f of fs){ const p = parseVideo((f.dir ? f.dir + '/' : '') + f.name) || {}; if(t.kind === 'show'){ f.s = p.s != null ? p.s : 1; f.e = p.e != null ? p.e : (fs.indexOf(f) + 1) } else { f.s = f.e = null } await dbPut('files', f) }
     t.tmdb = null; t.tmdbTried = 0; await saveTitle(t); reindex(); closeSheet(); draw(); toast(t.kind === 'show' ? 'Now a TV show' : 'Now a film') };
-  $('#tmx').onclick = () => removeTitles([t.id]) }
+  $('#tmx').onclick = async () => { if(isWant(t)){ await dropTitle(t); closeSheet(); V.pop(); draw(); toast('Taken off your want-to-see list'); return } removeTitles([t.id]) } }
 async function removeTitles(ids){ const ts = ids.map(id => TM[id]).filter(Boolean); if(!ts.length) return;
   const pcs = ts.filter(titleOnPc).length;
   if(!confirm(`Remove ${ts.length === 1 ? '“' + ts[0].name + '”' : plural(ts.length, 'title')} from Cinema?${pcs ? '\n\nFilms and shows on your PC come back the next time the list is read from the PC (hide a PC collection in the PC app instead).' : ''}\n\nThe video files themselves are not deleted; copies made inside the app and phone copies saved from the PC are.`)) return;
@@ -825,7 +835,8 @@ function planSheet(plan, how, onAdd, skipped){
 /* puts a plan in the library; mk(v) makes the file's src (and stores a copy when needed) */
 async function addPlan(plan, mk, progress){ const now = Date.now(), fresh = []; let n = 0, failed = 0;
   for(const T of plan){ const p = {kind:T.kind, name:T.name, year:T.year};
-    let t = findTitle(T.shelf, p); if(!t){ t = newTitle(p, T.shelf); await saveTitle(t); fresh.push(t) }
+    let t = findTitle(T.shelf, p) || TITLES.find(x => x.want && x.kind === p.kind && norm(x.name) === norm(p.name)); if(!t){ t = newTitle(p, T.shelf); await saveTitle(t); fresh.push(t) }
+    if(t.want){ t.want = false; t.shelf = T.shelf; await saveTitle(t) }
     for(const v of T.vids){ n++; progress && progress(n, v.x.name);
       try{ const src = await mk(v.x), subs = []; for(const s of v.subs){ try{ const ss = await mk(s.s, true); subs.push(Object.assign(ss, {label:s.label, name:s.s.name})) }catch(e){} }
         await saveFile({id:'f' + uid(), tid:t.id, s:T.kind === 'show' ? v.p.s : null, e:T.kind === 'show' ? v.p.e : null, e2:v.p.e2 || null, part:v.p.part || null, etitle:v.p.etitle || '',
@@ -849,7 +860,7 @@ async function scanFolder(fo, quiet){ let list, stopped = false;
   const mine = FILES.filter(f => f.src && f.src.kind === 'link' && f.src.tree === fo.tree), have = new Set(mine.map(f => f.src.uri)), there = new Set(list.map(x => x.uri));
   /* gone from the folder: they go from Cinema too (unless the PC still has them) */
   const gone = mine.filter(f => !there.has(f.src.uri));
-  if(gone.length){ for(const f of gone){ f.src = null; if(f.pc) await dbPut('files', f) } await dropFiles(gone.filter(f => !f.pc && !f.local).map(f => f.id)); for(const t of TITLES.filter(t => !filesOf(t).length)) await dropTitle(t); reindex() }
+  if(gone.length){ for(const f of gone){ f.src = null; if(f.pc) await dbPut('files', f) } await dropFiles(gone.filter(f => !f.pc && !f.local).map(f => f.id)); for(const t of TITLES.filter(t => !filesOf(t).length && !t.want)) await dropTitle(t); reindex() }
   const fresh = list.filter(x => !have.has(x.uri) && (VID_RE.test(x.name) || SUB_RE.test(x.name))).map(x => ({path:x.path, name:x.name, size:x.size, uri:x.uri}));
   /* subtitles next to videos that are already in Cinema */
   const plan = makePlan(fresh, fo.hint), skipped = list.filter(x => have.has(x.uri) && VID_RE.test(x.name)).length;
@@ -1171,7 +1182,7 @@ async function unsave(files, quiet){ files = files.filter(f => f.local); if(!fil
       if(NvFiles) for(const u of gone) await NvFiles.remove({uri:u}).catch(() => {});
       if(r){ r.files = (r.files || []).filter(u => !gone.includes(u)); r.n = Math.max(0, (r.n || 0) - fs.length); r.size = all.filter(f => !fs.includes(f)).reduce((n, f) => n + (f.local.size || 0), 0); NVPC.offline.add(r) } } }
   for(const f of files){ f.local = null; if(f.pc || f.src) await dbPut('files', f) }
-  const bare = files.filter(f => !f.pc && !f.src).map(f => f.id); if(bare.length) await dropFiles(bare); for(const t of TITLES.filter(t => !filesOf(t).length)) await dropTitle(t);
+  const bare = files.filter(f => !f.pc && !f.src).map(f => f.id); if(bare.length) await dropFiles(bare); for(const t of TITLES.filter(t => !filesOf(t).length && !t.want)) await dropTitle(t);
   if(P.f && files.includes(P.f)) pClose(); closeSheet(); reindex(); draw(); if(!quiet) toast('Phone copy removed - it plays from the PC again when you are home') }
 /* a phone copy removed in The Nightvault › My PC: forget it here too */
 async function pruneSaved(){ if(!window.NVPC) return; const ch = [];
@@ -1207,6 +1218,7 @@ function appSettings(){ const all = shelves(true), fl = FOLDERS();
     <div class="sec">Playing</div>
     <div class="opt"><label for="as_next">Play the next episode by itself</label><input type="checkbox" id="as_next" ${S.autoNext ? 'checked' : ''}></div>
     ${window.NVPC && NVPC.native ? `<div class="opt"><label for="as_conv">Videos from the PC</label><select id="as_conv"><option value="auto" ${!S.conv || S.conv === 'auto' ? 'selected' : ''}>Convert only when needed</option><option value="always" ${S.conv === 'always' ? 'selected' : ''}>Always convert (smaller, steady)</option><option value="never" ${S.conv === 'never' ? 'selected' : ''}>Never convert</option></select></div>` : ''}
+    ${window.calSettingsHTML ? calSettingsHTML() : ''}
     <div class="sec">Subtitles</div>
     <div class="opt"><label for="as_sl">Language</label><select id="as_sl">${[['nl,en', 'Nederlands, else English'], ['en,nl', 'English, else Nederlands'], ['nl', 'Only Nederlands'], ['en', 'Only English']].map(([k, t]) => `<option value="${k}" ${(S.subLangs || []).join(',') === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
     <div class="opt"><label for="as_son">Subtitles on when a film starts</label><input type="checkbox" id="as_son" ${S.subOn ? 'checked' : ''}></div>
@@ -1223,7 +1235,7 @@ function appSettings(){ const all = shelves(true), fl = FOLDERS();
   if($('#as_pc')) $('#as_pc').onclick = () => { closeSheet(); pcSync(true) };
   if($('#as_sfx')) $('#as_sfx').onclick = async () => { try{ const f = await NvFiles.pickFolder(); lsSet('nvCinema.saveFolder', f); appSettings() }catch(e){} };
   $('#as_next').onchange = e => { S.autoNext = e.target.checked; saveS() };
-  $('#as_sl').onchange = e => { S.subLangs = e.target.value.split(','); saveS() };
+  $('#as_sl').onchange = e => { S.subLangs = e.target.value.split(','); saveS() }; if(window.calSettingsHook) calSettingsHook();
   $('#as_son').onchange = e => { S.subOn = e.target.checked; saveS() };
   if($('#as_auto')) $('#as_auto').onchange = e => { S.autoSubs = e.target.checked; saveS() };
   if($('#as_os')) $('#as_os').onclick = () => osSheet();
@@ -1240,7 +1252,7 @@ function appSettings(){ const all = shelves(true), fl = FOLDERS();
     if(fs){ scanFolder(FOLDERS()[+fs.dataset.fscan], false) }
     if(fd){ const f = FOLDERS()[+fd.dataset.fdel], n = FILES.filter(x => x.src && x.src.tree === f.tree);
       if(!confirm(`Forget the folder “${f.name}”? Its ${plural(n.length, 'video')} leave Cinema (the files stay on the phone).`)) return;
-      for(const x of n){ x.src = null; if(x.pc || x.local) await dbPut('files', x) } await dropFiles(n.filter(x => !x.pc && !x.local).map(x => x.id)); for(const t of TITLES.filter(t => !filesOf(t).length)) await dropTitle(t);
+      for(const x of n){ x.src = null; if(x.pc || x.local) await dbPut('files', x) } await dropFiles(n.filter(x => !x.pc && !x.local).map(x => x.id)); for(const t of TITLES.filter(t => !filesOf(t).length && !t.want)) await dropTitle(t);
       lsSet('nvCinema.folders', FOLDERS().filter(x => x.tree !== f.tree)); if(NvFiles && !lsGet('nvMusic.folders', []).concat(lsGet('nvAudio.folders', [])).some(x => x.tree === f.tree)) NvFiles.forget({tree:f.tree}).catch(() => {});
       reindex(); appSettings(); draw(); toast('Folder forgotten') } });
   $('#as_save').onclick = () => saveBackup(); $('#as_load').onclick = () => loadBackup() }
@@ -1274,7 +1286,7 @@ function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh);
     lsSet('nvCinema.shelves', set); draw() };
   $('#ss_hide').onclick = () => { const set = lsGet('nvCinema.shelves', {}); set.hidden = set.hidden || {}; set.hidden[sh] = true; lsSet('nvCinema.shelves', set); closeSheet(); V = [{v:'shelves'}]; draw(); toast(`${s.name} is hidden - show it again in Settings on the first page`, 4500) };
   $('#ss_all').onclick = () => appSettings() }
-$('#setbtn').onclick = () => { const v = cur(); if(v.v === 'shelves' || v.v === 'title') appSettings(); else shelfSettings(v.shelf) };
+$('#setbtn').onclick = () => { const v = cur(); if(v.v === 'shelves' || v.v === 'title' || v.v === 'cal') appSettings(); else shelfSettings(v.shelf) };
 $('#addbtn').onclick = () => addSheet();
 
 /* ---------- backup file: titles, where the videos are, what you watched, groups and settings (not the videos, not the TMDB key) ---------- */
@@ -1310,10 +1322,13 @@ document.addEventListener('visibilitychange', () => { if(document.hidden) window
   const Pq = new URLSearchParams(location.search), sh = Pq.get('shelf');
   if(sh) V.push({v:'shelf', shelf:sh});
   { const h = window.NVHERE && NVHERE.take('nvCinema.here'); if(h && Array.isArray(h.V) && h.V.length) V = h.V }
+  if(Pq.get('title') && TM[Pq.get('title')]) V = [{v:'shelves'}, {v:'title', id:Pq.get('title'), shelf:TM[Pq.get('title')].shelf}];
+  if(Pq.get('view') === 'cal') V = [{v:'shelves'}, {v:'cal'}];
+  if(window.calStart) await calStart();
   try{ draw() }catch(e){ V = [{v:'shelves'}]; draw() } L('start', `${TITLES.length} titles, ${FILES.length} videos`);
   if(hasPc()) pcSync(false, true);
   setTimeout(() => autoMatch(), 1500);
   /* folders on the phone: look for new videos now and then (quietly) */
   if(NvFiles && FOLDERS().length && Date.now() - lsGet('nvCinema.scanAt', 0) > 6 * 3600e3) setTimeout(async () => { for(const f of FOLDERS()) await scanFolder(f, true).catch(() => {}); lsSet('nvCinema.scanAt', Date.now()) }, 4000);
-  window.NVCINEMA = {get titles(){ return TITLES }, get files(){ return FILES }, get watch(){ return WATCH }, P, draw, go, play, pClose, parseVideo, makePlan, addPlan, mergePc, pcSync, parseSubs, guessSeries, seriesOf, nextUp, bestMatch, autoMatch, setWatch, groupsOf};   // for testing
+  window.NVCINEMA = {get titles(){ return TITLES }, get files(){ return FILES }, get watch(){ return WATCH }, P, draw, go, play, pClose, parseVideo, makePlan, addPlan, mergePc, pcSync, parseSubs, guessSeries, seriesOf, nextUp, bestMatch, autoMatch, setWatch, groupsOf, get V(){ return V }};   // for testing
 })();

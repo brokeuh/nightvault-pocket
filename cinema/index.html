@@ -181,6 +181,16 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 #player #pcue{position:absolute;left:0;right:0;bottom:calc(9% + env(safe-area-inset-bottom,0px));text-align:center;pointer-events:none;padding:0 8%;font-size:clamp(16px,3.6vmin,30px);line-height:1.35;font-weight:600;transition:bottom .25s}
 #player:not(.hideui) #pcue{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 #player #pcue span{background:#000b;color:#fff;padding:2px 10px;border-radius:6px;-webkit-box-decoration-break:clone;box-decoration-break:clone;text-shadow:0 1px 2px #000}
+/* the calendar */
+.calw .pic .when{position:absolute;left:8px;top:8px;background:#0b0e13d9;color:var(--accent);font-size:11px;font-weight:800;padding:3px 8px;border-radius:99px;z-index:1}
+.calrow .r{min-width:84px}
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:6px}
+.mgrid .mh{font-size:11px;color:var(--dim2);text-align:center;font-weight:700;padding:2px 0}
+.mgrid .md{min-height:64px;border-radius:10px;background:var(--pan2);border:1px solid var(--line);padding:4px;cursor:pointer;overflow:hidden;display:flex;flex-direction:column;gap:2px}
+.mgrid .md span{font-size:12px;color:var(--dim)}.mgrid .md.today{border-color:var(--accentb)}.mgrid .md.today span{color:var(--accent);font-weight:800}
+.mgrid .md.sel{background:var(--accentbg)}.mgrid .md.has span{color:var(--text)}
+.mgrid .md i{font-style:normal;font-size:9.5px;line-height:1.2;padding:1px 3px;border-radius:4px;background:#16243a;color:#bcd4ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mgrid .md i.film,.mgrid .md i.saga{background:#3a1620;color:#ffb0a8}.mgrid .md i.more{background:none;color:var(--dim)}
 /* Play on TV: the remote */
 #tvr{position:fixed;inset:0;z-index:120;background:var(--bg);overflow:auto}
 #tvr .tvbg{position:absolute;inset:0 0 auto 0;height:300px;background-size:cover;background-position:center;opacity:.25;filter:blur(3px);mask-image:linear-gradient(#000 30%,transparent)}
@@ -210,5 +220,6 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 
 <script src="app.js"></script>
 <script src="tv.js"></script>
+<script src="calendar.js"></script>
 </body>
 </html>

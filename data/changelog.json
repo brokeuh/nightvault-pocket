@@ -3,6 +3,27 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 106,
+   "date": "2026-10-22",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "cinema",
+    "hub"
+   ],
+   "title": "Cinema: Coming soon – the calendar",
+   "items": [
+    "New in Cinema: “Coming soon”. The start page shows what is coming in the next weeks; tap Calendar › for everything, as a list by week or as a month.",
+    "It shows new episodes of your shows, the next film of a film series you have (like a new Shrek), and the films and shows on your new “want to see” list.",
+    "Want to see: Calendar → ♥ Want to see…, search a film or show. It gets its own shelf, shows its release dates for Belgium (in cinemas, streaming & buy, DVD & Blu-ray – Dutch dates when Belgium has none) and where to watch it in Belgium.",
+    "A reminder on your phone on the day (at 9:00 – change it or switch it off in ⚙ → Calendar, or tap 🔔 to stop it for one show). Tap the reminder to open it.",
+    "Shows with an episode that came out since you last watched get a NEW EP mark.",
+    "Uses your TMDB key; the dates are looked up twice a day when you open Cinema."
+   ]
+  },
+  {
    "id": 105,
    "date": "2026-10-22",
    "where": [

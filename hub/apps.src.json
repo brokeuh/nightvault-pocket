@@ -180,6 +180,7 @@
         "cinema/index.html",
         "cinema/app.js",
         "cinema/tv.js",
+        "cinema/calendar.js",
         "cinema/manifest.webmanifest"
       ],
       "provides": [

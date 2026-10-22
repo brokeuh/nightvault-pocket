@@ -373,6 +373,8 @@ async function pcState(force){ const el = $('#pcst'); if(!el) return; el.classNa
 
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
   A.addListener('backButton', () => { if(!$('#bksheet').hidden){ $('#bkdone').click(); return } if(!$('#pcsheet').hidden){ $('#pcdone').click(); return } if(!$('#wnsheet').hidden){ $('#wndone').click(); return } if(!$('#appsheet').hidden){ $('#appsdone').click(); return } if(arranging){ $('#arrange').click(); return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
+/* a reminder from an app was tapped (e.g. Cinema's "new episode today"): its extra.url says which page to open (shared – any app can use it) */
+if(window.Capacitor && Capacitor.isPluginAvailable && Capacitor.isPluginAvailable('LocalNotifications')) try{ Capacitor.registerPlugin('LocalNotifications').addListener('localNotificationActionPerformed', a => { const u = a && a.notification && a.notification.extra && a.notification.extra.url; if(u && /^[a-z]+\/index\.html/.test(u)) location.href = '../' + u }) }catch(e){}
 window.addEventListener('pageshow', e => { if(e.persisted && CAT.length && !$('#home').hidden) home() });
 </script>
 </body>
