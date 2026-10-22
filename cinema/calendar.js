@@ -104,8 +104,9 @@ const hashNum = s => { let h = 7; for(const c of String(s)) h = (h * 31 + c.char
 async function askReminders(){ if(!LN) return false; try{ let p = await LN.checkPermissions(); if(p.display !== 'granted') p = await LN.requestPermissions(); return p.display === 'granted' }catch(e){ return false } }
 
 /* ---------- the start page: "Coming soon" ---------- */
-window.calTeaserHTML = () => { if(!TKEY()) return ''; const ev = calEvents().filter(e => e.date && daysFrom(e.date) >= 0 && daysFrom(e.date) <= 45).slice(0, 8);
-  if(!ev.length && !Object.keys(CALC).length) return '';
+window.calTeaserHTML = () => { const ev = TKEY() ? calEvents().filter(e => e.date && daysFrom(e.date) >= 0 && daysFrom(e.date) <= 45).slice(0, 8) : [];
+  if(!TKEY()) return `<div class="sec" style="display:flex;align-items:center">Coming soon<span style="flex:1"></span><span class="lnk" data-cal="1" style="text-transform:none;letter-spacing:0;font-weight:600">Calendar ›</span></div><p class="muted small" style="margin:0 0 8px">New episodes, the next film of your series and your want-to-see list - <span class="lnk" data-cal="1">add your free TMDB key</span> to see them.</p>`;
+  if(!ev.length && !Object.keys(CALC).length) return `<div class="sec" style="display:flex;align-items:center">Coming soon<span style="flex:1"></span><span class="lnk" data-cal="1" style="text-transform:none;letter-spacing:0;font-weight:600">Calendar ›</span></div><p class="muted small" style="margin:0 0 8px">${CALBUSY ? 'Looking up what is coming…' : '<span class="lnk" data-cal="1">Open the calendar</span> to look up what is coming.'}</p>`;
   return `<div class="sec" style="display:flex;align-items:center">Coming soon<span style="flex:1"></span><span class="lnk" data-cal="1" style="text-transform:none;letter-spacing:0;font-weight:600">Calendar ›</span></div>
     ${ev.length ? `<div class="cont">${ev.map(e => `<div class="cw calw" data-calev="${esc(e.id)}"><div class="pic"><div class="cv" style="position:absolute;inset:0;aspect-ratio:auto;border-radius:0">${phHTML({name:evTitle(e), kind:e.kind === 'ep' ? 'show' : 'movie'})}</div>${evImg(e, 'w300')}<span class="when">${daysFrom(e.date) === 0 ? 'Today' : daysFrom(e.date) === 1 ? 'Tomorrow' : dshort(e.date)}</span></div><div class="t">${esc(evTitle(e))}</div><div class="a">${esc(evSub(e))}</div></div>`).join('')}</div>` : '<p class="muted small" style="margin:0 0 8px">Nothing announced in the next weeks. <span class="lnk" data-cal="1">Open the calendar</span></p>'}` };
 const evImg = (e, w) => { const p = e.still || e.poster || ((TM[e.tid] || {}).backdrop) || ''; return p ? `<img src="${esc(IMG(p, w || 'w185'))}" alt="" onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` : '' };
@@ -118,6 +119,7 @@ function openEvent(e){ if(!e) return; if(e.tid && TM[e.tid]) return go({v:'title
 const CF = [['all', 'All'], ['ep', 'Episodes'], ['film', 'Films'], ['want', 'Want to see']];
 function calPass(e, f){ if(f === 'all') return true; if(f === 'ep') return e.kind === 'ep'; if(f === 'film') return e.kind !== 'ep'; const t = TM[e.tid]; return !!(t && isWant(t)) }
 function drawCal(){ const body = $('#body'); $('#vtitle').textContent = 'Coming soon'; document.title = 'Coming soon · Cinema';
+  if(TKEY() && !CALBUSY && Date.now() - lsGet('nvCinema.calAt', 0) > 12 * 3600e3) setTimeout(() => refreshCal(false), 50);
   if(!TKEY()){ body.innerHTML = `<div class="empty">${shelfIcon({s:'#ffb0a8', icon:'cal'}, 48)}<h2 style="margin:8px 0 4px;font-size:18px">The calendar needs TMDB</h2><p class="muted small">Add your free TMDB key first (⚙ → TMDB) - it knows when episodes air and films come out.</p><button class="btn primary" id="caltm">Add the TMDB key</button></div>`; $('#caltm').onclick = () => tmdbSheet(); return }
   const f = S.calFilter || 'all', view = S.calView || 'list', all = calEvents().filter(e => calPass(e, f));
   let h = `<div class="chips">${CF.map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-cf="${k}">${t}</button>`).join('')}</div>
@@ -200,6 +202,9 @@ window.calTitle = async t => { const el = $('#tcal'); if(!el || !t.tmdb || !TKEY
 
 /* ---------- start: the saved calendar, a quiet look for new dates (twice a day), the reminder buttons ---------- */
 window.calStart = async () => {
+  const sb = $('#setbtn'); if(sb && !$('#calbtn')){ const b = document.createElement('button'); b.className = 'ib'; b.id = 'calbtn'; b.setAttribute('aria-label', 'Coming soon (calendar)');
+    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
+    b.onclick = () => { if(cur().v !== 'cal') go({v:'cal'}) }; sb.parentNode.insertBefore(b, sb) }
   try{ for(const r of await dbAll('kv')) if(String(r.id).startsWith('cal:')) CALC[r.id.slice(4)] = r.v }catch(e){}
   if(S.remind == null){ S.remind = true; S.remindAt = S.remindAt || '09:00'; saveS() }
   if(TKEY() && Date.now() - lsGet('nvCinema.calAt', 0) > 12 * 3600e3) setTimeout(() => refreshCal(false), 6000);

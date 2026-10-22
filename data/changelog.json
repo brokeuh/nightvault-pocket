@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 107,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "cinema"
+   ],
+   "title": "Cinema: the calendar is easier to find",
+   "items": [
+    "A calendar button (📅) at the top of Cinema, on every page, opens “Coming soon”.",
+    "The Coming soon row on Cinema's start page now always shows - without a TMDB key it tells you to add one (⚙ → TMDB), which the calendar needs for its dates."
+   ]
+  },
+  {
    "id": 106,
    "date": "2026-10-22",
    "where": [
