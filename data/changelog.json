@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 102,
+   "date": "2026-10-22",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: Google's own reason when Drive refuses a book",
+   "items": [
+    "When Google Drive refuses to send a book, Bookcase now shows Google's own reason (and writes it in the 🐞 log), so we can see what is going on."
+   ]
+  },
+  {
    "id": 101,
    "date": "2026-10-22",
    "where": [

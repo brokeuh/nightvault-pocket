@@ -2153,7 +2153,8 @@ async function driveRead(id, a, z){ if(z <= a) return new ArrayBuffer(0);
   const url = `${GD}files/${id}?alt=media&key=${encodeURIComponent(gkey())}`, H = cvHttp();
   for(let t = 0; ; t++){ try{
       if(H){ let r; try{ r = await H.get({url, headers:{Range:`bytes=${a}-${z - 1}`}, responseType:'blob', connectTimeout:30000, readTimeout:90000}) }catch(e){ throw new Error('Google Drive could not be reached – no internet?') }
-        if(r.status === 403 || r.status === 400) throw new Error(/key/i.test(JSON.stringify(r.data || '')) ? 'Google says the key is not right (Bookcase ⚙ → Google key)' : 'Google Drive refused (' + r.status + ') – maybe too many downloads today, try later');
+        if(r.status === 403 || r.status === 400){ let why = ''; try{ const t = typeof r.data === 'string' ? (r.data.length < 20000 ? (() => { try{ return new TextDecoder().decode(b64u8(r.data)) }catch(x){ return r.data } })() : '') : JSON.stringify(r.data); const j = JSON.parse(t.slice(t.indexOf('{'))); why = ((j.error || {}).errors || [{}])[0].reason + ': ' + (j.error || {}).message }catch(x){ why = String(typeof r.data === 'string' ? r.data.slice(0, 300) : JSON.stringify(r.data || '').slice(0, 300)) }
+          LE('drive', `refused ${r.status} for ${id}`, why); throw new Error(/key/i.test(why) && !/quota|limit/i.test(why) ? 'Google says the key is not right (Bookcase ⚙ → Google key)' : `Google Drive refused (${r.status}): ${why.slice(0, 160)}`) }
         if(r.status === 404) throw new Error('Not found on Google Drive – is the folder still shared with “Anyone with the link”?');
         if(r.status >= 400) throw new Error('Google Drive answered ' + r.status);
         const u8 = b64u8(r.data); return (r.status === 200 && u8.length > z - a ? u8.slice(a, z) : u8).buffer }
