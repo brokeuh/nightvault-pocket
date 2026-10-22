@@ -2100,13 +2100,17 @@ async function musicStart(){
   Q.list = (Q.list || []).filter(id => TRID[id]); Q.orig = (Q.orig || []).filter(id => TRID[id]); if(Q.pos >= Q.list.length) Q.pos = 0;
   drawM(); pruneOffline(); pcRefresh(false) }
 
+const saveHere = () => { if(window.NVHERE) MODE === 'music' ? NVHERE.save('nvMusic.here', {V:MV}) : NVHERE.save('nvAudio.here', {V:AV}) };   // back where you were (../hub/nvlog.js)
+document.addEventListener('visibilitychange', () => { if(document.hidden) saveHere() }); addEventListener('pagehide', saveHere);
 /* ---------- start ---------- */
 (async () => {
   if(MODE === 'music'){ document.title = 'Nightvault Music'; $('#lib').hidden = true; $('#mlib').hidden = false;
     try{ await openDB() }catch(e){ $('#mbody').innerHTML = `<div class="empty"><p>The app's storage cannot be opened here (${esc(e && e.message || e)}). In a private window, music cannot be kept.</p></div>`; return }
+    { const h = window.NVHERE && NVHERE.take('nvMusic.here'); if(h && Array.isArray(h.V) && h.V.length) MV = h.V }
     await musicStart(); return }
   try{ await openDB(); await loadLib() }catch(e){ $('#libbody').innerHTML = `<div class="empty"><p>The app's storage cannot be opened here (${esc(e && e.message || e)}). In a private window, audiobooks cannot be kept.</p></div>`; return }
-  await drawLib();
+  { const h = window.NVHERE && NVHERE.take('nvAudio.here'); if(h && Array.isArray(h.V) && h.V.length) AV = h.V }
+  try{ await drawLib() }catch(e){ AV = [{v:'home'}]; await drawLib() }
   const lastId = lsGet('nvAudio.last', null); if(lastId && BOOKS.find(b => b.id === lastId) && !(STATE[lastId] || {}).finished){ const b = BOOKS.find(x => x.id === lastId); cur = b; curPart = -1; drawMini(); drawLib() }
 })();
 window.NVAUDIO = {get cur(){ return cur }, get books(){ return BOOKS }, state:st, gpos, seekTo, openBook, togglePlay, mp4Info, mp3Info, flacInfo, oggInfo, wavInfo, fileInfo, review, au,

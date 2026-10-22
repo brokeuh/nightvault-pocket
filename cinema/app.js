@@ -1302,13 +1302,15 @@ if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App)
   A.addListener('pause', () => { if(!$('#player').hidden) pSave(true) }) }catch(e){}
 document.addEventListener('visibilitychange', () => { if(document.hidden && !$('#player').hidden) pSave(true) });
 
+document.addEventListener('visibilitychange', () => { if(document.hidden) window.NVHERE && NVHERE.save('nvCinema.here', {V}) }); addEventListener('pagehide', () => window.NVHERE && NVHERE.save('nvCinema.here', {V}));   // back where you were (../hub/nvlog.js)
 /* ---------- start ---------- */
 (async () => {
   try{ await openDB(); await loadLib() }catch(e){ $('#body').innerHTML = `<p class="muted">Cinema could not open its storage: ${esc(e.message || e)}</p>`; return }
   await pruneSaved().catch(e => LE('start', 'prune', e));
   const Pq = new URLSearchParams(location.search), sh = Pq.get('shelf');
   if(sh) V.push({v:'shelf', shelf:sh});
-  draw(); L('start', `${TITLES.length} titles, ${FILES.length} videos`);
+  { const h = window.NVHERE && NVHERE.take('nvCinema.here'); if(h && Array.isArray(h.V) && h.V.length) V = h.V }
+  try{ draw() }catch(e){ V = [{v:'shelves'}]; draw() } L('start', `${TITLES.length} titles, ${FILES.length} videos`);
   if(hasPc()) pcSync(false, true);
   setTimeout(() => autoMatch(), 1500);
   /* folders on the phone: look for new videos now and then (quietly) */

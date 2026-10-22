@@ -737,6 +737,7 @@ if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App)
     if(back()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 document.addEventListener('visibilitychange', () => { if(!document.hidden) sendPending() });
 
+document.addEventListener('visibilitychange', () => { if(document.hidden) window.NVHERE && NVHERE.save('nvBoard.here', {V}) }); addEventListener('pagehide', () => window.NVHERE && NVHERE.save('nvBoard.here', {V}));   // back where you were (../hub/nvlog.js)
 /* ---------- start ---------- */
 (async () => {
   try{ await openDB();
@@ -749,7 +750,8 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden) sendP
   /* back from Bookcase's reader: the same page as before (game page, group …) */
   let back0 = null; try{ back0 = JSON.parse(sessionStorage.getItem('nvBoard.view') || 'null'); sessionStorage.removeItem('nvBoard.view') }catch(e){}
   if(back0 && Array.isArray(back0.V) && back0.V.length) V = back0.V;
-  draw(); if(back0 && back0.y) scrollTo(0, back0.y); L('start', `${ITEMS.length} items, ${PLAYS.length} own plays`);
+  else { const h = window.NVHERE && NVHERE.take('nvBoard.here'); if(h && Array.isArray(h.V) && h.V.length) V = h.V }
+  try{ draw() }catch(e){ V = [{v:'shelves'}]; draw() } if(back0 && back0.y) scrollTo(0, back0.y); L('start', `${ITEMS.length} items, ${PLAYS.length} own plays`);
   const ch = await loadBgg(false); if(ch) rebuild(); if(ch || BGGERR) draw();
   sendPending();
   window.NVBOARD = {get items(){ return ITEMS }, get plays(){ return PLAYS }, get files(){ return FILES }, addFiles, openFile, allPlays, logPlay, draw, rebuild, loadBgg, sendPending};   // for testing

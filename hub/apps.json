@@ -18,7 +18,7 @@
     },
     {
      "path": "hub/nvlog.js",
-     "size": 13511
+     "size": 14367
     },
     {
      "path": "hub/nvpc.js",
@@ -35,9 +35,9 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 109205,
-   "hash": "ef2eea603c77",
-   "version": "2026.10.22.1523",
+   "size": 110061,
+   "hash": "75ed3f239bb6",
+   "version": "2026.10.22.1532",
    "updated": "2026-10-22"
   },
   {
@@ -224,7 +224,7 @@
     },
     {
      "path": "books/app.js",
-     "size": 304453
+     "size": 304402
     },
     {
      "path": "books/manifest.webmanifest",
@@ -274,9 +274,9 @@
    "uses": [],
    "entry": "books/?nv=hub",
    "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted.",
-   "size": 2430403,
-   "hash": "bc4c58a69e95",
-   "version": "2026.10.22.1523",
+   "size": 2430352,
+   "hash": "f2bbdd9e2049",
+   "version": "2026.10.22.1532",
    "updated": "2026-10-22"
   },
   {
@@ -288,7 +288,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 262060
+     "size": 262651
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -300,10 +300,10 @@
     "music"
    ],
    "uses": [],
-   "size": 262621,
-   "hash": "f44703ca7bd0",
-   "version": "2026.10.21.0712",
-   "updated": "2026-10-21"
+   "size": 263212,
+   "hash": "5883ffaacf36",
+   "version": "2026.10.22.1532",
+   "updated": "2026-10-22"
   },
   {
    "id": "audiobooks",
@@ -314,7 +314,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 262060
+     "size": 262651
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -326,10 +326,10 @@
     "audiobooks"
    ],
    "uses": [],
-   "size": 262621,
-   "hash": "f44703ca7bd0",
-   "version": "2026.10.21.0712",
-   "updated": "2026-10-21"
+   "size": 263212,
+   "hash": "5883ffaacf36",
+   "version": "2026.10.22.1532",
+   "updated": "2026-10-22"
   },
   {
    "id": "cinema",
@@ -343,7 +343,7 @@
     },
     {
      "path": "cinema/app.js",
-     "size": 175036
+     "size": 175454
     },
     {
      "path": "cinema/tv.js",
@@ -360,10 +360,10 @@
    "uses": [],
    "entry": "cinema/?nv=hub",
    "keepsData": "Your list, what you watched, groups and TMDB key stay on this device. Video files are never deleted.",
-   "size": 217517,
-   "hash": "5ef6440ecf6e",
-   "version": "2026.10.21.1025",
-   "updated": "2026-10-21"
+   "size": 217935,
+   "hash": "d9a41d0fa3ac",
+   "version": "2026.10.22.1532",
+   "updated": "2026-10-22"
   },
   {
    "id": "boardgames",
@@ -377,7 +377,7 @@
     },
     {
      "path": "boardgames/app.js",
-     "size": 96751
+     "size": 97171
     },
     {
      "path": "boardgames/manifest.webmanifest",
@@ -390,10 +390,10 @@
    "uses": [],
    "entry": "boardgames/?nv=hub",
    "keepsData": "Your plays, games added by hand, pictures and groups stay on this device. Games from BoardGameGeek come back by themselves.",
-   "size": 111700,
-   "hash": "7a997fb5eb13",
-   "version": "2026.10.21.0724",
-   "updated": "2026-10-21"
+   "size": 112120,
+   "hash": "cf28dbd519a3",
+   "version": "2026.10.22.1532",
+   "updated": "2026-10-22"
   },
   {
    "id": "print3d",
@@ -407,7 +407,7 @@
     },
     {
      "path": "print3d/app.js",
-     "size": 106705
+     "size": 107117
     },
     {
      "path": "print3d/viewer.js",
@@ -424,10 +424,10 @@
    "uses": [],
    "entry": "print3d/?nv=hub",
    "keepsData": "Your models list, prints, tags, groups and copies in the app stay on this device. Files in phone folders are never deleted.",
-   "size": 149681,
-   "hash": "2c506a1135ff",
-   "version": "2026.10.21.0712",
-   "updated": "2026-10-21"
+   "size": 150093,
+   "hash": "8275eaea8839",
+   "version": "2026.10.22.1532",
+   "updated": "2026-10-22"
   },
   {
    "id": "collectables",
@@ -457,7 +457,7 @@
     },
     {
      "path": "games/app.js",
-     "size": 108182
+     "size": 108597
     },
     {
      "path": "games/play.js",
@@ -474,10 +474,10 @@
    "uses": [],
    "entry": "games/?nv=hub",
    "keepsData": "Your games, copies, wishlist, groups and keys stay on this device.",
-   "size": 147491,
-   "hash": "1cde75650d49",
-   "version": "2026.10.21.0712",
-   "updated": "2026-10-21"
+   "size": 147906,
+   "hash": "e97da3bd2a37",
+   "version": "2026.10.22.1532",
+   "updated": "2026-10-22"
   }
  ]
 }

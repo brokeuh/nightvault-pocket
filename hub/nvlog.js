@@ -95,6 +95,13 @@
   const K = 'nvHere', native = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
   const onHub = /\/hub\/(index\.html)?$/.test(location.pathname);
   if(!onHub){
+    /* NVHERE: each app keeps its own screens – NVHERE.save('<app>.here', {V}) when it goes to the background, and at the start
+       NVHERE.take('<app>.here') gives them back only when the hub reopened this page after Android closed the app */
+    const resumed = /[?&]nvresume=1/.test(location.search);
+    if(resumed) try{ history.replaceState(null, '', location.pathname + location.search.replace(/([?&])nvresume=1(&|$)/, (m, a, b) => b ? a : '').replace(/[?&]$/, '') + location.hash) }catch(e){}
+    window.NVHERE = {resumed,
+      save(k, d){ try{ localStorage.setItem(k, JSON.stringify(Object.assign({}, d, {at:Date.now()}))) }catch(e){} },
+      take(k, ms){ if(!resumed) return null; try{ const d = JSON.parse(localStorage.getItem(k) || 'null'); return d && Date.now() - (d.at || 0) < (ms || 3 * 3600e3) ? d : null }catch(e){ return null } }};
     const mark = () => { if(/[?&]open=/.test(location.search)) return; try{ localStorage.setItem(K, JSON.stringify({url:location.pathname + location.search.replace(/[?&]nvresume=1/, ''), at:Date.now()})) }catch(e){} };
     document.addEventListener('visibilitychange', () => { if(document.hidden) mark() }); addEventListener('pagehide', mark);
     return }

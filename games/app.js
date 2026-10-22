@@ -813,11 +813,13 @@ function loadBackup(){ const i = document.createElement('input'); i.type = 'file
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
   A.addListener('backButton', () => { if(sheetOpen()){ closeSheet(); return } if(back()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 
+document.addEventListener('visibilitychange', () => { if(document.hidden) window.NVHERE && NVHERE.save('nvGames.here', {V}) }); addEventListener('pagehide', () => window.NVHERE && NVHERE.save('nvGames.here', {V}));   // back where you were (../hub/nvlog.js)
 /* ---------- start ---------- */
 (async () => {
   try{ await openDB(); await loadLib() }catch(e){ $('#body').innerHTML = `<p class="muted">Games could not open its storage: ${esc(e.message || e)}</p>`; return }
   const P = new URLSearchParams(location.search), sh = P.get('shelf');
   if(sh) V.push({v:'shelf', shelf:sh});
-  draw(); L('start', `${GAMES.length} games`);
+  { const h = window.NVHERE && NVHERE.take('nvGames.here'); if(h && Array.isArray(h.V) && h.V.length) V = h.V }
+  try{ draw() }catch(e){ V = [{v:'shelves'}]; draw() } L('start', `${GAMES.length} games`);
   window.NVGAMES = {get games(){ return GAMES }, draw, cleanRom:(...a) => cleanRom(...a), romEntries:(...a) => romEntries(...a), guessSeries, fromIgdb, steamImport, fillDetails, saveGame, newGame, net, go};   // for testing
 })();

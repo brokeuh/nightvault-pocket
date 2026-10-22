@@ -1377,7 +1377,7 @@ if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App)
 document.addEventListener('visibilitychange', () => { if(document.hidden){ if(R) saveState(R.b.id, true); if(E) ePos(); saveHere() } else if(R || E) awake(true) });
 addEventListener('pagehide', () => saveHere());
 /* where you are, for coming back after Android closed the app in the background (see the start) */
-function saveHere(){ try{ const rb = R && R.b && !R.b.handed ? R.b : E && E.b && !E.b.handed ? E.b : null; lsSet('nvBooks.here', {V, read:rb ? rb.id : null, at:Date.now()}) }catch(e){} }
+function saveHere(){ try{ const rb = R && R.b && !R.b.handed ? R.b : E && E.b && !E.b.handed ? E.b : null; window.NVHERE && NVHERE.save('nvBooks.here', {V, read:rb ? rb.id : null}) }catch(e){} }
 
 /* ---------- start ---------- */
 (async () => {
@@ -1388,10 +1388,8 @@ function saveHere(){ try{ const rb = R && R.b && !R.b.handed ? R.b : E && E.b &&
   /* back where you were (owner, 22 Oct): Android may close the app in the background; The Nightvault then reopens this page with
      ?nvresume=1 (../hub/nvlog.js) and Bookcase puts back the screens you had open – and the book you were reading, at your page. */
   let resumeBook = null;
-  if(P.get('nvresume')){ const h = lsGet('nvBooks.here', null);
-    if(h && Date.now() - (h.at || 0) < 3 * 3600e3 && Array.isArray(h.V) && h.V.length){ V = h.V; if(h.read && BK[h.read]) resumeBook = BK[h.read] }
-    try{ P.delete('nvresume'); history.replaceState(null, '', location.pathname + (P.toString() ? '?' + P : '')) }catch(e){} }
-  draw(); L('start', `${BOOKS.length} books${resumeBook || V.length > 1 ? ' – back where you were' : ''}`);
+  { const h = window.NVHERE && NVHERE.take('nvBooks.here'); if(h && Array.isArray(h.V) && h.V.length){ V = h.V; if(h.read && BK[h.read]) resumeBook = BK[h.read] } }
+  try{ draw() }catch(e){ LE('start', 'could not show the saved screen', e); V = [{v:'shelves'}]; resumeBook = null; draw() } L('start', `${BOOKS.length} books${resumeBook || V.length > 1 ? ' – back where you were' : ''}`);
   if(resumeBook) openReader(resumeBook).catch(e => LE('start', 'could not reopen the book', e));
   setTimeout(() => { checkNew(false, true).catch(e => LE('new', 'daily check', e)) }, 4000);
   window.NVBOOKS = {get books(){ return BOOKS }, openDoc, readMeta, parseName, zipOpen, openReader, draw};   // for testing

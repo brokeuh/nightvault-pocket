@@ -3,6 +3,27 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 105,
+   "date": "2026-10-22",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music",
+    "audiobooks",
+    "cinema",
+    "games",
+    "boardgames",
+    "print3d",
+    "hub"
+   ],
+   "title": "Every app comes back where you were",
+   "items": [
+    "Music, Audiobooks, Cinema, Games, Boardgames and 3D Print now also put back the screen you were on (a shelf, an album, a game page …) when Android closed The Nightvault in the background and you open it again within 3 hours."
+   ]
+  },
+  {
    "id": 104,
    "date": "2026-10-22",
    "where": [

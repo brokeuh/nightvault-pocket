@@ -824,6 +824,7 @@ if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App)
     if(back()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 document.addEventListener('keydown', e => { if(e.key === 'Escape' && FULL) fullView(false) });
 
+document.addEventListener('visibilitychange', () => { if(document.hidden) window.NVHERE && NVHERE.save('nvPrint.here', {V}) }); addEventListener('pagehide', () => window.NVHERE && NVHERE.save('nvPrint.here', {V}));   // back where you were (../hub/nvlog.js)
 /* ---------- start ---------- */
 (async () => {
   try{ await openDB();
@@ -832,7 +833,8 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape' && FULL) fullV
   catch(e){ $('#body').innerHTML = `<p class="muted">3D Print could not open its storage: ${esc(e.message || e)}</p>`; return }
   await dropKept().catch(() => {}); reindex();
   const P = new URLSearchParams(location.search); if(P.get('prints')) V.push({v:'prints'});
-  draw(); L('start', `${MODELS.length} models, ${EXTRAS.length} other files, ${PRINTS.length} prints`);
+  { const h = window.NVHERE && NVHERE.take('nvPrint.here'); if(h && Array.isArray(h.V) && h.V.length) V = h.V }
+  try{ draw() }catch(e){ V = [{v:'home'}]; draw() } L('start', `${MODELS.length} models, ${EXTRAS.length} other files, ${PRINTS.length} prints`);
   queuePreviews();
   if(window.NVPC && NVPC.native && NVPC.pc){ PCON = await NVPC.reachable(false); draw(); if(PCON && Date.now() - lsGet('nvPrint.pcAt', 0) > 3600e3) pcRefresh(false); else queuePreviews() }
   if(NvFiles && FOLDERS().length && Date.now() - lsGet('nvPrint.scanAt', 0) > 6 * 3600e3) setTimeout(async () => { for(const f of FOLDERS()) await scanFolder(f, true).catch(() => {}); lsSet('nvPrint.scanAt', Date.now()) }, 4000);
