@@ -3,6 +3,25 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 111,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "The Nightvault: square tiles, a menu and themes",
+   "items": [
+    "The home screen now shows your apps as square tiles, three across, so you see more without scrolling.",
+    "A small glowing dot on a tile tells you something: green = something new in the app, blue = an update or news, orange = needs attention (like an old backup).",
+    "The buttons at the top are gone from the header and live in the ☰ menu: My PC, Backups, Apps & updates, New in your apps, Arrange tiles, Add more apps, Dark/Light and Debug mode.",
+    "New Appearance screen (☰ > All themes & colours): 10 themes including the new Gold, Rose and Sand, a light/dark switch, and 'Your own colours' where you pick 4 colours and it warns when text is hard to read.",
+    "For now only The Nightvault itself follows the theme; the other apps will join one by one."
+   ]
+  },
+  {
    "id": 110,
    "date": "2026-10-23",
    "where": [

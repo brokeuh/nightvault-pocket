@@ -13,7 +13,8 @@
         "hub/nvpc.js",
         "hub/nvgroups.js",
         "hub/nvbackup.js",
-        "hub/nvsetup.js"
+        "hub/nvsetup.js",
+        "hub/nvtheme.js"
       ],
       "provides": [],
       "uses": []

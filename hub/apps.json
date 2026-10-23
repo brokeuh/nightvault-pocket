@@ -10,7 +10,7 @@
    "files": [
     {
      "path": "hub/index.html",
-     "size": 45549
+     "size": 69778
     },
     {
      "path": "hub/core.js",
@@ -35,13 +35,17 @@
     {
      "path": "hub/nvsetup.js",
      "size": 23197
+    },
+    {
+     "path": "hub/nvtheme.js",
+     "size": 9335
     }
    ],
    "provides": [],
    "uses": [],
-   "size": 133781,
-   "hash": "1b97936f9f08",
-   "version": "2026.10.23.0837",
+   "size": 167345,
+   "hash": "82a91b8dd931",
+   "version": "2026.10.23.1239",
    "updated": "2026-10-23"
   },
   {

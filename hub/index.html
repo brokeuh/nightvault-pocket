@@ -10,68 +10,142 @@
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="nvtheme.js"></script>
+<script>try{NVTHEME.apply('hub')}catch(e){}</script>
 <script src="core.js"></script>
 <script src="nvlog.js"></script>
 <script src="nvpc.js"></script>
 <script src="nvbackup.js"></script>
 <style>
-:root{--bg:#0b0e13;--pan:#151a22;--pan2:#10141b;--line:#232b36;--text:#e9edf2;--dim:#9aa7b5;--dim2:#8fa0b2;--accent:#5fe0b0;--accentd:#2a8f6a;--amber:#f1dc6b;--red:#ef8a8f}
+/* colours come from nvtheme.js (NVTHEME.apply('hub') in the head); these are the Midnight values, used if that file is missing */
+:root{--bg:#0b0e13;--pan:#151a22;--pan2:#10141b;--line:#232b36;--line2:#33404f;--text:#e9edf2;--dim:#9aa7b5;--dim2:#8fa0b2;--accent:#5fe0b0;--accentt:#5fe0b0;--onaccent:#0b0e13;--g:#4ee0a0;--b:#6aa8ff;--o:#ffa94d;--amber:#f1dc6b;--red:#ef8a8f;--dk:0%;--scrim:rgba(0,0,0,.55)}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 'DM Sans',system-ui,sans-serif}
-body{max-width:560px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(28px + env(safe-area-inset-bottom,0px))}
-a{color:var(--accent)}
+body{max-width:560px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top,0px)) 16px calc(28px + env(safe-area-inset-bottom,0px))}
+a{color:var(--accentt)}
+button{font-family:inherit}
 [hidden]{display:none!important}
 .top{display:flex;align-items:center;gap:12px;padding:6px 0 4px}
 .logo{width:42px;height:42px;border-radius:13px;background:#1b2150;display:flex;align-items:center;justify-content:center;flex:none}
-.word{font-family:'Unbounded',sans-serif;font-weight:700;font-size:18px;letter-spacing:.5px}
-.sub{font-size:12px;color:var(--dim2)}
-.ib{width:44px;height:44px;border-radius:14px;border:1px solid var(--line);background:var(--pan);display:flex;align-items:center;justify-content:center;padding:0;color:#c4cdd8;cursor:pointer;flex:none}
-.cont{margin:14px 0 4px;padding:13px 16px;border-radius:16px;background:linear-gradient(135deg,#1a2a55,#13342c);border:1px solid #2a3b62;display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--text)}
-.cont small{display:block;font-size:11px;color:#a9c4ff;font-weight:700;letter-spacing:.6px}
+.word{font-family:'Unbounded',sans-serif;font-weight:700;font-size:clamp(13px,4.4vw,17px);letter-spacing:.5px;white-space:nowrap}
+.sub{font-size:12px;color:var(--dim2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{width:44px;height:44px;border-radius:14px;border:1px solid var(--line);background:var(--pan);display:flex;align-items:center;justify-content:center;padding:0;color:var(--text);cursor:pointer;flex:none;position:relative}
+.cont{margin:14px 0 0;padding:11px 14px;border-radius:16px;background:var(--pan);border:1px solid var(--line);display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--text)}
+.cont small{display:block;font-size:10.5px;color:var(--accentt);font-weight:700;letter-spacing:.6px}
 .cont b{display:block;font-size:14.5px;margin-top:2px}
-.head{display:flex;align-items:baseline;justify-content:space-between;padding:18px 0 8px}
-.head span{font-size:13px;font-weight:700;color:var(--dim2);letter-spacing:.6px}
-.lnk{background:none;border:0;color:var(--accent);font:inherit;font-size:13.5px;cursor:pointer;padding:6px 0}
-.apps{display:flex;flex-direction:column;gap:12px}
-.app{display:flex;align-items:center;gap:14px;padding:16px;border-radius:22px;background:var(--pan);border:1px solid var(--line);text-decoration:none;color:var(--text)}
-a.app:active{transform:scale(.985)}a.app:hover{border-color:#33404f}
-.ic{width:58px;height:58px;border-radius:17px;display:flex;align-items:center;justify-content:center;flex:none}
+.lnk{background:none;border:0;color:var(--accentt);font:inherit;font-size:13.5px;cursor:pointer;padding:6px 0}
+
+/* the tiles: square, three across */
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.tile{position:relative;aspect-ratio:1/1;border-radius:20px;background:var(--pan);border:1px solid var(--line);padding:8px 6px 9px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;text-decoration:none;color:var(--text);text-align:center;min-width:0}
+a.tile:active{transform:scale(.97)}a.tile:hover{border-color:var(--line2)}
+.ico{width:clamp(48px,17vw,64px);height:clamp(48px,17vw,64px);border-radius:20px;margin:auto 0;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--c) 20%,var(--pan));color:color-mix(in srgb,var(--c),#000 var(--dk))}
+.ico svg{width:clamp(30px,10.5vw,38px);height:clamp(30px,10.5vw,38px)}
+.tile b{font-size:clamp(11.5px,3.4vw,13.5px);font-weight:700;line-height:1.15;max-width:100%;overflow-wrap:anywhere}
+.tile.off{opacity:.45}
+.dot{position:absolute;top:9px;right:9px;width:9px;height:9px;border-radius:50%;background:var(--dc);animation:glow 2.4s ease-in-out infinite}
+.dot.g,.pip.g{--dc:var(--g)}.dot.b,.pip.b{--dc:var(--b)}.dot.o,.pip.o{--dc:var(--o)}
+@keyframes glow{0%,100%{box-shadow:0 0 0 2px color-mix(in srgb,var(--dc) 25%,transparent),0 0 6px var(--dc)}50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--dc) 14%,transparent),0 0 14px var(--dc)}}
+@media (prefers-reduced-motion:reduce){.dot{animation:none}}
+.pip{display:inline-block;flex:none;width:9px;height:9px;border-radius:50%;background:var(--dc);box-shadow:0 0 0 2px color-mix(in srgb,var(--dc) 25%,transparent),0 0 6px var(--dc)}
+.tctl{position:absolute;left:5px;right:5px;top:5px;display:flex;justify-content:space-between;gap:4px}
+.tctl button{width:28px;height:28px;border-radius:9px;border:1px solid var(--line);background:var(--pan2);color:var(--text);font-size:15px;line-height:1;padding:0;cursor:pointer}
+.tctl button:disabled{opacity:.3;cursor:default}
+.arrbar{margin-top:14px;padding:10px 14px;border-radius:14px;background:var(--pan);border:1px solid var(--line);display:flex;align-items:center;gap:10px;font-size:13px;color:var(--dim)}
+.arrbar span{flex:1}
+.more{padding:16px;border-radius:22px;border:1px dashed var(--line2);color:var(--dim2);font-size:14px;display:flex;align-items:center;gap:12px;background:none;width:100%;font-family:inherit;cursor:pointer;text-align:left;grid-column:1/-1}
+.foot{margin-top:22px;font-size:12px;color:var(--dim2);text-align:center}
+
+/* the ☰ menu */
+.menu{position:fixed;inset:0;z-index:20}
+.menu .scrim{position:absolute;inset:0;background:var(--scrim)}
+.menubox{position:absolute;top:calc(68px + env(safe-area-inset-top,0px));right:max(16px,calc((100vw - 560px)/2 + 16px));width:min(290px,calc(100vw - 32px));max-height:calc(100vh - 90px - env(safe-area-inset-top,0px));overflow:auto;padding:6px;border-radius:18px;background:var(--pan);border:1px solid var(--line);box-shadow:0 18px 40px rgba(0,0,0,.35)}
+.mi{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:var(--text);font:inherit;font-size:14.5px;text-align:left;cursor:pointer}
+.mi:hover,.mi:active{background:var(--pan2)}
+.mi .h{font-size:12px;color:var(--dim2);text-align:right}
+.lb{display:flex;align-items:center;gap:9px}
+.hr{height:1px;background:var(--line);margin:4px 8px}
+.seg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--pan)}
+.seg button{flex:1;white-space:nowrap;min-height:40px;border:0;background:transparent;color:var(--text);font-size:13px;font-weight:700;cursor:pointer;padding:0 10px}
+.seg button.on{background:var(--text);color:var(--bg)}
+.menubox .seg{flex:none;border-radius:10px}.menubox .seg button{min-height:34px;padding:0 12px;font-size:12.5px}
+.mrow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:0 12px;font-size:14.5px}
+
+.btn{height:48px;border-radius:14px;border:1px solid var(--line);background:var(--pan);color:var(--text);font:inherit;font-size:15px;cursor:pointer;padding:0 18px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--onaccent);font-weight:700}
+.btn.sm{white-space:nowrap;height:38px;font-size:13.5px;padding:0 13px;border-radius:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.ic{width:58px;height:58px;border-radius:17px;display:flex;align-items:center;justify-content:center;flex:none;background:color-mix(in srgb,var(--c) 20%,var(--pan));color:color-mix(in srgb,var(--c),#000 var(--dk))}
 .ic.s{width:44px;height:44px;border-radius:13px}
 .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .tx small{font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--dim2)}
 .tx b{font-size:17px}
 .tx .d{font-size:13px;color:var(--dim);line-height:1.35}
-.tag{font-size:10.5px;font-weight:700;letter-spacing:.4px;padding:2px 8px;border-radius:99px;align-self:flex-start;margin-top:4px;background:#26303b;color:#c4cdd8}
-.tag.new{background:#173a30;color:var(--accent)}.tag.soon{background:#3b3515;color:var(--amber)}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.4px;padding:2px 8px;border-radius:99px;align-self:flex-start;margin-top:4px;background:var(--line);color:var(--dim)}
+.tag.new{background:color-mix(in srgb,var(--g) 18%,var(--pan));color:var(--g)}.tag.soon{background:color-mix(in srgb,var(--amber) 18%,var(--pan));color:var(--amber)}
 .off{opacity:.45}
 .ctl{display:flex;gap:6px;flex:none}
-.ctl button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--pan2);color:#c4cdd8;font-size:16px;cursor:pointer}
-.more{padding:16px;border-radius:22px;border:1px dashed #2f3a48;color:var(--dim2);font-size:14px;display:flex;align-items:center;gap:12px;background:none;width:100%;font-family:inherit;cursor:pointer;text-align:left}
-.foot{margin-top:22px;font-size:12px;color:#6f7d8c;text-align:center}
-.btn{height:48px;border-radius:14px;border:1px solid var(--line);background:var(--pan);color:var(--text);font:inherit;font-size:15px;cursor:pointer;padding:0 18px}
-.btn.primary{background:var(--accentd);border-color:#3fbf91;color:#fff;font-weight:700}
-.btn.sm{height:38px;font-size:13.5px;padding:0 13px;border-radius:12px}
-.btn:disabled{opacity:.5;cursor:default}
+.ctl button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--pan2);color:var(--dim);font-size:16px;cursor:pointer}
 .pick{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:var(--pan);border:1px solid var(--line);cursor:pointer}
-.pick input{width:22px;height:22px;accent-color:var(--accentd);flex:none}
+.pick input{width:22px;height:22px;accent-color:var(--accent);flex:none}
 .pick.dis{cursor:default;opacity:.6}
+.app{display:flex;align-items:center;gap:14px;padding:16px;border-radius:22px;background:var(--pan);border:1px solid var(--line);text-decoration:none;color:var(--text)}
 .meta{font-size:12px;color:var(--dim2)}
-.bar{height:6px;border-radius:99px;background:#232b36;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .15s}
+.bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .15s}
 .sheet{position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:5;padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(28px + env(safe-area-inset-bottom,0px))}
 .sheet>div{max-width:560px;margin:0 auto}
+.sheettitle{flex:1;text-align:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;margin-right:64px}
 .sec{font-size:13px;font-weight:700;color:var(--dim2);letter-spacing:.6px;margin:20px 0 8px}
 .row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:var(--pan);border:1px solid var(--line);margin-bottom:10px;flex-wrap:wrap}
 .works{flex-basis:100%;font-size:12.5px;color:var(--dim);display:flex;flex-wrap:wrap;gap:6px 10px;padding-left:56px}
-.works .ok{color:var(--accent)}
-.upd{margin:12px 0 4px;padding:14px;border-radius:18px;background:linear-gradient(135deg,#173a30,#13283d);border:1px solid #2e6b55}
-.upd b{display:block;font-size:15px}.upd .meta{margin-top:3px;font-size:12.5px;color:#b9c7d6}.upd .bar{margin-top:10px}
+.works .ok{color:var(--accentt)}
+.upd{margin:12px 0 4px;padding:14px;border-radius:18px;background:color-mix(in srgb,var(--b) 12%,var(--pan));border:1px solid color-mix(in srgb,var(--b) 40%,var(--line))}
+.upd b{display:block;font-size:15px}.upd .meta{margin-top:3px;font-size:12.5px;color:var(--dim)}.upd .bar{margin-top:10px}
 .upd .acts{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
 .clog{padding:12px 0;border-bottom:1px solid var(--line)}.clog:last-child{border-bottom:0}.clog .clh{display:flex;justify-content:space-between;gap:10px}.clog .clh span{font-size:12px;color:var(--dim2);flex:none}
 .fld{width:100%;height:48px;border-radius:14px;border:1px solid var(--line);background:var(--pan2);color:var(--text);padding:0 14px;font:inherit;font-size:16px;margin-top:6px}
-.pcst{display:inline-flex;align-items:center;gap:6px;font-size:13px}.pcst i{width:9px;height:9px;border-radius:50%;background:#6f7d8c;display:inline-block}.pcst.ok i{background:var(--accent)}.pcst.no i{background:var(--red)}
-.clog ul{margin:6px 0 0;padding-left:18px;color:#c9d3de;font-size:13.5px}.clog .for{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.4px}
-#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222a33;border:1px solid var(--line);padding:10px 14px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9;max-width:90vw}
+.pcst{display:inline-flex;align-items:center;gap:6px;font-size:13px}.pcst i{width:9px;height:9px;border-radius:50%;background:var(--dim2);display:inline-block}.pcst.ok i{background:var(--g)}.pcst.no i{background:var(--red)}
+.clog ul{margin:6px 0 0;padding-left:18px;color:var(--text);font-size:13.5px}.clog .for{font-size:11px;color:var(--accentt);font-weight:700;letter-spacing:.4px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--pan);color:var(--text);border:1px solid var(--line2);padding:10px 14px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;max-width:90vw;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 #toast.on{opacity:1}
+
+/* Appearance: themes */
+.card{margin-top:12px;padding:12px 14px;border-radius:16px;background:var(--pan);border:1px solid var(--line);display:flex;align-items:center;gap:12px}
+.card .tt{flex:1;min-width:0}.card .tt b{display:block;font-size:14.5px}.card .tt span{display:block;font-size:12px;color:var(--dim2);line-height:1.35;margin-top:1px}
+.sw{position:relative;width:50px;height:30px;border-radius:15px;border:0;background:var(--line2);padding:0;flex:none;cursor:pointer}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--bg);transition:left .15s}
+.sw.on{background:var(--g)}.sw.on::after{left:23px}
+.sel1{height:40px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit;font-size:14px;font-weight:700;padding:0 10px;max-width:58%}
+.pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 10px}
+.pv{display:flex;flex-direction:column;gap:6px;padding:0;border:0;background:transparent;color:var(--text);text-align:center;position:relative;cursor:pointer;font:inherit}
+.pvbox{display:block;height:68px;border-radius:15px;background:var(--pb);border:1px solid var(--line);position:relative}
+.pvcard{position:absolute;left:10px;right:10px;top:11px;bottom:11px;border-radius:9px;background:var(--pc);padding:7px 8px;display:flex;flex-direction:column;gap:5px;border:1px solid color-mix(in srgb,var(--pt) 16%,transparent)}
+.pvcard i{display:block;border-radius:3px}.pvacc{width:28px;height:7px;border-radius:4px!important;background:var(--pa)}.pvl{height:5px;background:var(--pt);opacity:.75}.pvl.s{width:60%;opacity:.4}
+.pvname{font-size:12.5px;font-weight:500;line-height:1.2}.pvname em{font-style:normal;font-size:9.5px;font-weight:700;letter-spacing:.5px;color:var(--g);margin-left:4px}
+.pv.sel .pvbox{outline:2px solid var(--text);outline-offset:2px}
+.chk{display:none;position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:var(--text);align-items:center;justify-content:center;color:var(--bg)}
+.pv.sel .chk{display:flex}
+.ownrow{margin-top:16px;width:100%;min-height:52px;border-radius:16px;border:1px dashed var(--line2);background:transparent;color:var(--text);display:flex;align-items:center;gap:12px;padding:0 14px;font:inherit;font-size:14.5px;font-weight:700;cursor:pointer;text-align:left}
+.ownrow span{flex:1}.ownrow small{font-weight:400;color:var(--dim2);font-size:12px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;margin:0 -2px}
+.chip{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:99px;padding:7px 13px;font:inherit;font-size:12.5px;font-weight:500;flex:none;cursor:pointer}
+.chip.on{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:700}
+.ocprev{margin-top:14px;padding:14px;border-radius:18px;border:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.ocprev .w{font-family:'Unbounded',sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.5px}
+.ocprev .t3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ocprev .t3 div{position:relative;height:56px;border-radius:14px;padding:8px 10px;display:flex;align-items:flex-end;font-size:12px;font-weight:700}
+.ocprev .dt{position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--g);box-shadow:0 0 6px var(--g)}
+.ocrows{margin-top:12px;border-radius:18px;background:var(--pan);border:1px solid var(--line);overflow:hidden}
+.orow{display:flex;align-items:center;gap:12px;padding:9px 14px;min-height:58px}
+.orow+.orow{border-top:1px solid var(--line)}
+.orow .tt{flex:1;min-width:0}.orow .tt b{display:block;font-size:14.5px}.orow .tt span{display:block;font-size:12px;color:var(--dim2)}
+.orow input[type=color]{-webkit-appearance:none;appearance:none;width:38px;height:38px;border-radius:12px;border:1px solid color-mix(in srgb,var(--text) 28%,transparent);padding:0;background:none;cursor:pointer;flex:none}
+.orow input[type=color]::-webkit-color-swatch-wrapper{padding:0}.orow input[type=color]::-webkit-color-swatch{border:0;border-radius:11px}.orow input[type=color]::-moz-color-swatch{border:0;border-radius:11px}
+.hexin{width:84px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;padding:0 8px;text-transform:uppercase}
+.chkline{margin-top:12px;padding:11px 14px;border-radius:14px;background:var(--pan);border:1px solid var(--line);display:flex;align-items:center;gap:10px;font-size:12.5px;line-height:1.35}
+.chkline span:last-child{flex:1}
+.status{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:16px;background:var(--pan);border:1px solid var(--line);margin-bottom:10px;text-decoration:none;color:var(--text)}
+.status .pip{margin-top:6px}.status .tx b{font-size:15px}
 </style>
 </head>
 <body>
@@ -85,27 +159,43 @@ a.app:active{transform:scale(.985)}a.app:hover{border-color:#33404f}
   <div style="display:flex;gap:10px;margin-top:18px"><button class="btn primary" id="setgo" style="flex:1">Install</button></div>
 </div>
 
-<!-- home: tiles of the installed apps -->
+<!-- home: square tiles of the installed apps -->
 <div id="home" hidden>
   <div class="top">
     <div class="logo" id="lg2"></div>
     <div style="flex:1;min-width:0"><div class="word">THE NIGHTVAULT</div><div class="sub">Your apps · test version</div></div>
-    <button class="ib" id="pcbtn" aria-label="My PC and downloads" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></svg></button>
-    <button class="ib" id="bkbtn" aria-label="Backups"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"></path><path d="M8.5 12l2.5 2.5 4.5-5"></path></svg></button>
-    <button class="ib" id="appsbtn" aria-label="Apps"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><path d="M17 14v6M14 17h6" stroke-linecap="round"></path></svg></button>
+    <button class="ib" id="menubtn" aria-label="Menu" aria-haspopup="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg></button>
   </div>
   <div id="upd"></div>
   <div id="cont"></div>
-  <div class="head"><span>APPS</span><button class="lnk" id="arrange">Arrange</button></div>
-  <div class="apps" id="tiles"></div>
-  <div class="foot"><button class="lnk" id="wnbtn">What's new</button> · <button class="lnk" id="chkbtn">Check for updates</button> · <button class="lnk" id="dbgbtn">Debug mode</button><div id="verline" style="margin-top:6px"></div>The Nightvault is a test. Each app also works on its own - nothing changes in them.</div>
+  <div class="arrbar" id="arrbar" hidden><span>Arranging: ‹ › moves a tile, the tick hides or shows it.</span><button class="btn sm primary" id="arrdone">Done</button></div>
+  <div class="grid" id="tiles"></div>
+  <div class="foot"><button class="lnk" id="wnbtn">What's new</button> · <button class="lnk" id="chkbtn">Check for updates</button><div id="verline" style="margin-top:6px"></div>The Nightvault is a test. Each app also works on its own - nothing changes in them.</div>
+</div>
+
+<!-- the ☰ menu -->
+<div class="menu" id="menu" hidden><div class="scrim" id="menuscrim"></div>
+  <div class="menubox" role="menu">
+    <button class="mi" id="pcbtn" hidden><span class="lb">My PC</span></button>
+    <button class="mi" id="bkbtn"><span class="lb"><i class="pip o" id="pipbk" hidden></i>Backups</span></button>
+    <button class="mi" id="appsbtn"><span class="lb"><i class="pip b" id="pipap" hidden></i>Apps &amp; updates</span></button>
+    <button class="mi" id="newbtn"><span class="lb"><i class="pip g" id="pipnew" hidden></i>New in your apps</span></button>
+    <div class="hr"></div>
+    <button class="mi" id="arrange"><span class="lb">Arrange tiles</span></button>
+    <button class="mi" id="addbtn"><span class="lb">Add more apps</span></button>
+    <div class="hr"></div>
+    <div class="mrow"><span>Theme</span><div class="seg" id="modeseg"><button data-m="dark">Dark</button><button data-m="light">Light</button></div></div>
+    <button class="mi" id="thbtn"><span class="lb">All themes &amp; colours</span><span class="h" id="thname"></span></button>
+    <div class="hr"></div>
+    <button class="mi" id="dbgbtn"><span class="lb">Debug mode</span><span class="h"></span></button>
+  </div>
 </div>
 
 <!-- the Apps screen: install, update, remove -->
 <div class="sheet" id="appsheet" hidden><div>
   <div class="top"><button class="btn sm" id="appsdone">Done</button><div style="flex:1;text-align:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;margin-right:64px">Apps</div></div>
   <div id="applist"></div>
-  <label class="meta" style="display:flex;align-items:center;gap:10px;margin-top:18px"><input type="checkbox" id="ownchk" style="width:18px;height:18px;accent-color:var(--accentd)"> Show the apps only meant for the owner</label>
+  <label class="meta" style="display:flex;align-items:center;gap:10px;margin-top:18px"><input type="checkbox" id="ownchk" style="width:18px;height:18px;accent-color:var(--accent)"> Show the apps only meant for the owner</label>
 </div></div>
 <!-- what's new -->
 <div class="sheet" id="wnsheet" hidden><div>
@@ -123,6 +213,16 @@ a.app:active{transform:scale(.985)}a.app:hover{border-color:#33404f}
   <div class="top"><button class="btn sm" id="bkdone">Done</button><div style="flex:1;text-align:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;margin-right:64px">Backups</div></div>
   <div id="bkbody"></div>
 </div></div>
+<!-- New in your apps -->
+<div class="sheet" id="newsheet" hidden><div>
+  <div class="top"><button class="btn sm" id="newdone">Done</button><div class="sheettitle">New in your apps</div></div>
+  <div id="newbody"></div>
+</div></div>
+<!-- Appearance: themes and own colours (nvtheme.js) -->
+<div class="sheet" id="thsheet" hidden><div>
+  <div class="top"><button class="btn sm" id="thdone">Done</button><div class="sheettitle" id="thtitle">Appearance</div></div>
+  <div id="thbody"></div>
+</div></div>
 <div id="toast"></div>
 
 <script>
@@ -135,23 +235,24 @@ const toast = t => { const el = $('#toast'); el.textContent = t; el.className = 
 const LOGO = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5fe0b0" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="7" width="8" height="12" rx="1.5"></rect><path d="M6 9l-2 9 5 1.5M18 9l2 9-5 1.5"></path><path d="M6 4l3 1.5 3-1 3 1.5 3-1" stroke="#c9d2ff"></path></svg>';
 $('#lg1').innerHTML = $('#lg2').innerHTML = LOGO;
 const ICON = {
-  scanner:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#8fb0ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"></path><rect x="8" y="7" width="8" height="10" rx="1"></rect></svg>`,
-  binder:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#5fe0b0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="2"></rect><path d="M9 21h9a2 2 0 0 0 2-2V8"></path></svg>`,
-  convert:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#6fd3ea" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="10" height="13" rx="1.5"></rect><path d="M16 9h4v11H9v-3"></path><path d="M13 13l3 3"></path></svg>`,
-  go:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#f1dc6b" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M4 12h5M15 12h5"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
-  bookcase:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#f0b46a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"></path><rect x="4" y="5" width="4" height="15" rx="1"></rect><rect x="9" y="8" width="4" height="12" rx="1"></rect><path d="M15.2 9.2l3.6-1 2.9 11-3.6 1z"></path></svg>`,
-  music:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#d29bff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"></path><circle cx="6.5" cy="18" r="2.5"></circle><circle cx="17.5" cy="16" r="2.5"></circle></svg>`,
-  audiobooks:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#7fc4ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"></path><rect x="3" y="14" width="4" height="6" rx="1.5"></rect><rect x="17" y="14" width="4" height="6" rx="1.5"></rect><path d="M12 9v8M9.5 10.5c1 0 1.9.3 2.5.8.6-.5 1.5-.8 2.5-.8"></path></svg>`,
-  cinema:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#ff8fa3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="M3 10h18M7 6l2 4M12 6l2 4M17 6l2 4"></path></svg>`,
-  boardgames:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#9be07a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2.5"></rect><circle cx="9" cy="9" r="1.2"></circle><circle cx="15" cy="15" r="1.2"></circle><circle cx="15" cy="9" r="1.2"></circle><circle cx="9" cy="15" r="1.2"></circle></svg>`,
-  print3d:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#6fe0ea" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"></path><path d="M4 7.5l8 4.5 8-4.5M12 12v9"></path></svg>`,
-  collectables:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#f1dc6b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8-4.3-4.1 5.9-.8z"></path></svg>`,
-  games:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#a9b4ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9h10a4 4 0 0 1 3.9 4.9l-.6 2.6a2 2 0 0 1-3.4.9L15 15H9l-1.9 2.4a2 2 0 0 1-3.4-.9l-.6-2.6A4 4 0 0 1 7 9z"></path><path d="M8 11.5v2M7 12.5h2"></path><circle cx="15.5" cy="12" r=".8"></circle><circle cx="17" cy="13.5" r=".8"></circle></svg>`,
-  control:c =>`<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="#c4cdd8" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2"></circle><circle cx="15" cy="12" r="2"></circle><circle cx="7" cy="18" r="2"></circle></svg>`};
-const icon = (a, big) => `<div class="ic ${big ? '' : 's'}" style="background:${a.color}">${(ICON[a.id] || ICON.control)(big ? 30 : 22)}</div>`;
+  scanner:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"></path><rect x="8" y="7" width="8" height="10" rx="1"></rect></svg>`,
+  binder:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="2"></rect><path d="M9 21h9a2 2 0 0 0 2-2V8"></path></svg>`,
+  convert:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="10" height="13" rx="1.5"></rect><path d="M16 9h4v11H9v-3"></path><path d="M13 13l3 3"></path></svg>`,
+  go:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M4 12h5M15 12h5"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
+  bookcase:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"></path><rect x="4" y="5" width="4" height="15" rx="1"></rect><rect x="9" y="8" width="4" height="12" rx="1"></rect><path d="M15.2 9.2l3.6-1 2.9 11-3.6 1z"></path></svg>`,
+  music:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"></path><circle cx="6.5" cy="18" r="2.5"></circle><circle cx="17.5" cy="16" r="2.5"></circle></svg>`,
+  audiobooks:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"></path><rect x="3" y="14" width="4" height="6" rx="1.5"></rect><rect x="17" y="14" width="4" height="6" rx="1.5"></rect><path d="M12 9v8M9.5 10.5c1 0 1.9.3 2.5.8.6-.5 1.5-.8 2.5-.8"></path></svg>`,
+  cinema:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="M3 10h18M7 6l2 4M12 6l2 4M17 6l2 4"></path></svg>`,
+  boardgames:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2.5"></rect><circle cx="9" cy="9" r="1.2"></circle><circle cx="15" cy="15" r="1.2"></circle><circle cx="15" cy="9" r="1.2"></circle><circle cx="9" cy="15" r="1.2"></circle></svg>`,
+  print3d:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"></path><path d="M4 7.5l8 4.5 8-4.5M12 12v9"></path></svg>`,
+  collectables:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8-4.3-4.1 5.9-.8z"></path></svg>`,
+  games:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9h10a4 4 0 0 1 3.9 4.9l-.6 2.6a2 2 0 0 1-3.4.9L15 15H9l-1.9 2.4a2 2 0 0 1-3.4-.9l-.6-2.6A4 4 0 0 1 7 9z"></path><path d="M8 11.5v2M7 12.5h2"></path><circle cx="15.5" cy="12" r=".8"></circle><circle cx="17" cy="13.5" r=".8"></circle></svg>`,
+  control:c =>`<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2"></circle><circle cx="15" cy="12" r="2"></circle><circle cx="7" cy="18" r="2"></circle></svg>`};
+const col = a => NVTHEME.appColor(a.id);
+const icon = a => `<div class="ic s" style="--c:${col(a)}">${(ICON[a.id] || ICON.control)(22)}</div>`;
 const SERVICE = {scan:'adding cards by scanning', binders:'binders', collection:'your collection', prices:'prices', decks:'decks', convert:'picture converting', datajobs:'data jobs', pogo:'Pokémon GO list', reader:'the book reader', books:'books', music:'music', audiobooks:'audiobooks', video:'movies and shows', boardgames:'board games', models3d:'3D models', collectables:'collectables', videogames:'video games'};
 const isOwner = () => get('nvHub.owner', null) ?? (() => { try{ return !!localStorage.getItem('nvControlToken') }catch(e){ return false } })();
-let CAT = [], arranging = false;
+let CAT = [], arranging = false, CHLOG = [], bkChecked = false;
 
 function show(view){ $('#setup').hidden = view !== 'setup'; $('#home').hidden = view !== 'home' }
 const order = list => { const o = get('nvHub.order', []); return list.slice().sort((a, b) => ((o.indexOf(a.id) + 1) || 99) - ((o.indexOf(b.id) + 1) || 99)) };
@@ -180,23 +281,24 @@ function setup(){
 function home(){
   show('home');
   const inst = NV.installed(), list = order(CAT.filter(a => inst[a.id] && (arranging || !hidden(a.id))));
-  $('#tiles').innerHTML = list.map((a, i) => { const upd = NV.updateAvailable(a);
-      const inner = `${icon(a, true)}<div class="tx"><small>NIGHTVAULT</small><b>${esc(a.name)}</b><span class="d">${esc(a.desc)}</span>${upd ? '<span class="tag new">UPDATE READY</span>' : a.owner ? '<span class="tag">ONLY FOR YOU</span>' : ''}</div>`;
-      if(arranging) return `<div class="app ${hidden(a.id) ? 'off' : ''}">${inner}<div class="ctl"><button data-up="${a.id}" aria-label="Move up" ${i ? '' : 'disabled'}>↑</button><button data-eye="${a.id}" aria-label="${hidden(a.id) ? 'Show' : 'Hide'}">${hidden(a.id) ? '–' : '✓'}</button></div></div>`;
-      return `<a class="app" href="${esc(NV.url(a))}" data-open="${a.id}">${inner}</a>` }).join('')
-    + (arranging ? '' : `<button class="more" id="addapps"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6c7a8a" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>${list.length ? 'Add more Nightvault apps' : 'Add your first app'}</button>`);
-  document.querySelectorAll('[data-open]').forEach(el => el.onclick = () => set('nvHub.last', {id:el.dataset.open, at:Date.now()}));
-  document.querySelectorAll('[data-up]').forEach(b => b.onclick = () => { const ids = order(CAT).map(a => a.id), i = ids.indexOf(b.dataset.up); [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]]; set('nvHub.order', ids); home() });
+  $('#tiles').innerHTML = list.map((a, i) => { const d = arranging ? '' : dotFor(a);
+      const inner = `<span class="ico" style="--c:${col(a)}">${(ICON[a.id] || ICON.control)(36)}</span><b>${esc(a.name)}</b>`;
+      if(arranging) return `<div class="tile ${hidden(a.id) ? 'off' : ''}">${inner}<div class="tctl"><button data-mv="${a.id}|-1" aria-label="Move left" ${i ? '' : 'disabled'}>‹</button><button data-eye="${a.id}" aria-label="${hidden(a.id) ? 'Show' : 'Hide'}">${hidden(a.id) ? '–' : '✓'}</button><button data-mv="${a.id}|1" aria-label="Move right" ${i < list.length - 1 ? '' : 'disabled'}>›</button></div></div>`;
+      return `<a class="tile" href="${esc(NV.url(a))}" data-open="${a.id}" aria-label="Nightvault ${esc(a.name)}${d ? ', ' + DOTWORD[d] : ''}">${d ? `<i class="dot ${d}"></i>` : ''}${inner}</a>` }).join('')
+    + (arranging ? '' : `<button class="more" id="addapps"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>${list.length ? 'Add more Nightvault apps' : 'Add your first app'}</button>`);
+  document.querySelectorAll('[data-open]').forEach(el => el.onclick = () => openMark(el.dataset.open));
+  document.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => { const [id, dir] = b.dataset.mv.split('|'), ids = list.map(a => a.id), i = ids.indexOf(id), j = i + +dir; if(j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]]; set('nvHub.order', ids.concat(order(CAT).map(a => a.id).filter(x => !ids.includes(x)))); home() });
   document.querySelectorAll('[data-eye]').forEach(b => b.onclick = () => { const h = get('nvHub.hidden', []), id = b.dataset.eye; set('nvHub.hidden', h.includes(id) ? h.filter(x => x !== id) : h.concat(id)); home() });
   if($('#addapps')) $('#addapps').onclick = appsScreen;
   drawUpd();
-  $('#arrange').textContent = arranging ? 'Done' : 'Arrange'; $('#arrange').hidden = !list.length;
+  $('#arrbar').hidden = !arranging; $('#arrange').hidden = !CAT.some(a => inst[a.id]);
   // continue where you were in Binder (the test app remembers it for 2 hours)
   const n = get('nightvault.pocket.test.nav', null);
   const contApp = n && n.view === 'binder' && inst.binder ? 'binder' : inst.scanner ? 'scanner' : inst.binder && n && n.view === 'binder' ? 'binder' : null;
   if(contApp && n && Date.now() - (n.at || 0) < 2 * 3600e3 && n.view && n.view !== 'home'){
     const where = n.view === 'binder' ? (n.set ? n.set.name : 'Binder') : ({scan:'Scan', cards:'My cards', decks:'Decks', settings:'Settings', review:'Cards to check'})[n.view] || 'Binder';
-    $('#cont').innerHTML = `<a class="cont" href="${esc(NV.url(CAT.find(a => a.id === contApp)))}"><div style="flex:1;min-width:0"><small>CONTINUE WHERE YOU WERE</small><b>Nightvault ${contApp === 'binder' ? 'Binder' : 'Scanner'} · ${esc(where)}</b></div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e9edf2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>` }
+    $('#cont').innerHTML = `<a class="cont" href="${esc(NV.url(CAT.find(a => a.id === contApp)))}"><div style="flex:1;min-width:0"><small>CONTINUE WHERE YOU WERE</small><b>Nightvault ${contApp === 'binder' ? 'Binder' : 'Scanner'} · ${esc(where)}</b></div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>` }
   else $('#cont').innerHTML = '';
 }
 
@@ -223,7 +325,8 @@ function appsScreen(){
 $('#appsdone').onclick = () => { $('#appsheet').hidden = true; home() };
 $('#ownchk').onchange = e => { set('nvHub.owner', e.target.checked); appsScreen() };
 $('#appsbtn').onclick = appsScreen;
-$('#arrange').onclick = () => { arranging = !arranging; home() };
+$('#arrange').onclick = () => { arranging = true; home() };
+$('#arrdone').onclick = () => { arranging = false; home() };
 
 /* ---------- updates: The Nightvault checks for every app (not only Scanner) ---------- */
 const UPD = {c:null, at:0, busy:false, msg:'', skip:get('nvHub.skipBuild', 0)};
@@ -231,7 +334,8 @@ const names = ids => ids.map(id => id === 'hub' ? 'The Nightvault' : (CAT.find(a
 async function checkUpdates(force){
   if(UPD.busy || (!force && Date.now() - UPD.at < 3 * 60e3)) return; UPD.busy = true; UPD.at = Date.now();
   try{ UPD.c = await NV.changes() }catch(e){ UPD.c = null; if(force) toast('Could not check for updates - check the internet connection') }
-  UPD.busy = false; drawUpd(force);
+  try{ CHLOG = await NV.changelog(); if(CHLOG.length && get('nvHub.seenApp', null) === null) set('nvHub.seenApp', {_base: topLog()}) }catch(e){}
+  UPD.busy = false; drawUpd(force); if(!arranging && !$('#home').hidden && CAT.length) home();
   if(force && UPD.c && !$('#upd').innerHTML) toast(NV.native ? `You have the newest version for your apps (build ${UPD.c.build || '?'})` : 'You have the newest version');
   if(!$('#appsheet').hidden) appsScreen();
   if(UPD.c && !UPD.c.shell) whatsNew(false) }
@@ -274,7 +378,7 @@ async function whatsNew(force){
   $('#wnsheet').hidden = false }
 $('#wndone').onclick = () => $('#wnsheet').hidden = true;
 $('#wnbtn').onclick = () => whatsNew(true);
-const dbgLbl = () => $('#dbgbtn').textContent = 'Debug mode: ' + (NVLOG.on ? 'on' : 'off');
+const dbgLbl = () => $('#dbgbtn .h').textContent = NVLOG.on ? 'On' : 'Off';
 $('#dbgbtn').onclick = () => { NVLOG.on ? NVLOG.disable() : NVLOG.enable(); dbgLbl(); toast(NVLOG.on ? 'Debug mode on: the bug button shows the log, in every Nightvault app' : 'Debug mode off') }; dbgLbl();
 $('#chkbtn').onclick = () => { UPD.skip = 0; set('nvHub.skipBuild', 0); checkUpdates(true) };
 setTimeout(() => checkUpdates(false), 1500);
@@ -297,7 +401,7 @@ $('#bkdone').onclick = () => { $('#bksheet').hidden = true };
 async function drawBk(){
   const el = $('#bkbody'), f = NVBACKUP.folder, err = get('nvBackup.folderErr', null);
   let h = `<p class="meta" style="font-size:14px;margin:6px 0 12px">Every app makes a backup of its lists by itself every few days (songs, playlists, favourites, play counts, groups, books, games, plays, films, models …). Your files themselves stay in their folders.</p>`;
-  if(NVBACKUP.native) h += `<div class="row" style="display:block"><b>Backups folder</b>${f ? `<div class="meta" style="margin-top:4px">“${esc(f.name)}” - a copy is saved there too, so the backups survive even removing the app.${err ? `<br><span style="color:#f19a9a">Last time it couldn't save there: ${esc(err.msg)}</span>` : ''}</div>
+  if(NVBACKUP.native) h += `<div class="row" style="display:block"><b>Backups folder</b>${f ? `<div class="meta" style="margin-top:4px">“${esc(f.name)}” - a copy is saved there too, so the backups survive even removing the app.${err ? `<br><span style="color:var(--red)">Last time it couldn't save there: ${esc(err.msg)}</span>` : ''}</div>
       <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" id="bkpick">Change the folder</button></div>`
     : `<div class="meta" style="margin-top:4px;color:var(--text)">Not chosen yet. Pick a folder outside the app, best a new folder “Nightvault backups” on the SD card (in the picker: ⋮ / the folder icon → New folder). Without it, the backups are only inside the app.</div><button class="btn primary" id="bkpick" style="width:100%;margin-top:10px">Choose the backups folder</button>`}</div>`;
   h += `<button class="btn primary" id="bknow" style="width:100%;margin:4px 0 12px">Back up everything now</button><div id="bkrows"><p class="meta">…</p></div>
@@ -329,7 +433,109 @@ function putBack(app, d){ const A = NVBACKUP.apps[app];
   const go = async mode => { try{ const r = await NVBACKUP.restore(app, d, mode); toast(`${A.title}: put back (${r.records} ${r.records === 1 ? 'item' : 'items'}${r.settings ? ', ' + r.settings + ' settings' : ''})`); drawBk() }catch(e){ toast(e.message || String(e)) } };
   $('#bkmiss').onclick = () => go('missing'); $('#bkrepl').onclick = () => go('replace') }
 /* the hub opens first every time: back up whatever is due (quietly, after the screen is up) */
-setTimeout(() => NVBACKUP.auto(bkApps()).catch(() => {}), 6000);
+setTimeout(() => NVBACKUP.auto(bkApps()).catch(() => {}).then(() => { bkChecked = true; if(!arranging && !$('#home').hidden && CAT.length) home() }), 6000);
+
+
+/* ---------- status dots + the ☰ menu (23 Oct 2026; plan: plans/ui.md) ----------
+   green = something new in the app (the app writes localStorage.nvNew = {<app id>:{n, text, at}}),
+   blue = an update is ready / news for this app that you have not opened yet, orange = needs attention (an old backup).
+   The colours never follow the theme. One dot per tile, orange > blue > green. */
+const newMap = () => { const m = get('nvNew', {}); return m && typeof m === 'object' ? m : {} };
+const newOf = id => { const x = newMap()[id]; return x && +x.n > 0 ? x : null };
+const topLog = () => CHLOG.reduce((m, e) => Math.max(m, +e.id || 0), 0);
+const markSeen = id => { if(!CHLOG.length) return; const sa = get('nvHub.seenApp', null) || {}; sa[id] = topLog(); set('nvHub.seenApp', sa) };
+const openMark = id => { set('nvHub.last', {id, at:Date.now()}); markSeen(id) };
+const stale = b => { if(!bkChecked || !window.NVBACKUP || !NVBACKUP.apps[b]) return false; const L = NVBACKUP.last(b); return !!(L && Date.now() - L.at > 10 * 864e5) };
+const blueFor = a => { if(NV.updateAvailable(a) || (UPD.c && UPD.c.mine && UPD.c.mine.includes(a.id))) return true;
+  const sa = get('nvHub.seenApp', null); return !!(sa && CHLOG.some(e => (e.apps || []).includes(a.id) && +e.id > (sa[a.id] ?? sa._base ?? 1e9))) };
+const dotFor = a => stale(BKAPP(a.id)) ? 'o' : blueFor(a) ? 'b' : newOf(a.id) ? 'g' : '';
+const DOTWORD = {o:'needs attention', b:'update or news', g:'something new'};
+
+const openMenu = () => { drawMenu(); $('#menu').hidden = false };
+const closeMenu = () => { $('#menu').hidden = true };
+$('#menubtn').onclick = openMenu; $('#menuscrim').onclick = closeMenu;
+$('#menu').addEventListener('click', e => { if(e.target.closest('.mi')) closeMenu() });
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && !$('#menu').hidden) closeMenu() });
+function drawMenu(){
+  const inst = NV.installed(), mine = CAT.filter(a => inst[a.id]);
+  $('#pipbk').hidden = !(window.NVBACKUP && bkApps().some(stale));
+  $('#pipap').hidden = !(mine.some(blueFor) || (UPD.c && ((UPD.c.newApps || []).length || (UPD.c.mine || []).length)));
+  $('#pipnew').hidden = !mine.some(a => newOf(a.id));
+  const T = effT(modeTarget()); document.querySelectorAll('#modeseg button').forEach(b => b.classList.toggle('on', (b.dataset.m === 'light') === isLightT(T)));
+  $('#thname').textContent = themeLabel(T) }
+$('#modeseg').onclick = e => { const b = e.target.closest('button'); if(!b) return; NVTHEME.setMode(modeTarget(), b.dataset.m === 'light'); NVTHEME.apply('hub'); drawMenu(); if(!$('#thsheet').hidden && thView === 'main') drawTheme() };
+$('#addbtn').onclick = appsScreen;
+$('#newbtn').onclick = () => { $('#newsheet').hidden = false; drawNew() };
+$('#newdone').onclick = () => { $('#newsheet').hidden = true };
+function drawNew(){
+  const inst = NV.installed(), rows = CAT.filter(a => inst[a.id] && newOf(a.id)).map(a => `<a class="status" href="${esc(NV.url(a))}" data-open="${a.id}"><i class="pip g"></i><span class="tx"><b>Nightvault ${esc(a.name)}</b><span class="d">${esc(newOf(a.id).text || '')}</span></span></a>`);
+  $('#newbody').innerHTML = (rows.join('') || '<p class="meta" style="font-size:14px">Nothing new right now. When an app finds something new (new volumes, new episodes …) it shows up here and as a green dot on its tile.</p>')
+    + `<div class="sec">WHAT THE DOTS MEAN</div><div class="status"><i class="pip g"></i><span class="tx"><b>Green</b><span class="d">Something new inside the app.</span></span></div><div class="status"><i class="pip b"></i><span class="tx"><b>Blue</b><span class="d">An update is ready, or there is news you have not seen.</span></span></div><div class="status"><i class="pip o"></i><span class="tx"><b>Orange</b><span class="d">Needs attention, for example a backup that is getting old.</span></span></div>`;
+  document.querySelectorAll('#newbody [data-open]').forEach(el => el.onclick = () => openMark(el.dataset.open)) }
+
+/* ---------- Appearance (nvtheme.js) ---------- */
+let thApp = 'hub', thView = 'main', ownSt = null;
+const effT = t => { const s = NVTHEME.state(); return t === 'all' ? s.all : (s.apps[t] || s.all) };
+const isLightT = T => T.id === 'custom' ? NVTHEME.isLight(T.c) : !!(NVTHEME.preset(T.id) || {}).light;
+const themeLabel = T => T.id === 'custom' ? 'Your own colours' : (NVTHEME.preset(T.id) || {name:'Midnight'}).name;
+const modeTarget = () => NVTHEME.state().scope === 'each' ? 'hub' : 'all';
+const themeTarget = () => NVTHEME.state().scope === 'each' ? thApp : 'all';
+const CHECK = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>';
+$('#thbtn').onclick = () => { $('#thsheet').hidden = false; ownSt = null; drawTheme() };
+$('#thdone').onclick = () => { if(thView === 'own'){ ownSt = null; drawTheme() } else $('#thsheet').hidden = true };
+function drawTheme(){
+  thView = 'main'; $('#thdone').textContent = 'Done'; $('#thtitle').textContent = 'Appearance';
+  const s = NVTHEME.state(), each = s.scope === 'each', inst = NV.installed();
+  const apps = [{id:'hub', name:'The Nightvault'}].concat(CAT.filter(a => inst[a.id]).map(a => ({id:a.id, name:'Nightvault ' + a.name})));
+  if(!apps.some(a => a.id === thApp)) thApp = 'hub';
+  const tg = each ? thApp : 'all', T = effT(tg), own = each && !!s.apps[tg];
+  const pv = p => `<button class="pv ${T.id === p.id ? 'sel' : ''}" data-p="${p.id}" aria-label="${esc(p.name)}" style="--pb:${p.bg};--pc:${p.card};--pt:${p.text};--pa:${p.accent}"><span class="pvbox"><span class="pvcard"><i class="pvacc"></i><i class="pvl"></i><i class="pvl s"></i></span></span><span class="pvname">${esc(p.name)}${p.isNew ? '<em>NEW</em>' : ''}</span><span class="chk">${CHECK}</span></button>`;
+  let h = `<p class="meta" style="font-size:13px;margin:4px 0 0">For now only The Nightvault itself follows these colours. The other apps join one by one in the next updates.</p>
+    <div class="card"><div class="tt"><b>Use theme</b><span>${each ? 'Every app can have its own.' : 'The same for every app.'}</span></div><div class="seg" id="scopeseg" style="flex:none"><button data-sc="all" class="${each ? '' : 'on'}">All apps</button><button data-sc="each" class="${each ? 'on' : ''}">Each app</button></div></div>`;
+  if(!each) h += `<div class="card"><div class="tt"><b>Apps keep their own colour</b><span>Buttons and links use each app's colour on top of the theme. Status dots never change.</span></div><button class="sw ${s.keep ? 'on' : ''}" id="keepsw" role="switch" aria-checked="${s.keep}" aria-label="Apps keep their own colour"></button></div>`;
+  else h += `<div class="card"><div class="tt"><b>Changing</b><span>${own ? 'This app has its own theme.' : 'Uses the shared theme (' + esc(themeLabel(s.all)) + '). Pick one below to give it its own.'}</span></div><select class="sel1" id="appsel" aria-label="App to change">${apps.map(a => `<option value="${a.id}" ${a.id === thApp ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></div>`
+    + (own ? '<button class="lnk" id="clrapp">Back to the shared theme</button>' : '');
+  h += `<div class="sec">DARK</div><div class="pgrid">${NVTHEME.dark.map(pv).join('')}</div><div class="sec">LIGHT</div><div class="pgrid">${NVTHEME.lightOnes.map(pv).join('')}</div>
+    <button class="ownrow" id="ownbtn"><span>Your own colours<br><small>Pick 4 colours, the rest is made to match</small></span>${T.id === 'custom' ? '<small>In use</small>' : ''}<span style="flex:none;color:var(--dim2)">›</span></button>`;
+  $('#thbody').innerHTML = h;
+  const redo = () => { NVTHEME.apply('hub'); drawTheme(); drawMenu() };
+  $('#thbody').querySelectorAll('[data-p]').forEach(b => b.onclick = () => { NVTHEME.setPreset(tg, b.dataset.p); redo() });
+  $('#thbody').querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { NVTHEME.setScope(b.dataset.sc); redo() });
+  if($('#keepsw')) $('#keepsw').onclick = () => { NVTHEME.setKeep(!s.keep); redo() };
+  if($('#appsel')) $('#appsel').onchange = e => { thApp = e.target.value; drawTheme() };
+  if($('#clrapp')) $('#clrapp').onclick = () => { NVTHEME.clearApp(thApp); redo() };
+  $('#ownbtn').onclick = drawOwn }
+const OWNROWS = [['bg', 'Background', 'Behind everything'], ['card', 'Cards', 'Tiles, menus, panels'], ['text', 'Text', 'Titles and normal text'], ['accent', 'Accent', 'Buttons and links']];
+function drawOwn(){
+  thView = 'own'; $('#thdone').textContent = '‹ Back'; $('#thtitle').textContent = 'Your own colours';
+  const tg = themeTarget();
+  if(!ownSt){ const T = effT(tg), b = T.id === 'custom' ? T.c : (NVTHEME.preset(T.id) || NVTHEME.preset('midnight'));
+    ownSt = {c:{bg:b.bg, card:b.card, text:b.text, accent:b.accent}, from:T.id === 'custom' ? null : T.id, last:T.id === 'custom' ? 'midnight' : T.id} }
+  const c = ownSt.c, fix = x => NVTHEME.mix(x, x, 0);
+  $('#thbody').innerHTML = `<p class="meta" style="font-size:13px;margin:4px 0 0">Pick 4, the rest is made to match.${NVTHEME.state().scope === 'each' ? ' This is for ' + esc((thApp === 'hub' ? 'The Nightvault' : 'Nightvault ' + ((CAT.find(a => a.id === thApp) || {}).name || thApp))) + '.' : ''}</p>
+    <div class="ocprev" id="ocprev" aria-label="Preview of your colours"></div>
+    <div class="chips" id="occhips"><span class="meta" style="align-self:center;flex:none">Start from</span>${['midnight', 'sand', 'violet', 'gold'].map(id => `<button class="chip ${ownSt.from === id ? 'on' : ''}" data-from="${id}">${esc(NVTHEME.preset(id).name)}</button>`).join('')}</div>
+    <div class="ocrows">${OWNROWS.map(r => `<div class="orow"><input type="color" data-k="${r[0]}" value="${c[r[0]]}" aria-label="${r[1]}"><span class="tt"><b>${r[1]}</b><span>${r[2]}</span></span><input class="hexin" data-h="${r[0]}" value="${c[r[0]].toUpperCase()}" maxlength="7" autocomplete="off" spellcheck="false" aria-label="${r[1]} as a code"></div>`).join('')}</div>
+    <div class="chkline" id="occheck"></div>
+    <div class="meta" style="margin:10px 6px 0;display:flex;gap:8px;align-items:center;font-size:11.5px"><span style="display:flex;gap:4px;flex:none"><i class="pip g"></i><i class="pip b"></i><i class="pip o"></i></span>Status dots always keep their own colours, so green, blue and orange mean the same in every theme.</div>
+    <div style="display:flex;gap:10px;margin-top:18px"><button class="btn" id="ocreset" style="flex:1">Reset to preset</button><button class="btn primary" id="ocuse" style="flex:1">Use these colours</button></div>`;
+  const paint = () => {
+    const c = ownSt.c, on = NVTHEME.contrast('#0b0e13', c.accent) >= NVTHEME.contrast('#ffffff', c.accent) ? '#0b0e13' : '#ffffff', dot = NVTHEME.readable('#4ee0a0', c.card);
+    const pr = $('#ocprev'); pr.style.background = c.bg; pr.style.color = c.text;
+    pr.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between"><div class="w">THE NIGHTVAULT</div><div style="width:26px;height:26px;border-radius:8px;background:${c.card}"></div></div>
+      <div class="t3">${['Cinema', 'Music', 'Games'].map((n, i) => `<div style="background:${c.card};color:${c.text}">${i ? '' : `<span class="dt" style="background:${dot};box-shadow:0 0 6px ${dot}"></span>`}${n}</div>`).join('')}</div>
+      <div style="display:flex;align-items:center;gap:10px"><div style="padding:8px 16px;border-radius:11px;background:${c.accent};color:${on};font-size:13px;font-weight:700">Add</div><div style="font-size:12.5px;color:${NVTHEME.readable(c.accent, c.bg, 3)}">A link looks like this</div></div>`;
+    const r = NVTHEME.check(c);
+    $('#occheck').innerHTML = r.ok ? `<span class="pip g"></span><span>Easy to read: text on background ${r.text.toFixed(1)} : 1, accent ${r.accent.toFixed(1)} : 1.</span>`
+      : `<span class="pip o"></span><span>${esc(r.warn.join(' '))}</span><button class="btn sm" id="ocfix">Fix it for me</button>`;
+    if($('#ocfix')) $('#ocfix').onclick = () => { ownSt.c = NVTHEME.fix(ownSt.c); ownSt.from = null; drawOwn() } };
+  paint();
+  const setC = (k, v) => { ownSt.c[k] = v; ownSt.from = null; document.querySelectorAll('#occhips .chip').forEach(x => x.classList.remove('on')); paint() };
+  $('#thbody').querySelectorAll('input[type=color]').forEach(i => i.oninput = () => { const k = i.dataset.k; $('#thbody').querySelector(`[data-h=${k}]`).value = i.value.toUpperCase(); setC(k, i.value.toLowerCase()) });
+  $('#thbody').querySelectorAll('.hexin').forEach(i => i.oninput = () => { const v = '#' + i.value.replace(/^#/, ''); if(!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) return; const k = i.dataset.h, n = fix(v); $('#thbody').querySelector(`[data-k=${k}]`).value = n; setC(k, n) });
+  $('#thbody').querySelectorAll('[data-from]').forEach(b => b.onclick = () => { const p = NVTHEME.preset(b.dataset.from); ownSt.c = {bg:p.bg, card:p.card, text:p.text, accent:p.accent}; ownSt.from = ownSt.last = p.id; drawOwn() });
+  $('#ocreset').onclick = () => { const p = NVTHEME.preset(ownSt.last || 'midnight'); ownSt.c = {bg:p.bg, card:p.card, text:p.text, accent:p.accent}; ownSt.from = p.id; drawOwn() };
+  $('#ocuse').onclick = () => { NVTHEME.setCustom(tg, ownSt.c); NVTHEME.apply('hub'); ownSt = null; drawTheme(); drawMenu(); toast('Your colours are in use') } }
 
 /* ---------- My PC (Take with me) ---------- */
 const APPNAME = {music:'Music', audiobooks:'Audiobooks', bookcase:'Bookcase', cinema:'Cinema'};
@@ -372,7 +578,7 @@ async function pcState(force){ const el = $('#pcst'); if(!el) return; el.classNa
   const ok = await NVPC.reachable(force); if(!$('#pcst')) return; el.className = 'pcst ' + (ok ? 'ok' : 'no'); el.innerHTML = '<i></i>' + (ok ? 'Connected' : 'Not reachable') }
 
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(!$('#bksheet').hidden){ $('#bkdone').click(); return } if(!$('#pcsheet').hidden){ $('#pcdone').click(); return } if(!$('#wnsheet').hidden){ $('#wndone').click(); return } if(!$('#appsheet').hidden){ $('#appsdone').click(); return } if(arranging){ $('#arrange').click(); return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
+  A.addListener('backButton', () => { if(!$('#menu').hidden){ closeMenu(); return } if(!$('#thsheet').hidden){ $('#thdone').click(); return } if(!$('#newsheet').hidden){ $('#newdone').click(); return } if(!$('#bksheet').hidden){ $('#bkdone').click(); return } if(!$('#pcsheet').hidden){ $('#pcdone').click(); return } if(!$('#wnsheet').hidden){ $('#wndone').click(); return } if(!$('#appsheet').hidden){ $('#appsdone').click(); return } if(arranging){ $('#arrdone').click(); return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 /* a reminder from an app was tapped (e.g. Cinema's "new episode today"): its extra.url says which page to open (shared – any app can use it) */
 if(window.Capacitor && Capacitor.isPluginAvailable && Capacitor.isPluginAvailable('LocalNotifications')) try{ Capacitor.registerPlugin('LocalNotifications').addListener('localNotificationActionPerformed', a => { const u = a && a.notification && a.notification.extra && a.notification.extra.url; if(u && /^[a-z]+\/index\.html/.test(u)) location.href = '../' + u }) }catch(e){}
 window.addEventListener('pageshow', e => { if(e.persisted && CAT.length && !$('#home').hidden) home() });
