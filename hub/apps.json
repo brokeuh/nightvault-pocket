@@ -339,7 +339,7 @@
    "files": [
     {
      "path": "cinema/index.html",
-     "size": 23076
+     "size": 23399
     },
     {
      "path": "cinema/app.js",
@@ -351,7 +351,7 @@
     },
     {
      "path": "cinema/calendar.js",
-     "size": 29143
+     "size": 43923
     },
     {
      "path": "cinema/manifest.webmanifest",
@@ -364,10 +364,10 @@
    "uses": [],
    "entry": "cinema/?nv=hub",
    "keepsData": "Your list, what you watched, groups and TMDB key stay on this device. Video files are never deleted.",
-   "size": 250210,
-   "hash": "11eecbfd3ba5",
-   "version": "2026.10.22.2153",
-   "updated": "2026-10-22"
+   "size": 265313,
+   "hash": "2744c89047c5",
+   "version": "2026.10.23.0712",
+   "updated": "2026-10-23"
   },
   {
    "id": "boardgames",
