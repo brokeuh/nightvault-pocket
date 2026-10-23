@@ -14,15 +14,15 @@
   'use strict';
   const CSS = `
 #nvmenu{position:fixed;inset:0;z-index:2147482000}
-#nvmenu .scrim{position:absolute;inset:0;background:var(--scrim,rgba(0,0,0,.55))}
-#nvmenu .box{position:absolute;width:min(300px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;padding:6px;border-radius:18px;background:var(--pan,#151a22);border:1px solid var(--line,#232b36);box-shadow:0 18px 40px rgba(0,0,0,.35);color:var(--text,#e9edf2);font:14.5px/1.35 'DM Sans',system-ui,sans-serif}
-#nvmenu .mi{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;text-decoration:none}
-#nvmenu .mi:hover,#nvmenu .mi:active{background:var(--pan2,#10141b)}
-#nvmenu .lb{display:flex;align-items:center;gap:9px}
-#nvmenu .h{font-size:12px;color:var(--dim2,#8fa0b2);text-align:right}
-#nvmenu .hr{height:1px;background:var(--line,#232b36);margin:4px 8px}
-#nvmenu .pip{flex:none;width:9px;height:9px;border-radius:50%;background:var(--dc);box-shadow:0 0 0 2px color-mix(in srgb,var(--dc) 25%,transparent),0 0 6px var(--dc)}
-#nvmenu .pip.g{--dc:var(--g,#4ee0a0)}#nvmenu .pip.b{--dc:var(--b,#6aa8ff)}#nvmenu .pip.o{--dc:var(--o,#ffa94d)}
+#nvmenu .nvm-scrim{position:absolute;inset:0;background:var(--scrim,rgba(0,0,0,.55))}
+#nvmenu .nvm-box{position:absolute;width:min(300px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;padding:6px;border-radius:18px;background:var(--pan,#151a22);border:1px solid var(--line,#232b36);box-shadow:0 18px 40px rgba(0,0,0,.35);color:var(--text,#e9edf2);font:14.5px/1.35 'DM Sans',system-ui,sans-serif}
+#nvmenu .nvm-mi{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;text-decoration:none}
+#nvmenu .nvm-mi:hover,#nvmenu .nvm-mi:active{background:var(--pan2,#10141b)}
+#nvmenu .nvm-lb{display:flex;align-items:center;gap:9px}
+#nvmenu .nvm-h{font-size:12px;color:var(--dim2,#8fa0b2);text-align:right}
+#nvmenu .nvm-hr{height:1px;background:var(--line,#232b36);margin:4px 8px}
+#nvmenu .nvm-pip{flex:none;width:9px;height:9px;border-radius:50%;background:var(--dc);box-shadow:0 0 0 2px color-mix(in srgb,var(--dc) 25%,transparent),0 0 6px var(--dc)}
+#nvmenu .nvm-pip.g{--dc:var(--g,#4ee0a0)}#nvmenu .nvm-pip.b{--dc:var(--b,#6aa8ff)}#nvmenu .nvm-pip.o{--dc:var(--o,#ffa94d)}
 #nvmtoast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--pan,#151a22);color:var(--text,#e9edf2);border:1px solid var(--line2,#33404f);padding:10px 14px;border-radius:12px;font:14px 'DM Sans',system-ui,sans-serif;z-index:2147483001;max-width:90vw}
 [id^=nvhelp_]{display:none!important}`;
   const MENU_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>';
@@ -47,13 +47,13 @@
   function open(){
     close(); ITEMS = build();
     EL = document.createElement('div'); EL.id = 'nvmenu';
-    EL.innerHTML = `<div class="scrim"></div><div class="box" role="menu">${ITEMS.map((x, i) => x === '-' ? '<div class="hr"></div>' : (x.href ? `<a class="mi" href="${esc(x.href)}"` : `<button class="mi"`) + ` data-i="${i}" role="menuitem"><span class="lb">${x.dot ? `<i class="pip ${x.dot}"></i>` : ''}${esc(x.label)}</span>${x.hint ? `<span class="h">${esc(x.hint)}</span>` : ''}${x.href ? '</a>' : '</button>'}`).join('')}</div>`;
+    EL.innerHTML = `<div class="nvm-scrim"></div><div class="nvm-box" role="menu">${ITEMS.map((x, i) => x === '-' ? '<div class="nvm-hr"></div>' : (x.href ? `<a class="nvm-mi" href="${esc(x.href)}"` : `<button class="nvm-mi"`) + ` data-i="${i}" role="menuitem"><span class="nvm-lb">${x.dot ? `<i class="nvm-pip ${x.dot}"></i>` : ''}${esc(x.label)}</span>${x.hint ? `<span class="nvm-h">${esc(x.hint)}</span>` : ''}${x.href ? '</a>' : '</button>'}`).join('')}</div>`;
     document.body.appendChild(EL);
-    const r = BTN.getBoundingClientRect(), box = EL.querySelector('.box');
+    const r = BTN.getBoundingClientRect(), box = EL.querySelector('.nvm-box');
     const vw = document.documentElement.clientWidth || innerWidth, w = box.offsetWidth;
     box.style.top = Math.max(8, r.bottom + 8) + 'px'; box.style.left = Math.max(8, Math.min(r.right - w, vw - w - 8)) + 'px';      // lined up with the ☰, but always fully on screen
-    EL.querySelector('.scrim').onclick = close;
-    EL.onclick = e => { const m = e.target.closest('.mi'); if(!m) return; const x = ITEMS[+m.dataset.i]; close(); if(x && x.run) setTimeout(() => x.run(), 0) } }
+    EL.querySelector('.nvm-scrim').onclick = close;
+    EL.onclick = e => { const m = e.target.closest('.nvm-mi'); if(!m) return; const x = ITEMS[+m.dataset.i]; close(); if(x && x.run) setTimeout(() => x.run(), 0) } }
   function make(cfg){
     CFG = cfg; if(!ST){ ST = document.createElement('style'); document.head.appendChild(ST) }
     ST.textContent = CSS + ['#hubback'].concat(cfg.hide || []).map(s => s + '{display:none!important}').join('\n');

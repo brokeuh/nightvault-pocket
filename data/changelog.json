@@ -3,6 +3,31 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 119,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "music",
+    "audiobooks",
+    "bookcase",
+    "cinema",
+    "boardgames",
+    "print3d",
+    "games",
+    "convert",
+    "control",
+    "scanner",
+    "binder"
+   ],
+   "title": "The ☰ menu works in Music and Audiobooks",
+   "items": [
+    "The ☰ menu was covered by a dark layer in Music and Audiobooks, so it looked dim and could not be tapped. It now sits on top and works. The same safeguard is in every app."
+   ]
+  },
+  {
    "id": 118,
    "date": "2026-10-23",
    "where": [
