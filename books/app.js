@@ -802,7 +802,7 @@ function hookGrid(sh){ document.querySelectorAll('#body .grid').forEach(gr => {
   gr.oncontextmenu = e => { if(e.target.closest('.bk')) e.preventDefault() } }) }
 
 /* ---------- the book page (summary) ---------- */
-function drawBook(id){ const b = BK[id]; if(!b){ V.pop(); return draw() }
+function drawBook(id){ const b = BK[id]; if(!b){ V.pop(); return draw() } if(b.cv && b.cv.id) colSeen(b.cv.id);
   const s = STATE[b.id], p = progress(b), g = groupOfBook(b), prev = nextInSeries(b, -1), next = nextInSeries(b, 1), sh = shelfOf(b.shelf);
   $('#vtitle').textContent = ''; document.title = dispTitle(b) + ' · Bookcase';
   const where = b.src.kind === 'link' ? 'In a folder on this phone' : b.src.kind === 'drive' ? 'On Google Drive' + (b.src.fid ? ' · downloaded to this phone' : '') : 'Copied into the app';
@@ -990,7 +990,7 @@ function rClasses(){ const r = $('#reader'); r.classList.toggle('rtl', !!(R && R
 let hintT = 0; function rHint(t, ms){ const h = $('#rhint'); h.innerHTML = t; h.classList.add('on'); clearTimeout(hintT); hintT = setTimeout(() => h.classList.remove('on'), ms || 1600) }
 function rUI(on){ R.ui = on == null ? !R.ui : on; $('#reader').classList.toggle('noui', !R.ui) }
 
-async function openReader(b, mark){ if(!b) return;
+async function openReader(b, mark){ if(!b) return; if(b.cv && b.cv.id) colSeen(b.cv.id);
   if(R) await closeReader(true);
   R = {b, n:0, s:0, shown:[], cache:new Map(), zoom:1, x:0, y:0, ui:true, tok:0, rtl:isRtl(b), hi:null};
   $('#reader').hidden = false; document.body.classList.add('reading'); $('#rend').hidden = true; rp().innerHTML = ''; rClasses(); rUI(true);
@@ -1892,22 +1892,28 @@ async function colMine(sh){
 function issueGridHTML(c, pass){ const d = colDigital(c), P = c.phys || {};
   return `<div class="grid">${c.issues.filter(pass).map(i => { const k = numKey(i.num), b = d[k], p = P[k], own = b || p;
       const cov = b ? coverHTML(b) : `<div class="cv">${i.thumb ? `${remImg(i.thumb)}` : phHTML({title:c.name, shelf:c.shelf}, c.name)}</div>`;
-      return `<div class="bk iss ${own ? '' : 'miss'}" data-iss="${esc(k)}">${cov.replace(/<\/div>$/, `${(c.newN || []).includes(k) && !own ? '<span class="newb in">NEW</span>' : ''}<span class="vol">${esc(i.label)}</span>${b ? '<span class="bd dg">D</span>' : ''}${p ? `<span class="bd pp${b ? '' : ' solo'}">P</span>` : ''}</div>`)}<div class="t">${esc(i.name || c.name + ' ' + i.label)}</div><div class="a">${esc([i.date.slice(0, 4), p && p.price ? money(+p.price) : ''].filter(Boolean).join(' · ') || ' ')}</div></div>` }).join('')}</div>`; }
-function drawColSer(v){ const c = COLS[v.vid]; if(!c){ V.pop(); return draw() } const d = colDigital(c), st = colStats(c), f = S.filter['colser'] || 'all';
+      return `<div class="bk iss ${own ? '' : 'miss'}" data-iss="${esc(k)}">${cov.replace(/<\/div>$/, `${(VISITNEW[c.vid] || new Set()).has(k) && !own ? '<span class="newb in">NEW</span>' : ''}<span class="vol">${esc(i.label)}</span>${b ? '<span class="bd dg">D</span>' : ''}${p ? `<span class="bd pp${b ? '' : ' solo'}">P</span>` : ''}</div>`)}<div class="t">${esc(i.name || c.name + ' ' + i.label)}</div><div class="a">${esc([i.date.slice(0, 4), p && p.price ? money(+p.price) : ''].filter(Boolean).join(' · ') || ' ')}</div></div>` }).join('')}</div>`; }
+function colSeen(vid){ const c = COLS[vid]; if(!c) return; const fresh = newKeys(c); if(!fresh.length) return;
+  VISITNEW[vid] = new Set([...(VISITNEW[vid] || []), ...fresh]); c.newN = []; colSave(c).then(() => publishNew()).catch(() => {}) }      // opening the series page, one of its books, or reading it = seen
+const VISITNEW = {};      // the new issues you are looking at right now: they stay marked on this page, but the tiles on the shelf lose their NEW tag once you have seen the page
+function drawColSer(v){ const c = COLS[v.vid]; if(!c){ V.pop(); return draw() }
+  colSeen(v.vid);
+  const d = colDigital(c), st = colStats(c), f = S.filter['colser'] || 'all';
   $('#vtitle').textContent = ''; document.title = c.name + ' · Collection';
   let h = `<div class="alhead" style="align-items:center"><div style="min-width:0;flex:1"><b>${esc(c.name)}${c.start ? ` (${esc(c.start)})` : ''}</b><div class="muted small">${esc(cleanPub(c.pub) || '')}${c.pub ? ' · ' : ''}${st.have} of ${st.total} ${W(c.shelf).is}</div>
     <div class="muted small">${st.dig} digital · ${st.phys} on paper${st.price ? ' · ' + money(st.price) : ''}</div><div class="pbar" style="max-width:260px"><i style="width:${st.total ? Math.round(100 * st.have / st.total) : 0}%"></i></div></div><button class="ib" id="csmenu" aria-label="More for this list">${IC_DOTS}</button></div>`;
-  { const nk = newKeys(c); if(nk.length) h += `<div class="newbar on"><div class="nbt"><b>${plural(nk.length, 'new ' + W(c.shelf).i, 'new ' + W(c.shelf).is)}: ${nk.slice(0, 8).join(', ')}${nk.length > 8 ? ' …' : ''}</b><div class="muted small">Not in your ${W(c.shelf).cs} yet. It goes away when you add it.</div></div><button class="btn sm" id="newseen">Seen</button></div>` }
+  { const nk = [...(VISITNEW[c.vid] || [])].filter(k => !d[k] && !(c.phys || {})[k]); if(nk.length) h += `<div class="newbar on"><div class="nbt"><b>${plural(nk.length, 'new ' + W(c.shelf).i, 'new ' + W(c.shelf).is)}: ${nk.slice(0, 8).join(', ')}${nk.length > 8 ? ' …' : ''}</b><div class="muted small">Not in your ${W(c.shelf).cs} yet. The NEW tag on the shelf is gone now that you have seen this.</div></div><button class="btn sm" id="newseen">Hide</button></div>` }
   h += infoHTML(c);
   h += `<div class="chips">${[['all', 'All'], ['have', 'I have'], ['miss', 'Missing'], ['dig', 'Digital'], ['phys', 'On paper']].map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-csf="${k}">${t}</button>`).join('')}</div>`;
   const P = c.phys || {}, pass = i => { const k = numKey(i.num), D = !!d[k], Pp = !!P[k]; return f === 'have' ? D || Pp : f === 'miss' ? !D && !Pp : f === 'dig' ? D : f === 'phys' ? Pp : true };
   h += issueGridHTML(c, pass);
   $('#body').innerHTML = h; lazyCovers($('#body'));
   $('#csmenu').onclick = () => colMenu(c);
-  if($('#newseen')) $('#newseen').onclick = async () => { c.newN = []; await colSave(c); draw() };
+  if($('#newseen')) $('#newseen').onclick = () => { delete VISITNEW[c.vid]; draw() };
   $('#body').querySelectorAll('[data-csf]').forEach(b => b.onclick = () => { S.filter['colser'] = b.dataset.csf; saveS(); draw() });
   $('#body').querySelectorAll('[data-iss]').forEach(el => el.onclick = () => issueSheet(c, c.issues.find(i => numKey(i.num) === el.dataset.iss))) }
 function issueSheet(c, i){ const k = numKey(i.num), b = colDigital(c)[k], p = (c.phys || {})[k], title = `${c.name} ${i.label}`;
+  if((c.newN || []).includes(k)){ c.newN = c.newN.filter(x => x !== k); colSave(c).then(() => publishNew()).catch(() => {}); document.querySelectorAll(`[data-iss="${CSS.escape(k)}"] .newb`).forEach(e => e.remove()) }      // looking at it = seen
   sheet(`<div style="display:flex;gap:14px;align-items:flex-start">${i.img ? `<img src="${esc(i.img)}" alt="" style="width:110px;border-radius:8px;flex:none">` : ''}<div style="min-width:0"><h3 style="margin:0 0 4px" data-issk="${esc(c.vid + ':' + k)}">${esc(title)}</h3>
       ${i.name ? `<div class="muted small">${esc(i.name)}</div>` : ''}<div class="muted small">${esc(i.date || '')}</div>
       <div style="margin-top:8px;display:flex;gap:6px">${b ? '<span class="bd dg" style="position:static">D</span> <span class="small">Digital – in Bookcase</span>' : ''}${p ? '<span class="bd pp" style="position:static">P</span> <span class="small">On paper</span>' : ''}${!b && !p ? '<span class="small muted">You don\'t have this one yet</span>' : ''}</div></div></div>
