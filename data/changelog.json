@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 113,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "The Nightvault: tile icons follow the theme",
+   "items": [
+    "With ☰ > All themes & colours > 'Apps keep their own colour' switched off, all tile icons take the theme's colour. Switched on, each app keeps its own colour. An app with its own theme (Each app) uses that theme's colour."
+   ]
+  },
+  {
    "id": 112,
    "date": "2026-10-23",
    "where": [

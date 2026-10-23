@@ -248,7 +248,7 @@ const ICON = {
   collectables:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8-4.3-4.1 5.9-.8z"></path></svg>`,
   games:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9h10a4 4 0 0 1 3.9 4.9l-.6 2.6a2 2 0 0 1-3.4.9L15 15H9l-1.9 2.4a2 2 0 0 1-3.4-.9l-.6-2.6A4 4 0 0 1 7 9z"></path><path d="M8 11.5v2M7 12.5h2"></path><circle cx="15.5" cy="12" r=".8"></circle><circle cx="17" cy="13.5" r=".8"></circle></svg>`,
   control:c =>`<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2"></circle><circle cx="15" cy="12" r="2"></circle><circle cx="7" cy="18" r="2"></circle></svg>`};
-const col = a => NVTHEME.appColor(a.id);
+const col = a => NVTHEME.resolve(a.id).vars['--accent'];   // the app's own colour, or the theme's accent when "Apps keep their own colour" is off / the app has its own theme
 const icon = a => `<div class="ic s" style="--c:${col(a)}">${(ICON[a.id] || ICON.control)(22)}</div>`;
 const SERVICE = {scan:'adding cards by scanning', binders:'binders', collection:'your collection', prices:'prices', decks:'decks', convert:'picture converting', datajobs:'data jobs', pogo:'Pokémon GO list', reader:'the book reader', books:'books', music:'music', audiobooks:'audiobooks', video:'movies and shows', boardgames:'board games', models3d:'3D models', collectables:'collectables', videogames:'video games'};
 const isOwner = () => get('nvHub.owner', null) ?? (() => { try{ return !!localStorage.getItem('nvControlToken') }catch(e){ return false } })();
@@ -463,7 +463,7 @@ function drawMenu(){
   $('#pipnew').hidden = !mine.some(a => newOf(a.id));
   const T = effT(modeTarget()); document.querySelectorAll('#modeseg button').forEach(b => b.classList.toggle('on', (b.dataset.m === 'light') === isLightT(T)));
   $('#thname').textContent = themeLabel(T) }
-$('#modeseg').onclick = e => { const b = e.target.closest('button'); if(!b) return; NVTHEME.setMode(modeTarget(), b.dataset.m === 'light'); NVTHEME.apply('hub'); drawMenu(); if(!$('#thsheet').hidden && thView === 'main') drawTheme() };
+$('#modeseg').onclick = e => { const b = e.target.closest('button'); if(!b) return; NVTHEME.setMode(modeTarget(), b.dataset.m === 'light'); NVTHEME.apply('hub'); drawMenu(); if(CAT.length) home(); if(!$('#thsheet').hidden && thView === 'main') drawTheme() };
 $('#addbtn').onclick = appsScreen;
 $('#newbtn').onclick = () => { $('#newsheet').hidden = false; drawNew() };
 $('#newdone').onclick = () => { $('#newsheet').hidden = true };
@@ -498,7 +498,7 @@ function drawTheme(){
   h += `<div class="sec">DARK</div><div class="pgrid">${NVTHEME.dark.map(pv).join('')}</div><div class="sec">LIGHT</div><div class="pgrid">${NVTHEME.lightOnes.map(pv).join('')}</div>
     <button class="ownrow" id="ownbtn"><span>Your own colours<br><small>Pick 4 colours, the rest is made to match</small></span>${T.id === 'custom' ? '<small>In use</small>' : ''}<span style="flex:none;color:var(--dim2)">›</span></button>`;
   $('#thbody').innerHTML = h;
-  const redo = () => { NVTHEME.apply('hub'); drawTheme(); drawMenu() };
+  const redo = () => { NVTHEME.apply('hub'); drawTheme(); drawMenu(); if(CAT.length) home() };
   $('#thbody').querySelectorAll('[data-p]').forEach(b => b.onclick = () => { NVTHEME.setPreset(tg, b.dataset.p); redo() });
   $('#thbody').querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { NVTHEME.setScope(b.dataset.sc); redo() });
   if($('#keepsw')) $('#keepsw').onclick = () => { NVTHEME.setKeep(!s.keep); redo() };
@@ -535,7 +535,7 @@ function drawOwn(){
   $('#thbody').querySelectorAll('.hexin').forEach(i => i.oninput = () => { const v = '#' + i.value.replace(/^#/, ''); if(!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) return; const k = i.dataset.h, n = fix(v); $('#thbody').querySelector(`[data-k=${k}]`).value = n; setC(k, n) });
   $('#thbody').querySelectorAll('[data-from]').forEach(b => b.onclick = () => { const p = NVTHEME.preset(b.dataset.from); ownSt.c = {bg:p.bg, card:p.card, text:p.text, accent:p.accent}; ownSt.from = ownSt.last = p.id; drawOwn() });
   $('#ocreset').onclick = () => { const p = NVTHEME.preset(ownSt.last || 'midnight'); ownSt.c = {bg:p.bg, card:p.card, text:p.text, accent:p.accent}; ownSt.from = p.id; drawOwn() };
-  $('#ocuse').onclick = () => { NVTHEME.setCustom(tg, ownSt.c); NVTHEME.apply('hub'); ownSt = null; drawTheme(); drawMenu(); toast('Your colours are in use') } }
+  $('#ocuse').onclick = () => { NVTHEME.setCustom(tg, ownSt.c); NVTHEME.apply('hub'); ownSt = null; drawTheme(); drawMenu(); if(CAT.length) home(); toast('Your colours are in use') } }
 
 /* ---------- My PC (Take with me) ---------- */
 const APPNAME = {music:'Music', audiobooks:'Audiobooks', bookcase:'Bookcase', cinema:'Cinema'};
