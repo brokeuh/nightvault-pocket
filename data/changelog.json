@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 121,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "Dots inside the apps",
+   "items": [
+    "The ☰ button of every app now shows the same dot as its tile in The Nightvault (orange = backup is old, blue = news or update, green = something new).",
+    "Open the ☰ menu and the top lines tell you why the dot is there."
+   ]
+  },
+  {
    "id": 120,
    "date": "2026-10-23",
    "where": [

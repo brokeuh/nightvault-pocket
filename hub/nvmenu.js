@@ -23,17 +23,32 @@
 #nvmenu .nvm-hr{height:1px;background:var(--line,#232b36);margin:4px 8px}
 #nvmenu .nvm-pip{flex:none;width:9px;height:9px;border-radius:50%;background:var(--dc);box-shadow:0 0 0 2px color-mix(in srgb,var(--dc) 25%,transparent),0 0 6px var(--dc)}
 #nvmenu .nvm-pip.g{--dc:var(--g,#4ee0a0)}#nvmenu .nvm-pip.b{--dc:var(--b,#6aa8ff)}#nvmenu .nvm-pip.o{--dc:var(--o,#ffa94d)}
+#nvmenubtn{position:relative}
+.nvm-bd{position:absolute;top:5px;right:5px;width:9px;height:9px;border-radius:50%;pointer-events:none;background:var(--dc);box-shadow:0 0 0 2px var(--bg,#0b0f14),0 0 7px var(--dc)}
+.nvm-bd.g{--dc:var(--g,#4ee0a0)}.nvm-bd.b{--dc:var(--b,#6aa8ff)}.nvm-bd.o{--dc:var(--o,#ffa94d)}
+#nvmenu .nvm-note{display:flex;align-items:center;gap:9px;padding:8px 12px;font-size:13px;color:var(--dim2,#8fa0b2)}
 #nvmtoast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--pan,#151a22);color:var(--text,#e9edf2);border:1px solid var(--line2,#33404f);padding:10px 14px;border-radius:12px;font:14px 'DM Sans',system-ui,sans-serif;z-index:2147483001;max-width:90vw}
 [id^=nvhelp_]{display:none!important}`;
   const MENU_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>';
   const fromHub = () => { try{ if(new URLSearchParams(location.search).get('nv') === 'hub') sessionStorage.setItem('nvHub', '1'); return sessionStorage.getItem('nvHub') === '1' }catch(e){ return false } };
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]));
   const ago = t => { const d = Math.round((Date.now() - t) / 864e5); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago' };
+  /* the dot on the ☰ (same colours as the hub tile: orange = needs attention, blue = update / news, green = something new) */
+  const lsj = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v }catch(e){ return d } };
+  function state(){ const app = CFG && CFG.app, out = {dot:'', lines:[]}; if(!app) return out;
+    const B = CFG.backup && window.NVBACKUP && NVBACKUP.apps && NVBACKUP.apps[CFG.backup] ? NVBACKUP.last(CFG.backup) : null;
+    if(B && Date.now() - B.at > 10 * 864e5) out.lines.push({dot:'o', text:'Last backup was ' + ago(B.at) + ' - back it up now'});
+    const hub = lsj('nvDots', {})[app]; if(hub === 'b') out.lines.push({dot:'b', text:'News or an update from The Nightvault - see its tile'});
+    const nw = lsj('nvNew', {})[app]; if(nw && +nw.n > 0) out.lines.push({dot:'g', text:nw.text || 'Something new'});
+    const order = ['o', 'b', 'g']; out.dot = order.find(d => out.lines.some(l => l.dot === d)) || ''; return out }
+  function paintBtn(){ if(!BTN) return; BTN.style.position = BTN.style.position || 'relative'; let i = BTN.querySelector('.nvm-bd'); const d = state().dot;
+    if(!d){ if(i) i.remove(); return } if(!i){ i = document.createElement('i'); i.className = 'nvm-bd'; BTN.appendChild(i) } i.className = 'nvm-bd ' + d }
   let ST = null, CFG = null, BTN = null, EL = null, ITEMS = [];
   const toast = t => { let el = document.getElementById('nvmtoast'); if(!el){ el = document.createElement('div'); el.id = 'nvmtoast'; document.body.appendChild(el) } el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true }, 3200) };
   const close = () => { if(!EL) return false; EL.remove(); EL = null; return true };
   function build(){
     const c = CFG, list = [];
+    const st = state(); st.lines.forEach(l => list.push({note:true, dot:l.dot, label:l.text})); if(st.lines.length) list.push('-');
     if(fromHub() && c.hub) list.push({label:'The Nightvault', href:c.hub});
     if(list.length) list.push('-');
     const mid = (c.items ? c.items() : []).filter(x => x === '-' || !x.show || x.show()).map(x => x !== '-' && x.click ? Object.assign({run:() => { const b = document.querySelector(x.click); if(b) b.click() }}, x) : x);
@@ -47,7 +62,7 @@
   function open(){
     close(); ITEMS = build();
     EL = document.createElement('div'); EL.id = 'nvmenu';
-    EL.innerHTML = `<div class="nvm-scrim"></div><div class="nvm-box" role="menu">${ITEMS.map((x, i) => x === '-' ? '<div class="nvm-hr"></div>' : (x.href ? `<a class="nvm-mi" href="${esc(x.href)}"` : `<button class="nvm-mi"`) + ` data-i="${i}" role="menuitem"><span class="nvm-lb">${x.dot ? `<i class="nvm-pip ${x.dot}"></i>` : ''}${esc(x.label)}</span>${x.hint ? `<span class="nvm-h">${esc(x.hint)}</span>` : ''}${x.href ? '</a>' : '</button>'}`).join('')}</div>`;
+    EL.innerHTML = `<div class="nvm-scrim"></div><div class="nvm-box" role="menu">${ITEMS.map((x, i) => x === '-' ? '<div class="nvm-hr"></div>' : x.note ? `<div class="nvm-note"><i class="nvm-pip ${x.dot}"></i>${esc(x.label)}</div>` : (x.href ? `<a class="nvm-mi" href="${esc(x.href)}"` : `<button class="nvm-mi"`) + ` data-i="${i}" role="menuitem"><span class="nvm-lb">${x.dot ? `<i class="nvm-pip ${x.dot}"></i>` : ''}${esc(x.label)}</span>${x.hint ? `<span class="nvm-h">${esc(x.hint)}</span>` : ''}${x.href ? '</a>' : '</button>'}`).join('')}</div>`;
     document.body.appendChild(EL);
     const r = BTN.getBoundingClientRect(), box = EL.querySelector('.nvm-box');
     const vw = document.documentElement.clientWidth || innerWidth, w = box.offsetWidth;
@@ -61,6 +76,7 @@
     if(!host && !orig){ console.warn('NVMENU: button not found', cfg.btn || cfg.mount); return }
     BTN = document.createElement('button'); BTN.className = cfg.cls || (orig && orig.className) || 'ib'; BTN.id = 'nvmenubtn'; BTN.type = 'button'; BTN.setAttribute('aria-label', 'Menu'); BTN.setAttribute('aria-haspopup', 'true'); BTN.innerHTML = MENU_SVG;
     BTN.onclick = () => EL ? close() : open();
+    paintBtn(); setInterval(paintBtn, 60e3); setTimeout(paintBtn, 2500);
     if(host) host.appendChild(BTN); else { orig.parentNode.insertBefore(BTN, orig); orig.style.display = 'none' }
     document.addEventListener('keydown', e => { if(e.key === 'Escape') close() });
     /* pages with no back-button handling of their own (Convert, Control): Android back closes the menu, then goes home to The Nightvault */
