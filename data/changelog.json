@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 108,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "cinema"
+   ],
+   "title": "Cinema calendar: everything that is coming",
+   "items": [
+    "The calendar has a second tab: “Everything coming” – no need to add films and shows one by one.",
+    "In cinemas: every film coming to Belgian cinemas. Streaming: films coming to streaming. Series: popular series with a new episode or season soon. Popular now: what everyone watches this week.",
+    "Pick a genre, and set your streaming services (⚙ → Calendar → My streaming services, e.g. only Netflix and Disney+) so Streaming and Series only show what you can watch.",
+    "Tap ♥ to put one on your want-to-see list, or “Select several” to tick many and add them all at once. They then appear under “My films & shows” with reminders."
+   ]
+  },
+  {
    "id": 107,
    "date": "2026-10-23",
    "where": [

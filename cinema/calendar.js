@@ -121,12 +121,13 @@ function calPass(e, f){ if(f === 'all') return true; if(f === 'ep') return e.kin
 function drawCal(){ const body = $('#body'); $('#vtitle').textContent = 'Coming soon'; document.title = 'Coming soon · Cinema';
   if(TKEY() && !CALBUSY && Date.now() - lsGet('nvCinema.calAt', 0) > 12 * 3600e3) setTimeout(() => refreshCal(false), 50);
   if(!TKEY()){ body.innerHTML = `<div class="empty">${shelfIcon({s:'#ffb0a8', icon:'cal'}, 48)}<h2 style="margin:8px 0 4px;font-size:18px">The calendar needs TMDB</h2><p class="muted small">Add your free TMDB key first (⚙ → TMDB) - it knows when episodes air and films come out.</p><button class="btn primary" id="caltm">Add the TMDB key</button></div>`; $('#caltm').onclick = () => tmdbSheet(); return }
+  if(S.calSrc === 'all') return drawAll();
   const f = S.calFilter || 'all', view = S.calView || 'list', all = calEvents().filter(e => calPass(e, f));
-  let h = `<div class="chips">${CF.map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-cf="${k}">${t}</button>`).join('')}</div>
+  let h = srcSwitch() + `<div class="chips">${CF.map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-cf="${k}">${t}</button>`).join('')}</div>
     <div class="mbar"><select id="calview"><option value="list" ${view === 'list' ? 'selected' : ''}>List by week</option><option value="month" ${view === 'month' ? 'selected' : ''}>Month</option></select><span style="flex:1"></span><button class="btn sm" id="calref">${CALBUSY ? 'Looking…' : '↻ Look again'}</button><button class="btn sm primary" id="calwant">♥ Want to see…</button></div>`;
   h += view === 'month' ? monthHTML(all) : listHTML(all);
   h += `<p class="muted small" style="margin-top:14px">Dates for Belgium (else the Netherlands) from TMDB${lsGet('nvCinema.calAt', 0) ? ' · looked ' + new Date(lsGet('nvCinema.calAt', 0)).toLocaleString() : ''}. Where to watch: JustWatch. ${S.remind ? (LN ? `Reminders on the day at ${esc(S.remindAt || '09:00')} (⚙).` : 'Reminders work in the Android app.') : 'Reminders are off (⚙).'}</p>`;
-  body.innerHTML = h; lazyCovers(body);
+  body.innerHTML = h; lazyCovers(body); hookSrc();
   body.querySelectorAll('[data-cf]').forEach(b => b.onclick = () => { S.calFilter = b.dataset.cf; saveS(); drawCal() });
   $('#calview').onchange = e => { S.calView = e.target.value; saveS(); drawCal() };
   $('#calref').onclick = () => { toast('Looking for new dates…'); refreshCal(true) };
@@ -185,8 +186,8 @@ async function addWant(x){ const have = TITLES.find(t => t.tmdb && t.tmdb.type =
   const kind = x.type === 'tv' ? 'show' : 'movie', anim = (x.genres || []).includes(16);
   const shelf = anim && x.lang === 'ja' ? 'anime' : anim ? 'cartoons' : kind === 'show' ? 'tv' : 'movies';
   const t = newTitle({kind, name:x.title, year:x.year || null}, shelf); t.want = true;
-  try{ await applyTm(t, Object.assign({type:x.type, id:x.id, title:x.title, year:x.year, poster:x.poster || '', backdrop:'', overview:'', orig:''}), true) }catch(e){}
-  await saveTitle(t); regroup(); toast(`♥ ${t.name} is on your want-to-see list`);
+  try{ await applyTm(t, {type:x.type, id:x.id, title:x.title, year:x.year, poster:x.poster || '', backdrop:'', overview:'', orig:''}, true) }catch(e){}
+  await saveTitle(t); regroup(); if(x.quiet) return t; toast(`♥ ${t.name} is on your want-to-see list`);
   refreshCal(true, t).catch(() => {}); return t }
 
 /* ---------- the title page: what is coming for this title + where to watch ---------- */
@@ -205,6 +206,7 @@ window.calStart = async () => {
   const sb = $('#setbtn'); if(sb && !$('#calbtn')){ const b = document.createElement('button'); b.className = 'ib'; b.id = 'calbtn'; b.setAttribute('aria-label', 'Coming soon (calendar)');
     b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
     b.onclick = () => { if(cur().v !== 'cal') go({v:'cal'}) }; sb.parentNode.insertBefore(b, sb) }
+  { const d0 = draw; draw = function(){ const b = $('#calbtn'); if(b) b.hidden = cur().v === 'cal'; return d0.apply(this, arguments) } }
   try{ for(const r of await dbAll('kv')) if(String(r.id).startsWith('cal:')) CALC[r.id.slice(4)] = r.v }catch(e){}
   if(S.remind == null){ S.remind = true; S.remindAt = S.remindAt || '09:00'; saveS() }
   if(TKEY() && Date.now() - lsGet('nvCinema.calAt', 0) > 12 * 3600e3) setTimeout(() => refreshCal(false), 6000);
@@ -215,7 +217,94 @@ window.calStart = async () => {
 window.calSettingsHTML = () => `<div class="sec">Calendar</div>
   <div class="opt"><label for="as_rem">Remind me on the day (new episode, film out)</label><input type="checkbox" id="as_rem" ${S.remind ? 'checked' : ''}></div>
   <div class="opt"><label for="as_remat">At</label><select id="as_remat">${['07:00', '08:00', '09:00', '12:00', '17:00', '18:00', '19:00', '20:00'].map(x => `<option ${(S.remindAt || '09:00') === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
-  ${LN ? '' : '<p class="muted small" style="margin:0">Reminders work in the Android app.</p>'}`;
-window.calSettingsHook = () => { const r = $('#as_rem'), a = $('#as_remat'); if(!r) return;
+  ${LN ? '' : '<p class="muted small" style="margin:0">Reminders work in the Android app.</p>'}
+  <button class="btn" id="as_prov" style="width:100%;margin-top:6px">My streaming services${(S.myProv || []).length ? ': ' + esc(S.myProv.map(p => p.name).join(', ')) : '…'}</button>`;
+window.calSettingsHook = () => { const r = $('#as_rem'), a = $('#as_remat'); if(!r) return; if($('#as_prov')) $('#as_prov').onclick = () => provSheet();
   r.onchange = async e => { S.remind = e.target.checked; saveS(); if(S.remind && LN && !(await askReminders())){ toast('Allow notifications for Nightvault in Android’s settings to get reminders', 5000) } scheduleReminders() };
   a.onchange = e => { S.remindAt = e.target.value; saveS(); scheduleReminders() } };
+
+/* =====================================================================================================================
+   EVERYTHING COMING (23 October 2026, owner: "load every release without adding series one by one"):
+   all films coming to Belgian cinemas, films coming to streaming, new and returning series – from TMDB's discover lists, filtered by the
+   streaming services you have (⚙ → Calendar → My streaming services, Belgium) and a genre. One tap ♥ = want to see; "Select several" adds
+   many at once; "Popular now" = TMDB's trending list. Kept for 12 hours per filter (kv 'calall:…').
+   ===================================================================================================================== */
+const SRC_TABS = [['mine', 'My films & shows'], ['all', 'Everything coming']];
+const srcSwitch = () => `<div class="seg">${SRC_TABS.map(([k, t]) => `<button class="${(S.calSrc || 'mine') === k ? 'on' : ''}" data-src="${k}">${t}</button>`).join('')}</div>`;
+function hookSrc(){ document.querySelectorAll('#body [data-src]').forEach(b => b.onclick = () => { S.calSrc = b.dataset.src; saveS(); ALLSEL = null; drawCal() }) }
+const ALLK = [['cinema', 'In cinemas'], ['stream', 'Streaming'], ['tv', 'Series'], ['trend', 'Popular now']];
+let ALLBUSY = false, ALLSEL = null; const ALLMEM = {};
+const provIds = () => (S.myProv || []).map(x => x.id);
+async function genres(){ const c = await kvGet('tmgenres:' + S.lang, null); if(c && Date.now() - c.at < 30 * 864e5) return c.d;
+  const [m, t] = await Promise.all([tmdb('/genre/movie/list'), tmdb('/genre/tv/list')]); const d = {}; for(const g of (m.genres || []).concat(t.genres || [])) d[g.id] = g.name;
+  kvSet('tmgenres:' + S.lang, {at:Date.now(), d}); return d }
+/* the list for one tab (cached 12 h) */
+async function loadAll(kind, force){ const g = S.allGenre || '', pv = provIds().join('|'), key = `calall:${kind}:${g}:${pv}:${S.lang}`;
+  if(!force){ if(ALLMEM[key] && Date.now() - ALLMEM[key].at < 12 * 3600e3) return ALLMEM[key].items; const c = await kvGet(key, null); if(c && Date.now() - c.at < 12 * 3600e3) return (ALLMEM[key] = c).items }
+  const today = todayKey(), plus = n => dkey(new Date(Date.now() + n * 864e5)), items = [], pages = async (path, params, n) => { const out = []; for(let p = 1; p <= n; p++){ const r = await tmdb(path, Object.assign({page:p}, params)); out.push(...(r.results || [])); if(p >= (r.total_pages || 1)) break } return out };
+  const film = (x, where, date) => ({id:`x:movie:${x.id}:${where}`, type:'movie', tmdbId:x.id, title:x.title, date, where, poster:x.poster_path || '', genres:x.genre_ids || [], lang:x.original_language || '', pop:x.popularity || 0, year:+(String(x.release_date || '').slice(0, 4)) || null});
+  if(kind === 'cinema'){ for(const x of await pages('/discover/movie', {region:'BE', with_release_type:'2|3', 'release_date.gte':today, 'release_date.lte':plus(120), sort_by:'popularity.desc', with_genres:g}, 3)) if(x.release_date) items.push(film(x, 'cinema', x.release_date)) }
+  if(kind === 'stream'){ for(const x of await pages('/discover/movie', Object.assign({region:'BE', watch_region:'BE', with_release_type:'4', 'release_date.gte':plus(-14), 'release_date.lte':plus(90), sort_by:'popularity.desc', with_genres:g}, pv ? {with_watch_providers:pv} : {}), 3)) if(x.release_date) items.push(film(x, 'digital', x.release_date)) }
+  if(kind === 'tv'){ const shows = await pages('/discover/tv', Object.assign({'air_date.gte':today, 'air_date.lte':plus(45), watch_region:'BE', sort_by:'popularity.desc', with_genres:g}, pv ? {with_watch_providers:pv} : {}), 2);
+    for(const x of shows.slice(0, 36)){ let d; try{ d = await tmdb(`/tv/${x.id}`) }catch(e){ continue } const n = d.next_episode_to_air; if(!n || !n.air_date) continue;
+      items.push({id:`x:tv:${x.id}:${n.season_number}:${n.episode_number}`, type:'tv', tmdbId:x.id, title:x.name, date:n.air_date, where:'ep', s:n.season_number, e:n.episode_number, label:n.name || '', poster:x.poster_path || '', genres:x.genre_ids || [], lang:x.original_language || '', pop:x.popularity || 0,
+        net:((d.networks || [])[0] || {}).name || '', year:+(String(x.first_air_date || '').slice(0, 4)) || null}) } }
+  if(kind === 'trend'){ for(const x of await pages('/trending/all/week', {}, 2)) if(x.media_type === 'movie' || x.media_type === 'tv') items.push({id:`x:${x.media_type}:${x.id}:trend`, type:x.media_type, tmdbId:x.id, title:x.title || x.name, date:'', where:'trend', poster:x.poster_path || '', genres:x.genre_ids || [], lang:x.original_language || '', pop:x.popularity || 0, year:+(String(x.release_date || x.first_air_date || '').slice(0, 4)) || null}) }
+  const c = {at:Date.now(), items}; ALLMEM[key] = c; kvSet(key, c); return items }
+const inLib = it => TITLES.find(t => t.tmdb && t.tmdb.type === it.type && +t.tmdb.id === +it.tmdbId) || null;
+function allSub(it){ if(it.where === 'ep') return `${it.net ? it.net + ' · ' : ''}S${it.s}·E${it.e}${it.e === 1 ? (it.s === 1 ? ' · new series' : ' · new season') : ''}`; if(it.where === 'trend') return (it.type === 'tv' ? 'TV show' : 'Film') + (it.year ? ' · ' + it.year : '');
+  return WHERE[it.where] || '' }
+function allRow(it){ const have = inLib(it), d = it.date ? daysFrom(it.date) : null, sel = ALLSEL && ALLSEL.has(it.id);
+  return `<div class="li calrow" data-all="${esc(it.id)}">${ALLSEL ? `<input type="checkbox" ${sel ? 'checked' : ''} ${have ? 'disabled' : ''} style="width:22px;height:22px;accent-color:var(--accentd);flex:none">` : ''}<span class="th" style="width:44px"><div class="cv">${phHTML({name:it.title, kind:it.type === 'tv' ? 'show' : 'movie'})}${it.poster ? `<img class="f" src="${esc(IMG(it.poster, 'w92'))}" alt="" onerror="this.remove()" style="object-fit:cover">` : ''}</div></span>
+    <div class="n"><div>${esc(it.title)}</div><div class="s">${esc(allSub(it))}</div></div>
+    <div class="r" style="text-align:right">${it.date ? `<div style="color:${d === 0 ? 'var(--accent)' : 'inherit'}">${d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : dshort(it.date)}</div>` : ''}${ALLSEL ? '' : have ? `<span class="small" style="color:${isWant(have) ? '#ff9db7' : 'var(--green)'}">${isWant(have) ? '♥ on list' : '✓ in Cinema'}</span>` : '<button class="btn sm" data-heart="1" style="height:30px;padding:0 10px">♥</button>'}</div></div>` }
+async function drawAll(){ const body = $('#body'), kind = S.allKind || 'cinema', ok = await genres().catch(() => ({}));
+  const gl = Object.entries(ok).sort((a, b) => a[1].localeCompare(b[1]));
+  let h = srcSwitch() + `<div class="chips">${ALLK.map(([k, t]) => `<button class="chip ${kind === k ? 'on' : ''}" data-ak="${k}">${t}</button>`).join('')}</div>
+    <div class="mbar"><select id="allg"><option value="">All genres</option>${gl.map(([id, n]) => `<option value="${id}" ${String(S.allGenre || '') === id ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+      ${kind === 'stream' || kind === 'tv' ? `<button class="btn sm" id="allprov">${provIds().length ? esc((S.myProv || []).map(p => p.name).slice(0, 2).join(', ') + ((S.myProv || []).length > 2 ? ' +' + ((S.myProv || []).length - 2) : '')) : 'All services'}</button>` : ''}
+      <span style="flex:1"></span><button class="btn sm" id="allsel">${ALLSEL ? 'Cancel' : 'Select several'}</button></div><div id="alllist"><div class="prog busy"><i></i></div></div>`;
+  body.innerHTML = h; hookSrc();
+  body.querySelectorAll('[data-ak]').forEach(b => b.onclick = () => { S.allKind = b.dataset.ak; saveS(); ALLSEL = null; drawAll() });
+  $('#allg').onchange = e => { S.allGenre = e.target.value; saveS(); drawAll() };
+  if($('#allprov')) $('#allprov').onclick = () => provSheet();
+  $('#allsel').onclick = () => { ALLSEL = ALLSEL ? null : new Set(); drawAll() };
+  let items; try{ items = await loadAll(kind) }catch(e){ if($('#alllist')) $('#alllist').innerHTML = `<p class="note bad">${esc(e.message)}</p>`; return }
+  if(cur().v !== 'cal' || S.calSrc !== 'all' || (S.allKind || 'cinema') !== kind || !$('#alllist')) return;
+  items = items.filter(it => !S.allGenre || (it.genres || []).includes(+S.allGenre)).sort((a, b) => kind === 'trend' ? b.pop - a.pop : (a.date || '').localeCompare(b.date || '') || b.pop - a.pop);
+  const el = $('#alllist');
+  if(!items.length){ el.innerHTML = `<p class="muted" style="text-align:center;margin-top:30px">Nothing found${S.allGenre ? ' in this genre' : ''}${provIds().length && kind !== 'cinema' ? ' on your services' : ''}.</p>`; return }
+  if(kind === 'trend') el.innerHTML = `<div class="mlist" style="gap:0">${items.map(allRow).join('')}</div>`;
+  else { const now = new Date(), toEndWeek = 6 - (now.getDay() + 6) % 7, grp = [], add = (n, l) => { if(l.length) grp.push(`<div class="sec">${n}</div><div class="mlist" style="gap:0">${l.map(allRow).join('')}</div>`) };
+    add('Out recently', items.filter(i => daysFrom(i.date) < 0)); add('Today', items.filter(i => daysFrom(i.date) === 0)); add('This week', items.filter(i => daysFrom(i.date) > 0 && daysFrom(i.date) <= toEndWeek));
+    add('Next week', items.filter(i => daysFrom(i.date) > toEndWeek && daysFrom(i.date) <= toEndWeek + 7)); const later = items.filter(i => daysFrom(i.date) > toEndWeek + 7);
+    for(const m of [...new Set(later.map(i => i.date.slice(0, 7)))]) add(MON[+m.slice(5, 7) - 1] + (m.slice(0, 4) !== String(now.getFullYear()) ? ' ' + m.slice(0, 4) : ''), later.filter(i => i.date.startsWith(m)));
+    el.innerHTML = grp.join('') }
+  el.insertAdjacentHTML('beforeend', `<p class="muted small" style="margin-top:14px">From TMDB${kind === 'cinema' ? ' · Belgian cinema dates' : kind === 'stream' ? ' · streaming dates for Belgium' + (provIds().length ? ', on your services (JustWatch data)' : '') : kind === 'tv' ? ' · the most watched series with a new episode in the next weeks' + (provIds().length ? ', on your services' : '') : ''}. ♥ puts it on your want-to-see list - then it is in “My films & shows” with reminders.</p>`);
+  lazyCovers(el);
+  if(ALLSEL){ const bar = document.createElement('div'); bar.id = 'msel'; bar.innerHTML = `<b style="flex:1" id="allseln">${ALLSEL.size ? plural(ALLSEL.size, 'title') + ' selected' : 'Tick the ones you want'}</b><button class="btn sm primary" id="alladd" ${ALLSEL.size ? '' : 'disabled'}>♥ Want to see</button><button class="btn sm" id="allx">Cancel</button>`;
+    const old = $('#msel'); if(old) old.remove(); document.body.appendChild(bar);
+    $('#allx').onclick = () => { ALLSEL = null; bar.remove(); drawAll() };
+    $('#alladd').onclick = async () => { const list = items.filter(i => ALLSEL.has(i.id)); bar.remove(); ALLSEL = null; await addMany(list); drawAll() } }
+  else { const old = $('#msel'); if(old && old.querySelector('#alladd')) old.remove() }
+  el.querySelectorAll('[data-all]').forEach(r => r.onclick = async e => { const it = items.find(x => x.id === r.dataset.all); if(!it) return;
+    if(ALLSEL){ if(inLib(it)) return; ALLSEL.has(it.id) ? ALLSEL.delete(it.id) : ALLSEL.add(it.id); const cb = r.querySelector('input'); if(cb) cb.checked = ALLSEL.has(it.id);
+      const n = $('#allseln'); if(n) n.textContent = ALLSEL.size ? plural(ALLSEL.size, 'title') + ' selected' : 'Tick the ones you want'; const b = $('#alladd'); if(b) b.disabled = !ALLSEL.size; return }
+    const have = inLib(it); if(have) return go({v:'title', id:have.id, shelf:have.shelf});
+    if(e.target.closest('[data-heart]')){ await addWant(wantOf(it)); drawAll(); return }
+    sheet(`<h3>${esc(it.title)}</h3><p class="muted small" style="margin:0 0 8px">${esc(allSub(it))}${it.date ? ' · ' + esc(dshort(it.date)) + ' ' + it.date.slice(0, 4) : ''}</p><div class="mlist"><button class="btn primary" id="aw">♥ Put on my want-to-see list</button><a class="btn" href="https://www.themoviedb.org/${it.type}/${it.tmdbId}" target="_blank" rel="noopener" style="text-decoration:none">More on TMDB</a></div>`);
+    $('#aw').onclick = async () => { closeSheet(); const t = await addWant(wantOf(it)); if(t) go({v:'title', id:t.id, shelf:t.shelf}) } }) }
+const wantOf = it => ({type:it.type, id:it.tmdbId, title:it.title, year:it.year, poster:it.poster, genres:it.genres, lang:it.lang});
+async function addMany(list){ let n = 0; toast(`Adding ${plural(list.length, 'title')}…`, 3000);
+  for(const it of list){ if(inLib(it)) continue; try{ await addWant(Object.assign(wantOf(it), {quiet:true})); n++ }catch(e){ LE('cal', 'add many', e) } }
+  toast(`♥ ${plural(n, 'title')} on your want-to-see list`, 4000); refreshCal(false).catch(() => {}) }
+/* the streaming services you have (Belgium): TMDB's list, names only */
+async function provSheet(){ sheet(`<h3>My streaming services</h3><p class="muted small" style="margin:0 0 8px">“Streaming” and “Series” then only show what is on these (in Belgium). None ticked = everything.</p><div id="pvl"><div class="prog busy"><i></i></div></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" id="pvnone">None (everything)</button><button class="btn primary" style="flex:2" id="pvok">Save</button></div>`, true);
+  let l = []; try{ const [a, b] = await Promise.all([tmdb('/watch/providers/movie', {watch_region:'BE'}), tmdb('/watch/providers/tv', {watch_region:'BE'})]); const seen = new Set();
+    for(const x of (a.results || []).concat(b.results || [])) if(!seen.has(x.provider_id)){ seen.add(x.provider_id); l.push({id:x.provider_id, name:x.provider_name, pr:(x.display_priorities || {}).BE ?? x.display_priority ?? 999}) } }
+  catch(e){ $('#pvl').innerHTML = `<p class="note bad">${esc(e.message)}</p>`; return }
+  l.sort((x, y) => x.pr - y.pr || x.name.localeCompare(y.name)); const mine = new Set(provIds());
+  $('#pvl').innerHTML = `<div style="max-height:50vh;overflow:auto">${l.map(p => `<label class="opt" style="cursor:pointer"><span>${esc(p.name)}</span><input type="checkbox" data-pv="${p.id}" ${mine.has(p.id) ? 'checked' : ''}></label>`).join('')}</div>`;
+  $('#pvnone').onclick = () => { S.myProv = []; saveS(); closeSheet(); drawCal() };
+  $('#pvok').onclick = () => { S.myProv = [...document.querySelectorAll('[data-pv]:checked')].map(c => ({id:+c.dataset.pv, name:(l.find(p => p.id === +c.dataset.pv) || {}).name || ''})); saveS(); closeSheet(); drawCal(); toast(S.myProv.length ? 'Showing what is on ' + S.myProv.map(p => p.name).join(', ') : 'Showing everything') } }
