@@ -57,7 +57,7 @@
    "files": [
     {
      "path": "test/index.html",
-     "size": 464545
+     "size": 466494
     }
    ],
    "provides": [
@@ -70,10 +70,10 @@
     "convert"
    ],
    "keepsData": "Your collection stays: Scanner and Binder share it.",
-   "size": 464545,
-   "hash": "65aadd135f39",
-   "version": "2026.10.12.1338",
-   "updated": "2026-10-12"
+   "size": 466494,
+   "hash": "63245066ac5f",
+   "version": "2026.10.23.1123",
+   "updated": "2026-10-23"
   },
   {
    "id": "binder",
@@ -84,7 +84,7 @@
    "files": [
     {
      "path": "test/index.html",
-     "size": 464545
+     "size": 466494
     }
    ],
    "provides": [
@@ -94,10 +94,10 @@
     "scan"
    ],
    "keepsData": "Your collection stays: Scanner and Binder share it.",
-   "size": 464545,
-   "hash": "65aadd135f39",
-   "version": "2026.10.12.1338",
-   "updated": "2026-10-12"
+   "size": 466494,
+   "hash": "63245066ac5f",
+   "version": "2026.10.23.1123",
+   "updated": "2026-10-23"
   },
   {
    "id": "convert",
