@@ -3,6 +3,25 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 126,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase",
+    "cinema",
+    "music"
+   ],
+   "title": "Green glow: Bookcase series and re-added items",
+   "items": [
+    "Bookcase: a series or book tile glows when it has books that are new to the app (before, only the lists did, so series tiles never glowed).",
+    "If you delete something and add it again, it is new again and glows.",
+    "Bookcase starts fresh with this update: what is in it now does not glow. Delete and re-add a series to see it."
+   ]
+  },
+  {
    "id": 125,
    "date": "2026-10-23",
    "where": [

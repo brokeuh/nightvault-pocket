@@ -258,6 +258,6 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 
 <script src="app.js"></script>
 <script>try{NVMENU.make({app:'bookcase', btn:'#setbtn', hub:'../hub/index.html', backup:'bookcase', items:() => [{label:'Check for new volumes now', run:() => { NVMENU.toast('Looking for new ones – this can take a minute'); checkNew(true) }}]})}catch(e){console.error(e)}</script>
-<script>try{NVNEW.watch({app:'bookcase', sel:'[data-col]', key:el => el.dataset.col, keys:() => Object.keys(COLS)})}catch(e){}</script>
+<script>try{NVNEW.watch({app:'bookcase-items', sel:'[data-book],[data-grp]', key:el => { if(el.dataset.book) return 'b:' + el.dataset.book; const g = groupByKey(cur().shelf, el.dataset.grp); return g ? (g.all || g.items).map(b => 'b:' + b.id) : null }, keys:() => BOOKS.map(b => 'b:' + b.id)})}catch(e){}</script>
 </body>
 </html>
