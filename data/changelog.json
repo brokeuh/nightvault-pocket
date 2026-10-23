@@ -3,6 +3,25 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 122,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase",
+    "cinema",
+    "music"
+   ],
+   "title": "New things glow",
+   "items": [
+    "New items in Bookcase, Cinema and Music (from a scan of your SD card, a PC sync or added by hand) get a green glow.",
+    "The 24 hours start when you first open the app and see them; the glow also stops as soon as you open the item.",
+    "What you already have when you first update does not glow."
+   ]
+  },
+  {
    "id": 121,
    "date": "2026-10-23",
    "where": [

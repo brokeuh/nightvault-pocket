@@ -34,7 +34,7 @@
     },
     {
      "path": "hub/nvsetup.js",
-     "size": 23197
+     "size": 24193
     },
     {
      "path": "hub/nvtheme.js",
@@ -45,15 +45,19 @@
      "size": 10252
     },
     {
+     "path": "hub/nvnew.js",
+     "size": 3058
+    },
+    {
      "path": "hub/nvsplash.js",
      "size": 8486
     }
    ],
    "provides": [],
    "uses": [],
-   "size": 188644,
-   "hash": "2e3114beca28",
-   "version": "2026.10.23.1539",
+   "size": 192698,
+   "hash": "e4b9b67b4334",
+   "version": "2026.10.23.1545",
    "updated": "2026-10-23"
   },
   {
@@ -236,7 +240,7 @@
    "files": [
     {
      "path": "books/index.html",
-     "size": 23776
+     "size": 23952
     },
     {
      "path": "books/app.js",
@@ -290,9 +294,9 @@
    "uses": [],
    "entry": "books/?nv=hub",
    "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted.",
-   "size": 2431878,
-   "hash": "837afcae2099",
-   "version": "2026.10.23.1405",
+   "size": 2432054,
+   "hash": "aa7b804d20aa",
+   "version": "2026.10.23.1544",
    "updated": "2026-10-23"
   },
   {
@@ -304,7 +308,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 263397
+     "size": 263594
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -316,9 +320,9 @@
     "music"
    ],
    "uses": [],
-   "size": 263958,
-   "hash": "45527b648376",
-   "version": "2026.10.23.1327",
+   "size": 264155,
+   "hash": "547018212f40",
+   "version": "2026.10.23.1544",
    "updated": "2026-10-23"
   },
   {
@@ -330,7 +334,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 263397
+     "size": 263594
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -342,9 +346,9 @@
     "audiobooks"
    ],
    "uses": [],
-   "size": 263958,
-   "hash": "45527b648376",
-   "version": "2026.10.23.1327",
+   "size": 264155,
+   "hash": "547018212f40",
+   "version": "2026.10.23.1544",
    "updated": "2026-10-23"
   },
   {
@@ -355,7 +359,7 @@
    "files": [
     {
      "path": "cinema/index.html",
-     "size": 24805
+     "size": 24987
     },
     {
      "path": "cinema/app.js",
@@ -380,9 +384,9 @@
    "uses": [],
    "entry": "cinema/?nv=hub",
    "keepsData": "Your list, what you watched, groups and TMDB key stay on this device. Video files are never deleted.",
-   "size": 274977,
-   "hash": "f352f2d98399",
-   "version": "2026.10.23.1327",
+   "size": 275159,
+   "hash": "43118ccef63a",
+   "version": "2026.10.23.1544",
    "updated": "2026-10-23"
   },
   {

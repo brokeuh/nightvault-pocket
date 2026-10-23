@@ -16,6 +16,7 @@
         "hub/nvsetup.js",
         "hub/nvtheme.js",
         "hub/nvmenu.js",
+        "hub/nvnew.js",
         "hub/nvsplash.js"
       ],
       "provides": [],

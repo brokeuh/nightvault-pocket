@@ -18,6 +18,7 @@
 <script src="../hub/nvbackup.js"></script>
 <script src="../hub/nvsetup.js"></script>
 <script src="../hub/nvmenu.js"></script>
+<script src="../hub/nvnew.js"></script>
 <!-- Nightvault Audio (test): one app for Audiobooks (?mode=audiobooks, built) and Music (?mode=music, later), one shared player.
      Books are copied into the app (IndexedDB), so they play without internet. Plan: plans/audiobooks.md and plans/music.md (nightvault-src). -->
 <style>
@@ -2123,5 +2124,6 @@ window.NVAUDIO = {get cur(){ return cur }, get books(){ return BOOKS }, state:st
   music:{get Q(){ return Q }, get tracks(){ return TR }, get vis(){ return VIS }, get pct(){ return PCT }, get pcon(){ return PCON }, pcRefresh, saveOffline, doSave, keepOffline, removeOffline, buildGroups, groupOf, setAlbumGroup, setParent, togglePin, GR, get albums(){ return ALB }, get artists(){ return ARTS }, get lists(){ return LISTS }, get stats(){ return STATS }, curT, playList, qAdd, mNext, mPrev, mPlay, mSeek, toggleShuffle, cycleRepeat, toggleFav, musicScan, makeTrack, drawM, mGo, musicBack}};
 </script>
 <script>try{NVMENU.make({app:NV_APP, btn:(NV_APP === 'music' ? '#msetbtn' : '#setbtn'), hub:'../hub/index.html', backup:NV_APP, items:() => [{label:'My PC & offline copies', href:'../hub/index.html#pc', show:() => window.NVPC && NVPC.native}]})}catch(e){console.error(e)}</script>
+<script>try{ if(NV_APP === 'music') NVNEW.watch({app:'music', sel:'[data-al]', key:el => el.dataset.al, keys:() => ALB.map(a => a.key)})}catch(e){}</script>
 </body>
 </html>

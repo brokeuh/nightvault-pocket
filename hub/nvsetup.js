@@ -25,6 +25,7 @@
   /* ---------- the apps ---------- */
   const APPS = {
     cinema:{name:'Cinema', prefix:'nvCinema.', steps:[
+      {id:'newglow', added:'2026-10-23', icon:'✨', title:'New things glow', body:'Anything new in the app (from a scan of your SD card, a PC sync or added by hand) gets a green glow. It stays for 24 hours from the moment you first see it, or until you open it. A dot on the ☰ button tells you when something needs attention.'},
       {id:'welcome', added:'2026-10-23', icon:'🎬', title:'Welcome to Nightvault Cinema', body:'Your films, TV shows, cartoons and anime, each on its own shelf, with one video player. Your list stays on this phone.'},
       {id:'add', added:'2026-10-23', icon:'➕', title:'Add your videos', body:'Tap <b>Add</b>: pick the folder on this phone with your films and series (nothing is copied), or copy files into the app. Names are read from the file names - you check them first. Films and shows on your PC come by themselves once your PC is connected.'},
       {id:'play', added:'2026-10-23', icon:'▶️', title:'Watching', body:'Tap a poster, then <b>Play</b>. Cinema remembers where you stopped and plays the next episode by itself. Subtitles: the <b>CC</b> button (Dutch first, else English; Earlier / Later if they are off). ⚙ in the player: speed, sound, quality.'},
@@ -54,6 +55,7 @@
       {id:'sgdb', added:'2026-10-23', icon:'🖼️', title:'SteamGridDB (more covers, optional)', body:'Many more covers to choose from.', how:['Log in at steamgriddb.com (with Steam).', 'Preferences › <b>API</b> › copy the key.'],
         link:{url:'https://www.steamgriddb.com/profile/preferences/api', text:'Get a SteamGridDB key'}, keys:[{ls:'nvGames.keys', field:'sgdbKey', label:'SteamGridDB API key', ph:'', secret:true}], android:true}]},
     bookcase:{name:'Bookcase', prefix:'nvBooks.', steps:[
+      {id:'newglow', added:'2026-10-23', icon:'✨', title:'New things glow', body:'Anything new in the app (from a scan of your SD card, a PC sync or added by hand) gets a green glow. It stays for 24 hours from the moment you first see it, or until you open it. A dot on the ☰ button tells you when something needs attention.'},
       {id:'welcome', added:'2026-10-23', icon:'📚', title:'Welcome to Nightvault Bookcase', body:'Comics, manga, books, rulebooks, RPG books and colouring books on their own shelves, with one reader for CBZ, CBR, PDF, EPUB and picture folders.'},
       {id:'add', added:'2026-10-23', icon:'➕', title:'Add your books', body:'Tap <b>Add</b> on a shelf: pick a folder on this phone (nothing is copied) or files to copy into the app. Series are put together by themselves; the reader remembers your page.'},
       {id:'read', added:'2026-10-23', icon:'📖', title:'Reading', body:'Tap the edges or swipe to turn pages (right-to-left for manga), pinch to zoom. At the end the reader offers the next volume.'},
@@ -66,6 +68,7 @@
       {id:'plays', added:'2026-10-23', icon:'🏆', title:'Log a play', body:'Open a game › <b>Log a play</b>: date, players, who won and the scores. Plays are kept here and can be sent to BoardGameGeek.'},
       {id:'bgg', added:'2026-10-23', icon:'🔑', title:'BoardGameGeek', body:'Your BGG games come in by themselves every morning once the GitHub job has your BGG user name and token, and plays are sent with your BGG login - both in Boardgames › <b>⚙ Settings</b> (top right), with the steps there.', go:{url:'https://boardgamegeek.com/login', text:'BoardGameGeek'}}]},
     music:{name:'Music', prefix:'nvMusic.', steps:[
+      {id:'newglow', added:'2026-10-23', icon:'✨', title:'New things glow', body:'Anything new in the app (from a scan of your SD card, a PC sync or added by hand) gets a green glow. It stays for 24 hours from the moment you first see it, or until you open it. A dot on the ☰ button tells you when something needs attention.'},
       {id:'welcome', added:'2026-10-23', icon:'🎵', title:'Welcome to Nightvault Music', body:'Your own music: albums, artists, songs and playlists, with a big “now playing” screen. It keeps playing with the screen off.'},
       {id:'add', added:'2026-10-23', icon:'➕', title:'Add your music', body:'Tap <b>Add</b> and pick your music folder on this phone - nothing is copied, all folders inside are read. Or copy songs into the app.'},
       {id:'groups', added:'2026-10-23', icon:'🗂️', title:'Groups', body:'Albums of one artist or series make one tile. Make your own groups, put groups inside groups, pin favourites to the top.'},
