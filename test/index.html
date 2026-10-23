@@ -1131,6 +1131,10 @@ function viewScan(){
     {icon:'photo', label:'Photos of cards', sub:'Pick one or more photos, one card per photo', run:() => $('#cfile').click()},
     {icon:'layout-grid', label:'Photo of a binder page', sub:'Fit a grid over the page, every card gets scanned', run:() => $('#cpage').click()}]);
   $('#cgame').onclick = openGamePicker;
+  { const cw = $('#cw'); let x0 = null, y0 = 0;
+    if(cw){ cw.addEventListener('touchstart', e => { if(e.touches.length === 1){ x0 = e.touches[0].clientX; y0 = e.touches[0].clientY } else x0 = null }, {passive:true});
+      cw.addEventListener('touchend', e => { if(x0 == null) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+        if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && !O.binder) cycleTpl(dx < 0 ? 1 : -1) }, {passive:true}) } }
   $('#copt').onclick = openScanOptions;
   $('#cfind').onclick = openFind;
   $('#cfile').onchange = onPhoto;
@@ -1327,9 +1331,9 @@ function drawGuide(state){
     for(let i = 1; i < g.B.rows; i++){ ctx.moveTo(x, y + h * i / g.B.rows); ctx.lineTo(x + w, y + h * i / g.B.rows) }
     ctx.stroke(); ctx.setLineDash([]); return;
   }
-  const L = O.game === 'auto' ? AUTO : GAMES[O.game];       // where the name is read
+  const pt = pickedTpl(O.game === 'auto' ? '' : O.game), L = pt ? pt.zones : O.game === 'auto' ? AUTO : GAMES[O.game];       // where the name is read
   ctx.setLineDash([5 * dpr, 4 * dpr]); ctx.lineWidth = 1.5 * dpr; ctx.strokeStyle = 'rgba(255,255,255,.7)';
-  [L.name].concat(O.readNum ? [L.num] : []).forEach(b => ctx.strokeRect(x + b[0] * w, y + b[1] * h, (b[2] - b[0]) * w, (b[3] - b[1]) * h));
+  [L.name].concat((O.readNum || (pt && !pt.std)) && L.num ? [L.num] : []).concat(pt && !pt.std && L.text ? [L.text] : []).filter(Boolean).forEach(b => ctx.strokeRect(x + b[0] * w, y + b[1] * h, (b[2] - b[0]) * w, (b[3] - b[1]) * h));
   ctx.setLineDash([]);
 }
 window.addEventListener('resize', () => drawGuide(SC.busy ? 'busy' : 'idle'));
@@ -2063,15 +2067,24 @@ function renderSession(){
 }
 
 /* ---------------------------------------------------------------- scan templates: where the name, set & number and extra text sit */
-function templateList(g){
+function templatesFor(g){                          // the templates of a game in a fixed order: Standard first, then your own
   const mine = store.templates.filter(t => !g || t.game === g).map(t => ({...t, label:t.name}));
   const std = g ? [{id:'std:' + g, label:'Standard', game:g, std:true, zones:{name:GAMES[g].name, num:GAMES[g].num}}]
     : [{id:'std:auto', label:'Standard', game:null, std:true, zones:{name:AUTO.name, num:AUTO.num}},
        {id:'std:mid', label:'Name in the middle', game:null, std:true, zones:{name:GAMES.lorcana.name}},
        {id:'std:low', label:'Name at the bottom', game:null, std:true, zones:{name:GAMES.onepiece.name}}];
-  const all = std.concat(mine), last = (O.lastTpl || {})[g || 'auto'];
-  return last ? all.sort((a, b) => (b.id === last) - (a.id === last)) : all;
-}
+  return std.concat(mine) }
+/* the order to try them in: the one you picked by swiping on the camera first, then the one that worked last time */
+function templateList(g){
+  const all = templatesFor(g), pick = (O.tplPick || {})[g || 'auto'], last = (O.lastTpl || {})[g || 'auto'];
+  return all.sort((a, b) => ((b.id === pick) - (a.id === pick)) || ((b.id === last) - (a.id === last))) }
+const pickedTpl = g => { const id = (O.tplPick || {})[g || 'auto']; return id ? templatesFor(g).find(t => t.id === id) || null : null };
+/* swipe left / right on the camera picture: the next / previous template of this game */
+function cycleTpl(d){
+  const g = O.game === 'auto' ? '' : O.game, all = templatesFor(g); if(all.length < 2){ toast(all.length ? 'Only the Standard template for this game - make your own in Settings → Scan templates' : 'No templates'); return }
+  const cur = pickedTpl(g) || all[0], i = (all.findIndex(t => t.id === cur.id) + d + all.length) % all.length, t = all[i];
+  O.tplPick = Object.assign(O.tplPick || {}, {[g || 'auto']:t.id}); persist();
+  toast(`Template: ${t.label} (${i + 1} of ${all.length})`); drawGuide(SC.busy ? 'busy' : 'idle') }
 const ZONES = [['name', 'Name'], ['num', 'Set & number'], ['text', 'Extra text']];
 const EDIT = {};
 function cardFromImage(img){            // fit a card-shaped box in the middle of a photo
@@ -3267,7 +3280,7 @@ function settingsPages(total){
 /* ---------------------------------------------------------------- how to use the app: a short tour for new people, also in Settings */
 const GUIDE = [
   ['sparkles', 'Welcome to Nightvault Pocket', 'Keep track of your trading cards: scan them, see every set with what you have and what you miss, follow their value, and build decks. Your cards stay on this phone.'],
-  ['camera', 'Scan a card', 'Open <b>Scan</b> and tap <b>Start camera</b>. Hold the card upright in the frame, with even light and no glare. Pick the game with the <b>Any game</b> button for faster results, then tap the round button - or let it scan by itself when the card is held still.'],
+  ['camera', 'Scan a card', 'Open <b>Scan</b> and tap <b>Start camera</b>. Hold the card upright in the frame, with even light and no glare. Pick the game with the <b>Any game</b> button for faster results, then tap the round button - or let it scan by itself when the card is held still. Cards with an unusual layout? <b>Swipe left or right</b> on the camera picture to switch between the scan templates of that game (make your own in Settings → Scan templates).'],
   ['circle-check', 'Check and add', 'Not the right printing? Tap another picture, <b>All printings</b>, or type the set code and number printed on the card. Set <b>Foil</b>, and with <b>EN</b> the language, a graded copy or a digital one. Then tap <b>Add</b>.'],
   ['layout-grid', 'Faster ways to add', '<b>Binder</b> mode reads a whole binder page, <b>Quick</b> scans card after card. Use <b>Photos</b> for pictures you took, or <b>Search</b> by name. In the Binder you can tick off cards, or mark a whole set as complete with <b>⋯ → I have the whole set</b>.'],
   ['books', 'My cards and the Binder', '<b>My cards</b> lists everything with its value - tap a price to see all sources. The <b>Binder</b> shows every set of a game with what you have, what you miss and what is wanted; mark cards for trade and share your lists.'],
@@ -3310,7 +3323,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610121538';
+const BUILD = '202610231323';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }

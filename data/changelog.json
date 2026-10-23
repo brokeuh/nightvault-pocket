@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 114,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "scanner"
+   ],
+   "title": "Swipe through scan templates",
+   "items": [
+    "On the scan screen, swipe left or right on the camera picture to switch between the scan templates of the chosen game (Standard and your own). A short message says which one is on.",
+    "The dashed boxes move to where that template reads the name and number, and the scanner tries the template you picked first. It is remembered per game."
+   ]
+  },
+  {
    "id": 113,
    "date": "2026-10-23",
    "where": [
