@@ -49,7 +49,8 @@
     EL.innerHTML = `<div class="scrim"></div><div class="box" role="menu">${ITEMS.map((x, i) => x === '-' ? '<div class="hr"></div>' : (x.href ? `<a class="mi" href="${esc(x.href)}"` : `<button class="mi"`) + ` data-i="${i}" role="menuitem"><span class="lb">${x.dot ? `<i class="pip ${x.dot}"></i>` : ''}${esc(x.label)}</span>${x.hint ? `<span class="h">${esc(x.hint)}</span>` : ''}${x.href ? '</a>' : '</button>'}`).join('')}</div>`;
     document.body.appendChild(EL);
     const r = BTN.getBoundingClientRect(), box = EL.querySelector('.box');
-    box.style.top = Math.max(8, r.bottom + 8) + 'px'; box.style.right = Math.max(8, innerWidth - r.right) + 'px';
+    const vw = document.documentElement.clientWidth || innerWidth, w = box.offsetWidth;
+    box.style.top = Math.max(8, r.bottom + 8) + 'px'; box.style.left = Math.max(8, Math.min(r.right - w, vw - w - 8)) + 'px';      // lined up with the ☰, but always fully on screen
     EL.querySelector('.scrim').onclick = close;
     EL.onclick = e => { const m = e.target.closest('.mi'); if(!m) return; const x = ITEMS[+m.dataset.i]; close(); if(x && x.run) setTimeout(() => x.run(), 0) } }
   function make(cfg){

@@ -3,6 +3,32 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 117,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub",
+    "music",
+    "audiobooks",
+    "convert",
+    "control",
+    "bookcase",
+    "cinema",
+    "boardgames",
+    "print3d",
+    "games",
+    "scanner",
+    "binder"
+   ],
+   "title": "The ☰ menu always fits on the screen",
+   "items": [
+    "The ☰ menu in every app is now kept fully on screen. In Music it used to run off the left edge so the words could not be read."
+   ]
+  },
+  {
    "id": 116,
    "date": "2026-10-23",
    "where": [

@@ -42,7 +42,7 @@
     },
     {
      "path": "hub/nvmenu.js",
-     "size": 7419
+     "size": 7577
     },
     {
      "path": "hub/nvsplash.js",
@@ -51,9 +51,9 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 185002,
-   "hash": "355ceb5130f6",
-   "version": "2026.10.23.1327",
+   "size": 185160,
+   "hash": "b3c6e6b24bf3",
+   "version": "2026.10.23.1458",
    "updated": "2026-10-23"
   },
   {
