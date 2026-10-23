@@ -200,6 +200,6 @@ function start(){
   $('#jobs').innerHTML = ''; dsHelp(); JOBS.forEach(j => { drawJob(j); loadJob(j) }); loadRuns(); loadDatasets() }
 start();
 </script>
-<script>try{NVMENU.make({app:'control', mount:'#nvhost', cls:'btn sm', hub:'../hub/index.html', hide:['#refresh','#keybtn'], items:() => [{label:'Picture converter', href:'../tools/convert/'}, {label:'Refresh', click:'#refresh', show:() => !document.querySelector('#refresh').hidden}, {label:'GitHub key', click:'#keybtn', show:() => !document.querySelector('#keybtn').hidden}]})}catch(e){console.error(e)}</script>
+<script>try{NVMENU.make({app:'control', mount:'#nvhost', cls:'btn sm', hub:'../hub/index.html', backHub:true, hide:['#refresh','#keybtn'], items:() => [{label:'Picture converter', href:'../tools/convert/'}, {label:'Refresh', click:'#refresh', show:() => !document.querySelector('#refresh').hidden}, {label:'GitHub key', click:'#keybtn', show:() => !document.querySelector('#keybtn').hidden}]})}catch(e){console.error(e)}</script>
 </body>
 </html>

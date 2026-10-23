@@ -5,6 +5,7 @@
    - `btn`: the app's own ⚙ Settings button. It stays in the page (hidden) and keeps working: the menu's "Settings" item just clicks it.
    - `items()`: what is specific to this app (called every time the menu opens). Entry: {label, run, dot:'g'|'b'|'o', hint, show:()=>bool, href}; '-' = a line.
    - `mount`:'#id' instead of `btn` for a page with no ⚙ button: the ☰ is put inside that element; `cls` = the button's class.
+   - `backHub:true` = this page has no Android back-button handling: back closes the menu, then returns to The Nightvault.
    - `hide`: more selectors to hide (old header icons that moved into the menu, like the old "‹ The Nightvault" link).
    - `click:'#xyz'` on an item = click that existing button (the old header icon) – so the app's own code does not change.
    Always in the menu: "The Nightvault" (only when opened from the hub) on top; at the bottom Settings, How to use & set up (nvsetup.js), Back up this app now (nvbackup.js).
@@ -61,6 +62,9 @@
     BTN = document.createElement('button'); BTN.className = cfg.cls || (orig && orig.className) || 'ib'; BTN.id = 'nvmenubtn'; BTN.type = 'button'; BTN.setAttribute('aria-label', 'Menu'); BTN.setAttribute('aria-haspopup', 'true'); BTN.innerHTML = MENU_SVG;
     BTN.onclick = () => EL ? close() : open();
     if(host) host.appendChild(BTN); else { orig.parentNode.insertBefore(BTN, orig); orig.style.display = 'none' }
-    document.addEventListener('keydown', e => { if(e.key === 'Escape') close() }) }
+    document.addEventListener('keydown', e => { if(e.key === 'Escape') close() });
+    /* pages with no back-button handling of their own (Convert, Control): Android back closes the menu, then goes home to The Nightvault */
+    if(cfg.backHub && window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
+      A.addListener('backButton', () => { if(close()) return; if(fromHub() && cfg.hub) location.href = cfg.hub; else if(A.minimizeApp) A.minimizeApp() }) }catch(e){} }
   window.NVMENU = {make, close, open, toast, get isOpen(){ return !!EL }};
 })();

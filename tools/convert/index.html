@@ -154,6 +154,6 @@ function makeZip(entries){ const enc = new TextEncoder(), parts = [], central = 
 $('#zip').onclick = () => download(`nightvault-convert-${new Date().toISOString().slice(0, 10)}.zip`, makeZip(results));
 </script>
 <script src="../../hub/nvsetup.js"></script>
-<script>try{NVMENU.make({app:'convert', mount:'#nvhost', cls:'btn', hub:'../../hub/index.html'})}catch(e){console.error(e)}</script>
+<script>try{NVMENU.make({app:'convert', mount:'#nvhost', cls:'btn', hub:'../../hub/index.html', backHub:true})}catch(e){console.error(e)}</script>
 </body>
 </html>

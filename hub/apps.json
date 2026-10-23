@@ -42,7 +42,7 @@
     },
     {
      "path": "hub/nvmenu.js",
-     "size": 7577
+     "size": 8144
     },
     {
      "path": "hub/nvsplash.js",
@@ -51,9 +51,9 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 185160,
-   "hash": "b3c6e6b24bf3",
-   "version": "2026.10.23.1458",
+   "size": 185727,
+   "hash": "aa8cc340d912",
+   "version": "2026.10.23.1505",
    "updated": "2026-10-23"
   },
   {
@@ -116,7 +116,7 @@
    "files": [
     {
      "path": "tools/convert/index.html",
-     "size": 16932
+     "size": 16946
     },
     {
      "path": "tools/convert/worker.js",
@@ -183,9 +183,9 @@
     "convert"
    ],
    "uses": [],
-   "size": 4258769,
-   "hash": "f1fa9154113d",
-   "version": "2026.10.23.1327",
+   "size": 4258783,
+   "hash": "9a01ddf3b20e",
+   "version": "2026.10.23.1505",
    "updated": "2026-10-23"
   },
   {
@@ -198,16 +198,16 @@
    "files": [
     {
      "path": "admin/index.html",
-     "size": 23794
+     "size": 23808
     }
    ],
    "provides": [
     "datajobs"
    ],
    "uses": [],
-   "size": 23794,
-   "hash": "161f391cb401",
-   "version": "2026.10.23.1327",
+   "size": 23808,
+   "hash": "2313ddd47660",
+   "version": "2026.10.23.1505",
    "updated": "2026-10-23"
   },
   {

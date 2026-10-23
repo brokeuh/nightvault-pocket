@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 118,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "convert",
+    "control"
+   ],
+   "title": "Convert and Control: back goes to The Nightvault",
+   "items": [
+    "On Android, the back button in Convert and Control now returns to The Nightvault (first it closes the ☰ menu if that is open). Before, nothing happened."
+   ]
+  },
+  {
    "id": 117,
    "date": "2026-10-23",
    "where": [
