@@ -390,6 +390,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden) check
   if(NV.native) try{ const reg = NV.installed(); let ch = false; for(const a of CAT) if(reg[a.id] && a.version && reg[a.id].version !== a.version){ reg[a.id].version = a.version; reg[a.id].size = a.size; ch = true } if(ch) set('nvHub.installed', reg) }catch(e){}
   // first start: no apps chosen yet (someone who used the earlier test tiles has Binder already)
   if(!get('nvHub.setupDone', null) && !Object.keys(NV.installed()).length) setup(); else home();
+  if(location.hash === '#pc' && window.NVPC && NVPC.native) setTimeout(() => $('#pcbtn').click(), 80);
 })();
 /* Android app: the hub is the first screen; back closes the Apps screen, otherwise the app goes to the background */
 /* ---------- Backups: every app backs itself up now and then (nvbackup.js); here you pick the folder, see them and put one back ---------- */
@@ -490,11 +491,13 @@ function drawTheme(){
   if(!apps.some(a => a.id === thApp)) thApp = 'hub';
   const tg = each ? thApp : 'all', T = effT(tg), own = each && !!s.apps[tg];
   const pv = p => `<button class="pv ${T.id === p.id ? 'sel' : ''}" data-p="${p.id}" aria-label="${esc(p.name)}" style="--pb:${p.bg};--pc:${p.card};--pt:${p.text};--pa:${p.accent}"><span class="pvbox"><span class="pvcard"><i class="pvacc"></i><i class="pvl"></i><i class="pvl s"></i></span></span><span class="pvname">${esc(p.name)}${p.isNew ? '<em>NEW</em>' : ''}</span><span class="chk">${CHECK}</span></button>`;
-  let h = `<p class="meta" style="font-size:13px;margin:4px 0 0">For now only The Nightvault itself follows these colours. The other apps join one by one in the next updates.</p>
+  let h = `<p class="meta" style="font-size:13px;margin:4px 0 0">Every Nightvault app follows these colours.</p>
     <div class="card"><div class="tt"><b>Use theme</b><span>${each ? 'Every app can have its own.' : 'The same for every app.'}</span></div><div class="seg" id="scopeseg" style="flex:none"><button data-sc="all" class="${each ? '' : 'on'}">All apps</button><button data-sc="each" class="${each ? 'on' : ''}">Each app</button></div></div>`;
   if(!each) h += `<div class="card"><div class="tt"><b>Apps keep their own colour</b><span>Buttons and links use each app's colour on top of the theme. Status dots never change.</span></div><button class="sw ${s.keep ? 'on' : ''}" id="keepsw" role="switch" aria-checked="${s.keep}" aria-label="Apps keep their own colour"></button></div>`;
   else h += `<div class="card"><div class="tt"><b>Changing</b><span>${own ? 'This app has its own theme.' : 'Uses the shared theme (' + esc(themeLabel(s.all)) + '). Pick one below to give it its own.'}</span></div><select class="sel1" id="appsel" aria-label="App to change">${apps.map(a => `<option value="${a.id}" ${a.id === thApp ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></div>`
     + (own ? '<button class="lnk" id="clrapp">Back to the shared theme</button>' : '');
+  const spOn = (() => { try{ return JSON.parse(localStorage.getItem('nvSplash')) !== false }catch(e){ return true } })();
+  h += `<div class="card"><div class="tt"><b>Show the logo when an app opens</b><span>A short screen with the app's name and icon. Tap it to skip.</span></div><button class="sw ${spOn ? 'on' : ''}" id="splsw" role="switch" aria-checked="${spOn}" aria-label="Show the logo when an app opens"></button></div>`;
   h += `<div class="sec">DARK</div><div class="pgrid">${NVTHEME.dark.map(pv).join('')}</div><div class="sec">LIGHT</div><div class="pgrid">${NVTHEME.lightOnes.map(pv).join('')}</div>
     <button class="ownrow" id="ownbtn"><span>Your own colours<br><small>Pick 4 colours, the rest is made to match</small></span>${T.id === 'custom' ? '<small>In use</small>' : ''}<span style="flex:none;color:var(--dim2)">›</span></button>`;
   $('#thbody').innerHTML = h;
@@ -502,6 +505,7 @@ function drawTheme(){
   $('#thbody').querySelectorAll('[data-p]').forEach(b => b.onclick = () => { NVTHEME.setPreset(tg, b.dataset.p); redo() });
   $('#thbody').querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { NVTHEME.setScope(b.dataset.sc); redo() });
   if($('#keepsw')) $('#keepsw').onclick = () => { NVTHEME.setKeep(!s.keep); redo() };
+  $('#splsw').onclick = () => { try{ localStorage.setItem('nvSplash', JSON.stringify(!spOn)) }catch(e){} drawTheme() };
   if($('#appsel')) $('#appsel').onchange = e => { thApp = e.target.value; drawTheme() };
   if($('#clrapp')) $('#clrapp').onclick = () => { NVTHEME.clearApp(thApp); redo() };
   $('#ownbtn').onclick = drawOwn }

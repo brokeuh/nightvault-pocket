@@ -811,7 +811,7 @@ function loadBackup(){ const i = document.createElement('input'); i.type = 'file
 
 /* ---------- Android back button: sheet → one screen back → The Nightvault ---------- */
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(sheetOpen()){ closeSheet(); return } if(back()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
+  A.addListener('backButton', () => { if(window.NVMENU && NVMENU.close()) return; if(sheetOpen()){ closeSheet(); return } if(back()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 
 document.addEventListener('visibilitychange', () => { if(document.hidden) window.NVHERE && NVHERE.save('nvGames.here', {V}) }); addEventListener('pagehide', () => window.NVHERE && NVHERE.save('nvGames.here', {V}));   // back where you were (../hub/nvlog.js)
 /* ---------- start ---------- */

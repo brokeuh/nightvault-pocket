@@ -733,7 +733,7 @@ $('#addbtn').onclick = () => addSheet();
 
 /* ---------- Android back button: sheet → one screen back → The Nightvault ---------- */
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(sheetOpen()){ if(!$('#scrim').dataset.sticky){ closeSheet(); return } F = null; closeSheet(); return }
+  A.addListener('backButton', () => { if(window.NVMENU && NVMENU.close()) return; if(sheetOpen()){ if(!$('#scrim').dataset.sticky){ closeSheet(); return } F = null; closeSheet(); return }
     if(back()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 document.addEventListener('visibilitychange', () => { if(!document.hidden) sendPending() });
 

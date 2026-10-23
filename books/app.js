@@ -1371,7 +1371,7 @@ $('#addbtn').onclick = () => addSheet();
 
 /* ---------- Android back button: sheet → reader → one screen back → The Nightvault ---------- */
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(sheetOpen()){ if(!$('#scrim').dataset.sticky) closeSheet(); return }
+  A.addListener('backButton', () => { if(window.NVMENU && NVMENU.close()) return; if(sheetOpen()){ if(!$('#scrim').dataset.sticky) closeSheet(); return }
     if(R && !$('#rend').hidden){ $('#rend').hidden = true; return } if(R){ closeReader(); return } if(E){ closeEpub(); return }
     if(back()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 document.addEventListener('visibilitychange', () => { if(document.hidden){ if(R) saveState(R.b.id, true); if(E) ePos(); saveHere() } else if(R || E) awake(true) });

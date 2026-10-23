@@ -1311,7 +1311,7 @@ function loadBackup(){ const i = document.createElement('input'); i.type = 'file
 
 /* ---------- Android back button: player → sheet → one screen back → The Nightvault ---------- */
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(!$('#player').hidden){ if(!$('#pmenu').hidden){ $('#pmenu').hidden = true; return } pClose(); return } if(sheetOpen()){ if(!$('#scrim').dataset.sticky) closeSheet(); return } if(back()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() });
+  A.addListener('backButton', () => { if(window.NVMENU && NVMENU.close()) return; if(!$('#player').hidden){ if(!$('#pmenu').hidden){ $('#pmenu').hidden = true; return } pClose(); return } if(sheetOpen()){ if(!$('#scrim').dataset.sticky) closeSheet(); return } if(back()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() });
   A.addListener('pause', () => { if(!$('#player').hidden) pSave(true) }) }catch(e){}
 document.addEventListener('visibilitychange', () => { if(document.hidden && !$('#player').hidden) pSave(true) });
 

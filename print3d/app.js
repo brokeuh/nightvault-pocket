@@ -820,7 +820,7 @@ $('#prbtn').onclick = () => go({v:'prints'});
 
 /* ---------- Android back button: full screen → sheet → one screen back → The Nightvault ---------- */
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(sheetOpen()){ F = null; closeSheet(); return }
+  A.addListener('backButton', () => { if(window.NVMENU && NVMENU.close()) return; if(sheetOpen()){ F = null; closeSheet(); return }
     if(back()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 document.addEventListener('keydown', e => { if(e.key === 'Escape' && FULL) fullView(false) });
 

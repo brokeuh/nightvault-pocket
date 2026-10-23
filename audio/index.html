@@ -9,11 +9,15 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <script>/* the debug log names the app after the title: set it before nvlog.js starts */ if(/[?&]mode=music(&|$)/.test(location.search)) document.title = 'Nightvault Music'</script>
+<script>window.NV_APP = /[?&]mode=music(&|$)/.test(location.search) ? 'music' : 'audiobooks'</script>
+<script src="../hub/nvtheme.js"></script>
+<script>NVTHEME.apply()</script>
 <script src="../hub/nvlog.js"></script>
 <script src="../hub/nvpc.js"></script>
 <script src="../hub/nvgroups.js"></script>
 <script src="../hub/nvbackup.js"></script>
 <script src="../hub/nvsetup.js"></script>
+<script src="../hub/nvmenu.js"></script>
 <!-- Nightvault Audio (test): one app for Audiobooks (?mode=audiobooks, built) and Music (?mode=music, later), one shared player.
      Books are copied into the app (IndexedDB), so they play without internet. Plan: plans/audiobooks.md and plans/music.md (nightvault-src). -->
 <style>
@@ -26,7 +30,7 @@ button{font:inherit;color:inherit}
 .muted{color:var(--dim)}.small{font-size:12.5px}
 .top{display:flex;align-items:center;gap:10px;padding:4px 0 8px}
 .top h1{font-size:21px;margin:0;flex:1;letter-spacing:.2px}
-.ib{width:42px;height:42px;border-radius:13px;border:1px solid var(--line);background:var(--pan);display:inline-flex;align-items:center;justify-content:center;padding:0;color:#c4cdd8;cursor:pointer;flex:none}
+.ib{width:42px;height:42px;border-radius:13px;border:1px solid var(--line);background:var(--pan);display:inline-flex;align-items:center;justify-content:center;padding:0;color:var(--text);cursor:pointer;flex:none}
 .ib svg{width:20px;height:20px}
 .hubback{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;margin:0 0 6px;border-radius:12px;border:1px solid var(--line);background:var(--pan);color:var(--text);text-decoration:none;font-size:13.5px}
 .btn{height:44px;border-radius:13px;border:1px solid var(--line);background:var(--pan);color:var(--text);font-size:14.5px;cursor:pointer;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
@@ -47,17 +51,17 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 /* cover grid */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:14px 12px;margin-top:6px}
 .bk{cursor:pointer;min-width:0}
-.cv{position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#1a2230;flex:none}
+.cv{position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;background:color-mix(in srgb,var(--pan),var(--text) 7%);flex:none}
 .cv img{width:100%;height:100%;object-fit:cover;display:block}
 .cv .ph{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:10px;font-weight:700;font-size:14px;line-height:1.2;color:#fff;background:linear-gradient(160deg,var(--c1),var(--c2))}
 .cv .ph span{font-size:11px;font-weight:500;opacity:.8;margin-top:3px}
 .cv .done{position:absolute;top:6px;right:6px;background:#0b0e13cc;color:var(--accent);font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px}
 .bk .t{font-size:13.5px;font-weight:600;margin-top:6px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .bk .a{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pbar{height:4px;border-radius:99px;background:#232b36;overflow:hidden;margin-top:5px}.pbar i{display:block;height:100%;background:var(--accent)}
-.empty{text-align:center;padding:40px 16px;border:1px dashed #2f3a48;border-radius:20px;margin-top:14px}
+.pbar{height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:5px}.pbar i{display:block;height:100%;background:var(--accent)}
+.empty{text-align:center;padding:40px 16px;border:1px dashed var(--line2);border-radius:20px;margin-top:14px}
 .empty svg{width:48px;height:48px;color:var(--blue)}
-.store{font-size:12px;color:#6f7d8c;text-align:center;margin-top:22px}
+.store{font-size:12px;color:var(--dim2);text-align:center;margin-top:22px}
 /* mini player */
 #mini{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(620px,calc(100% - 20px));display:flex;align-items:center;gap:10px;padding:8px;border-radius:16px;background:#18202bf2;border:1px solid #2a3442;box-shadow:0 8px 30px #0008;z-index:4;cursor:pointer}
 #mini .cv{width:46px;height:46px;border-radius:10px}
@@ -109,7 +113,7 @@ input[type=range].seek{width:100%;margin:16px 0 0;accent-color:var(--accent);hei
 .opt label{flex:1}
 .opt input[type=checkbox]{width:22px;height:22px;accent-color:var(--accentd)}
 .grp{padding:10px;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;background:var(--pan2)}
-.prog{height:6px;border-radius:99px;background:#232b36;overflow:hidden;margin:8px 0}.prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.prog{height:6px;border-radius:99px;background:var(--line);overflow:hidden;margin:8px 0}.prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
 .prog.busy i{width:30%;transition:none;animation:nvbusy 1.3s ease-in-out infinite}@keyframes nvbusy{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
 #toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#222a33;border:1px solid var(--line);padding:10px 14px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:90vw;text-align:center}
 #toast.on{opacity:1}
@@ -146,9 +150,9 @@ input[type=range].seek{width:100%;margin:16px 0 0;accent-color:var(--accent);hei
 .more{display:block;width:100%;margin-top:10px}
 .mlist{display:flex;flex-direction:column;gap:8px}
 .cdh{display:flex;align-items:center;gap:12px;padding:8px 10px 8px 8px;border:1px solid var(--line);border-radius:16px;background:var(--pan2);margin-top:10px;cursor:pointer}
-.cdh .cdcv{width:58px;height:58px;border-radius:50%;overflow:hidden;flex:none;background:#1a2230;display:flex;align-items:center;justify-content:center;color:var(--dim)}
+.cdh .cdcv{width:58px;height:58px;border-radius:50%;overflow:hidden;flex:none;background:color-mix(in srgb,var(--pan),var(--text) 7%);display:flex;align-items:center;justify-content:center;color:var(--dim)}
 .cdh .cdcv img{width:100%;height:100%;object-fit:cover}
-.cdh b{font-size:15.5px;color:#f1dc6b}.cdh .n{flex:1;min-width:0}.cdh .s{font-size:12.5px;color:var(--dim)}
+.cdh b{font-size:15.5px;color:var(--amber)}.cdh .n{flex:1;min-width:0}.cdh .s{font-size:12.5px;color:var(--dim)}
 .cdh .chev{display:inline-block;font-size:22px;color:var(--dim);transition:transform .15s;width:18px;text-align:center}.cdh.on .chev{transform:rotate(90deg)}
 .cdlist{padding:2px 0 4px 8px}
 .mtot{font-size:13px;color:var(--dim2);margin:0 2px 6px}
@@ -159,25 +163,26 @@ input[type=range].seek{width:100%;margin:16px 0 0;accent-color:var(--accent);hei
 .bk.stack .pcb{top:17px;left:7px}
 .pcs{font-size:9.5px;font-weight:800;letter-spacing:.4px;color:#9fd0ff;border:1px solid #9fd0ff66;border-radius:5px;padding:0 4px;margin-right:6px;vertical-align:1px}
 .pcoff{opacity:.42}
-.pcdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6f7d8c;margin-right:6px;vertical-align:0}.pcdot.ok{background:var(--accent)}.pcdot.no{background:var(--red)}
+.pcdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--dim2);margin-right:6px;vertical-align:0}.pcdot.ok{background:var(--accent)}.pcdot.no{background:var(--red)}
 #msel,#absel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(620px,calc(100% - 20px));display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:16px;background:#1b2a26f5;border:1px solid #2e6b55;box-shadow:0 8px 30px #0009;z-index:7;font-size:14px}
 body.selecting #mini,body.selecting #mmini{display:none}
 .bk.selmode{cursor:pointer}.bk.selmode .cv{transition:transform .12s}
 .bk.sel .cv{outline:3px solid var(--accent);outline-offset:-3px;transform:scale(.94)}
 .bk.sel::after{content:'✓';position:absolute;right:8px;bottom:44px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#08251b;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px}
 .bk{-webkit-touch-callout:none;user-select:none}
-.pinb{position:absolute;left:7px;top:7px;width:24px;height:24px;border-radius:50%;background:#0b0e13d9;border:1px solid #f1dc6b88;color:#f1dc6b;font-size:13px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.pinb{position:absolute;left:7px;top:7px;width:24px;height:24px;border-radius:50%;background:#0b0e13d9;border:1px solid #f1dc6b88;color:var(--amber);font-size:13px;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .bk.stack .pinb{top:17px}
 .bk:has(.pinb) .pcb{left:36px}
-.bk .cdl{position:absolute;top:7px;right:7px;background:#0b0e13d9;color:#f1dc6b;font-size:11.5px;font-weight:800;letter-spacing:.3px;padding:3px 8px;border-radius:99px;border:1px solid #f1dc6b55;pointer-events:none}
+.bk .cdl{position:absolute;top:7px;right:7px;background:#0b0e13d9;color:var(--amber);font-size:11.5px;font-weight:800;letter-spacing:.3px;padding:3px 8px;border-radius:99px;border:1px solid #f1dc6b55;pointer-events:none}
 .facts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px;margin:6px 0 12px}.facts span:nth-child(odd){color:var(--dim)}
-.desc{font-size:14px;line-height:1.55;color:#d4dbe3;white-space:pre-line}
+.desc{font-size:14px;line-height:1.55;color:var(--text);white-space:pre-line}
 .nexts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
 .nx{display:flex;gap:10px;align-items:center;padding:8px;border-radius:14px;border:1px solid var(--line);background:var(--pan2);cursor:pointer;min-width:0}
 .nx .cv{width:44px;border-radius:8px}.nx .cv .ph{font-size:8px;padding:4px}.nx .cv .ph span{display:none}.nx .n{min-width:0}.nx .n div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}.nx small{color:var(--dim);font-size:11px}
 </style>
 </head>
 <body>
+<script src="../hub/nvsplash.js"></script>
 <a id="hubback" class="hubback" hidden href="../hub/index.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5fe0b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><rect x="14" y="14" width="6" height="6" rx="1.5"></rect></svg>The Nightvault</a>
 
 <!-- library -->
@@ -1189,7 +1194,7 @@ let mediaT = 0; au.addEventListener('timeupdate', () => { if(Date.now() - mediaT
 
 /* ---------- Android back button ---------- */
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(sheetOpen()){ if(!$('#scrim').dataset.sticky) closeSheet(); return } if(!$('#player').hidden){ showPlayer(false); return }
+  A.addListener('backButton', () => { if(window.NVMENU && NVMENU.close()) return; if(sheetOpen()){ if(!$('#scrim').dataset.sticky) closeSheet(); return } if(!$('#player').hidden){ showPlayer(false); return }
     if(MODE === 'music' && musicBack()) return;
     if(MODE === 'audiobooks' && abBack()) return;
     if(fromHub() && window.NVHOME !== false){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
@@ -2117,5 +2122,6 @@ document.addEventListener('visibilitychange', () => { if(document.hidden) saveHe
 window.NVAUDIO = {get cur(){ return cur }, get books(){ return BOOKS }, state:st, gpos, seekTo, openBook, togglePlay, mp4Info, mp3Info, flacInfo, oggInfo, wavInfo, fileInfo, review, au,
   music:{get Q(){ return Q }, get tracks(){ return TR }, get vis(){ return VIS }, get pct(){ return PCT }, get pcon(){ return PCON }, pcRefresh, saveOffline, doSave, keepOffline, removeOffline, buildGroups, groupOf, setAlbumGroup, setParent, togglePin, GR, get albums(){ return ALB }, get artists(){ return ARTS }, get lists(){ return LISTS }, get stats(){ return STATS }, curT, playList, qAdd, mNext, mPrev, mPlay, mSeek, toggleShuffle, cycleRepeat, toggleFav, musicScan, makeTrack, drawM, mGo, musicBack}};
 </script>
+<script>try{NVMENU.make({app:NV_APP, btn:(NV_APP === 'music' ? '#msetbtn' : '#setbtn'), hub:'../hub/index.html', backup:NV_APP, items:() => [{label:'My PC & offline copies', href:'../hub/index.html#pc', show:() => window.NVPC && NVPC.native}]})}catch(e){console.error(e)}</script>
 </body>
 </html>

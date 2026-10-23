@@ -8,11 +8,14 @@
 <link rel="icon" href="../favicon.svg">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<script src="../hub/nvtheme.js"></script>
+<script>NVTHEME.apply('games')</script>
 <script src="../hub/nvlog.js"></script>
 <script src="../hub/nvgroups.js"></script>
 <script src="../hub/nvpc.js"></script>
 <script src="../hub/nvbackup.js"></script>
 <script src="../hub/nvsetup.js"></script>
+<script src="../hub/nvmenu.js"></script>
 <!-- Nightvault Games (test): your computer, console, retro and handheld games – a list of what you own and what you want, not a player.
      Shelves per platform + a Wishlist shelf, every shelf organised like Music (shared groups: ../hub/nvgroups.js).
      Game info and covers: IGDB + SteamGridDB, Steam import – with the owner's own keys, kept on this device only.
@@ -28,7 +31,7 @@ a{color:var(--blue)}
 .muted{color:var(--dim)}.small{font-size:12.5px}
 .top{display:flex;align-items:center;gap:10px;padding:4px 0 8px}
 .top h1{font-size:21px;margin:0;flex:1;min-width:0;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ib{width:42px;height:42px;border-radius:13px;border:1px solid var(--line);background:var(--pan);display:inline-flex;align-items:center;justify-content:center;padding:0;color:#c4cdd8;cursor:pointer;flex:none}
+.ib{width:42px;height:42px;border-radius:13px;border:1px solid var(--line);background:var(--pan);display:inline-flex;align-items:center;justify-content:center;padding:0;color:var(--text);cursor:pointer;flex:none}
 .ib svg{width:20px;height:20px}
 .hubback{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;margin:0 0 6px;border-radius:12px;border:1px solid var(--line);background:var(--pan);color:var(--text);text-decoration:none;font-size:13.5px}
 .btn{height:44px;border-radius:13px;border:1px solid var(--line);background:var(--pan);color:var(--text);font-size:14.5px;cursor:pointer;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
@@ -46,21 +49,22 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 .mbar{display:flex;gap:8px;align-items:center;margin:4px 0 10px;flex-wrap:wrap}
 .mtot{font-size:13px;color:var(--dim2);margin:0 2px 6px}
 .mlist{display:flex;flex-direction:column;gap:8px}
-.empty{text-align:center;padding:36px 16px;border:1px dashed #2f3a48;border-radius:20px;margin-top:14px}
+.empty{text-align:center;padding:36px 16px;border:1px dashed var(--line2);border-radius:20px;margin-top:14px}
 .empty svg{width:48px;height:48px;color:var(--accent)}
-.store{font-size:12px;color:#6f7d8c;text-align:center;margin-top:22px}
+.store{font-size:12px;color:var(--dim2);text-align:center;margin-top:22px}
 /* shelf tiles (start screen): one per platform, plus All games and Wishlist */
 .shelves{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:8px}
 .shelf{position:relative;min-height:150px;border-radius:22px;padding:14px;border:1px solid #ffffff14;cursor:pointer;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;-webkit-touch-callout:none;user-select:none}
 .shelf:active{transform:scale(.985)}
+.shelf:not(.add){color:#e9edf2}
 .shelf .ic{position:absolute;left:14px;top:14px;width:44px;height:44px;border-radius:13px;background:#0b0e1366;display:flex;align-items:center;justify-content:center}
 .shelf .ic svg{width:26px;height:26px}
 .shelf b{font-size:17px;position:relative}
 .shelf .s{font-size:12.5px;color:#e9edf2b0;position:relative}
 .shelf .fan{position:absolute;right:10px;top:12px;width:78px;height:96px}
-.shelf .fan img{position:absolute;width:52px;aspect-ratio:5/7;object-fit:cover;border-radius:6px;box-shadow:0 4px 14px #0009;border:1px solid #ffffff22;background:#1a2230}
+.shelf .fan img{position:absolute;width:52px;aspect-ratio:5/7;object-fit:cover;border-radius:6px;box-shadow:0 4px 14px #0009;border:1px solid #ffffff22;background:color-mix(in srgb,var(--pan),var(--text) 7%)}
 .shelf .fan img:nth-child(1){right:0;top:0;transform:rotate(8deg)}.shelf .fan img:nth-child(2){right:12px;top:4px;transform:rotate(0)}.shelf .fan img:nth-child(3){right:24px;top:8px;transform:rotate(-8deg)}
-.shelf.add{background:none;border:1px dashed #2f3a48;color:var(--dim2);align-items:center;justify-content:center;gap:6px;text-align:center;font-size:14px}
+.shelf.add{background:none;border:1px dashed var(--line2);color:var(--dim2);align-items:center;justify-content:center;gap:6px;text-align:center;font-size:14px}
 /* square system tiles on the start page (like the album tiles in Music): name in text, never a console logo */
 .grid.sys{grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:14px 12px}
 .st .sq{position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;border:1px solid #ffffff14}
@@ -78,7 +82,7 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 /* cover grid: tall tiles like game boxes (--cover-ratio). A cover that doesn't fit is shown whole, a blurred copy fills the edges. */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:14px 12px;margin-top:6px}
 .bk{cursor:pointer;min-width:0;position:relative;-webkit-touch-callout:none;user-select:none}
-.cv{position:relative;aspect-ratio:var(--cover-ratio);border-radius:10px;overflow:hidden;background:#1a2230;flex:none}
+.cv{position:relative;aspect-ratio:var(--cover-ratio);border-radius:10px;overflow:hidden;background:color-mix(in srgb,var(--pan),var(--text) 7%);flex:none}
 .cv img{position:absolute;inset:0;width:100%;height:100%;display:block}
 .cv img.b{object-fit:cover;filter:blur(12px) brightness(.55);transform:scale(1.2)}
 .cv img.f{object-fit:contain}
@@ -90,12 +94,12 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 .cv .wish{position:absolute;top:6px;right:6px;z-index:1;background:#0b0e13d9;color:#ff9db7;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;border:1px solid #ff9db755;pointer-events:none}
 .cv .vol{position:absolute;left:6px;bottom:6px;right:6px;z-index:1;display:flex;flex-wrap:wrap;gap:3px;pointer-events:none}
 .cv .vol span{background:#0b0e13d9;color:#fff;font-size:10px;font-weight:800;letter-spacing:.2px;padding:2px 6px;border-radius:6px;white-space:nowrap}
-.cv .vol span.ph2{color:#f1dc6b}
+.cv .vol span.ph2{color:var(--amber)}
 .bk.stack .cv,.stack .gcv{box-shadow:5px -5px 0 -1px #2a3442,10px -10px 0 -2px #1c2430}
 .bk.stack{padding-top:10px;padding-right:10px}
 .bk .cdl{position:absolute;top:7px;right:7px;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;font-size:10.5px;background:#0b0e13d9;color:#7fe3ff;font-weight:800;letter-spacing:.3px;padding:3px 8px;border-radius:99px;border:1px solid #7fe3ff55;pointer-events:none;z-index:1}
 .bk.stack .cdl{top:17px;right:17px}
-.pinb{position:absolute;left:7px;top:7px;width:24px;height:24px;border-radius:50%;background:#0b0e13d9;border:1px solid #f1dc6b88;color:#f1dc6b;font-size:13px;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:2}
+.pinb{position:absolute;left:7px;top:7px;width:24px;height:24px;border-radius:50%;background:#0b0e13d9;border:1px solid #f1dc6b88;color:var(--amber);font-size:13px;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:2}
 .bk.stack>.pinb{top:17px}
 .bk.sel .cv{outline:3px solid var(--accent);outline-offset:-3px;transform:scale(.94)}
 .bk.sel::after{content:'✓';position:absolute;right:8px;bottom:44px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#14173a;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px;z-index:3}
@@ -107,13 +111,13 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 .lnk{color:var(--blue);cursor:pointer}
 .facts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px;margin:12px 0}
 .facts span:nth-child(odd){color:var(--dim)}
-.desc{font-size:14px;line-height:1.55;color:#d4dbe3;white-space:pre-line}
+.desc{font-size:14px;line-height:1.55;color:var(--text);white-space:pre-line}
 .desc.clip{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
 /* copies on the game page */
 .copy{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;border:1px solid var(--line);background:var(--pan2);cursor:pointer;margin-bottom:8px}
 .copy .pl{min-width:58px;height:34px;padding:0 8px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;letter-spacing:.3px;color:#fff;flex:none}
 .copy .n{flex:1;min-width:0}.copy .n div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.copy .n .s{font-size:12.5px;color:var(--dim)}
-.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#232b36;color:#c4cdd8;margin:2px 4px 0 0}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--line);color:var(--text);margin:2px 4px 0 0}
 /* lists in sheets */
 .li{display:flex;align-items:center;gap:10px;padding:11px 8px;border-bottom:1px solid var(--line);cursor:pointer}
 .li:last-child{border-bottom:0}
@@ -132,7 +136,7 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 .opt label{flex:1}
 .opt input[type=checkbox]{width:22px;height:22px;accent-color:var(--accentd)}
 .field{margin-bottom:10px}.field label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:4px}
-.prog{height:6px;border-radius:99px;background:#232b36;overflow:hidden;margin:8px 0}.prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.prog{height:6px;border-radius:99px;background:var(--line);overflow:hidden;margin:8px 0}.prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
 .prog.busy i{width:30%;transition:none;animation:nvbusy 1.3s ease-in-out infinite}@keyframes nvbusy{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
 .note{font-size:12.5px;color:var(--dim);background:var(--pan2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
 .ok{color:var(--green)}.bad{color:var(--red)}
@@ -141,6 +145,7 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 </style>
 </head>
 <body>
+<script src="../hub/nvsplash.js" data-app="games"></script>
 <a id="hubback" class="hubback" hidden href="../hub/index.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a9b4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><rect x="14" y="14" width="6" height="6" rx="1.5"></rect></svg>The Nightvault</a>
 
 <div id="app">
@@ -156,5 +161,6 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 
 <script src="app.js"></script>
 <script src="play.js"></script>
+<script>try{NVMENU.make({app:'games', btn:'#setbtn', hub:'../hub/index.html', backup:'games'})}catch(e){console.error(e)}</script>
 </body>
 </html>

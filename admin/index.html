@@ -6,6 +6,9 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Nightvault control</title>
 <link rel="icon" href="../favicon.svg">
+<script src="../hub/nvtheme.js"></script>
+<script>NVTHEME.apply('control')</script>
+<script src="../hub/nvmenu.js"></script>
 <style>
 :root{--bg:#0c0f12;--pan:#151a20;--pan2:#1b2129;--line:#2a323d;--text:#e9edf2;--dim:#93a0ae;--accent:#3dbf8f;--accentd:#2a8f6a;--red:#e5656a;--amber:#e3b04b;--green:#4cc38a;--blue:#6b8cff}
 *{box-sizing:border-box}
@@ -44,9 +47,10 @@ dialog{background:var(--pan);color:var(--text);border:1px solid var(--line);bord
 </style>
 </head>
 <body>
+<script src="../hub/nvsplash.js" data-app="control"></script>
 <a id="hubback" hidden href="../hub/index.html" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;margin:0 0 10px;border-radius:12px;border:1px solid #2a323d;background:#151a20;color:#e9edf2;text-decoration:none;font-size:13.5px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3dbf8f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><rect x="14" y="14" width="6" height="6" rx="1.5"></rect></svg>The Nightvault</a>
 <script>(() => { try{ if(new URLSearchParams(location.search).get('nv') === 'hub') sessionStorage.setItem('nvHub', '1'); if(sessionStorage.getItem('nvHub') === '1') document.getElementById('hubback').hidden = false }catch(e){} })();</script>
-<div class="top"><h1>Nightvault control</h1><span class="sp"></span><span id="who" class="muted small"></span><a class="btn sm" href="../tools/convert/" target="_blank" rel="noopener">Picture converter</a><button class="btn sm" id="refresh" hidden>Refresh</button><button class="btn sm" id="keybtn" hidden>GitHub key</button></div>
+<div class="top"><h1>Nightvault control</h1><span class="sp"></span><span id="who" class="muted small"></span><span id="nvhost"></span><a class="btn sm" href="../tools/convert/" target="_blank" rel="noopener">Picture converter</a><button class="btn sm" id="refresh" hidden>Refresh</button><button class="btn sm" id="keybtn" hidden>GitHub key</button></div>
 <p class="muted small" style="margin:6px 0 0">Every data set of Nightvault Pocket: when it was last made, start a job by hand, and make your own data sets. Runs on GitHub - nothing to install.</p>
 
 <div id="setup" class="panel" style="margin-top:16px" hidden>
@@ -196,5 +200,6 @@ function start(){
   $('#jobs').innerHTML = ''; dsHelp(); JOBS.forEach(j => { drawJob(j); loadJob(j) }); loadRuns(); loadDatasets() }
 start();
 </script>
+<script>try{NVMENU.make({app:'control', mount:'#nvhost', cls:'btn sm', hub:'../hub/index.html', hide:['#refresh','#keybtn'], items:() => [{label:'Picture converter', href:'../tools/convert/'}, {label:'Refresh', click:'#refresh', show:() => !document.querySelector('#refresh').hidden}, {label:'GitHub key', click:'#keybtn', show:() => !document.querySelector('#keybtn').hidden}]})}catch(e){console.error(e)}</script>
 </body>
 </html>

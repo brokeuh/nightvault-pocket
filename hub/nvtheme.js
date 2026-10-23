@@ -6,7 +6,7 @@
      --accent (fills, buttons)  --accentt (the accent as text / link, always readable)  --onaccent (text on an accent fill)
      --g --b --o   the three STATUS colours (green = new, blue = update, orange = needs attention) – they never follow the theme accent,
                    only get darker versions on light themes so they stay readable
-     --amber --red --dk (how much darker icons get on light themes) --scrim
+     --accentd (accent for fills with white text) --accentb --accentbg (accent tint) --blue --green --amber --red --dk (how much darker icons get on light themes) --scrim
    Saved choice = {scope:'all'|'each', keep:true|false, all:{id}, apps:{<app>:{id}}, lastDark, lastLight}; id = a preset id or 'custom'
    (custom carries c:{bg, card, text, accent}). scope 'all' = one theme for every app; 'each' = every app can have its own (apps without
    their own use the 'all' one). keep = "apps keep their own colour": the accent of an app on the shared theme stays that app's own colour.
@@ -54,20 +54,25 @@
 
   /* ---------- from 4 colours to every variable ---------- */
   function tokens(c, accent){
-    const light = isLight(c), S = STATUS[light ? 'light' : 'dark'], acc = accent || c.accent;
+    const light = isLight(c), S = STATUS[light ? 'light' : 'dark'];
+    /* on a light theme the accent is also used as TEXT/LINK colour by the apps, so it is pulled darker until it reads on the cards */
+    const acc = light ? readable(readable(accent || c.accent, c.card), c.bg) : (accent || c.accent);
     let t = .46, dim = c.text; for(; t >= 0; t -= .03){ const m = mix(c.text, c.bg, t); if(contrast(m, c.card) >= 4.6 && contrast(m, c.bg) >= 4.6){ dim = m; break } }
     let dim2 = mix(c.text, c.bg, Math.min(.6, t + .12)); if(contrast(dim2, c.card) < 4.5 || contrast(dim2, c.bg) < 4.5) dim2 = dim;
+    let ad = acc; for(let k = 0; k <= 1.001 && contrast('#ffffff', ad) < 4.5; k += .04) ad = mix(acc, '#000000', k);        // accent for fills with WHITE text
     const v = {'--bg':c.bg, '--pan':c.card, '--pan2':mix(c.bg, c.card, .5), '--line':mix(c.card, c.text, .14), '--line2':mix(c.card, c.text, .26), '--text':c.text, '--dim':dim, '--dim2':dim2,
-      '--accent':acc, '--accentt':readable(readable(acc, c.card), c.bg), '--onaccent':contrast('#0b0e13', acc) >= contrast('#ffffff', acc) ? '#0b0e13' : '#ffffff',
+      '--accent':acc, '--accentt':readable(readable(acc, c.card), c.bg), '--accentd':ad, '--accentb':mix(acc, '#000000', light ? .1 : .2), '--accentbg':mix(c.card, acc, light ? .14 : .2),
+      '--onaccent':contrast('#0b0e13', acc) >= contrast('#ffffff', acc) ? '#0b0e13' : '#ffffff',
       '--g':readable(S.g, c.card), '--b':readable(S.b, c.card), '--o':readable(S.o, c.card), '--amber':readable(S.amber, c.card), '--red':readable(S.red, c.card),
-      '--dk':light ? '38%' : '0%', '--scrim':light ? 'rgba(20,26,34,.28)' : 'rgba(0,0,0,.55)'};
+      '--blue':readable(S.b, c.card), '--green':readable(S.g, c.card),
+      '--dk':'0%', '--scrim':light ? 'rgba(20,26,34,.28)' : 'rgba(0,0,0,.55)'};
     return {vars:v, light};
   }
   function resolve(app, s){ s = s || load(); app = app || 'hub'; const T = pick(s, app), b = baseOf(T);
     const accent = s.keep && own(s, app) && APPCOL[app] ? APPCOL[app] : b.accent, r = tokens(b, accent);
     return {id:b.id, name:b.name, light:r.light, vars:r.vars, base:b, own:own(s, app)} }
   let APP = null;
-  function apply(app){ APP = app || APP || 'hub'; const r = resolve(APP), el = document.documentElement;
+  function apply(app){ APP = app || APP || window.NV_APP || 'hub'; const r = resolve(APP), el = document.documentElement;
     for(const k in r.vars) el.style.setProperty(k, r.vars[k]);
     el.style.colorScheme = r.light ? 'light' : 'dark'; el.setAttribute('data-nv-theme', r.id); el.setAttribute('data-nv-light', r.light ? '1' : '0');
     const m = document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content', r.vars['--bg']);
@@ -92,7 +97,8 @@
     return r }
   const fix = c => ({bg:c.bg, card:c.card, text:readable(c.text, mix(c.bg, c.card, .5), 7), accent:readable(c.accent, c.bg, 3)});
 
-  window.NVTHEME = {presets:PRESETS, dark:PRESETS.filter(p => !p.light), lightOnes:PRESETS.filter(p => p.light), appColor:id => APPCOL[id] || '#6fa8ff',
+  const NAMES = {hub:'The Nightvault', scanner:'Scanner', binder:'Binder', convert:'Convert', control:'Control', go:'GO', bookcase:'Bookcase', music:'Music', audiobooks:'Audiobooks', cinema:'Cinema', boardgames:'Boardgames', print3d:'3D Print', collectables:'Collectables', games:'Games'};
+  window.NVTHEME = {names:NAMES, presets:PRESETS, dark:PRESETS.filter(p => !p.light), lightOnes:PRESETS.filter(p => p.light), appColor:id => APPCOL[id] || '#6fa8ff',
     state:load, save, resolve, apply, setPreset, setCustom, setMode, setScope, setKeep, clearApp, check, fix, contrast, readable, mix, lum, isLight, hex:hx, preset,
     name:app => resolve(app).name};
 })();

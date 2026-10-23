@@ -7,6 +7,9 @@
 <title>Nightvault Convert</title>
 <link rel="icon" href="../../favicon.svg">
 <link rel="manifest" href="manifest.webmanifest">
+<script src="../../hub/nvtheme.js"></script>
+<script>NVTHEME.apply('convert')</script>
+<script src="../../hub/nvmenu.js"></script>
 <style>
 :root{--bg:#0c0f12;--pan:#151a20;--pan2:#1b2129;--line:#2a323d;--text:#e9edf2;--dim:#93a0ae;--accent:#3dbf8f;--accentd:#2a8f6a;--red:#e5656a;--amber:#e3b04b;--green:#4cc38a}
 *{box-sizing:border-box}
@@ -30,9 +33,10 @@ input[type=range]{width:min(260px,60vw);accent-color:var(--accent)}
 </style>
 </head>
 <body>
+<script src="../../hub/nvsplash.js" data-app="convert"></script>
 <a id="hubback" hidden href="../../hub/index.html" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;margin:0 0 10px;border-radius:12px;border:1px solid #2a323d;background:#151a20;color:#e9edf2;text-decoration:none;font-size:13.5px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3dbf8f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><rect x="14" y="14" width="6" height="6" rx="1.5"></rect></svg>The Nightvault</a>
 <script>(() => { try{ if(new URLSearchParams(location.search).get('nv') === 'hub') sessionStorage.setItem('nvHub', '1'); if(sessionStorage.getItem('nvHub') === '1') document.getElementById('hubback').hidden = false }catch(e){} })();</script>
-<h1>Nightvault Convert</h1>
+<div class="row" style="flex-wrap:nowrap;justify-content:space-between"><h1>Nightvault Convert</h1><span id="nvhost"></span></div>
 <p class="muted small" style="margin:6px 0 0">Turn many pictures into WebP and/or AVIF at once - smaller files, same look. Everything happens on this device: no picture is uploaded.</p>
 
 <div class="panel">
@@ -150,5 +154,6 @@ function makeZip(entries){ const enc = new TextEncoder(), parts = [], central = 
 $('#zip').onclick = () => download(`nightvault-convert-${new Date().toISOString().slice(0, 10)}.zip`, makeZip(results));
 </script>
 <script src="../../hub/nvsetup.js"></script>
+<script>try{NVMENU.make({app:'convert', mount:'#nvhost', cls:'btn', hub:'../../hub/index.html'})}catch(e){console.error(e)}</script>
 </body>
 </html>

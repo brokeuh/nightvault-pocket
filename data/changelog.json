@@ -3,6 +3,35 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 115,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub",
+    "scanner",
+    "binder",
+    "convert",
+    "control",
+    "bookcase",
+    "music",
+    "audiobooks",
+    "cinema",
+    "boardgames",
+    "print3d",
+    "games"
+   ],
+   "title": "Every app: ☰ menu, new splash screen and the Nightvault themes",
+   "items": [
+    "Every app now has a ☰ menu in the top bar instead of the settings icon: The Nightvault (back home), the app's own extras, Settings, How to use & set up, and Back up this app now. Cinema's calendar and 3D Print's Prints moved into it.",
+    "Every app follows the theme you pick in The Nightvault (☰ > All themes & colours): dark, light, the new Gold, Rose and Sand, or your own colours. The theme is only chosen in the hub.",
+    "The splash screen is back in every app and says 'Nightvault' plus the name of the app that opens (Scanner, Binder, Music …), with its icon in the app's colour from your theme. One switch for all apps in the hub's Appearance screen; tap the splash to skip it.",
+    "Scanner and Binder: the old theme list in Settings is gone (colours come from The Nightvault now) and the header says Scanner or Binder instead of Pocket."
+   ]
+  },
+  {
    "id": 114,
    "date": "2026-10-23",
    "where": [
