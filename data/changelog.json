@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 125,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "scanner"
+   ],
+   "title": "Camera starts on the back camera",
+   "items": [
+    "Opening a series, one of its books, or reading it now takes the NEW tag off the shelf tile. Inside the series page the new issues stay marked while you look at them.",
+    "Opening a single issue also clears its own NEW tag."
+   ]
+  },
+  {
    "id": 124,
    "date": "2026-10-23",
    "where": [
