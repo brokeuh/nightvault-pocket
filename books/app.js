@@ -1830,13 +1830,14 @@ async function checkNew(force, quiet){
     if(tried || force){ draw(); if(!quiet || n) toast(n ? `${plural(n, 'new volume or issue', 'new volumes or issues')} in ${plural(series, 'series', 'series')}` : bad ? 'Could not reach the online sources – a work or school wifi may block them' : 'Nothing new', 5000) }
     return {n, series, tried, bad} })().finally(() => { NEWRUN = null }) }
 /* the strip on top of a shelf / its lists: what is new + Check now */
+let NEWOPEN = false;      // the list of series is folded away until tapped (it was a big block)
 function newBar(sh){ const cs = colsNew(sh); if(!colsOf(sh).length) return '';
   let last = 0; try{ last = +localStorage.getItem(NEWKEY) || 0 }catch(e){}
   const when = last ? (Date.now() - last < 36e5 ? 'just now' : Date.now() - last < 864e5 ? 'today' : Math.round((Date.now() - last) / 864e5) + ' days ago') : 'never';
-  return `<div class="newbar${cs.length ? ' on' : ''}">${cs.length ? `<div class="nbt"><b>${plural(cs.length, 'series', 'series')} with new ${isManga(sh) ? 'volumes' : 'issues'}</b>
-    <div class="nbl">${cs.slice(0, 8).map(c => `<button class="chip" data-newgo="${esc(c.vid)}">${esc(c.name)} · ${newCount(c)}</button>`).join('')}${cs.length > 8 ? `<span class="muted small">+${cs.length - 8} more</span>` : ''}</div></div>` : `<div class="muted small nbt">Nothing new · checked ${when}</div>`}
+  return `<div class="newbar${cs.length ? ' on' : ''}">${cs.length ? `<div class="nbt"><button class="nbtog" id="newtog" aria-expanded="${NEWOPEN}"><b>${plural(cs.length, 'series', 'series')} with new ${isManga(sh) ? 'volumes' : 'issues'}</b><span class="nbar">${NEWOPEN ? '▴' : '▾'}</span></button>
+    <div class="nbl"${NEWOPEN ? '' : ' hidden'}>${cs.slice(0, 8).map(c => `<button class="chip" data-newgo="${esc(c.vid)}">${esc(c.name)} · ${newCount(c)}</button>`).join('')}${cs.length > 8 ? `<span class="muted small">+${cs.length - 8} more</span>` : ''}</div></div>` : `<div class="muted small nbt">Nothing new · checked ${when}</div>`}
     <button class="btn sm" id="newcheck">${NEWRUN ? 'Checking…' : 'Check now'}</button></div>` }
-function hookNew(sh){ const b = $('#newcheck'); if(b) b.onclick = async () => { b.disabled = true; b.textContent = 'Checking…'; toast('Looking for new ones – this can take a minute', 3000); await checkNew(true) };
+function hookNew(sh){ const tg = $('#newtog'); if(tg) tg.onclick = () => { NEWOPEN = !NEWOPEN; draw() }; const b = $('#newcheck'); if(b) b.onclick = async () => { b.disabled = true; b.textContent = 'Checking…'; toast('Looking for new ones – this can take a minute', 3000); await checkNew(true) };
   document.querySelectorAll('[data-newgo]').forEach(el => el.onclick = () => go({v:'colser', shelf:sh, vid:el.dataset.newgo})) }
 
 /* the Collection lists page of a shelf: per publisher, a tile per series with "12 of 40" */

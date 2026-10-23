@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 123,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: the new-issues block is folded",
+   "items": [
+    "The big red \"series with new issues\" block is now one slim line. Tap it to show or hide the list of series. \"Check now\" stays next to it."
+   ]
+  },
+  {
    "id": 122,
    "date": "2026-10-23",
    "where": [
