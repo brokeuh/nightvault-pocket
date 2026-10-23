@@ -334,7 +334,7 @@ const names = ids => ids.map(id => id === 'hub' ? 'The Nightvault' : (CAT.find(a
 async function checkUpdates(force){
   if(UPD.busy || (!force && Date.now() - UPD.at < 3 * 60e3)) return; UPD.busy = true; UPD.at = Date.now();
   try{ UPD.c = await NV.changes() }catch(e){ UPD.c = null; if(force) toast('Could not check for updates - check the internet connection') }
-  try{ CHLOG = await NV.changelog(); if(CHLOG.length && get('nvHub.seenApp', null) === null) set('nvHub.seenApp', {_base: topLog()}) }catch(e){}
+  try{ CHLOG = await NV.changelog(); if(CHLOG.length){ set('nvHub.topLog', topLog()); if(get('nvHub.seenApp', null) === null) set('nvHub.seenApp', {_base: topLog()}) } }catch(e){}
   UPD.busy = false; drawUpd(force); if(!arranging && !$('#home').hidden && CAT.length) home();
   if(force && UPD.c && !$('#upd').innerHTML) toast(NV.native ? `You have the newest version for your apps (build ${UPD.c.build || '?'})` : 'You have the newest version');
   if(!$('#appsheet').hidden) appsScreen();
@@ -375,7 +375,7 @@ async function whatsNew(force){
   if(!force){ set('nvHub.seenLog', top); if(seen == null) return; l = l.filter(e => +e.id > seen); if(!l.length) return }
   const lbl = e => e.apps.filter(a => a === 'hub' || NV.installed()[a]).map(a => a === 'hub' ? 'THE NIGHTVAULT' : (CAT.find(x => x.id === a) || {name:a}).name.toUpperCase()).join(' · ');
   $('#wnlist').innerHTML = l.slice(0, force ? 40 : 8).map(e => `<div class="clog"><span class="for">${esc(lbl(e))}</span><div class="clh"><b>${esc(e.title)}</b><span>${esc(new Date(e.date + 'T12:00:00').toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'}))}</span></div><ul>${(e.items || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('');
-  $('#wnsheet').hidden = false }
+  $('#wnsheet').hidden = false; if(force) markAllSeen() }
 $('#wndone').onclick = () => $('#wnsheet').hidden = true;
 $('#wnbtn').onclick = () => whatsNew(true);
 const dbgLbl = () => $('#dbgbtn .h').textContent = NVLOG.on ? 'On' : 'Off';
@@ -444,10 +444,12 @@ setTimeout(() => NVBACKUP.auto(bkApps()).catch(() => {}).then(() => { bkChecked 
 const newMap = () => { const m = get('nvNew', {}); return m && typeof m === 'object' ? m : {} };
 const newOf = id => { const x = newMap()[id]; return x && +x.n > 0 ? x : null };
 const topLog = () => CHLOG.reduce((m, e) => Math.max(m, +e.id || 0), 0);
-const markSeen = id => { if(!CHLOG.length) return; const sa = get('nvHub.seenApp', null) || {}; sa[id] = topLog(); set('nvHub.seenApp', sa) };
+const topKnown = () => CHLOG.length ? topLog() : get('nvHub.topLog', 0);      // the list loads a moment after the hub starts; the last known number is kept
+const markSeen = id => { const top = topKnown(); if(!top) return; const sa = get('nvHub.seenApp', null) || {}; sa[id] = top; set('nvHub.seenApp', sa) };
+const markAllSeen = () => { const top = topKnown(); if(!top) return; const sa = get('nvHub.seenApp', null) || {}; for(const a of CAT) sa[a.id] = top; set('nvHub.seenApp', sa); if(!arranging && !$('#home').hidden) home() };
 const openMark = id => { set('nvHub.last', {id, at:Date.now()}); markSeen(id) };
 const stale = b => { if(!bkChecked || !window.NVBACKUP || !NVBACKUP.apps[b]) return false; const L = NVBACKUP.last(b); return !!(L && Date.now() - L.at > 10 * 864e5) };
-const blueFor = a => { if(NV.updateAvailable(a) || (UPD.c && UPD.c.mine && UPD.c.mine.includes(a.id))) return true;
+const blueFor = a => { if(NV.native ? !!(UPD.c && UPD.c.shell && (UPD.c.mine || []).includes(a.id)) : (NV.updateAvailable(a) || (UPD.c && UPD.c.mine && UPD.c.mine.includes(a.id)))) return true;      // Android: only when a NEWER Android build exists (the apps live inside it)
   const sa = get('nvHub.seenApp', null); return !!(sa && CHLOG.some(e => (e.apps || []).includes(a.id) && +e.id > (sa[a.id] ?? sa._base ?? 1e9))) };
 const dotFor = a => stale(BKAPP(a.id)) ? 'o' : blueFor(a) ? 'b' : newOf(a.id) ? 'g' : '';
 const DOTWORD = {o:'needs attention', b:'update or news', g:'something new'};
@@ -460,7 +462,7 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape' && !$('#menu')
 function drawMenu(){
   const inst = NV.installed(), mine = CAT.filter(a => inst[a.id]);
   $('#pipbk').hidden = !(window.NVBACKUP && bkApps().some(stale));
-  $('#pipap').hidden = !(mine.some(blueFor) || (UPD.c && ((UPD.c.newApps || []).length || (UPD.c.mine || []).length)));
+  $('#pipap').hidden = !(mine.some(blueFor) || (UPD.c && ((UPD.c.newApps || []).length || (NV.native ? UPD.c.shell : (UPD.c.mine || []).length))));
   $('#pipnew').hidden = !mine.some(a => newOf(a.id));
   const T = effT(modeTarget()); document.querySelectorAll('#modeseg button').forEach(b => b.classList.toggle('on', (b.dataset.m === 'light') === isLightT(T)));
   $('#thname').textContent = themeLabel(T) }

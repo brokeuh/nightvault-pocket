@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 120,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "Blue dots only when there is really something",
+   "items": [
+    "On Android the blue dot stayed on every tile even with the newest build. Now it shows only when a newer Android build exists or an app has news you have not seen yet.",
+    "Opening an app, or reading What's new, now reliably clears its news dot."
+   ]
+  },
+  {
    "id": 119,
    "date": "2026-10-23",
    "where": [
