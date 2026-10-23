@@ -43,7 +43,7 @@ jobs:
           python3 ../hub/build_catalog.py
           mkdir -p www/test www/hub www/tools
           cp ../test/index.html www/test/index.html
-          cp ../hub/index.html ../hub/core.js ../hub/nvlog.js ../hub/nvpc.js ../hub/nvgroups.js ../hub/nvbackup.js ../hub/apps.json ../hub/manifest.webmanifest www/hub/
+          cp ../hub/index.html ../hub/core.js ../hub/nvlog.js ../hub/nvpc.js ../hub/nvgroups.js ../hub/nvbackup.js ../hub/nvsetup.js ../hub/apps.json ../hub/manifest.webmanifest www/hub/
           cp -r ../tools/convert www/tools/convert
           cp -r ../admin www/admin
           cp -r ../audio www/audio

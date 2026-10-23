@@ -3,6 +3,31 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 110,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "cinema",
+    "games",
+    "bookcase",
+    "boardgames",
+    "music",
+    "audiobooks",
+    "print3d",
+    "convert",
+    "hub"
+   ],
+   "title": "Every app: set-up and how to use",
+   "items": [
+    "The first time you open an app, a short tour shows what it does and how to use it, and helps you set it up: the free keys it can use (TMDB, IGDB, Steam, Comic Vine …) with a link to where you get them and the steps, your PC, Tailscale. Skip anything and do it later.",
+    "The new “?” button next to ⚙ in every app shows the tour and set-up again.",
+    "After an update that adds something new to set up or worth explaining, the app shows just that, once (“New in …”)."
+   ]
+  },
+  {
    "id": 109,
    "date": "2026-10-23",
    "where": [

@@ -149,5 +149,6 @@ function makeZip(entries){ const enc = new TextEncoder(), parts = [], central = 
   return new Blob([...parts, ...central, end.buffer], {type:'application/zip'}) }
 $('#zip').onclick = () => download(`nightvault-convert-${new Date().toISOString().slice(0, 10)}.zip`, makeZip(results));
 </script>
+<script src="../../hub/nvsetup.js"></script>
 </body>
 </html>
