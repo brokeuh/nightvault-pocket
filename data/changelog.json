@@ -14,8 +14,7 @@
    ],
    "title": "Camera starts on the back camera",
    "items": [
-    "Opening a series, one of its books, or reading it now takes the NEW tag off the shelf tile. Inside the series page the new issues stay marked while you look at them.",
-    "Opening a single issue also clears its own NEW tag."
+    "The scanner sometimes opened the selfie camera when you started it. It now remembers whether you use the back or the front camera, and goes back to the rear camera unless you picked the front one yourself (flip button or Settings)."
    ]
   },
   {

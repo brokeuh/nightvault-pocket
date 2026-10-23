@@ -10,9 +10,19 @@
 <meta name="apple-mobile-web-app-title" content="NV Pocket">
 <title>Nightvault Pocket</title>
 <link rel="manifest" href="manifest.webmanifest">
-<script>/* theme before the first paint, so the splash screen already has the right colours */
-try{var t=/\/test\/?$/.test(location.pathname.replace(/index\.html$/,'')),o=(JSON.parse(localStorage.getItem(t?'nightvault.pocket.test.v1':'nightvault.pocket.v1')||'{}').opt)||{};
-if(o.theme)document.documentElement.setAttribute('data-theme',o.theme);if(o.splash===false)document.documentElement.classList.add('nosplash')}catch(e){}</script>
+<script src="../hub/nvtheme.js"></script>
+<script src="../hub/nvsplash.js"></script>
+<script src="../hub/nvmenu.js"></script>
+<script>/* the shared Nightvault theme (hub/nvtheme.js) before the first paint, so the splash screen already has the right colours.
+   Pocket's own variable names are made from the shared ones here; the old per-app theme choice is no longer used (colours are chosen in The Nightvault). */
+window.nvPocketTheme = function(){ var id = (/[?&]mode=binder/.test(location.search) || sessionStorage.getItem('nvMode') === 'binder') ? 'binder' : 'scanner', r = NVTHEME.apply(id), v = r.vars, mx = NVTHEME.mix, el = document.documentElement.style, set = function(k, x){ el.setProperty('--' + k, x) };
+  set('side', v['--pan2']); set('card', v['--pan']); set('mut', v['--dim']); set('dim', v['--dim2']); set('accentline', mx(v['--accent'], v['--bg'], .55)); set('green', v['--g']); set('greenbg', mx(v['--pan'], v['--g'], .15)); set('amberbg', mx(v['--pan'], v['--amber'], .15));
+  set('sub', mx(v['--pan'], v['--text'], .05)); set('ctl', v['--pan']); set('ctlh', mx(v['--pan'], v['--text'], .06)); set('lineh', v['--line2']); set('pan', v['--line']); set('modal', v['--pan']); set('track', v['--line']); set('chipbg', v['--accentbg']);
+  set('logbg', v['--pan2']); set('logfg', v['--text']); set('onacc', v['--onaccent']); set('pg', v['--g']); set('pa', v['--amber']); set('pb', v['--accentt']); set('pgr', v['--dim']); return r };
+try{ nvPocketTheme();
+  var t = /\/test\/?$/.test(location.pathname.replace(/index\.html$/, '')), o = (JSON.parse(localStorage.getItem(t ? 'nightvault.pocket.test.v1' : 'nightvault.pocket.v1') || '{}').opt) || {};
+  if(o.splash === false && localStorage.getItem('nvSplash') === null) localStorage.setItem('nvSplash', 'false');      /* the old Pocket-only switch becomes the shared one */
+  if(!NVSPLASH.on) document.documentElement.classList.add('nosplash') }catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&amp;display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="/nightvault-pocket/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/nightvault-pocket/favicon-32.png">
@@ -328,7 +338,7 @@ html.binder-only #tabs{display:none!important}
 <rect class="spl-card back" x="36.5" y="37" width="27" height="39" rx="4.5" transform="rotate(-20 50 93)"/><rect class="spl-card back" x="36.5" y="37" width="27" height="39" rx="4.5" transform="rotate(20 50 93)"/>
 <rect class="spl-card" x="36.5" y="35" width="27" height="39" rx="4.5"/>
 <path class="spl-spark" d="M50 45l2.1 5.1 5.1 2.1-5.1 2.1-2.1 5.1-2.1-5.1-5.1-2.1 5.1-2.1z"/>
-</svg></div><div class="spl-word">Nightvault</div><div class="spl-sub">POCKET</div></div></div>
+</svg></div><div class="spl-word">Nightvault</div><div class="spl-sub" id="splsub">SCANNER</div></div></div>
   <header id="top"><button id="hubbtn" class="hbtn" hidden aria-label="Back to The Nightvault" title="The Nightvault" style="margin:0 10px 0 0"><i class="ti ti-grid-dots"></i></button><div class="logo"><i class="ti ti-moon-stars"></i>Nightvault <small>Pocket</small><span id="testbadge" hidden style="margin-left:8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;background:var(--amber);color:#000;border-radius:6px;padding:2px 6px">TEST</span></div><div id="scst"></div><button id="fsbtn" class="hbtn" hidden aria-label="Full screen"><i class="ti ti-maximize"></i></button><button id="setbtn" class="hbtn" aria-label="Settings"><i class="ti ti-settings"></i></button></header>
   <main id="main"></main>
   <nav id="tabs">
@@ -487,7 +497,8 @@ if(!NATIVE && 'serviceWorker' in navigator && location.protocol === 'https:') na
   const b = $('#hubbtn'); if(on && b){ b.hidden = false; b.onclick = () => { location.href = '../hub/index.html' } } })();
 /* "binder only" (the Nightvault Binder tile, test): the same app and collection, opened straight in the binders - no tabs, no scanning */
 const MODE = (() => { try{ const q = new URLSearchParams(location.search).get('mode'); if(q === 'binder' || q === 'full') sessionStorage.setItem('nvMode', q); return sessionStorage.getItem('nvMode') === 'binder' ? 'binder' : 'full' }catch(e){ return 'full' } })();
-if(MODE === 'binder'){ document.documentElement.classList.add('binder-only'); const lg = $('#top .logo small'); if(lg) lg.textContent = 'Binder' }
+{ const lg = $('#top .logo small'), sp2 = $('#splsub'); if(lg) lg.textContent = MODE === 'binder' ? 'Binder' : 'Scanner'; if(sp2) sp2.textContent = MODE === 'binder' ? 'BINDER' : 'SCANNER' }
+if(MODE === 'binder'){ document.documentElement.classList.add('binder-only') }
 function setSt(t){ $('#scst').textContent = t || '' }
 function toast(msg, err){
   $$('#toast .t1').forEach(e => { if(e.textContent === msg) e.remove() });
@@ -504,8 +515,7 @@ function menuSheet(title, items){
   $$('.mbox .mitem').forEach(b => b.onclick = () => { closeModal(); items[+b.dataset.i].run() });
 }
 async function getJSON(url){ const r = await fetch(url, {headers:{Accept:'application/json'}}); if(!r.ok) throw Object.assign(new Error('HTTP ' + r.status), {status:r.status}); return r.json() }
-function applyTheme(){ const t = THEMES.some(x => x[0] === O.theme) ? O.theme : 'midnight'; document.documentElement.setAttribute('data-theme', t);
-  const bg = getComputedStyle(document.documentElement).getPropertyValue('--side').trim(); const m = $('meta[name=theme-color]'); if(m && bg) m.content = bg }
+function applyTheme(){ try{ nvPocketTheme() }catch(e){} const bg = getComputedStyle(document.documentElement).getPropertyValue('--side').trim(); const m = $('meta[name=theme-color]'); if(m && bg) m.content = bg }
 function lev(a, b){ a = a.toLowerCase(); b = b.toLowerCase(); if(a === b) return 0; const d = Array.from({length:b.length + 1}, (_, i) => i);
   for(let i = 1; i <= a.length; i++){ let p = d[0]; d[0] = i; for(let j = 1; j <= b.length; j++){ const t = d[j]; d[j] = Math.min(d[j] + 1, d[j-1] + 1, p + (a[i-1] === b[j-1] ? 0 : 1)); p = t } } return d[b.length] }
 const sim = (a, b) => { const base = s => s.split(' - ')[0].trim(); a = base(a); b = base(b); const m = Math.max(a.length, b.length) || 1; return 1 - lev(a, b) / m };
@@ -3334,7 +3344,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610231635';
+const BUILD = '202610231644';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
@@ -3420,8 +3430,8 @@ function viewSettings(){
       ${Object.keys(GAMES).filter(g => g !== 'other').map(g => { const n = store.backs.filter(b => b.game === g).length; return `<div class="row" style="padding:7px 0"><span class="dot" style="background:${GAMES[g].color}"></span><div class="grow">${esc(GAMES[g].label)} <span class="muted" style="font-size:12px">${n ? '· learned' : ''}</span></div>
         ${n ? `<button class="btn sm" data-forget="${g}">Forget</button>` : ''}<button class="btn sm" data-teach="${g}"><i class="ti ti-school"></i>${n ? 'Teach again' : 'Teach'}</button></div>` }).join('')}</div>
     <div class="panel" data-p="look"><h3>Appearance</h3>
-      <label class="row"><input type="checkbox" id="osplash" ${O.splash === false ? '' : 'checked'}><div class="grow">Show the logo when the app opens</div></label>
-      <div class="row" style="margin-bottom:10px"><div class="grow">Open the app on</div><div class="oseg" id="ostart"><button data-s="home" class="${O.start === 'scan' ? '' : 'on'}">Home</button><button data-s="scan" class="${O.start === 'scan' ? 'on' : ''}">Scanner</button></div></div><div class="thgrid">${THEMES.map(([id, nm]) => `<button class="thtile ${O.theme === id ? 'on' : ''}" data-t="${id}"><div class="pv" data-theme="${id}"><i style="background:var(--side);height:100%"></i><i style="background:var(--card);height:70%;border:1px solid var(--line2)"></i><i style="background:var(--accent);height:40%"></i></div><div class="nm">${nm}</div></button>`).join('')}</div></div>
+      <label class="row"><input type="checkbox" id="osplash" ${NVSPLASH.on ? 'checked' : ''}><div class="grow">Show the logo when the app opens</div></label>
+      <div class="row" style="margin-bottom:10px"><div class="grow">Open the app on</div><div class="oseg" id="ostart"><button data-s="home" class="${O.start === 'scan' ? '' : 'on'}">Home</button><button data-s="scan" class="${O.start === 'scan' ? 'on' : ''}">Scanner</button></div></div><div class="hint" style="margin:0">Colours and themes are chosen in <b>The Nightvault</b>: menu ☰ › All themes &amp; colours. Every app follows them.</div></div>
     <div class="panel" data-p="data"><h3>Card data</h3>${Object.values(GAMES).filter(g => g.src).map(g => `<div class="row" style="padding:7px 0"><span class="dot" style="background:${g.color}"></span><div class="grow">${esc(g.full)}</div><span class="muted" style="font-size:12px">${esc(g.src)}</span></div>`).join('')}
       <p class="hint">Any other game can be added by hand (My cards → By hand). Card names are read on the phone. Lookups and prices need internet. Your cards stay on this phone until you export them.</p></div>
     <div class="panel" data-p="app"><h3>Use as an app</h3>
@@ -3494,7 +3504,7 @@ function viewSettings(){
   $('#ogame').onchange = e => { O.game = e.target.value; persist() };
   $$('.thtile').forEach(b => b.onclick = () => { O.theme = b.dataset.t; persist(); applyTheme(); viewSettings() });
   $$('#ostart [data-s]').forEach(b => b.onclick = () => { O.start = b.dataset.s; persist(); viewSettings() });
-  if($('#osplash')) $('#osplash').onchange = e => { O.splash = e.target.checked; persist() };
+  if($('#osplash')) $('#osplash').onchange = e => { NVSPLASH.set(e.target.checked) };
   $('#sclear').onclick = () => {
     modal(`<h3>Remove all cards?</h3><p style="margin:0 0 6px">This removes ${total.toLocaleString()} cards from this phone. ${store.lastExport ? '' : '<b>You have not exported them yet.</b>'}</p>
       <div class="btns" style="justify-content:flex-end;margin-top:14px"><button class="btn" id="cx">Cancel</button><button class="btn danger" id="cy"><i class="ti ti-trash"></i>Remove all</button></div>`);
@@ -3905,7 +3915,7 @@ window.addEventListener('popstate', () => { goBack(); navSync() });
 /* Android app: the back button steps back inside the app itself, without the browser history (that could lose track after
    the big card picture closed, so back stopped closing the card window and the set) */
 if(NATIVE) try{ const A = _capP.App ||= Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(atRoot()){ let hub = false; try{ hub = sessionStorage.getItem('nvHub') === '1' }catch(e){}
+  A.addListener('backButton', () => { if(window.NVMENU && NVMENU.close()) return; if(atRoot()){ let hub = false; try{ hub = sessionStorage.getItem('nvHub') === '1' }catch(e){}
     if(hub) location.href = '../hub/index.html'; else capCall('App', 'minimizeApp').catch(() => {}) } else goBack() });   // opened from the tiles: back at the start goes to the tiles
   A.addListener('resume', () => setTimeout(hsCaptured, 400)); setTimeout(hsCaptured, 2500) }catch(e){}
 new MutationObserver(navSync).observe($('#main'), {childList:true});
@@ -3924,7 +3934,7 @@ function restoreNav(){
 }
 if(TEST){ $('#testbadge').hidden = false; document.title = 'Pocket TEST' }
 applyTheme(); tabCount(); if(MODE === 'binder'){ try{ const n = JSON.parse(localStorage.getItem(NAVKEY) || 'null'); if(n && n.view === 'binder' && Date.now() - (n.at || 0) < 2 * 3600e3){ BD.game = n.game && GAMES[n.game] ? n.game : null; BD.set = BD.game ? n.set : null } }catch(e){} show('binder') } else restoreNav(); fsSync(); $('#fsbtn').onclick = toggleFull;
-(() => { const sp = $('#splash'); if(!sp) return; if(O.splash === false){ sp.remove(); return }
+(() => { const sp = $('#splash'); if(!sp) return; if(!NVSPLASH.on){ sp.remove(); return }
   { const w = sp.querySelector('.spl-word'), fit = () => { if(!w) return; w.style.transform = ''; const room = innerWidth - 40, need = w.scrollWidth; if(need > room) w.style.transform = `scale(${room / need})` };   // the word always fits, also with a big text size
     fit(); document.fonts && document.fonts.ready.then(fit) }     // splash: logo for a moment, then the app
   const go = () => { if(!sp.isConnected || sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(() => sp.remove(), 450) };
@@ -3935,5 +3945,6 @@ if(!O.ed1fix){ O.ed1fix = 1; let k = 0; for(const c of store.cards) if(c.ed1 && 
 setTimeout(() => { if(document.querySelector('#modal > *')) return; if(!O.guideSeen && !store.cards.length){ showGuide(0); changelog().then(l => { if(l.length && O.seenLog == null){ O.seenLog = Math.max(...l.map(e => +e.id || 0)); persist() } }) } else whatsNew(false) }, 2400);   // after an update: what changed, once
 if(O.dailyPrices && store.cards.length && Date.now() - (store.lastPriceCheck || 0) > 20 * 3600 * 1000) setTimeout(() => priceCheck(false), 4000);
 </script>
+<script>try{ NVMENU.make({app:MODE === 'binder' ? 'binder' : 'scanner', btn:'#setbtn', hub:'../hub/index.html', hide:['#hubbtn', '#fsbtn'], items:() => [{label:'Full screen', click:'#fsbtn', show:() => { const b = document.querySelector('#fsbtn'); return b && !b.hidden }}]}) }catch(e){ console.error(e) }</script>
 </body>
 </html>
