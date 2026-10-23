@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 112,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase",
+    "cinema"
+   ],
+   "title": "Bookcase and Cinema tell The Nightvault what is new",
+   "items": [
+    "When Bookcase finds new volumes or issues, or Cinema has a show with something new, the tile on The Nightvault home screen gets a green dot and the item appears under ☰ > New in your apps."
+   ]
+  },
+  {
    "id": 111,
    "date": "2026-10-23",
    "where": [

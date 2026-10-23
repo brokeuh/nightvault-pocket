@@ -232,7 +232,7 @@
     },
     {
      "path": "books/app.js",
-     "size": 304402
+     "size": 304942
     },
     {
      "path": "books/manifest.webmanifest",
@@ -282,9 +282,9 @@
    "uses": [],
    "entry": "books/?nv=hub",
    "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted.",
-   "size": 2430394,
-   "hash": "0d7da2df99c9",
-   "version": "2026.10.23.0837",
+   "size": 2430934,
+   "hash": "e3fda4448d50",
+   "version": "2026.10.23.1239",
    "updated": "2026-10-23"
   },
   {
@@ -359,7 +359,7 @@
     },
     {
      "path": "cinema/calendar.js",
-     "size": 51592
+     "size": 52084
     },
     {
      "path": "cinema/manifest.webmanifest",
@@ -372,9 +372,9 @@
    "uses": [],
    "entry": "cinema/?nv=hub",
    "keepsData": "Your list, what you watched, groups and TMDB key stay on this device. Video files are never deleted.",
-   "size": 273604,
-   "hash": "39bf7a9e8c5a",
-   "version": "2026.10.23.0837",
+   "size": 274096,
+   "hash": "4bb9c129d02b",
+   "version": "2026.10.23.1239",
    "updated": "2026-10-23"
   },
   {

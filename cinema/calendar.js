@@ -69,7 +69,7 @@ async function refreshCal(force, only){ if(CALBUSY || !TKEY()) return; CALBUSY =
       if(t.tmdb.type === 'movie' && t.collId && !isWant(t)){ if(seenColl.has(t.collId) && c){ continue } seenColl.add(t.collId) }
       try{ const r = await calFetch(t); CALC[t.id] = r; await kvSet('cal:' + t.id, r); n++ }catch(e){ LE('cal', 'fetch ' + t.name, e); if(/key|internet/i.test(e.message)) break }
       if(n % 8 === 0 && cur().v === 'cal') drawCal() }
-    lsSet('nvCinema.calAt', Date.now()) }
+    lsSet('nvCinema.calAt', Date.now()); publishNew() }
   finally{ CALBUSY = false }
   L('cal', 'refreshed', {titles:n}); await scheduleReminders().catch(e => LE('cal', 'reminders', e));
   if(cur().v === 'cal' || cur().v === 'shelves') draw() }
@@ -83,6 +83,9 @@ function evSub(e){ const t = TM[e.tid];
   const w = WHERE[e.where] || ''; if(e.kind === 'saga') return `Next in ${e.saga || 'the series'}${w ? ' · ' + w : ''}`;
   return w + (e.country && e.country !== 'BE' ? ' (NL)' : '') + (t && isWant(t) ? ' · want to see' : '') }
 /* NEW EP on a show tile: an episode aired in the last 30 days, after you last watched it (and after you added it) */
+/* tells The Nightvault (green dot on the tile + "New in your apps"): localStorage.nvNew.cinema = {n, text, at} */
+function publishNew(){ try{ const n = TITLES.filter(t => calIsNew(t)).length, m = JSON.parse(localStorage.getItem('nvNew') || '{}') || {};
+  if(n > 0) m.cinema = {n, text:n === 1 ? '1 title with something new' : n + ' titles with something new', at:Date.now()}; else delete m.cinema; localStorage.setItem('nvNew', JSON.stringify(m)) }catch(e){} }
 window.calIsNew = t => { const c = CALC[t.id]; if(!c || !c.lastAired || t.kind !== 'show' || isWant(t)) return false; const d = daysFrom(c.lastAired);
   return d <= 0 && d > -30 && dparse(c.lastAired).getTime() + 864e5 > Math.max(lastAt(t), t.added || 0) };
 
@@ -208,6 +211,7 @@ window.calStart = async () => {
     b.onclick = () => { if(cur().v !== 'cal') go({v:'cal'}) }; sb.parentNode.insertBefore(b, sb) }
   { const d0 = draw; draw = function(){ const b = $('#calbtn'); if(b) b.hidden = cur().v === 'cal'; return d0.apply(this, arguments) } }
   try{ for(const r of await dbAll('kv')) if(String(r.id).startsWith('cal:')) CALC[r.id.slice(4)] = r.v }catch(e){}
+  publishNew();
   if(S.remind == null){ S.remind = true; S.remindAt = S.remindAt || '09:00'; saveS() }
   if(TKEY() && Date.now() - lsGet('nvCinema.calAt', 0) > 12 * 3600e3) setTimeout(() => refreshCal(false), 6000);
   if(LN) try{ LN.addListener('localNotificationActionPerformed', a => { const x = (a && a.notification && a.notification.extra) || {}; const m = /title=([^&]+)/.exec(x.url || ''); if(m && TM[m[1]]) go({v:'title', id:m[1], shelf:TM[m[1]].shelf}); else if(/view=cal/.test(x.url || '')) go({v:'cal'}) }) }catch(e){}

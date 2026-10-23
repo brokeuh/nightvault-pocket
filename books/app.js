@@ -1763,8 +1763,11 @@ async function findSeries(sh, books, force){ const k = cvKeyOf(books[0]), c = CV
    phys:{'<num>':{price, at}}, at}. Digital = a book of this shelf with b.cv.id = vid (or the same series name when it was never looked up).
    ===================================================================================================================== */
 let COLS = {};
-async function loadCols(){ COLS = {}; for(const r of await dbAll('kv')) if(String(r.id).startsWith('col:')) COLS[r.vid] = r; await loadArcs() }
-const colSave = c => dbPut('kv', c);
+async function loadCols(){ COLS = {}; for(const r of await dbAll('kv')) if(String(r.id).startsWith('col:')) COLS[r.vid] = r; await loadArcs(); setTimeout(publishNew, 1500) }
+const colSave = c => { setTimeout(publishNew, 300); return dbPut('kv', c) };
+/* tells The Nightvault (green dot on the tile + "New in your apps"): localStorage.nvNew.bookcase = {n, text, at} */
+function publishNew(){ try{ const n = Object.values(COLS).reduce((t, c) => t + newCount(c), 0), m = JSON.parse(localStorage.getItem('nvNew') || '{}') || {};
+  if(n > 0) m.bookcase = {n, text:plural(n, 'new volume or issue', 'new volumes or issues'), at:Date.now()}; else delete m.bookcase; localStorage.setItem('nvNew', JSON.stringify(m)) }catch(e){} }
 const colsOf = sh => Object.values(COLS).filter(c => c.shelf === sh);
 const numKey = n => String(parseFloat(n));
 /* your digital copies of a list: number → book */
