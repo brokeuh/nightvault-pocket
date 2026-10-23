@@ -339,11 +339,11 @@
    "files": [
     {
      "path": "cinema/index.html",
-     "size": 23399
+     "size": 23926
     },
     {
      "path": "cinema/app.js",
-     "size": 177433
+     "size": 177486
     },
     {
      "path": "cinema/tv.js",
@@ -351,7 +351,7 @@
     },
     {
      "path": "cinema/calendar.js",
-     "size": 43923
+     "size": 51592
     },
     {
      "path": "cinema/manifest.webmanifest",
@@ -364,9 +364,9 @@
    "uses": [],
    "entry": "cinema/?nv=hub",
    "keepsData": "Your list, what you watched, groups and TMDB key stay on this device. Video files are never deleted.",
-   "size": 265313,
-   "hash": "2744c89047c5",
-   "version": "2026.10.23.0712",
+   "size": 273562,
+   "hash": "de02def3e004",
+   "version": "2026.10.23.0809",
    "updated": "2026-10-23"
   },
   {
