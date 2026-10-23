@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 116,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase",
+    "hub"
+   ],
+   "title": "Bookcase: you can see where the new dot comes from",
+   "items": [
+    "The shelves on Bookcase's home page now show a red NEW badge with a number when a series inside has new volumes or issues, so you can tap straight to it.",
+    "The Nightvault's 'New in your apps' list now names the series (for example 'Berserk (2)')."
+   ]
+  },
+  {
    "id": 115,
    "date": "2026-10-23",
    "where": [

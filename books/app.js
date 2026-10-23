@@ -690,7 +690,7 @@ function draw(){
     h += upNextHTML(null, last);
     h += '<div class="shelves">' + shelves().map(s => { const bs = inShelf(s.id), rd = bs.filter(b => started(b) && !STATE[b.id].finished).length;
         const fan = bs.filter(b => COV.has(b.id)).sort((a, b) => (lastRead(b) - lastRead(a)) || (b.added - a.added)).slice(0, 3);
-        return `<div class="shelf" data-shelf="${esc(s.id)}" style="background:linear-gradient(150deg,${s.c[0]},${s.c[1]})"><div class="ic">${shelfIcon(s)}</div><div class="fan">${fan.map(b => `<img data-fan="${esc(b.id)}" alt="">`).join('')}</div>
+        return `<div class="shelf" data-shelf="${esc(s.id)}" style="background:linear-gradient(150deg,${s.c[0]},${s.c[1]})">${newBadge(colsOf(s.id).reduce((t, c) => t + newCount(c), 0))}<div class="ic">${shelfIcon(s)}</div><div class="fan">${fan.map(b => `<img data-fan="${esc(b.id)}" alt="">`).join('')}</div>
           <b>${esc(s.name)}</b><div class="s">${bs.length ? plural(bs.length, 'book') + (rd ? ` · ${rd} reading` : '') : 'empty'}</div></div>` }).join('')
       + '<div class="shelf add" id="newshelf"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New shelf</div></div>';
     if(!BOOKS.length) h += `<p class="muted small" style="text-align:center;margin-top:18px">Open a shelf and tap <b>Add</b>${NvFiles ? ' to pick a folder on this phone' : ' to pick books'}.</p>`;
@@ -1766,8 +1766,9 @@ let COLS = {};
 async function loadCols(){ COLS = {}; for(const r of await dbAll('kv')) if(String(r.id).startsWith('col:')) COLS[r.vid] = r; await loadArcs(); setTimeout(publishNew, 1500) }
 const colSave = c => { setTimeout(publishNew, 300); return dbPut('kv', c) };
 /* tells The Nightvault (green dot on the tile + "New in your apps"): localStorage.nvNew.bookcase = {n, text, at} */
-function publishNew(){ try{ const n = Object.values(COLS).reduce((t, c) => t + newCount(c), 0), m = JSON.parse(localStorage.getItem('nvNew') || '{}') || {};
-  if(n > 0) m.bookcase = {n, text:plural(n, 'new volume or issue', 'new volumes or issues'), at:Date.now()}; else delete m.bookcase; localStorage.setItem('nvNew', JSON.stringify(m)) }catch(e){} }
+function publishNew(){ try{ const cs = Object.values(COLS).map(c => [c, newCount(c)]).filter(x => x[1] > 0), n = cs.reduce((t, x) => t + x[1], 0), m = JSON.parse(localStorage.getItem('nvNew') || '{}') || {};
+  if(n > 0){ const names = cs.slice(0, 3).map(x => `${x[0].name} (${x[1]})`).join(', ') + (cs.length > 3 ? ' …' : '');
+    m.bookcase = {n, text:plural(n, 'new volume or issue', 'new volumes or issues') + ': ' + names, at:Date.now()} } else delete m.bookcase; localStorage.setItem('nvNew', JSON.stringify(m)) }catch(e){} }
 const colsOf = sh => Object.values(COLS).filter(c => c.shelf === sh);
 const numKey = n => String(parseFloat(n));
 /* your digital copies of a list: number → book */
