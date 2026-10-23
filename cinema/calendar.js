@@ -113,7 +113,7 @@ const evImg = (e, w) => { const p = e.still || e.poster || ((TM[e.tid] || {}).ba
 document.getElementById('body').addEventListener('click', e => { if(cur().v !== 'shelves') return; const c = e.target.closest('[data-cal]'), ev = e.target.closest('[data-calev]');
   if(c){ e.stopPropagation(); go({v:'cal'}); return }
   if(ev){ e.stopPropagation(); openEvent(calEvents().find(x => x.id === ev.dataset.calev)) } }, true);
-function openEvent(e){ if(!e) return; if(e.tid && TM[e.tid]) return go({v:'title', id:e.tid, shelf:TM[e.tid].shelf}); if(e.kind === 'saga') return sagaSheet(e) }
+function openEvent(e){ if(!e) return; if(e.tid && TM[e.tid]) return go({v:'title', id:e.tid, shelf:TM[e.tid].shelf}); if(e.kind === 'saga') return go({v:'tm', type:'movie', id:e.mid}) }
 
 /* ---------- the calendar page: a list by week, or a month ---------- */
 const CF = [['all', 'All'], ['ep', 'Episodes'], ['film', 'Films'], ['want', 'Want to see']];
@@ -199,7 +199,7 @@ window.calTitle = async t => { const el = $('#tcal'); if(!el || !t.tmdb || !TKEY
   if(t.kind === 'show' && c.status && !ev.some(e => e.kind === 'ep')) h += `<p class="muted small" style="margin:8px 0 0">${/ended|canceled/i.test(c.status) ? 'This show has ended.' : 'No new episodes announced yet.'}</p>`;
   if(p && (p.stream.length || p.rent.length || p.buy.length)) h += `<div class="sec">Where to watch in Belgium</div><div class="facts">${p.stream.length ? `<span>Streaming</span><span>${esc(p.stream.join(', '))}</span>` : ''}${p.rent.length ? `<span>Rent</span><span>${esc(p.rent.join(', '))}</span>` : ''}${p.buy.length ? `<span>Buy</span><span>${esc(p.buy.join(', '))}</span>` : ''}</div><p class="muted small" style="margin:0">Data: JustWatch${p.link ? ` · <a href="${esc(p.link)}" target="_blank" rel="noopener">more</a>` : ''}</p>`;
   el.innerHTML = h; lazyCovers(el);
-  el.querySelectorAll('[data-calev]').forEach(r => r.onclick = e => { const ev2 = (c.events || []).find(x => x.id === r.dataset.calev); if(e.target.closest('[data-bell]')){ toggleMute(ev2); return } if(ev2 && ev2.kind === 'saga') sagaSheet(ev2) }) };
+  el.querySelectorAll('[data-calev]').forEach(r => r.onclick = e => { const ev2 = (c.events || []).find(x => x.id === r.dataset.calev); if(e.target.closest('[data-bell]')){ toggleMute(ev2); return } if(ev2 && ev2.kind === 'saga') go({v:'tm', type:'movie', id:ev2.mid}) }) };
 
 /* ---------- start: the saved calendar, a quiet look for new dates (twice a day), the reminder buttons ---------- */
 window.calStart = async () => {
@@ -292,8 +292,7 @@ async function drawAll(){ const body = $('#body'), kind = S.allKind || 'cinema',
       const n = $('#allseln'); if(n) n.textContent = ALLSEL.size ? plural(ALLSEL.size, 'title') + ' selected' : 'Tick the ones you want'; const b = $('#alladd'); if(b) b.disabled = !ALLSEL.size; return }
     const have = inLib(it); if(have) return go({v:'title', id:have.id, shelf:have.shelf});
     if(e.target.closest('[data-heart]')){ await addWant(wantOf(it)); drawAll(); return }
-    sheet(`<h3>${esc(it.title)}</h3><p class="muted small" style="margin:0 0 8px">${esc(allSub(it))}${it.date ? ' · ' + esc(dshort(it.date)) + ' ' + it.date.slice(0, 4) : ''}</p><div class="mlist"><button class="btn primary" id="aw">♥ Put on my want-to-see list</button><a class="btn" href="https://www.themoviedb.org/${it.type}/${it.tmdbId}" target="_blank" rel="noopener" style="text-decoration:none">More on TMDB</a></div>`);
-    $('#aw').onclick = async () => { closeSheet(); const t = await addWant(wantOf(it)); if(t) go({v:'title', id:t.id, shelf:t.shelf}) } }) }
+    go({v:'tm', type:it.type, id:it.tmdbId}) }) }
 const wantOf = it => ({type:it.type, id:it.tmdbId, title:it.title, year:it.year, poster:it.poster, genres:it.genres, lang:it.lang});
 async function addMany(list){ let n = 0; toast(`Adding ${plural(list.length, 'title')}…`, 3000);
   for(const it of list){ if(inLib(it)) continue; try{ await addWant(Object.assign(wantOf(it), {quiet:true})); n++ }catch(e){ LE('cal', 'add many', e) } }
@@ -308,3 +307,48 @@ async function provSheet(){ sheet(`<h3>My streaming services</h3><p class="muted
   $('#pvl').innerHTML = `<div style="max-height:50vh;overflow:auto">${l.map(p => `<label class="opt" style="cursor:pointer"><span>${esc(p.name)}</span><input type="checkbox" data-pv="${p.id}" ${mine.has(p.id) ? 'checked' : ''}></label>`).join('')}</div>`;
   $('#pvnone').onclick = () => { S.myProv = []; saveS(); closeSheet(); drawCal() };
   $('#pvok').onclick = () => { S.myProv = [...document.querySelectorAll('[data-pv]:checked')].map(c => ({id:+c.dataset.pv, name:(l.find(p => p.id === +c.dataset.pv) || {}).name || ''})); saveS(); closeSheet(); drawCal(); toast(S.myProv.length ? 'Showing what is on ' + S.myProv.map(p => p.name).join(', ') : 'Showing everything') } }
+
+/* =====================================================================================================================
+   DETAILS of a film / show that is not in Cinema (23 Oct, owner: "pull the details when I open something instead of only a link"):
+   one TMDB request with everything appended - story, genres, runtime / seasons, rating, cast, director / creators, trailer,
+   Belgian release dates or the next episode, where to watch in Belgium. ♥ = want to see; when it is in Cinema: open it there.
+   ===================================================================================================================== */
+const TMC = {};
+async function drawTm(v){ const body = $('#body'); $('#vtitle').textContent = ''; body.innerHTML = '<div class="prog busy" style="margin-top:30px"><i></i></div>';
+  const key = v.type + ':' + v.id; let d = TMC[key];
+  if(!d){ try{ d = TMC[key] = await tmdb(`/${v.type}/${v.id}`, {append_to_response:'credits,videos,watch/providers' + (v.type === 'movie' ? ',release_dates' : ''), include_video_language:`${(S.lang || 'en').slice(0, 2)},en`}) }
+    catch(e){ body.innerHTML = `<p class="note bad">${esc(e.message)}</p>`; return } }
+  if(cur() !== v) return;
+  const have = TITLES.find(t => t.tmdb && t.tmdb.type === v.type && +t.tmdb.id === +v.id), name = d.title || d.name || '', year = (d.release_date || d.first_air_date || '').slice(0, 4);
+  document.title = name + ' · Cinema';
+  const genres = (d.genres || []).map(g => g.name), run = v.type === 'movie' ? (d.runtime ? mins(d.runtime * 60) : '') : [d.number_of_seasons ? plural(d.number_of_seasons, 'season') : '', (d.episode_run_time || [])[0] ? mins(d.episode_run_time[0] * 60) + ' per episode' : ''].filter(Boolean).join(' · ');
+  const crew = (d.credits || {}).crew || [], dir = v.type === 'movie' ? crew.filter(c => c.job === 'Director').map(c => c.name) : (d.created_by || []).map(c => c.name);
+  const cast = ((d.credits || {}).cast || []).slice(0, 10), vids = ((d.videos || {}).results || []).filter(x => x.site === 'YouTube'), trailer = vids.find(x => x.type === 'Trailer' && x.official) || vids.find(x => x.type === 'Trailer') || vids.find(x => x.type === 'Teaser');
+  /* dates: Belgium, else the Netherlands */
+  let dates = [];
+  if(v.type === 'movie'){ const all = (d.release_dates || {}).results || [], pick = all.find(x => x.iso_3166_1 === 'BE') || all.find(x => x.iso_3166_1 === 'NL'), T = {2:'cinema', 3:'cinema', 4:'digital', 5:'physical', 6:'tv'};
+    for(const x of (pick || {}).release_dates || []){ const w = T[x.type]; if(w && !dates.some(y => y.w === w)) dates.push({w, d:x.release_date.slice(0, 10), c:pick.iso_3166_1}) }
+    if(!dates.length && d.release_date) dates.push({w:'release', d:d.release_date, c:''}) }
+  const be = ((d['watch/providers'] || {}).results || {}).BE, nm = l => (l || []).map(x => x.provider_name).filter((x, i, a) => a.indexOf(x) === i);
+  const next = d.next_episode_to_air, last = d.last_episode_to_air;
+  let h = `<div class="hero">${d.backdrop_path ? `<div class="bg" style="background-image:url('${esc(IMG(d.backdrop_path, 'w780'))}')"></div>` : ''}
+    <div class="alhead" style="align-items:flex-end"><div class="cv" style="width:min(34vw,150px)">${phHTML({name, kind:v.type === 'tv' ? 'show' : 'movie', year})}${d.poster_path ? `<img class="f" src="${esc(IMG(d.poster_path, 'w342'))}" alt="" onerror="this.remove()" style="object-fit:cover">` : ''}</div>
+    <div style="min-width:0;flex:1"><b>${esc(name)}</b>${d.tagline ? `<div class="muted small" style="font-style:italic">${esc(d.tagline)}</div>` : ''}
+    <div class="muted small">${esc([year, genres.slice(0, 3).join(', '), run].filter(Boolean).join(' · '))}</div>
+    ${d.vote_count > 20 ? `<div class="small" style="margin-top:4px">★ ${(d.vote_average || 0).toFixed(1)} <span class="muted">/ 10 · ${d.vote_count.toLocaleString()} votes</span></div>` : ''}
+    <div style="margin-top:6px">${have ? (isWant(have) ? '<span class="tag" style="color:#ff9db7">♥ On your list</span>' : '<span class="tag ok">✓ In Cinema</span>') : ''}${d.status && !/released|ended|returning/i.test(d.status) ? `<span class="tag">${esc(d.status)}</span>` : ''}</div></div></div></div>
+    <div class="mbar">${have ? `<button class="btn primary playbig" id="tmopen">Open in Cinema</button>` : `<button class="btn primary playbig" id="tmwant">♥ Want to see</button>`}${trailer ? `<a class="btn" style="height:50px;text-decoration:none" href="https://www.youtube.com/watch?v=${esc(trailer.key)}" target="_blank" rel="noopener">▶ Trailer</a>` : ''}</div>`;
+  if(dates.length) h += `<div class="sec">Release${dates[0].c === 'NL' ? ' (Netherlands - no Belgian date yet)' : dates[0].c ? ' in Belgium' : ''}</div><div class="facts">${dates.map(x => `<span>${esc(WHERE[x.w] || x.w)}</span><span>${esc(dshort(x.d))} ${x.d.slice(0, 4)}${daysFrom(x.d) > 0 ? ` <span class="muted">· in ${plural(daysFrom(x.d), 'day')}</span>` : ''}</span>`).join('')}</div>`;
+  if(v.type === 'tv' && (next || last)) h += `<div class="sec">Episodes</div><div class="facts">${next ? `<span>Next</span><span>S${next.season_number}·E${next.episode_number}${next.name ? ' · ' + esc(next.name) : ''} · ${next.air_date ? esc(dshort(next.air_date)) + ' ' + next.air_date.slice(0, 4) : 'date not known'}</span>` : ''}${last ? `<span>Latest</span><span>S${last.season_number}·E${last.episode_number}${last.name ? ' · ' + esc(last.name) : ''}${last.air_date ? ' · ' + esc(dshort(last.air_date)) + ' ' + last.air_date.slice(0, 4) : ''}</span>` : ''}${(d.networks || []).length ? `<span>On</span><span>${esc(d.networks.map(n => n.name).join(', '))}</span>` : ''}</div>`;
+  if(be && (be.flatrate || be.rent || be.buy)) h += `<div class="sec">Where to watch in Belgium</div><div class="facts">${nm(be.flatrate).length ? `<span>Streaming</span><span>${esc(nm(be.flatrate).join(', '))}</span>` : ''}${nm(be.rent).length ? `<span>Rent</span><span>${esc(nm(be.rent).join(', '))}</span>` : ''}${nm(be.buy).length ? `<span>Buy</span><span>${esc(nm(be.buy).join(', '))}</span>` : ''}</div><p class="muted small" style="margin:0">Data: JustWatch</p>`;
+  if(d.overview) h += `<div class="sec">Story</div><div class="desc">${esc(d.overview)}</div>`;
+  if(dir.length || cast.length) h += `<div class="sec">${v.type === 'movie' ? 'Director and cast' : 'Made by and cast'}</div>${dir.length ? `<div class="small" style="margin-bottom:8px"><span class="muted">${v.type === 'movie' ? 'Director' : 'Created by'}:</span> ${esc(dir.join(', '))}</div>` : ''}
+    <div class="castrow">${cast.map(c => `<div class="castp"><div class="castimg">${c.profile_path ? `<img src="${esc(IMG(c.profile_path, 'w185'))}" alt="" onerror="this.remove()">` : ''}<span>${esc((c.name || '?').split(' ').map(x => x[0]).slice(0, 2).join(''))}</span></div><b>${esc(c.name)}</b><span>${esc(c.character || '')}</span></div>`).join('')}</div>`;
+  const facts = [['Original title', d.original_title && d.original_title !== name ? d.original_title : d.original_name && d.original_name !== name ? d.original_name : ''], ['Language', (d.spoken_languages || []).map(x => x.english_name).slice(0, 3).join(', ')],
+    ['Country', (d.production_countries || d.origin_country || []).map(x => x.name || x).slice(0, 3).join(', ')], ['Series', d.belongs_to_collection ? sagaName(d.belongs_to_collection.name) : '']].filter(x => x[1]);
+  if(facts.length) h += `<div class="sec">Details</div><div class="facts">${facts.map(([k, x]) => `<span>${k}</span><span>${esc(x)}</span>`).join('')}</div>`;
+  h += `<p class="muted small" style="margin-top:14px"><a href="https://www.themoviedb.org/${v.type}/${v.id}" target="_blank" rel="noopener">More on TMDB</a> · This app uses the TMDB API but is not endorsed or certified by TMDB.</p>`;
+  body.innerHTML = h; scrollTo(0, 0);
+  if($('#tmopen')) $('#tmopen').onclick = () => go({v:'title', id:have.id, shelf:have.shelf});
+  if($('#tmwant')) $('#tmwant').onclick = async () => { await addWant({type:v.type, id:v.id, title:name, year:+year || null, poster:d.poster_path || '', genres:(d.genres || []).map(g => g.id), lang:d.original_language || ''}); drawTm(v) } }
+window.drawTm = drawTm;

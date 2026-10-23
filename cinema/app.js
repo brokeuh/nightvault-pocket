@@ -475,6 +475,7 @@ function draw(){
     body.innerHTML = h; lazyCovers(body); hookGrid(v.shelf); $('#gmenu').onclick = () => groupMenu(v.shelf, g);
     if($('#gplay')) $('#gplay').onclick = () => play(nextUp(nx)); return }
   if(v.v === 'cal') return drawCal();
+  if(v.v === 'tm') return drawTm(v);
   if(v.v === 'title') return drawTitle(v.id, v.shelf) }
 function storeLine(sh){ const ts = sh ? inShelf(sh) : TITLES.filter(t => filesOf(t).length); if(!ts.length) return '';
   const fs = ts.flatMap(filesOf), ph = fs.filter(onPhone), sz = ph.reduce((n, f) => n + (f.src && f.src.kind === 'copy' || f.local ? f.size || 0 : 0), 0);
@@ -1286,7 +1287,7 @@ function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh);
     lsSet('nvCinema.shelves', set); draw() };
   $('#ss_hide').onclick = () => { const set = lsGet('nvCinema.shelves', {}); set.hidden = set.hidden || {}; set.hidden[sh] = true; lsSet('nvCinema.shelves', set); closeSheet(); V = [{v:'shelves'}]; draw(); toast(`${s.name} is hidden - show it again in Settings on the first page`, 4500) };
   $('#ss_all').onclick = () => appSettings() }
-$('#setbtn').onclick = () => { const v = cur(); if(v.v === 'shelves' || v.v === 'title' || v.v === 'cal') appSettings(); else shelfSettings(v.shelf) };
+$('#setbtn').onclick = () => { const v = cur(); if(v.v === 'shelves' || v.v === 'title' || v.v === 'cal' || v.v === 'tm') appSettings(); else shelfSettings(v.shelf) };
 $('#addbtn').onclick = () => addSheet();
 
 /* ---------- backup file: titles, where the videos are, what you watched, groups and settings (not the videos, not the TMDB key) ---------- */

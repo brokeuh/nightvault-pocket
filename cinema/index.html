@@ -194,6 +194,10 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 .seg{display:flex;background:var(--pan2);border:1px solid var(--line);border-radius:13px;padding:3px;margin:2px 0 6px}
 .seg button{flex:1;height:36px;border:0;border-radius:10px;background:none;color:var(--dim);font-size:13.5px;font-weight:600;cursor:pointer}
 .seg button.on{background:var(--accentbg);color:var(--accent)}
+.castrow{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px}.castrow::-webkit-scrollbar{display:none}
+.castp{flex:none;width:78px;font-size:11.5px;line-height:1.25}.castp b{display:block;font-size:12px;margin-top:4px}.castp>span{color:var(--dim)}
+.castimg{position:relative;width:78px;height:104px;border-radius:10px;background:#1a2230;overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--dim);font-weight:800}
+.castimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 /* Play on TV: the remote */
 #tvr{position:fixed;inset:0;z-index:120;background:var(--bg);overflow:auto}
 #tvr .tvbg{position:absolute;inset:0 0 auto 0;height:300px;background-size:cover;background-position:center;opacity:.25;filter:blur(3px);mask-image:linear-gradient(#000 30%,transparent)}

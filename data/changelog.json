@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 109,
+   "date": "2026-10-23",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "cinema"
+   ],
+   "title": "Cinema calendar: full details when you open something",
+   "items": [
+    "Tapping a film or series in “Everything coming” (or the next film of a series) now opens a full page in Cinema instead of a link: poster, story, rating, genres, length, director and cast, the trailer, the release dates in Belgium (with “in 12 days”), the next episode and where to watch it in Belgium.",
+    "♥ Want to see right there - and when it is already in Cinema, “Open in Cinema”."
+   ]
+  },
+  {
    "id": 108,
    "date": "2026-10-23",
    "where": [
