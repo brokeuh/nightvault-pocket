@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 127,
+   "date": "2026-10-24",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "New first-start: one page per app",
+   "items": [
+    "A fresh install now walks you through the apps, one full-screen page each: what it does, a small animation, and a tick to take it.",
+    "Previous, Skip and Next at the bottom. Next only works once you ticked the app; Skip goes on without it.",
+    "The last page shows what will be installed, then installs only those apps."
+   ]
+  },
+  {
    "id": 126,
    "date": "2026-10-23",
    "where": [

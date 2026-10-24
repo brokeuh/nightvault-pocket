@@ -86,6 +86,29 @@ a.tile:active{transform:scale(.97)}a.tile:hover{border-color:var(--line2)}
 .off{opacity:.45}
 .ctl{display:flex;gap:6px;flex:none}
 .ctl button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--pan2);color:var(--dim);font-size:16px;cursor:pointer}
+.wz{min-height:100dvh;display:flex;flex-direction:column;padding:18px 18px calc(16px + env(safe-area-inset-bottom))}
+.wzdots{display:flex;gap:5px;justify-content:center;margin:4px 0 8px;flex-wrap:wrap}.wzdots i{width:7px;height:7px;border-radius:50%;background:var(--line2)}.wzdots i.on{background:var(--accent);box-shadow:0 0 8px var(--accent)}.wzdots i.pk{background:var(--g)}
+.wzpage{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:10px 0 18px;animation:wzin .25s ease}
+@keyframes wzin{from{opacity:0;transform:translateX(18px)}}
+.wzhero{width:104px;height:104px;border-radius:30px;display:grid;place-items:center;color:var(--c);background:linear-gradient(150deg,color-mix(in srgb,var(--c) 26%,var(--pan)),color-mix(in srgb,var(--c) 8%,var(--pan)));border:1px solid color-mix(in srgb,var(--c) 45%,transparent);box-shadow:0 10px 30px color-mix(in srgb,var(--c) 25%,transparent)}
+.wzpage h2{font-size:24px;margin:0}.wzpage .wzd{font-size:15px;color:var(--dim);max-width:420px;margin:0}
+.wzdemo{width:100%;max-width:340px;height:120px;border-radius:18px;background:var(--pan);border:1px solid var(--line);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--c)}
+.wzul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;max-width:420px;text-align:left;font-size:14px}.wzul li:before{content:'✓';color:var(--c);font-weight:700;margin-right:8px}
+.wzpick{display:flex;align-items:center;gap:12px;width:100%;max-width:420px;padding:14px 16px;border-radius:18px;background:var(--pan);border:2px solid var(--line2);cursor:pointer;text-align:left;font-size:16px;font-weight:600}
+.wzpick.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,var(--pan))}.wzpick input{width:26px;height:26px;accent-color:var(--c);flex:none}.wzpick .m{display:block;font-weight:400;font-size:12.5px;color:var(--dim2)}
+.wznav{display:flex;gap:10px;position:sticky;bottom:0}.wznav .btn{flex:1;min-height:48px}.wznav .btn:disabled{opacity:.4}
+.wzsum{list-style:none;margin:0;padding:0;width:100%;max-width:420px;display:flex;flex-direction:column;gap:8px;text-align:left}.wzsum li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:var(--pan);border:1px solid var(--line)}
+/* little demo animations (CSS only) */
+.dmbar{width:10px;border-radius:4px;background:var(--c);animation:dmeq 1s ease-in-out infinite;height:60px;transform-origin:bottom}@keyframes dmeq{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+.dmscan{width:70px;height:96px;border:2px solid var(--c);border-radius:8px;position:relative;overflow:hidden}.dmscan:after{content:'';position:absolute;left:0;right:0;height:3px;background:var(--c);box-shadow:0 0 10px var(--c);animation:dmsc 1.8s ease-in-out infinite}@keyframes dmsc{0%,100%{top:0}50%{top:92px}}
+.dmcell{width:26px;height:36px;border-radius:5px;border:1.5px solid var(--c);animation:dmfill 3s infinite}@keyframes dmfill{0%,30%{background:transparent}50%,100%{background:var(--c)}}
+.dmbook{width:18px;border-radius:3px;background:var(--c);animation:dmup 2.4s ease-in-out infinite}@keyframes dmup{0%,100%{transform:translateY(8px);opacity:.5}40%,70%{transform:translateY(-6px);opacity:1}}
+.dmtrack{width:200px;height:8px;border-radius:5px;background:var(--line2);overflow:hidden}.dmtrack i{display:block;height:100%;background:var(--c);animation:dmgrow 3s linear infinite}@keyframes dmgrow{from{width:5%}to{width:100%}}
+.dmdie{width:54px;height:54px;border-radius:12px;border:2.5px solid var(--c);animation:dmrot 2.4s ease-in-out infinite;display:grid;place-items:center;font-weight:800;font-size:24px}@keyframes dmrot{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(16deg) translateY(-6px)}}
+.dmlayer{height:9px;border-radius:3px;background:var(--c);animation:dmlay 3s infinite;opacity:0}@keyframes dmlay{0%{opacity:0;transform:scaleX(.3)}20%,100%{opacity:1;transform:scaleX(1)}}
+.dmgear{font-size:50px;animation:dmspin 4s linear infinite}@keyframes dmspin{to{transform:rotate(360deg)}}
+.dmshrink{height:14px;border-radius:7px;background:var(--c);animation:dmsh 2.6s ease-in-out infinite}@keyframes dmsh{0%,25%{width:210px}60%,100%{width:46px}}
+@media (prefers-reduced-motion:reduce){.wzdemo *,.wzpage{animation:none!important}}
 .pick{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:var(--pan);border:1px solid var(--line);cursor:pointer}
 .pick input{width:22px;height:22px;accent-color:var(--accent);flex:none}
 .pick.dis{cursor:default;opacity:.6}
@@ -151,12 +174,12 @@ a.tile:active{transform:scale(.97)}a.tile:hover{border-color:var(--line2)}
 <body>
 <!-- first start: pick your apps -->
 <div id="setup" hidden>
-  <div class="top"><div class="logo" id="lg1"></div><div style="flex:1"><div class="word">THE NIGHTVAULT</div><div class="sub">Welcome</div></div></div>
-  <h2 style="font-size:20px;margin:22px 0 4px">Pick your apps</h2>
-  <p class="meta" style="font-size:13.5px;margin:0 0 14px">Only the apps you pick are downloaded. You can add or remove apps any time from the Apps screen - your collection is never removed.</p>
-  <div id="setlist" style="display:flex;flex-direction:column;gap:10px"></div>
-  <div id="setprog" hidden style="margin-top:16px"></div>
-  <div style="display:flex;gap:10px;margin-top:18px"><button class="btn primary" id="setgo" style="flex:1">Install</button></div>
+  <div class="wz">
+    <div class="wzdots" id="wzdots"></div>
+    <div class="wzpage" id="wzpage"></div>
+    <div id="setprog" hidden></div>
+    <div class="wznav" id="wznav"><button class="btn" id="wzprev">Previous</button><button class="btn" id="wzskip">Skip</button><button class="btn primary" id="wznext">Next</button></div>
+  </div>
 </div>
 
 <!-- home: square tiles of the installed apps -->
@@ -233,7 +256,7 @@ const get = (k, d) => { try{ const v = localStorage.getItem(k); return v == null
 const set = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)) }catch(e){} };
 const toast = t => { const el = $('#toast'); el.textContent = t; el.className = 'on'; clearTimeout(toast.t); toast.t = setTimeout(() => el.className = '', 3500) };
 const LOGO = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5fe0b0" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="7" width="8" height="12" rx="1.5"></rect><path d="M6 9l-2 9 5 1.5M18 9l2 9-5 1.5"></path><path d="M6 4l3 1.5 3-1 3 1.5 3-1" stroke="#c9d2ff"></path></svg>';
-$('#lg1').innerHTML = $('#lg2').innerHTML = LOGO;
+$('#lg2').innerHTML = LOGO;
 const ICON = {
   scanner:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"></path><rect x="8" y="7" width="8" height="10" rx="1"></rect></svg>`,
   binder:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="2"></rect><path d="M9 21h9a2 2 0 0 0 2-2V8"></path></svg>`,
@@ -258,23 +281,68 @@ function show(view){ $('#setup').hidden = view !== 'setup'; $('#home').hidden = 
 const order = list => { const o = get('nvHub.order', []); return list.slice().sort((a, b) => ((o.indexOf(a.id) + 1) || 99) - ((o.indexOf(b.id) + 1) || 99)) };
 const hidden = id => get('nvHub.hidden', []).includes(id);
 
-/* ---------- first start ---------- */
+/* ---------- first start: one full-screen page per app (what it does + a tick to take it), Previous / Skip / Next ---------- */
+const SETINFO = {
+  scanner:['Point the camera at a card and see what it is','Binders, your cards and decks in one place','Prices and what your collection is worth'],
+  binder:['Only your binders - the same collection as Scanner','No camera or scanning, lighter and simpler','Switch to the full Scanner any time'],
+  convert:['Turns many pictures into small WebP and AVIF files','Pick a whole folder, choose the quality','Everything stays on your phone - nothing is uploaded'],
+  bookcase:['Comics, manga, books and rulebooks on shelves','One reader for everything, remembers your page','Tells you when a new volume or issue comes out'],
+  music:['Big covers, albums, artists and playlists','Make your own groups, even groups inside groups','Can play from your PC at home or keep copies offline'],
+  audiobooks:['Remembers where you were in every book','Faster or slower, sleep timer, chapters and bookmarks','One M4B, one long file or a folder of MP3s per book'],
+  cinema:['Movies, shows, cartoons and anime, each on its own shelf','One player that remembers where you stopped','Posters and stories, plus a calendar of what is coming'],
+  boardgames:['Your board games, synced with BoardGameGeek','Miniatures and terrain next to your games','Search, groups and a tile for every game'],
+  print3d:['Look at STL, OBJ and 3MF models in 3D','A tile per project with its pictures and print files','A log of what you printed'],
+  games:['Computer, console, retro and handheld games','A wishlist for what you still want','Groups, search and covers like the other apps'],
+  control:['Data jobs and your data sets','Only for you, the owner']
+};
+const DEMO = {
+  scanner:'<div class="dmscan"></div>',
+  binder:'<div style="display:grid;grid-template-columns:repeat(5,26px);gap:6px">' + Array.from({length:10}, (_, i) => `<div class="dmcell" style="animation-delay:${i * .25}s"></div>`).join('') + '</div>',
+  convert:'<div style="display:flex;flex-direction:column;gap:12px;align-items:flex-start"><div class="dmshrink"></div><div style="font-size:12.5px;color:var(--dim)">4 MB → 120 KB</div></div>',
+  bookcase:Array.from({length:8}, (_, i) => `<div class="dmbook" style="height:${54 + (i % 3) * 14}px;animation-delay:${i * .2}s;opacity:${1 - i % 2 * .25}"></div>`).join(''),
+  music:Array.from({length:7}, (_, i) => `<div class="dmbar" style="animation-delay:${i * .13}s"></div>`).join(''),
+  audiobooks:'<div style="display:flex;flex-direction:column;gap:12px;align-items:center"><div class="dmtrack"><i></i></div><div style="font-size:12.5px;color:var(--dim)">Chapter 7 · picks up where you left off</div></div>',
+  cinema:'<div style="display:flex;flex-direction:column;gap:12px;align-items:center"><div style="font-size:34px">▶</div><div class="dmtrack"><i></i></div></div>',
+  boardgames:'<div class="dmdie">⚅</div>',
+  print3d:'<div style="display:flex;flex-direction:column-reverse;gap:4px;align-items:center">' + Array.from({length:6}, (_, i) => `<div class="dmlayer" style="width:${120 - i * 12}px;animation-delay:${i * .3}s"></div>`).join('') + '</div>',
+  games:'<div class="dmdie" style="border-radius:50%">🎮</div>',
+  control:'<div class="dmgear">⚙</div>'
+};
 function setup(){
   show('setup');
   const hasCollection = (() => { try{ return !!localStorage.getItem('nightvault.pocket.test.v1') }catch(e){ return false } })();
-  const list = CAT.filter(a => !a.owner || isOwner());
-  $('#setlist').innerHTML = list.map(a => `<label class="pick ${a.soon ? 'dis' : ''}"><input type="checkbox" value="${a.id}" ${a.soon ? 'disabled' : a.id === 'scanner' ? 'checked' : ''}>${icon(a)}
-      <div class="tx"><b style="font-size:15.5px">Nightvault ${esc(a.name)}</b><span class="d">${esc(a.desc)}</span>
-      <span class="meta">${a.soon ? '<span class="tag soon">COMING LATER</span>' : mb(a.size)}${(a.id === 'scanner' || a.id === 'binder') && hasCollection ? ' · your collection is already here' : ''}${a.owner ? ' · only for you' : ''}</span></div></label>`).join('');
-  const upd = () => { const pick = [...document.querySelectorAll('#setlist input:checked')].map(i => CAT.find(a => a.id === i.value)), size = pick.reduce((s, a) => s + a.size, 0);
-    $('#setgo').textContent = pick.length ? `Install ${pick.length} app${pick.length === 1 ? '' : 's'} · ${mb(size)}` : 'Continue without apps'; };
-  document.querySelectorAll('#setlist input').forEach(i => i.onchange = upd); upd();
-  $('#setgo').onclick = async () => { const ids = [...document.querySelectorAll('#setlist input:checked')].map(i => i.value);
-    $('#setgo').disabled = true; document.querySelectorAll('#setlist input').forEach(i => i.disabled = true);
-    $('#setprog').hidden = false; $('#setprog').innerHTML = ids.map(id => `<div style="margin-bottom:10px"><div class="meta" id="pl-${id}">Nightvault ${esc(CAT.find(a => a.id === id).name)} · waiting</div><div class="bar"><i id="pb-${id}"></i></div></div>`).join('');
+  const apps = CAT.filter(a => !a.soon && (!a.owner || isOwner()));
+  const pages = [{t:'welcome'}, ...apps.map(a => ({t:'app', a})), {t:'done'}];
+  const picked = new Set(apps.some(a => a.id === 'scanner') ? ['scanner'] : []);
+  let i = 0, busy = false;
+  const total = () => apps.filter(a => picked.has(a.id)).reduce((s, a) => s + a.size, 0);
+  const render = () => { const p = pages[i], c = p.a ? col(p.a) : 'var(--accent)';
+    $('#wzdots').innerHTML = pages.map((q, j) => `<i class="${j === i ? 'on' : q.a && picked.has(q.a.id) ? 'pk' : ''}"></i>`).join('');
+    let h = '';
+    if(p.t === 'welcome') h = `<div class="logo" style="width:84px;height:84px">${LOGO}</div><h2>Welcome to The Nightvault</h2><p class="wzd">Your apps live here. On the next pages you meet each app, one by one. Tick the ones you want and only those are installed. You can always add or remove apps later - your collections are never removed.</p>`;
+    else if(p.t === 'app'){ const a = p.a, on = picked.has(a.id);
+      h = `<div class="wzhero" style="--c:${c}">${(ICON[a.id] || ICON.control)(54)}</div><h2>Nightvault ${esc(a.name)}</h2><p class="wzd">${esc(a.desc)}</p>
+        <div class="wzdemo" style="--c:${c}">${DEMO[a.id] || ''}</div>
+        <ul class="wzul" style="--c:${c}">${(SETINFO[a.id] || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+        <label class="wzpick ${on ? 'on' : ''}" style="--c:${c}"><input type="checkbox" id="wzchk" ${on ? 'checked' : ''}><span>Yes, I want this app<span class="m">${mb(a.size)}${(a.id === 'scanner' || a.id === 'binder') && hasCollection ? ' · your collection is already here' : ''}${a.owner ? ' · only for you' : ''}</span></span></label>` }
+    else { const ch = apps.filter(a => picked.has(a.id));
+      h = `<h2>${ch.length ? 'Ready to install' : 'No apps chosen'}</h2><p class="wzd">${ch.length ? 'These are downloaded now. Only the apps you ticked.' : 'You can still add apps any time from the Apps screen in the menu.'}</p>${ch.length ? `<ul class="wzsum">${ch.map(a => `<li><div class="ic s" style="--c:${col(a)}">${(ICON[a.id] || ICON.control)(22)}</div><b style="flex:1">${esc(a.name)}</b><span class="meta">${mb(a.size)}</span></li>`).join('')}</ul><p class="meta">${mb(total())} in total</p>` : ''}` }
+    $('#wzpage').innerHTML = h;
+    const chk = $('#wzchk'); if(chk) chk.onchange = () => { chk.checked ? picked.add(p.a.id) : picked.delete(p.a.id); render() };
+    const last = i === pages.length - 1;
+    $('#wzprev').disabled = busy || i === 0;
+    $('#wzskip').hidden = last || p.t === 'welcome'; $('#wzskip').disabled = busy;
+    $('#wznext').textContent = last ? (picked.size ? `Install ${picked.size} app${picked.size === 1 ? '' : 's'}` : 'Continue without apps') : 'Next';
+    $('#wznext').disabled = busy || (p.t === 'app' && !picked.has(p.a.id)) }      // Next only after the app is ticked; Skip goes on without it
+  $('#wzprev').onclick = () => { if(i > 0){ i--; render() } };
+  $('#wzskip').onclick = () => { if(i < pages.length - 1){ i++; render() } };
+  $('#wznext').onclick = async () => { if(i < pages.length - 1){ i++; render(); return }
+    busy = true; render(); const ids = apps.filter(a => picked.has(a.id)).map(a => a.id);
+    $('#wznav').hidden = true; $('#setprog').hidden = false; $('#setprog').innerHTML = ids.map(id => `<div style="margin-bottom:10px"><div class="meta" id="pl-${id}">Nightvault ${esc(CAT.find(a => a.id === id).name)} · waiting</div><div class="bar"><i id="pb-${id}"></i></div></div>`).join('');
     for(const id of ids){ try{ await NV.install(id, (d, t) => { $('#pb-' + id).style.width = (100 * d / t) + '%'; $('#pl-' + id).textContent = `Nightvault ${CAT.find(a => a.id === id).name} · ${mb(d)} of ${mb(t)}` }); $('#pl-' + id).textContent += ' · ready' }
       catch(e){ $('#pl-' + id).textContent = `Nightvault ${CAT.find(a => a.id === id).name} · ${e.message}` } }
     set('nvHub.setupDone', Date.now()); setTimeout(home, 500) };
+  render();
 }
 
 /* ---------- home ---------- */
