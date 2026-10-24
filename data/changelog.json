@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 128,
+   "date": "2026-10-24",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "First start: Scanner shows a live scan demo",
+   "items": [
+    "On the Scanner page of the new first start, a small viewfinder shows a card being scanned and the name, number and price fields lining up. The other apps still have simple animations for now."
+   ]
+  },
+  {
    "id": 127,
    "date": "2026-10-24",
    "where": [

@@ -10,7 +10,7 @@
    "files": [
     {
      "path": "hub/index.html",
-     "size": 80546
+     "size": 83760
     },
     {
      "path": "hub/core.js",
@@ -55,9 +55,9 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 202487,
-   "hash": "1d133a3c4999",
-   "version": "2026.10.24.0752",
+   "size": 205701,
+   "hash": "a69268c328cc",
+   "version": "2026.10.24.0756",
    "updated": "2026-10-24"
   },
   {

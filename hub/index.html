@@ -92,7 +92,7 @@ a.tile:active{transform:scale(.97)}a.tile:hover{border-color:var(--line2)}
 @keyframes wzin{from{opacity:0;transform:translateX(18px)}}
 .wzhero{width:104px;height:104px;border-radius:30px;display:grid;place-items:center;color:var(--c);background:linear-gradient(150deg,color-mix(in srgb,var(--c) 26%,var(--pan)),color-mix(in srgb,var(--c) 8%,var(--pan)));border:1px solid color-mix(in srgb,var(--c) 45%,transparent);box-shadow:0 10px 30px color-mix(in srgb,var(--c) 25%,transparent)}
 .wzpage h2{font-size:24px;margin:0}.wzpage .wzd{font-size:15px;color:var(--dim);max-width:420px;margin:0}
-.wzdemo{width:100%;max-width:340px;height:120px;border-radius:18px;background:var(--pan);border:1px solid var(--line);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--c)}
+.wzdemo{width:100%;max-width:340px;min-height:120px;padding:12px 0;border-radius:18px;background:var(--pan);border:1px solid var(--line);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--c)}
 .wzul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;max-width:420px;text-align:left;font-size:14px}.wzul li:before{content:'✓';color:var(--c);font-weight:700;margin-right:8px}
 .wzpick{display:flex;align-items:center;gap:12px;width:100%;max-width:420px;padding:14px 16px;border-radius:18px;background:var(--pan);border:2px solid var(--line2);cursor:pointer;text-align:left;font-size:16px;font-weight:600}
 .wzpick.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,var(--pan))}.wzpick input{width:26px;height:26px;accent-color:var(--c);flex:none}.wzpick .m{display:block;font-weight:400;font-size:12.5px;color:var(--dim2)}
@@ -100,6 +100,24 @@ a.tile:active{transform:scale(.97)}a.tile:hover{border-color:var(--line2)}
 .wzsum{list-style:none;margin:0;padding:0;width:100%;max-width:420px;display:flex;flex-direction:column;gap:8px;text-align:left}.wzsum li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:var(--pan);border:1px solid var(--line)}
 /* little demo animations (CSS only) */
 .dmbar{width:10px;border-radius:4px;background:var(--c);animation:dmeq 1s ease-in-out infinite;height:60px;transform-origin:bottom}@keyframes dmeq{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+.vf{--t:7s;position:relative;width:200px;height:158px;display:block}
+.vf>i{position:absolute;width:18px;height:18px;border:3px solid var(--c);border-radius:4px}.vf .c1{left:0;top:0;border-right:0;border-bottom:0}.vf .c2{right:0;top:0;border-left:0;border-bottom:0}.vf .c3{left:0;bottom:0;border-right:0;border-top:0}.vf .c4{right:0;bottom:0;border-left:0;border-top:0}
+.vcard{position:absolute;left:50px;top:14px;width:100px;height:130px;border-radius:9px;background:#e8e6df;border:3px solid #8d8a80;box-shadow:0 6px 16px #0006;padding:6px;animation:vin var(--t) infinite}
+@keyframes vin{0%{transform:translateY(24px) rotate(-6deg);opacity:0}8%{transform:translateY(0) rotate(0);opacity:1}88%{opacity:1}100%{opacity:0}}
+.vart{height:50px;border-radius:4px;background:linear-gradient(135deg,#9bb7c9,#c9a98f)}.vl{height:6px;border-radius:3px;background:#555;margin-top:7px;width:70%}.vl.vtxt{height:4px;background:#9a978e;width:92%;margin-top:5px}.vl.vtxt.s{width:60%}
+.vnum{position:absolute;right:8px;bottom:7px;width:26px;height:5px;border-radius:2px;background:#555}
+.vbox{position:absolute;border:2px solid var(--c);border-radius:3px;opacity:0;box-shadow:0 0 8px var(--c);animation:vbx var(--t) infinite}
+.vbox.b1{left:4px;top:56px;width:72px;height:12px;animation-delay:0s}.vbox.b2{right:3px;bottom:3px;width:34px;height:11px}.vbox.b3{left:4px;bottom:3px;width:34px;height:11px}
+.vbox.b1{--s:.30}.vbox.b2{--s:.42}.vbox.b3{--s:.54}
+@keyframes vbx{0%,25%{opacity:0;transform:scale(1.6)}33%{opacity:1;transform:scale(1)}85%{opacity:1}92%,100%{opacity:0}}
+.vbox.b2{animation-delay:calc(var(--t) * .06)}.vbox.b3{animation-delay:calc(var(--t) * .12)}
+.vline{position:absolute;left:44px;right:44px;height:3px;background:var(--c);box-shadow:0 0 12px var(--c);top:14px;opacity:0;animation:vsc var(--t) infinite}
+@keyframes vsc{0%,10%{opacity:0;top:14px}12%{opacity:1;top:14px}28%{opacity:1;top:140px}30%,100%{opacity:0}}
+.vtag{position:absolute;font-size:11px;font-weight:700;padding:2px 7px;border-radius:9px;background:var(--c);color:var(--bg);opacity:0;animation:vtg var(--t) infinite;white-space:nowrap}
+.vtag.t1{left:-6px;top:58px}.vtag.t2{right:-10px;top:112px;animation-delay:calc(var(--t) * .06)}.vtag.t3{left:-12px;top:112px;animation-delay:calc(var(--t) * .12)}
+@keyframes vtg{0%,36%{opacity:0;transform:translateY(5px)}44%,85%{opacity:1;transform:none}92%,100%{opacity:0}}
+.vok{position:absolute;left:50%;transform:translateX(-50%);bottom:-2px;font-size:12px;font-weight:700;color:var(--c);background:var(--pan);border:1px solid var(--c);border-radius:12px;padding:3px 10px;white-space:nowrap;opacity:0;animation:vok var(--t) infinite}
+@keyframes vok{0%,62%{opacity:0}68%,88%{opacity:1}94%,100%{opacity:0}}
 .dmscan{width:70px;height:96px;border:2px solid var(--c);border-radius:8px;position:relative;overflow:hidden}.dmscan:after{content:'';position:absolute;left:0;right:0;height:3px;background:var(--c);box-shadow:0 0 10px var(--c);animation:dmsc 1.8s ease-in-out infinite}@keyframes dmsc{0%,100%{top:0}50%{top:92px}}
 .dmcell{width:26px;height:36px;border-radius:5px;border:1.5px solid var(--c);animation:dmfill 3s infinite}@keyframes dmfill{0%,30%{background:transparent}50%,100%{background:var(--c)}}
 .dmbook{width:18px;border-radius:3px;background:var(--c);animation:dmup 2.4s ease-in-out infinite}@keyframes dmup{0%,100%{transform:translateY(8px);opacity:.5}40%,70%{transform:translateY(-6px);opacity:1}}
@@ -296,7 +314,10 @@ const SETINFO = {
   control:['Data jobs and your data sets','Only for you, the owner']
 };
 const DEMO = {
-  scanner:'<div class="dmscan"></div>',
+  scanner:`<div class="vf"><i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i>
+    <div class="vcard"><div class="vart"></div><div class="vl vname"></div><div class="vl vtxt"></div><div class="vl vtxt s"></div><div class="vnum"></div>
+      <b class="vbox b1"></b><b class="vbox b2"></b><b class="vbox b3"></b></div><div class="vline"></div>
+    <span class="vtag t1">Name</span><span class="vtag t2">Number</span><span class="vtag t3">Price</span><span class="vok">✓ Added to binder</span></div>`,
   binder:'<div style="display:grid;grid-template-columns:repeat(5,26px);gap:6px">' + Array.from({length:10}, (_, i) => `<div class="dmcell" style="animation-delay:${i * .25}s"></div>`).join('') + '</div>',
   convert:'<div style="display:flex;flex-direction:column;gap:12px;align-items:flex-start"><div class="dmshrink"></div><div style="font-size:12.5px;color:var(--dim)">4 MB → 120 KB</div></div>',
   bookcase:Array.from({length:8}, (_, i) => `<div class="dmbook" style="height:${54 + (i % 3) * 14}px;animation-delay:${i * .2}s;opacity:${1 - i % 2 * .25}"></div>`).join(''),
