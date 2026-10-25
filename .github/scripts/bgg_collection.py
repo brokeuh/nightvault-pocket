@@ -190,8 +190,6 @@ def plays(games):
 
 
 def main():
-    if not USER or (not TOKEN and not SAMPLES):
-        sys.exit("Add the repository secrets BGG_USERNAME and BGG_TOKEN first (Settings → Secrets and variables → Actions).")
     games = collection()
     print(f"{len(games)} games/expansions in the collection")
     if games:
@@ -215,5 +213,36 @@ def main():
     print("Saved", OUT)
 
 
+STATUS = os.path.join(os.path.dirname(OUT), "status.json")
+
+
+def status(ok, error="", kind=""):
+    """data/boardgames/status.json: the app shows why there are no (new) games. Only changes when the outcome changes."""
+    new = dict(ok=ok, kind=kind, error=error)
+    try:
+        old = json.load(open(STATUS, encoding="utf-8"))
+    except Exception:
+        old = {}
+    if {k: old.get(k) for k in new} == new:
+        return
+    new["since"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    os.makedirs(os.path.dirname(STATUS), exist_ok=True)
+    json.dump(new, open(STATUS, "w", encoding="utf-8"), ensure_ascii=False)
+
+
 if __name__ == "__main__":
-    main()
+    if not USER or (not TOKEN and not SAMPLES):
+        msg = "The secrets BGG_USERNAME and BGG_TOKEN are not set on GitHub yet (" + ", ".join(n for n, v in (("BGG_USERNAME", USER), ("BGG_TOKEN", TOKEN)) if not v) + " missing)."
+        print(msg)
+        status(False, msg, "nosecrets")
+        sys.exit(0)                     # not an error: nothing to do until the owner adds them (no daily "failed" mail)
+    try:
+        main()
+        status(True)
+    except SystemExit as e:
+        msg = str(e.code) if e.code not in (None, 0) else ""
+        if msg:
+            print(msg); status(False, msg, "token" if "token" in msg.lower() else "bgg"); sys.exit(1)
+    except Exception as e:
+        msg = f"{type(e).__name__}: {e}"
+        print(msg); status(False, msg, "error"); sys.exit(1)

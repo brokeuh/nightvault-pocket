@@ -70,7 +70,10 @@ const PAINT = ['', 'Unpainted', 'Primed', 'Painting', 'Painted', 'Done (based)']
 const painted = it => it.paint === 'Painted' || it.paint === 'Done (based)';
 
 /* ---------- BoardGameGeek: the daily file made by the workflow "Update board games" (data/boardgames/collection.json) ---------- */
-let BGG = null, BGGERR = '';
+let BGG = null, BGGERR = '', BGGSTATUS = null;
+/* data/boardgames/status.json: written by the job – why there are no (new) games, e.g. the secrets are missing or BGG refused the token */
+async function loadStatus(){ try{ const r = await fetch(DATA_URL.replace('collection.json', 'status.json') + '?h=' + Date.now(), {cache:'no-store'}); BGGSTATUS = r.ok ? await r.json() : null }catch(e){ BGGSTATUS = null } }
+const statusLine = () => BGGSTATUS && !BGGSTATUS.ok ? BGGSTATUS.error || 'The last BGG update did not work' : '';
 async function loadBgg(fresh){
   try{ const r = await fetch(DATA_URL + '?h=' + (fresh ? Date.now() : new Date().toISOString().slice(0, 13)), {cache:fresh ? 'no-store' : 'no-cache'});
     if(r.status === 404){ BGGERR = 'none'; return false }
@@ -233,7 +236,8 @@ function draw(){
 
 function bggLine(){ if(!BGG) return '';
   const d = new Date(BGG.fetched); return `<div class="store">From BoardGameGeek (${esc(BGG.user)}) · updated ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}${NvBgg ? '' : ' · plays are sent to BGG by the Android app'}</div>` }
-function setupNote(){ if(BGG) return '';
+function setupNote(){ if(BGG) return BGGSTATUS && !BGGSTATUS.ok && BGGSTATUS.kind !== 'nosecrets' ? `<div class="note"><b>The last BoardGameGeek update did not work.</b><br>${esc(statusLine())}<br><span class="muted small">Showing your games from ${esc(new Date(BGG.fetched).toLocaleDateString())}.</span></div>` : '';
+  if(BGGSTATUS && !BGGSTATUS.ok) return `<div class="note"><b>Your BoardGameGeek games are not here yet.</b><br>${esc(statusLine())}<br><span class="muted small">See Settings (top right) for what to do.</span></div>`;
   if(BGGERR === 'none') return `<div class="note"><b>Your BoardGameGeek games are not here yet.</b><br>They come in by themselves every morning, once the GitHub job “Update board games” has your BGG user name and token. See Settings (top right) for how.</div>`;
   if(BGGERR) return `<div class="note">Could not load your BoardGameGeek games: ${esc(BGGERR)}<br><span class="muted small">Showing what is saved on this device. Check the internet connection.</span></div>`;
   return '' }
@@ -699,6 +703,7 @@ async function appSettings(){ const m = me(), ps = people();
     <div class="sec" style="margin-top:4px">Your games from BoardGameGeek</div>
     ${BGG ? `<p class="small" style="margin:0 0 8px">From BGG user <b>${esc(BGG.user)}</b> · ${plural(BGG.games.length, 'game')} and expansions · ${plural(BGG.plays.length, 'play')}. Updated ${d.toLocaleString()}; it updates by itself every morning.</p>`
       : `<p class="small" style="margin:0 0 8px">Not set up yet. A GitHub job (“Update board games”) fetches your BGG collection, wishlist and plays every morning. It needs two <b>repository secrets</b> on <b>brokeuh/nightvault-pocket</b> (Settings → Secrets and variables → Actions):<br>• <b>BGG_USERNAME</b> – your BGG user name<br>• <b>BGG_TOKEN</b> – the application token from boardgamegeek.com/applications (the one the PC app uses works too).<br>Then run it once from the Control page or GitHub's Actions tab.</p>`}
+    ${statusLine() ? `<div class="note" style="margin:0 0 8px"><b>Last BGG update:</b> ${esc(statusLine())}${BGGSTATUS.kind === 'token' ? '<br>Make a new token on boardgamegeek.com/applications and put it in the BGG_TOKEN secret.' : BGGSTATUS.kind === 'bgg' && /user ?name/i.test(statusLine()) ? '<br>Check the BGG_USERNAME secret (your BGG user name, not your e-mail).' : ''}</div>` : ''}
     <div class="mlist"><button class="btn" id="as_reload">Check for new BGG data now</button></div>
     <div class="sec">Send plays to BoardGameGeek</div>
     ${NvBgg ? (st && st.loggedIn ? `<p class="small" style="margin:0 0 8px">Logged in as <b>${esc(st.username)}</b>. New plays go to BGG by themselves.</p><div class="mlist"><button class="btn" id="as_logout">Log out of BGG</button></div>`
@@ -715,7 +720,7 @@ async function appSettings(){ const m = me(), ps = people();
   $('#as_mn').onchange = saveMe; $('#as_mu').onchange = saveMe;
   $('#as_people').onchange = e => { const t = e.target, l = people(); if(t.dataset.pn !== undefined) l[+t.dataset.pn].n = t.value.trim(); if(t.dataset.pu !== undefined) l[+t.dataset.pu].u = t.value.trim(); lsSet('nvBoard.people', l.filter(p => p.n)) };
   $('#as_people').onclick = e => { const x = e.target.closest('[data-px]'); if(!x) return; const l = people(); l.splice(+x.dataset.px, 1); lsSet('nvBoard.people', l); appSettings() };
-  $('#as_reload').onclick = async () => { $('#as_reload').disabled = true; $('#as_reload').textContent = 'Checking…'; const ch = await loadBgg(true); if(ch) rebuild(); draw(); toast(ch ? 'New BGG data loaded' : BGGERR === 'none' ? 'No BGG data yet - see the steps above' : BGGERR ? BGGERR : 'Nothing new from BGG', 4000); appSettings() };
+  $('#as_reload').onclick = async () => { $('#as_reload').disabled = true; $('#as_reload').textContent = 'Checking…'; await loadStatus(); const ch = await loadBgg(true); if(ch) rebuild(); draw(); toast(ch ? 'New BGG data loaded' : BGGERR === 'none' ? 'No BGG data yet - see the steps above' : BGGERR ? BGGERR : 'Nothing new from BGG', 4000); appSettings() };
   if($('#as_login')) $('#as_login').onclick = async () => { const b = $('#as_login'); b.disabled = true; b.textContent = 'Logging in…';
     try{ await NvBgg.login({username:$('#as_u').value.trim(), password:$('#as_p').value}); toast('Logged in to BGG'); appSettings(); sendPending(true) }
     catch(e){ toast(e.message || String(e), 5000); b.disabled = false; b.textContent = 'Log in to BGG' } };
@@ -752,7 +757,7 @@ document.addEventListener('visibilitychange', () => { if(document.hidden) window
   if(back0 && Array.isArray(back0.V) && back0.V.length) V = back0.V;
   else { const h = window.NVHERE && NVHERE.take('nvBoard.here'); if(h && Array.isArray(h.V) && h.V.length) V = h.V }
   try{ draw() }catch(e){ V = [{v:'shelves'}]; draw() } if(back0 && back0.y) scrollTo(0, back0.y); L('start', `${ITEMS.length} items, ${PLAYS.length} own plays`);
-  const ch = await loadBgg(false); if(ch) rebuild(); if(ch || BGGERR) draw();
+  const [ch] = await Promise.all([loadBgg(false), loadStatus()]); if(ch) rebuild(); if(ch || BGGERR || (BGGSTATUS && !BGGSTATUS.ok)) draw();
   sendPending();
   window.NVBOARD = {get items(){ return ITEMS }, get plays(){ return PLAYS }, get files(){ return FILES }, addFiles, openFile, allPlays, logPlay, draw, rebuild, loadBgg, sendPending};   // for testing
 })();

@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 129,
+   "date": "2026-10-25",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "boardgames"
+   ],
+   "title": "Boardgames: says why BGG games are missing",
+   "items": [
+    "When the daily BoardGameGeek update can't run (for example the BGG user name and token are not set on GitHub yet, or BGG refuses the token), Boardgames now says why on its first page and in Settings.",
+    "No more daily \"failed\" e-mails while the BGG user name and token are simply not set yet."
+   ]
+  },
+  {
    "id": 128,
    "date": "2026-10-24",
    "where": [
