@@ -401,7 +401,7 @@
     },
     {
      "path": "boardgames/app.js",
-     "size": 97215
+     "size": 98681
     },
     {
      "path": "boardgames/manifest.webmanifest",
@@ -414,10 +414,10 @@
    "uses": [],
    "entry": "boardgames/?nv=hub",
    "keepsData": "Your plays, games added by hand, pictures and groups stay on this device. Games from BoardGameGeek come back by themselves.",
-   "size": 112668,
-   "hash": "bde0b4246e1f",
-   "version": "2026.10.23.1327",
-   "updated": "2026-10-23"
+   "size": 114134,
+   "hash": "4c5fdc368ae1",
+   "version": "2026.10.25.0927",
+   "updated": "2026-10-25"
   },
   {
    "id": "print3d",
