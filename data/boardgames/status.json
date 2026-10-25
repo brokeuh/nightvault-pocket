@@ -1,0 +1,1 @@
+{"ok": false, "kind": "nosecrets", "error": "The secrets BGG_USERNAME and BGG_TOKEN are not set on GitHub yet (BGG_USERNAME, BGG_TOKEN missing).", "since": "2026-10-25T09:27:02Z"}
