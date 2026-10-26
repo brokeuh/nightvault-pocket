@@ -10,7 +10,7 @@
    "files": [
     {
      "path": "hub/index.html",
-     "size": 83760
+     "size": 92528
     },
     {
      "path": "hub/core.js",
@@ -55,10 +55,10 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 205701,
-   "hash": "a69268c328cc",
-   "version": "2026.10.24.0756",
-   "updated": "2026-10-24"
+   "size": 214469,
+   "hash": "cb8f49fb342a",
+   "version": "2026.10.26.1132",
+   "updated": "2026-10-26"
   },
   {
    "id": "scanner",

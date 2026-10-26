@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 130,
+   "date": "2026-10-26",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "First start: a live demo for every app",
+   "items": [
+    "Every app page in the new first start now has a small looping demo of a real feature: binder pockets filling, pictures shrinking, a NEW tag then the reader, a tile moving into a group, speed and sleep in the audiobook player, resuming a film, BoardGameGeek sync, a 3D model turning, a wishlist heart."
+   ]
+  },
+  {
    "id": 129,
    "date": "2026-10-25",
    "where": [
