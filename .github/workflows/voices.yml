@@ -1,0 +1,62 @@
+# Natural voices for "read aloud" (Audiobooks / Bookcase, plugin NvTts): takes voice models from the sherpa-onnx project
+# (release tts-models), repacks each as a plain ZIP (the phone can unpack ZIP, not .tar.bz2) and puts it in this repo's
+# release "voices", plus a list data/voices.json for the app. Run by hand, or change data/probe/voices-request.txt.
+#   request file, one per line:  list            → writes data/probe/tts-models.txt (what exists)
+#                                <model name>     → e.g. kokoro-int8-en-v0_19 (repacked and published)
+name: Voices for read aloud
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ["data/probe/voices-request.txt", ".github/workflows/voices.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: voices
+
+jobs:
+  voices:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Voices
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          mkdir -p data/probe; LOG=data/probe/voices-run.txt; : > $LOG
+          gh api --paginate repos/k2-fsa/sherpa-onnx/releases/tags/tts-models --jq '.assets[] | "\(.name)\t\(.size)"' > /tmp/all.txt 2>>$LOG
+          grep -iE "kokoro|piper-(en|nl)|kitten" /tmp/all.txt | sort > data/probe/tts-models.txt; wc -l /tmp/all.txt >> $LOG
+          gh release view voices >/dev/null 2>&1 || gh release create voices --title "Voices for read aloud" --notes "Natural voice models for Nightvault's read aloud (from the sherpa-onnx project, repacked as ZIP)." >> $LOG 2>&1
+          [ -f data/voices.json ] || echo '{"voices":[]}' > data/voices.json
+          while read -r M; do
+            M=$(echo "$M" | tr -d '\r' | xargs); [ -z "$M" ] && continue; [[ "$M" == list || "$M" == \#* ]] && continue
+            echo "== $M" >> $LOG
+            curl -sL -o m.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/$M.tar.bz2" || { echo "download failed" >> $LOG; continue; }
+            rm -rf x && mkdir x && tar xjf m.tar.bz2 -C x >> $LOG 2>&1 || { echo "unpack failed" >> $LOG; continue; }
+            D=$(ls x | head -1); (cd x/$D && find . -maxdepth 2 | head -40) >> $LOG
+            rm -f "$M.zip"; (cd x/$D && zip -qr -0 "../../$M.zip" .) ; ls -la "$M.zip" >> $LOG
+            gh release upload voices "$M.zip" --clobber >> $LOG 2>&1
+            python3 - "$M" "x/$D" "$M.zip" <<'PY'
+          import json, os, sys
+          m, d, z = sys.argv[1:4]; fl = os.listdir(d)
+          pick = lambda ext: next((f for f in fl if f.endswith(ext)), '')
+          kind = 'kokoro' if 'kokoro' in m else 'kitten' if 'kitten' in m else 'vits'
+          lang = 'nl' if 'nl_' in m else 'en' if ('en' in m or kind == 'kokoro') else ''
+          v = {'id':m, 'kind':kind, 'lang':lang, 'size':os.path.getsize(z), 'url':'https://github.com/brokeuh/nightvault-pocket/releases/download/voices/' + m + '.zip',
+               'model':pick('.onnx'), 'voices':'voices.bin' if 'voices.bin' in fl else '', 'tokens':'tokens.txt' if 'tokens.txt' in fl else '',
+               'dataDir':'espeak-ng-data' if 'espeak-ng-data' in fl else '', 'lexicon':','.join(sorted(f for f in fl if f.startswith('lexicon') and f.endswith('.txt'))),
+               'files':sorted(fl)}
+          j = json.load(open('data/voices.json')); j['voices'] = [x for x in j['voices'] if x['id'] != m] + [v]
+          json.dump(j, open('data/voices.json', 'w'), indent=1); print(v)
+          PY
+          done < data/probe/voices-request.txt
+          cat $LOG
+      - name: Save
+        if: always()
+        run: |
+          git config user.name "card-bot"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/probe data/voices.json; git commit -m "Voices for read aloud" || exit 0
+          for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done
