@@ -16,6 +16,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NvMediaPlugin.class);
         registerPlugin(NvFilesPlugin.class);
         registerPlugin(NvLogPlugin.class);
+        registerPlugin(NvTtsPlugin.class);
         registerPlugin(NvPcPlugin.class);
         registerPlugin(NvPrintPlugin.class);
         registerPlugin(NvBggPlugin.class);

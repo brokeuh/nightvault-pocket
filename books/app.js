@@ -770,13 +770,14 @@ function storeLine(sh){ const bs = sh ? inShelf(sh) : BOOKS, cp = bs.filter(b =>
 /* clicks on the screens */
 $('#body').addEventListener('click', e => {
   if(selSkip){ selSkip = false; return }
-  const t = e.target, el = t.closest('[data-shelf],[data-book],[data-grp],[data-read],[data-filter],[data-selstart],[data-gotogrp],[data-tabgo],[data-col],[data-allis],#newshelf,#newgrp');
+  const t = e.target, el = t.closest('[data-shelf],[data-book],[data-grp],[data-read],[data-listen],[data-filter],[data-selstart],[data-gotogrp],[data-tabgo],[data-col],[data-allis],#newshelf,#newgrp');
   if(!el) return; const v = cur();
   if(SEL && el.closest('.grid') && (el.dataset.book || el.dataset.grp)){ const id = el.dataset.book ? 'it:' + el.dataset.book : 'gr:' + el.dataset.grp; SEL.has(id) ? SEL.delete(id) : SEL.add(id); selDraw(); return }
   if(el.id === 'newshelf') return newShelf();
   if(el.id === 'newgrp') return newGroup(v.shelf);
   if(el.dataset.shelf) return go({v:'shelf', shelf:el.dataset.shelf});
   if(el.dataset.read) return openReader(BK[el.dataset.read]);
+  if(el.dataset.listen) return listenBook(BK[el.dataset.listen]);
   if(el.dataset.book) return go({v:'book', id:el.dataset.book});
   if(el.dataset.grp) return go({v:'group', shelf:v.shelf, key:el.dataset.grp});
   if(el.dataset.gotogrp){ V.pop(); if(cur().v !== 'group' || cur().key !== el.dataset.gotogrp) V.push({v:'group', shelf:v.shelf, key:el.dataset.gotogrp}); return draw() }
@@ -812,7 +813,7 @@ function drawBook(id){ const b = BK[id]; if(!b){ V.pop(); return draw() } if(b.c
   let h = `<div class="alhead" style="align-items:flex-start">${coverHTML(b)}<div style="min-width:0;flex:1"><b>${esc(b.series && b.title && norm(b.title) !== norm(b.series) ? b.title : dispTitle(b))}</b>
     ${b.series ? `<div class="lnk small" data-gotogrp2="1">${esc(b.series)}${b.vol ? ' · ' + esc(b.vol) : ''}</div>` : ''}<div class="muted small">${esc([b.writer, b.year].filter(Boolean).join(' · '))}</div>
     <div class="muted small" style="margin-top:8px">${s && s.finished ? '✓ Read' : started(b) ? (b.fmt === 'epub' && s.flow ? Math.round(p * 100) + '% read' : `Page ${s.page + 1} of ${s.pages || b.pages}`) : 'Not started'}</div>${p > 0 && p < 1 ? `<div class="pbar"><i style="width:${Math.round(p * 100)}%"></i></div>` : ''}</div></div>
-    <div class="mbar"><button class="btn primary" data-read="${esc(b.id)}" style="flex:1">${s && s.finished ? 'Read again' : started(b) ? 'Continue reading' : 'Read'}</button><button class="ib" id="bmenu" aria-label="More for this book">${IC_DOTS}</button></div>`;
+    <div class="mbar"><button class="btn primary" data-read="${esc(b.id)}" style="flex:1">${s && s.finished ? 'Read again' : started(b) ? 'Continue reading' : 'Read'}</button>${canListen(b) ? `<button class="btn" data-listen="${esc(b.id)}" style="flex:1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg>Listen</button>` : ''}<button class="ib" id="bmenu" aria-label="More for this book">${IC_DOTS}</button></div>`;
   if(prev || next) h += `<div class="nexts">${nx(prev, 'PREVIOUS')}${nx(next, 'NEXT IN SERIES')}</div>`;
   if(b.desc) h += `<div class="sec">About</div><div class="desc clip" id="bdesc">${esc(b.desc)}</div>${b.desc.length > 300 ? '<button class="btn sm" id="bmore" style="margin-top:6px">More</button>' : ''}`;
   h += `<div class="sec">Details</div><div class="facts">${facts.map(([k, v]) => `<span>${k}</span><span style="min-width:0;overflow-wrap:anywhere">${v}</span>`).join('')}</div>`;
@@ -822,6 +823,31 @@ function drawBook(id){ const b = BK[id]; if(!b){ V.pop(); return draw() } if(b.c
   if($('#bmore')) $('#bmore').onclick = () => { $('#bdesc').classList.remove('clip'); $('#bmore').remove() };
   document.querySelectorAll('[data-gotogrp2]').forEach(el => el.onclick = () => { if(g) go({v:'group', shelf:b.shelf, key:g.key}) });
   document.querySelectorAll('[data-mark]').forEach(el => el.onclick = () => openReader(b, s.marks[+el.dataset.mark])) }
+
+/* ---------- listen to an EPUB as an audiobook: the text goes to Audiobooks, which reads it aloud with the phone's voice
+   (plans/audiobooks.md "EPUB → audiobook"). Bookcase only collects the text per chapter (kv 'tts:<book id>') and opens Audiobooks. ---------- */
+const canListen = b => NATIVE && b.fmt === 'epub';
+function htmlText(html){ const d = new DOMParser().parseFromString(html, 'text/html'); if(!d.body) return '';
+  d.querySelectorAll('script,style,nav,aside,rt,sup,figure figcaption').forEach(e => e.remove());
+  d.querySelectorAll('br').forEach(e => e.replaceWith('\n'));
+  d.querySelectorAll('p,div,h1,h2,h3,h4,h5,h6,li,tr,blockquote,section,article,dd,dt,pre').forEach(e => e.append('\n'));
+  return d.body.textContent.split('\n').map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n') }
+async function listenBook(b){
+  toast('Getting the text ready…', 8000);
+  try{ const d = await openDoc(b); if(!d.flow) throw new Error('This EPUB is pictures (a comic or manga) - there is no text to read aloud');
+    const ep = d.ep, chs = [];
+    for(let i = 0; i < ep.spine.length; i++){ let html = ''; try{ html = await ep.z.text(ep.spine[i].href) }catch(e){ continue }
+      const t = htmlText(html); if(t.replace(/\s/g, '').length < 2) continue;
+      const toc = ep.toc.find(x => x.ch === i && x.d === 0) || ep.toc.find(x => x.ch === i), hd = new DOMParser().parseFromString(html, 'text/html').querySelector('h1,h2,h3');
+      const title = ((toc && toc.title) || (hd && hd.textContent) || '').replace(/\s+/g, ' ').trim().slice(0, 90);
+      if(!title && chs.length && t.length < 1500){ chs[chs.length - 1].text += '\n' + t; continue }     // a small piece without its own title joins the chapter before
+      chs.push({title:title || (chs.length ? 'Part ' + (chs.length + 1) : 'Start'), text:t}) }
+    if(!chs.length) throw new Error('No text found in this EPUB');
+    const m = ep.meta, payload = {format:'nightvault-tts', v:1, made:Date.now(), book:{id:b.id, title:b.title || m.title || dispTitle(b), writer:b.writer || m.writer, series:b.series || '', num:b.num != null ? b.num : null, year:b.year || m.year, desc:b.desc || m.desc, lang:m.lang || ''}, chapters:chs};
+    await dbPut('kv', {id:'tts:' + b.id, blob:new Blob([JSON.stringify(payload)], {type:'application/json'}), at:Date.now()});
+    L('listen', 'text for Audiobooks', {title:dispTitle(b), chapters:chs.length, chars:chs.reduce((n, c) => n + c.text.length, 0)});
+    location.href = '../audio/index.html?mode=audiobooks&ttsfrom=' + encodeURIComponent(b.id)
+  }catch(e){ LE('listen', 'failed', e); toast(e.message || String(e), 5000) } }
 
 /* ---------- sheets ---------- */
 function sheet(html, sticky){ $('#sheets').innerHTML = `<div class="scrim" id="scrim"><div class="sheet"><div class="grab"></div>${html}</div></div>`; $('#scrim').dataset.sticky = sticky ? '1' : '';
@@ -838,13 +864,13 @@ function bookMenu(b){ const G = grOf(b.shelf), s = STATE[b.id], pin = G.isPinned
   sheet(`<h3>${esc(dispTitle(b))}</h3><div class="mlist">
     <button class="btn" id="bmg">Put in a group…</button><button class="btn" id="bms">Move to another shelf…</button><button class="btn" id="bme">Edit details</button>
     <button class="btn" id="bmr">${s && s.finished ? 'Mark as not read' : 'Mark as read'}</button><button class="btn" id="bmp">${pin ? '★ Unpin from the top' : '★ Pin to the top'}</button>
-    <button class="btn" id="bmcv">Look up online…</button><button class="btn" id="bmc">Change the cover</button><button class="btn" id="bmprint">Print…</button>
+    ${canListen(b) ? '<button class="btn" id="bmlisten">Listen as audiobook (read aloud)</button>' : ''}<button class="btn" id="bmcv">Look up online…</button><button class="btn" id="bmc">Change the cover</button><button class="btn" id="bmprint">Print…</button>
     ${b.src.kind === 'drive' ? `<button class="btn" id="bmdl">${b.src.fid ? 'Remove the downloaded copy' : 'Download to this phone (offline)'}</button>` : ''}
     <button class="btn danger" id="bmx">${b.src.kind === 'link' || b.src.kind === 'drive' ? 'Remove from Bookcase (the file stays)' : 'Remove from Bookcase'}</button></div>`);
   $('#bmg').onclick = () => groupPicker(b); $('#bms').onclick = () => shelfPicker([b.id]); $('#bme').onclick = () => editBook(b);
   $('#bmr').onclick = () => { const x = st(b.id); x.finished = !x.finished; if(x.finished){ x.last = x.last || Date.now(); x.page = Math.max(0, (x.pages || b.pages || 1) - 1) } else x.page = 0; saveState(b.id, true); closeSheet(); draw() };
   $('#bmp').onclick = () => { G.togglePin(['it:' + b.id], !pin); closeSheet(); draw(); toast(pin ? 'Unpinned' : 'Pinned: it shows first') };
-  $('#bmcv').onclick = () => cvChoose(b);
+  $('#bmcv').onclick = () => cvChoose(b); if($('#bmlisten')) $('#bmlisten').onclick = () => { closeSheet(); listenBook(b) };
   $('#bmc').onclick = () => coverSheet(b); $('#bmprint').onclick = () => { closeSheet(); printSheet(b) };
   if($('#bmdl')) $('#bmdl').onclick = () => { closeSheet(); b.src.fid ? driveUndownload([b]) : driveDownload([b]) };
   $('#bmx').onclick = () => removeBooks([b.id]) }

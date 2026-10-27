@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 J=android/app/src/main/java/be/brokeuh/nightvault
 mkdir -p "$J"
-cp plugin/MainActivity.java plugin/NvOcrPlugin.java plugin/NvUpdatePlugin.java plugin/NvCapturePlugin.java plugin/NvCaptureService.java plugin/NvMediaPlugin.java plugin/NvMediaService.java plugin/NvFilesPlugin.java plugin/NvLogPlugin.java plugin/NvPcPlugin.java plugin/NvPrintPlugin.java plugin/NvBggPlugin.java plugin/NvLaunchPlugin.java plugin/NvTvPlugin.java "$J/"
+cp plugin/MainActivity.java plugin/NvOcrPlugin.java plugin/NvUpdatePlugin.java plugin/NvCapturePlugin.java plugin/NvCaptureService.java plugin/NvMediaPlugin.java plugin/NvMediaService.java plugin/NvFilesPlugin.java plugin/NvLogPlugin.java plugin/NvPcPlugin.java plugin/NvPrintPlugin.java plugin/NvBggPlugin.java plugin/NvLaunchPlugin.java plugin/NvTvPlugin.java plugin/NvTtsPlugin.java "$J/"
 # Google ML Kit text recognition (the model is inside the app, works without internet)
 sed -i "s#^dependencies {#dependencies {\n    implementation 'com.google.mlkit:text-recognition:16.0.1'#" android/app/build.gradle
 # version shown in Android settings: the build number
@@ -38,6 +38,9 @@ grep -n "mlkit\|versionCode" android/app/build.gradle
 # screen capture (alpha): floating button over other apps, and the capture service
 grep -q 'SYSTEM_ALERT_WINDOW' "$M" || sed -i 's#<uses-permission android:name="android.permission.CAMERA" />#<uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' "$M"
 grep -q 'NvCaptureService' "$M" || sed -i 's#</application>#    <service android:name=".NvCaptureService" android:exported="false" android:foregroundServiceType="mediaProjection" />\n    </application>#' "$M"
+# read aloud (NvTts): Android 11+ only lets the app see the phone's text-to-speech engines when it says so
+grep -q 'android.intent.action.TTS_SERVICE' "$M" || sed -i 's#<application#<queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>\n    <application#' "$M"
+grep -n "TTS_SERVICE" "$M"
 # audio player (Nightvault Audio): media notification + keeps playing with the screen off
 grep -q 'FOREGROUND_SERVICE_MEDIA_PLAYBACK' "$M" || sed -i 's#<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />#<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />#' "$M"
 grep -q 'NvMediaService' "$M" || sed -i 's#</application>#    <service android:name=".NvMediaService" android:exported="false" android:foregroundServiceType="mediaPlayback" />\n    </application>#' "$M"

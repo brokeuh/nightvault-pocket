@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 131,
+   "date": "2026-10-27",
+   "where": [
+    "android"
+   ],
+   "apps": [
+    "bookcase",
+    "audiobooks"
+   ],
+   "title": "Listen to EPUBs as audiobooks",
+   "items": [
+    "Bookcase: an EPUB has a Listen button (also book ⋯ → Listen as audiobook). It opens in Audiobooks and is read aloud by your phone's voice.",
+    "You get the whole audiobook player: chapters from the book, it remembers where you were, speed, sleep timer, bookmarks, lock screen.",
+    "Audiobooks → Settings → Read-aloud voice: pick the voice engine and the voice for English and Dutch books, and listen to a sample.",
+    "For a natural voice: install a voice app (for example a Kokoro voice app), then pick it there. A built-in natural voice comes later."
+   ]
+  },
+  {
    "id": 130,
    "date": "2026-10-26",
    "where": [

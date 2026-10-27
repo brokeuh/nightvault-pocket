@@ -685,8 +685,9 @@ async function storeLine(){ const cp = BOOKS.filter(b => !b.linked), used = cp.r
 const abSeries = b => { const g = abGroupOf(b); return g && g.kind === 'series' ? g.items.slice().sort(seriesOrder) : b.series ? BOOKS.filter(x => x.series && norm(x.series) === norm(b.series)).sort(seriesOrder) : [b] };
 function abBookPage(b){ const s = STATE[b.id] || {}, p = progress(b), l = abSeries(b), i = l.indexOf(b), prev = i > 0 ? l[i - 1] : null, next = i >= 0 ? l[i + 1] || null : null, g = abGroupOf(b);
   const facts = [['Series', b.series ? `<span class="lnk" data-tobookgrp="1">${esc(b.series)}</span>${b.seriesNum != null ? ' · ' + numTxt(b.seriesNum) : ''}` : ''], ['Author', esc(b.author || '')], ['Read by', esc(b.narrator || '')], ['Year', esc(b.year || '')],
-    ['Length', b.dur ? hm(b.dur) : ''], ['Chapters', (b.chapters || []).length ? String(b.chapters.length) : ''], ['Files', `${b.parts.length} · ${mb(b.size || 0)}`],
-    ['Where', b.linked ? `In the folder “${esc(b.linked.name)}” on this phone` : 'Copied into the app'], ['Group', g && g.kind !== 'series' ? `<span class="lnk" data-tobookgrp="1">${esc(g.name)}</span>` : ''], ['Added', new Date(b.added).toLocaleDateString()]].filter(x => x[1]);
+    ['Length', b.dur ? hm(b.dur) : ''], ['Chapters', (b.chapters || []).length ? String(b.chapters.length) : ''], ['Files', isTts(b) ? '' : `${b.parts.length} · ${mb(b.size || 0)}`],
+    ['Where', isTts(b) ? 'Read aloud from the EPUB in Bookcase (the length is an estimate until it has been read)' : b.linked ? `In the folder “${esc(b.linked.name)}” on this phone` : 'Copied into the app'],
+    ['Voice', isTts(b) ? `<span class="lnk" data-ttsvoice="1">${esc(ttsVoice(b).voice || 'the phone\'s default')} · change</span>` : ''], ['Group', g && g.kind !== 'series' ? `<span class="lnk" data-tobookgrp="1">${esc(g.name)}</span>` : ''], ['Added', new Date(b.added).toLocaleDateString()]].filter(x => x[1]);
   const nx = (x, lbl) => x ? `<div class="nx" data-book="${esc(x.id)}">${coverHTML(x, URLS[x.id])}<div class="n"><small>${lbl}</small><div>${esc(x.title)}</div></div></div>` : '<div></div>';
   const left = b.dur ? Math.max(0, b.dur - (s.pos || 0)) : 0;
   let h = `<div class="alhead" style="align-items:flex-start">${coverHTML(b, URLS[b.id])}<div style="min-width:0;flex:1"><b>${esc(b.title)}</b>
@@ -703,6 +704,7 @@ function abBookPage(b){ const s = STATE[b.id] || {}, p = progress(b), l = abSeri
 /* clicks on the screens */
 $('#libbody').addEventListener('click', async e => {
   if(abSelSkip){ abSelSkip = false; return }
+  if(e.target.closest('[data-ttsvoice]')) return ttsSettings();
   const el = e.target.closest('[data-filter],[data-open],[data-book],[data-grp],[data-play],[data-selstart],[data-gotogrp],[data-tobookgrp],[data-markt]'); if(!el) return;
   if(ABSEL && el.closest('.grid') && (el.dataset.book || el.dataset.grp)){ const id = el.dataset.book ? 'it:' + el.dataset.book : 'gr:' + el.dataset.grp; ABSEL.has(id) ? ABSEL.delete(id) : ABSEL.add(id); abSelDraw(); return }
   if(el.dataset.selstart) return ABSEL ? abSelEnd() : abSelStart();
@@ -724,18 +726,18 @@ function abBookMenu(b){ if(!b) return; const s = st(b.id), pin = ag().isPinned('
     <button class="btn" id="bmg">Put in a group…</button><button class="btn" id="bme">Edit details</button>
     <button class="btn" id="bmf">${s.finished ? 'Mark as not finished' : 'Mark as finished'}</button><button class="btn" id="bmp">${pin ? '★ Unpin from the top' : '★ Pin to the top'}</button>
     <button class="btn" id="bmc">Change the cover</button><button class="btn" id="bms">Start again from the beginning</button>
-    <button class="btn" id="bmr">Read the book info again</button>${b.linked ? '<button class="btn" id="bmk">Check the file</button>' : ''}
-    <button class="btn danger" id="bmx">${b.linked ? 'Remove from Audiobooks (the files stay)' : 'Remove from this device'}</button></div><input type="file" id="bcf" accept="image/*" hidden>`);
+    ${isTts(b) ? '<button class="btn" id="bmv">Read-aloud voice…</button>' : '<button class="btn" id="bmr">Read the book info again</button>'}${b.linked ? '<button class="btn" id="bmk">Check the file</button>' : ''}
+    <button class="btn danger" id="bmx">${b.linked ? 'Remove from Audiobooks (the files stay)' : isTts(b) ? 'Remove from Audiobooks (the EPUB stays in Bookcase)' : 'Remove from this device'}</button></div><input type="file" id="bcf" accept="image/*" hidden>`);
   $('#bmg').onclick = () => abGroupPicker(b); $('#bme').onclick = () => abEditBook(b);
   $('#bmf').onclick = async () => { s.finished = !s.finished; if(!s.finished && s.pos >= b.dur - 1) s.pos = 0; if(s.finished && cur && cur.id === b.id) au.pause(); await saveState(b.id, true); closeSheet(); drawLib(); drawPlayer(); toast(s.finished ? 'Marked as finished' : 'Marked as not finished') };
   $('#bmp').onclick = () => { ag().togglePin(['it:' + b.id], !pin); closeSheet(); drawLib(); toast(pin ? 'Unpinned' : 'Pinned: it shows first') };
   $('#bmc').onclick = () => $('#bcf').click();
   $('#bcf').onchange = async e => { const f = e.target.files[0]; if(!f) return; await dbPut('covers', {id:b.id, blob:f}); b.hasCover = true; await dbPut('books', b); if(COVERURL[b.id]){ URL.revokeObjectURL(COVERURL[b.id]); delete COVERURL[b.id] } artKey = null; $('#mini').dataset.id = ''; closeSheet(); drawLib(); if(cur && cur.id === b.id){ drawPlayer(true); syncMedia() } toast('New cover saved') };
   $('#bms').onclick = async () => { s.finished = false; s.pos = 0; await saveState(b.id, true); closeSheet(); if(cur && cur.id === b.id) seekTo(0); drawLib(); toast('Back at the start') };
-  $('#bmr').onclick = () => rereadBook(b); if($('#bmk')) $('#bmk').onclick = () => checkFile(b.parts[0]);
+  if($('#bmr')) $('#bmr').onclick = () => rereadBook(b); if($('#bmv')) $('#bmv').onclick = () => ttsSettings(); if($('#bmk')) $('#bmk').onclick = () => checkFile(b.parts[0]);
   $('#bmx').onclick = () => { sheet(`<h3>Remove “${esc(b.title)}”?</h3><p class="muted small">${b.linked ? `The book leaves Audiobooks, with its place and bookmarks. The files stay in the folder “${esc(b.linked.name)}”.` : `The copy on this device (${mb(b.size)}) and its place and bookmarks are removed. Your original files are not touched.`}</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Keep it</button><button class="btn primary" style="flex:1;background:#7a2a2f;border-color:#a3454b" id="bdel2">Remove</button></div>`);
     $('#bdel2').onclick = async () => { if(cur && cur.id === b.id){ au.pause(); au.removeAttribute('src'); au.load(); cur = null; curPart = -1; mediaStop(); showPlayer(false) }
-      for(const p of b.parts) if(p.fid) await dbDel('files', p.fid).catch(() => {}); await dbDel('covers', b.id).catch(() => {}); await dbDel('state', b.id).catch(() => {}); await dbDel('books', b.id);
+      for(const p of b.parts) if(p.fid) await dbDel('files', p.fid).catch(() => {}); if(isTts(b) && b.tts.fid) await dbDel('files', b.tts.fid).catch(() => {}); await dbDel('covers', b.id).catch(() => {}); await dbDel('state', b.id).catch(() => {}); await dbDel('books', b.id);
       BOOKS = BOOKS.filter(x => x.id !== b.id); delete STATE[b.id]; abRegroup(); closeSheet(); if(atop().v === 'book' && atop().id === b.id) AV.pop(); drawLib(); drawMini(); toast('Removed') } } }
 $('#pmore').onclick = () => abBookMenu(cur);
 function abEditBook(b){
@@ -937,6 +939,84 @@ async function drawFolders(){
       if(n){ toast(`${n} book${n === 1 ? '' : 's'} still play from “${f.name}” - remove them first`, 4500); return }
       await NvFiles.forget({tree:f.tree}).catch(() => {}); lsSet('nvAudio.folders', fl.filter(x => x.tree !== f.tree)); drawFolders() } } }
 
+/* ---------- read aloud: an EPUB from Bookcase as an audiobook (plans/audiobooks.md "EPUB → audiobook") ----------
+   Bookcase puts the text per chapter in its own storage (nvBooks kv 'tts:<book id>') and opens ?ttsfrom=<book id>.
+   Here it becomes a book of kind 'tts': its text is kept in 'files' (b.tts.fid) and cut into pieces of ~30 s (b.parts:
+   {c chapter, a/z text range, n characters, dur}); the phone's text-to-speech engine (NvTts) turns the next pieces into sound
+   ahead of time and the normal player plays them. Lengths are estimates until a piece has been made (then its real length counts). */
+let NvTts = null; if(NATIVE) try{ NvTts = Capacitor.registerPlugin('NvTts') }catch(e){ NvTts = null }
+const TTS_CPS = 14.5, TTS_MAX = 520, TTSTEXT = {}, SYN = new Map();
+const isTts = b => !!(b && b.kind === 'tts');
+function ttsParts(chs){ const parts = [];
+  chs.forEach((ch, c) => { const t = ch.text, re = /[^.!?…\n]*(?:[.!?…]+["'”’)\]]*|\n+|$)\s*/g; let a = 0, m, last = 0;
+    const cut = z => { if(z <= a) return; let s = t.slice(a, z); if(s.trim()) parts.push({c, a, z, n:s.length, dur:s.length / TTS_CPS, title:ch.title}); a = z };
+    while((m = re.exec(t)) && m[0].length){ const end = m.index + m[0].length;
+      if(end - a > TTS_MAX){ if(last > a) cut(last);
+        while(end - a > TTS_MAX){ const sp = t.lastIndexOf(' ', a + TTS_MAX); cut(sp > a + 50 ? sp + 1 : a + TTS_MAX) } }
+      last = end }
+    cut(t.length) });
+  return parts }
+function ttsChapters(b){ const st0 = partStarts(b), out = []; let lc = -1;
+  b.parts.forEach((p, i) => { if(p.c !== lc){ out.push({t:st0[i], title:p.title || `Chapter ${out.length + 1}`}); lc = p.c } });
+  b.chapters = out; b.dur = b.parts.reduce((n, p) => n + (p.dur || 0), 0) }
+/* pieces not made yet: their length follows how fast the voice really speaks (measured on the pieces made so far) */
+function ttsRescale(b){ let n = 0, d = 0; for(const p of b.parts) if(p.real){ n += p.n; d += p.dur } if(n < 400 || !d) return;
+  const cps = n / d; for(const p of b.parts) if(!p.real) p.dur = p.n / cps; ttsChapters(b) }
+async function ttsLoad(b){ if(!TTSTEXT[b.id]){ const r = await dbGet('files', b.tts.fid); if(!r || !r.blob) throw new Error('The text of this book is missing - listen from Bookcase again'); TTSTEXT[b.id] = JSON.parse(await r.blob.text()) } return TTSTEXT[b.id] }
+const ttsVoice = b => { const l = String(b.tts.lang || 'en').slice(0, 2).toLowerCase(); return {engine:S.ttsEngine || '', voice:(S.ttsVoices || {})[l === 'nl' ? 'nl' : 'en'] || '', lang:b.tts.lang || ''} };
+/* the sound of piece i (a /_nvfile_/ address), made once and kept for the next few minutes */
+function ttsSynth(b, i){ const key = b.id + ':' + i + ':' + JSON.stringify(ttsVoice(b)); if(SYN.has(key)) return SYN.get(key);
+  const pr = (async () => { if(!NvTts) throw new Error('Reading aloud works in the Android app'); const chs = await ttsLoad(b), p = b.parts[i]; if(!p) throw new Error('No such piece');
+    const t0 = Date.now(), r = await NvTts.synth(Object.assign({text:chs[p.c].text.slice(p.a, p.z), id:'p' + b.id + '_' + i}, ttsVoice(b)));
+    L('tts', `piece ${i + 1}/${b.parts.length} made in ${Date.now() - t0} ms`, {chars:p.n, size:r.size}); return linkUrl(r.uri, 'piece.wav') })();
+  SYN.set(key, pr); pr.catch(e => { SYN.delete(key); LE('tts', 'piece ' + i, e) });
+  while(SYN.size > 8) SYN.delete(SYN.keys().next().value);
+  return pr }
+const ttsAhead = (b, i) => { let ch = Promise.resolve(); for(const k of [i, i + 1, i + 2]) if(b.parts[k]) ch = ch.then(() => ttsSynth(b, k)).catch(() => {}) };
+
+/* Bookcase → "Listen as audiobook": take the text over (or open the book that was made before) */
+async function ttsImport(bid){
+  let data = null, cov = null;
+  try{ const odb = await new Promise((ok, no) => { const r = indexedDB.open('nvBooks'); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error) });
+    const get = (s, id) => new Promise(ok => { try{ const q = odb.transaction(s).objectStore(s).get(id); q.onsuccess = () => ok(q.result); q.onerror = () => ok(null) }catch(e){ ok(null) } });
+    const rec = await get('kv', 'tts:' + bid); cov = await get('covers', bid); odb.close();
+    if(rec && rec.blob) data = JSON.parse(await rec.blob.text()) }catch(e){ LE('tts', 'import', e) }
+  const old = BOOKS.find(b => isTts(b) && b.tts.from === bid);
+  if(!data || data.format !== 'nightvault-tts'){ if(old) return old; toast('The text of this book could not be found - open it in Bookcase and tap Listen again', 5000); return null }
+  const chars = data.chapters.reduce((n, c) => n + c.text.length, 0);
+  if(old && old.tts.chars === chars) return old;                                 // the same text: keep the place you were
+  const id = old ? old.id : uid(), fid = uid(), m = data.book || {};
+  if(old && old.tts.fid) await dbDel('files', old.tts.fid).catch(() => {});
+  await dbPut('files', {id:fid, blob:new Blob([JSON.stringify(data.chapters)], {type:'application/json'})}); delete TTSTEXT[id];
+  const b = Object.assign(old || {id, added:Date.now()}, {kind:'tts', title:m.title || 'Book', author:m.writer || '', narrator:'', series:m.series || '', seriesNum:m.num != null ? m.num : null, year:m.year || '', desc:m.desc || '',
+    parts:ttsParts(data.chapters), size:0, linked:null, tts:{from:bid, fid, chars, lang:m.lang || ''}});
+  ttsChapters(b);
+  if(cov && cov.blob){ await dbPut('covers', {id:b.id, blob:cov.blob}); b.hasCover = true; if(COVERURL[b.id]){ URL.revokeObjectURL(COVERURL[b.id]); delete COVERURL[b.id] } }
+  await dbPut('books', b); if(!old) BOOKS.push(b); abRegroup(); L('tts', 'book from Bookcase', {title:b.title, chapters:b.chapters.length, pieces:b.parts.length, chars});
+  return b }
+
+/* Settings → read-aloud voice: the phone's engines and voices (English books / Dutch books) */
+async function ttsSettings(){
+  if(!NvTts){ sheet('<h3>Read-aloud voice</h3><p class="muted small">Reading EPUBs aloud works in the Android app.</p>'); return }
+  sheet('<h3>Read-aloud voice</h3><p class="muted small">Looking for the voices on this phone…</p>');
+  let en = {engines:[], default:''}; try{ en = await NvTts.engines({engine:S.ttsEngine || ''}) }catch(e){}
+  const eng = S.ttsEngine || '', list = async () => { try{ return (await NvTts.voices({engine:eng})).voices || [] }catch(e){ return [] } }, vs = (await list()).filter(v => v.installed !== false);
+  const opt = l => `<option value="">The engine's own choice</option>` + vs.filter(v => v.lang.toLowerCase().startsWith(l)).sort((a, b) => (b.quality - a.quality) || (a.network - b.network) || coll.compare(a.name, b.name))
+    .map(v => `<option value="${esc(v.name)}" ${((S.ttsVoices || {})[l] || '') === v.name ? 'selected' : ''}>${esc(v.name)}${v.network ? ' (needs internet)' : ''}${v.quality >= 400 ? ' ★' : ''}</option>`).join('');
+  sheet(`<h3>Read-aloud voice</h3><p class="muted small" style="margin:0 0 10px">For EPUBs you listen to from Bookcase. The voice comes from a text-to-speech engine on this phone. For a natural voice, install one (for example a Kokoro voice app) and pick it here.</p>
+    <div class="opt"><label for="tteng">Engine</label><select id="tteng" style="max-width:62%"><option value="">The phone's default${en.default ? ' (' + esc((en.engines.find(x => x.name === en.default) || {}).label || en.default) + ')' : ''}</option>${en.engines.map(x => `<option value="${esc(x.name)}" ${eng === x.name ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select></div>
+    <div class="opt"><label for="tten">English books</label><select id="tten" style="max-width:60%">${opt('en')}</select></div>
+    <div class="opt"><label for="ttnl">Dutch books</label><select id="ttnl" style="max-width:60%">${opt('nl')}</select></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" id="tttest" style="flex:1">Listen to a sample</button><button class="btn" id="ttset" style="flex:1">Phone's voice settings</button></div>
+    <p class="muted small" id="ttmsg" style="margin:8px 0 0">${vs.length ? plural(vs.length, 'voice') + ' found' : 'No voices found for this engine.'}</p>`);
+  const save = () => { S.ttsVoices = Object.assign({}, S.ttsVoices, {en:$('#tten').value, nl:$('#ttnl').value}); saveS(); SYN.clear() };
+  $('#tteng').onchange = e => { S.ttsEngine = e.target.value; S.ttsVoices = {}; saveS(); SYN.clear(); ttsSettings() };
+  $('#tten').onchange = save; $('#ttnl').onchange = save;
+  $('#ttset').onclick = () => NvTts.openSettings().catch(e => toast(e.message || String(e)));
+  $('#tttest').onclick = async () => { $('#ttmsg').textContent = 'Making the sample…';
+    try{ const r = await NvTts.synth({text:'Hello. This is how your books will sound. It was a dark and stormy night, and the rain fell in torrents.', engine:S.ttsEngine || '', voice:(S.ttsVoices || {}).en || '', lang:'en', id:'sample'});
+      const a = new Audio(linkUrl(r.uri, 'sample.wav')); a.playbackRate = S.speed || 1; await a.play(); $('#ttmsg').textContent = 'Playing the sample' }catch(e){ $('#ttmsg').textContent = 'No sound: ' + (e.message || e) } } }
+
 /* ---------- chapters and positions ---------- */
 function chaptersOf(b){ return b.chapters && b.chapters.length ? b.chapters : [{t:0, title:b.title}] }
 function chapterIdx(b, t){ const c = chaptersOf(b); let i = 0; while(i + 1 < c.length && c[i + 1].t <= t + 0.25) i++; return i }
@@ -956,7 +1036,8 @@ async function loadPart(i, off, play){
   if(curPart !== i || !au.src){
     if(curUrl) URL.revokeObjectURL(curUrl); curUrl = null;
     L('player', 'open part ' + (i + 1) + ': ' + p.name, {linked:!!p.uri, type:p.type, size:p.size, dur:p.dur, at:off});
-    if(p.uri){ au.src = linkUrl(p.uri, p.name) }                  // played straight from the folder on the phone
+    if(isTts(cur)){ let u = null; const b0 = cur; try{ u = await ttsSynth(cur, i); ttsAhead(cur, i + 1) }catch(e){ toast('Read aloud: ' + (e.message || e), 5000); return } if(cur !== b0) return; au.src = u }
+    else if(p.uri){ au.src = linkUrl(p.uri, p.name) }                  // played straight from the folder on the phone
     else { const rec = await dbGet('files', p.fid);
       if(!rec || !rec.blob){ toast('This part of the book is missing - add the book again'); return }
       curUrl = URL.createObjectURL(rec.blob.type ? rec.blob : new Blob([rec.blob], {type:p.type})); au.src = curUrl }
@@ -973,7 +1054,8 @@ async function loadPart(i, off, play){
       sheet(`<h3>The book does not play</h3><p class="muted small">The player could not use “${esc(p.name)}” (error ${au.error.code}). Tap <b>Check the file</b> and send a screenshot to Claude.</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Close</button><button class="btn primary" style="flex:1" id="ck2">Check the file</button></div>`);
       $('#ck2').onclick = () => checkFile(p); return }
     if(au.error){ toast(`This phone cannot play ${ext(p.name).toUpperCase()} files${p.type === 'audio/mp4' ? ' (try MP3)' : ''}`, 5000); return }
-    if(isFinite(au.duration) && au.duration > 0 && Math.abs((p.dur || 0) - au.duration) > 1){ p.dur = au.duration; cur.dur = cur.parts.reduce((a, x) => a + (x.dur || 0), 0); dbPut('books', cur).catch(() => {}) } }
+    if(isTts(cur) && isFinite(au.duration) && au.duration > 0){ if(!p.real || Math.abs(p.dur - au.duration) > 0.3){ p.dur = au.duration; p.real = true; ttsRescale(cur); dbPut('books', cur).catch(() => {}) } }
+    else if(isFinite(au.duration) && au.duration > 0 && Math.abs((p.dur || 0) - au.duration) > 1){ p.dur = au.duration; cur.dur = cur.parts.reduce((a, x) => a + (x.dur || 0), 0); dbPut('books', cur).catch(() => {}) } }
   try{ au.currentTime = off }catch(e){}
   au.playbackRate = rate(); try{ au.preservesPitch = true }catch(e){}
   if(play) await au.play().catch(e => toast('Tap play to start'));
@@ -984,7 +1066,7 @@ async function openBook(id, play){
     if(cur){ au.pause(); saveState(cur.id, true) }
     cur = b; curPart = -1; au.removeAttribute('src');
     lsSet('nvAudio.last', b.id); L('book', 'open ' + b.title, {parts:b.parts.map(p => ({name:p.name, linked:!!p.uri, dur:p.dur, size:p.size})), chapters:(b.chapters || []).length, dur:b.dur});
-    const s = st(b.id), {i, off} = partAt(b, s.finished ? 0 : s.pos || 0);
+    const s = st(b.id), {i, off} = isTts(b) && !s.finished && s.tp != null && b.parts[s.tp] ? {i:s.tp, off:s.toff || 0} : partAt(b, s.finished ? 0 : s.pos || 0);
     if(s.finished){ s.finished = false; s.pos = 0 }
     await loadPart(i, off, false); artKey = null }
   showPlayer(true); drawPlayer(true);
@@ -994,7 +1076,7 @@ async function seekTo(t, keepPlaying){
   if(!cur) return; t = Math.max(0, Math.min(t, Math.max(0, cur.dur - 0.5)));
   const play = keepPlaying === undefined ? !au.paused : keepPlaying, {i, off} = partAt(cur, t);
   if(i !== curPart) await loadPart(i, off, play); else { try{ au.currentTime = off }catch(e){} }
-  st(cur.id).pos = t; saveState(cur.id); drawPlayer(); syncMedia();
+  const s0 = st(cur.id); s0.pos = t; if(isTts(cur) && curPart >= 0){ s0.tp = curPart; s0.toff = au.currentTime || off } saveState(cur.id); drawPlayer(); syncMedia();
 }
 async function togglePlay(force){
   if(!cur) return;
@@ -1014,7 +1096,7 @@ au.addEventListener('ended', async () => { if(!cur) return; if(curPart + 1 < cur
 au.addEventListener('play', () => { pausedAt = 0; drawPP(); syncMedia(); sleepTick() });
 au.addEventListener('pause', () => { pausedAt = Date.now(); if(cur){ st(cur.id).pos = gpos(); saveState(cur.id, true) } drawPP(); syncMedia() });
 let lastSave = 0;
-au.addEventListener('timeupdate', () => { if(!cur || curPart < 0) return; const s = st(cur.id); s.pos = gpos(); s.last = Date.now();
+au.addEventListener('timeupdate', () => { if(!cur || curPart < 0) return; const s = st(cur.id); s.pos = gpos(); s.last = Date.now(); if(isTts(cur)){ s.tp = curPart; s.toff = au.currentTime }
   if(Date.now() - lastSave > 5000){ lastSave = Date.now(); saveState(cur.id) }
   if(sleep && sleep.chapter != null && chapterIdx(cur, s.pos) > sleep.chapter){ sleep = null; au.pause(); drawSleep(); toast('Sleep timer: paused at the end of the chapter') }
   if(!seeking) drawPlayer() });
@@ -1144,11 +1226,13 @@ $('#setbtn').onclick = () => {
     <div class="opt"><label for="ss">Smart rewind<div class="muted small">After a pause, start a few seconds earlier (5 s after 1 minute, 15 s after 10 minutes, 30 s after an hour).</div></label><input type="checkbox" id="ss" ${S.smart ? 'checked' : ''}></div>
     <div class="opt"><label>Speed for new books</label><b>${speedTxt(S.speed || 1)}</b></div>
     ${window.NVLOG ? `<div class="opt"><label for="dbg">Debug mode<div class="muted small">Writes down everything that happens, with a bug button to send the log to Claude.</div></label><input type="checkbox" id="dbg" ${NVLOG.on ? 'checked' : ''}></div>` : ''}
+    <div class="opt"><label>Read-aloud voice<div class="muted small">For EPUBs you listen to from Bookcase.</div></label><button class="btn sm" id="sttsv">Choose…</button></div>
     <div class="opt"><label for="sba">Bundle books by author<div class="muted small">An author's books that are not in a series share one tile. A series always gets its own tile.</div></label><input type="checkbox" id="sba" ${S.byAuthor !== false ? 'checked' : ''}></div>
     ${NvFiles ? '<h3 style="margin:16px 0 4px">Folders on this phone</h3><div id="fldrs" class="muted small">…</div><button class="btn" id="fadd" style="width:100%;margin-top:8px">Add a folder</button>' : ''}
     <h3 style="margin:16px 0 4px">Your groups</h3><div class="muted small">Your groups, groups inside groups, books you placed by hand, tile covers and pins are kept on this phone. Save a file now and then (Google Drive, mail …) so a new phone or a cleared app gets them back.${lsGet('nvAudio.groupsSaved', 0) ? ' Last saved ' + new Date(lsGet('nvAudio.groupsSaved', 0)).toLocaleDateString() + '.' : ''}</div>
     <div style="display:flex;gap:8px;margin-top:8px"><button class="btn" id="agsave" style="flex:1">Save my groups</button><button class="btn" id="agload" style="flex:1">Load from a file</button></div>`);
   if(NvFiles){ $('#fadd').onclick = () => { closeSheet(); linkFolder() }; drawFolders() }
+  $('#sttsv').onclick = () => ttsSettings();
   $('#sba').onchange = e => { S.byAuthor = e.target.checked; saveS(); abRegroup(); drawLib() };
   $('#agsave').onclick = async () => { try{ const r = await ag().saveBackup(); if(r !== 'cancelled'){ lsSet('nvAudio.groupsSaved', Date.now()); closeSheet(); toast(r === 'shared' ? 'Groups file ready - keep it somewhere safe' : 'Groups file saved to your downloads') } }catch(e){ toast('Could not save the file: ' + (e.message || e), 4000) } };
   $('#agload').onclick = async () => { const t = await ag().pickFile(); if(t == null) return; const c = ag().checkBackup(t);
@@ -2119,6 +2203,10 @@ document.addEventListener('visibilitychange', () => { if(document.hidden) saveHe
   { const h = window.NVHERE && NVHERE.take('nvAudio.here'); if(h && Array.isArray(h.V) && h.V.length) AV = h.V }
   try{ await drawLib() }catch(e){ AV = [{v:'home'}]; await drawLib() }
   const lastId = lsGet('nvAudio.last', null); if(lastId && BOOKS.find(b => b.id === lastId) && !(STATE[lastId] || {}).finished){ const b = BOOKS.find(x => x.id === lastId); cur = b; curPart = -1; drawMini(); drawLib() }
+  /* opened from Bookcase → "Listen as audiobook": take the text over and start playing */
+  const tf = P.get('ttsfrom'); if(tf){ try{ history.replaceState(null, '', location.pathname + '?mode=audiobooks') }catch(e){}
+    toast('Getting the book ready…'); const b = await ttsImport(tf);
+    if(b){ AV = [{v:'home'}, {v:'book', id:b.id}]; await drawLib(); if(!NvTts){ toast('Reading aloud works in the Android app', 5000); return } await openBook(b.id, true) } }
 })();
 window.NVAUDIO = {get cur(){ return cur }, get books(){ return BOOKS }, state:st, gpos, seekTo, openBook, togglePlay, mp4Info, mp3Info, flacInfo, oggInfo, wavInfo, fileInfo, review, au,
   music:{get Q(){ return Q }, get tracks(){ return TR }, get vis(){ return VIS }, get pct(){ return PCT }, get pcon(){ return PCON }, pcRefresh, saveOffline, doSave, keepOffline, removeOffline, buildGroups, groupOf, setAlbumGroup, setParent, togglePin, GR, get albums(){ return ALB }, get artists(){ return ARTS }, get lists(){ return LISTS }, get stats(){ return STATS }, curT, playList, qAdd, mNext, mPrev, mPlay, mSeek, toggleShuffle, cycleRepeat, toggleFav, musicScan, makeTrack, drawM, mGo, musicBack}};
