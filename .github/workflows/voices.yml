@@ -37,7 +37,7 @@ jobs:
             curl -sL -o m.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/$M.tar.bz2" || { echo "download failed" >> $LOG; continue; }
             rm -rf x && mkdir x && tar xjf m.tar.bz2 -C x >> $LOG 2>&1 || { echo "unpack failed" >> $LOG; continue; }
             D=$(ls x | head -1); (cd x/$D && find . -maxdepth 2 | head -40) >> $LOG
-            rm -f "$M.zip"; (cd x/$D && zip -qr -0 "../../$M.zip" .) ; ls -la "$M.zip" >> $LOG
+            rm -f "$M.zip"; (cd x/$D && zip -qr -6 "../../$M.zip" .) ; ls -la "$M.zip" >> $LOG
             gh release upload voices "$M.zip" --clobber >> $LOG 2>&1
             python3 - "$M" "x/$D" "$M.zip" <<'PY'
           import json, os, sys

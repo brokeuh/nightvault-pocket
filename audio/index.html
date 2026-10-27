@@ -963,7 +963,34 @@ function ttsChapters(b){ const st0 = partStarts(b), out = []; let lc = -1;
 function ttsRescale(b){ let n = 0, d = 0; for(const p of b.parts) if(p.real){ n += p.n; d += p.dur } if(n < 400 || !d) return;
   const cps = n / d; for(const p of b.parts) if(!p.real) p.dur = p.n / cps; ttsChapters(b) }
 async function ttsLoad(b){ if(!TTSTEXT[b.id]){ const r = await dbGet('files', b.tts.fid); if(!r || !r.blob) throw new Error('The text of this book is missing - listen from Bookcase again'); TTSTEXT[b.id] = JSON.parse(await r.blob.text()) } return TTSTEXT[b.id] }
-const ttsVoice = b => { const l = String(b.tts.lang || 'en').slice(0, 2).toLowerCase(); return {engine:S.ttsEngine || '', voice:(S.ttsVoices || {})[l === 'nl' ? 'nl' : 'en'] || '', lang:b.tts.lang || ''} };
+const ttsLang = b => String((b && b.tts && b.tts.lang) || 'en').slice(0, 2).toLowerCase() === 'nl' ? 'nl' : 'en';
+const ttsVoice = b => { const l = ttsLang(b), nv = (S.nvVoice || {})[l];
+  return S.ttsEngine === '@nv' && nv ? {engine:'@nv', voice:nv, lang:l} : {engine:S.ttsEngine === '@nv' ? '' : S.ttsEngine || '', voice:(S.ttsVoices || {})[l] || '', lang:(b && b.tts && b.tts.lang) || ''} };
+/* Nightvault's own natural voices: packs listed in data/voices.json (made by the workflow "Voices for read aloud"), downloaded once */
+const VOICES_URL = NATIVE ? 'https://brokeuh.github.io/nightvault-pocket/data/voices.json' : '../data/voices.json';
+const KOKORO_EN = [['Bella', 'US, woman', 1], ['Sarah', 'US, woman', 3], ['Nicole', 'US, woman, soft', 2], ['Sky', 'US, woman', 4], ['Adam', 'US, man', 5], ['Michael', 'US, man', 6], ['Emma', 'British, woman', 7], ['Isabella', 'British, woman', 8], ['George', 'British, man', 9], ['Lewis', 'British, man', 10], ['Default', 'US, woman', 0]];
+const PACK_NAME = {'kokoro-int8-en-v0_19':['Kokoro', 'English · 11 natural voices'], 'vits-piper-nl_BE-nathalie-medium-int8':['Nathalie', 'Dutch (Flemish) · woman'], 'vits-piper-nl_NL-pim-medium-int8':['Pim', 'Dutch (Netherlands) · man']};
+const packSpeakers = id => /kokoro/.test(id) ? KOKORO_EN.map(([n, d, sid]) => ({v:id + '#' + sid, t:n + ' (' + d + ')'})) : [{v:id + '#0', t:(PACK_NAME[id] || [id])[0]}];
+let VCAT = null; async function voiceCatalog(){ if(VCAT) return VCAT; try{ VCAT = ((await (await fetch(VOICES_URL + '?d=' + new Date().toISOString().slice(0, 10), {cache:'no-cache'})).json()).voices || []) }catch(e){ VCAT = [] } return VCAT }
+async function voicePacks(){ try{ return (await NvTts.installed()).voices || [] }catch(e){ return [] } }
+/* download one pack (with progress in el), then use it */
+async function voiceDownload(v, el){ let lis = null; const show = t => { if(el && el.isConnected) el.innerHTML = t };
+  try{ show('<div class="prog"><i style="width:2%"></i></div><span class="muted small">Starting the download…</span>');
+    lis = await NvTts.addListener('voiceProgress', e => { if(e.id !== v.id) return; const pc = e.total ? Math.round(100 * e.done / e.total) : 0;
+      show(e.step === 'unpack' ? '<div class="prog busy"><i style="width:100%"></i></div><span class="muted small">Unpacking…</span>' : `<div class="prog"><i style="width:${pc}%"></i></div><span class="muted small">${mb(e.done)} of ${mb(e.total || v.size)}</span>`) });
+    await NvTts.download({id:v.id, url:v.url, cfg:{kind:v.kind, model:v.model, voices:v.voices, tokens:v.tokens, dataDir:v.dataDir, lang:v.lang}});
+    const nv = Object.assign({}, S.nvVoice); if(!nv[v.lang]) nv[v.lang] = packSpeakers(v.id)[0].v; S.nvVoice = nv; S.ttsEngine = '@nv'; saveS(); SYN.clear();
+    L('tts', 'voice pack downloaded', v.id); return true
+  }catch(e){ LE('tts', 'voice download', e); toast(e.message || String(e), 6000); return false }finally{ if(lis && lis.remove) lis.remove() } }
+/* the first time a book is read aloud without a natural voice: offer it (once) */
+async function ttsOffer(b){ if(!NvTts || S.ttsEngine === '@nv' && (S.nvVoice || {})[ttsLang(b)] || lsGet('nvAudio.voiceOffered.' + ttsLang(b), 0)) return;
+  const cat = (await voiceCatalog()).filter(v => v.lang === ttsLang(b)); if(!cat.length) return; const v = cat[0], have = (await voicePacks()).some(x => x.id === v.id);
+  if(have){ const nv = Object.assign({}, S.nvVoice, {[v.lang]:packSpeakers(v.id)[0].v}); S.nvVoice = nv; S.ttsEngine = '@nv'; saveS(); return }
+  lsSet('nvAudio.voiceOffered.' + ttsLang(b), Date.now());
+  sheet(`<h3>A natural voice?</h3><p class="muted small">Right now the phone's own voice reads this book. Nightvault can download a natural-sounding voice (<b>${esc((PACK_NAME[v.id] || [v.id])[0])}</b>, ${mb(v.size)}) once. It then works without internet.</p><div id="vofp"></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" id="vofno">Not now</button><button class="btn primary" style="flex:2" id="vofgo">Download the voice</button></div>`);
+  $('#vofno').onclick = () => closeSheet();
+  $('#vofgo').onclick = async () => { $('#vofgo').disabled = true; const wasPlaying = !au.paused; if(await voiceDownload(v, $('#vofp'))){ closeSheet(); toast('Natural voice ready'); if(cur && isTts(cur)){ const t = gpos(); curPart = -1; await seekTo(t, wasPlaying) } } else $('#vofgo').disabled = false } }
 /* the sound of piece i (a /_nvfile_/ address), made once and kept for the next few minutes */
 function ttsSynth(b, i){ const key = b.id + ':' + i + ':' + JSON.stringify(ttsVoice(b)); if(SYN.has(key)) return SYN.get(key);
   const pr = (async () => { if(!NvTts) throw new Error('Reading aloud works in the Android app'); const chs = await ttsLoad(b), p = b.parts[i]; if(!p) throw new Error('No such piece');
@@ -995,22 +1022,42 @@ async function ttsImport(bid){
   await dbPut('books', b); if(!old) BOOKS.push(b); abRegroup(); L('tts', 'book from Bookcase', {title:b.title, chapters:b.chapters.length, pieces:b.parts.length, chars});
   return b }
 
-/* Settings → read-aloud voice: the phone's engines and voices (English books / Dutch books) */
+/* Settings → read-aloud voice: Nightvault's natural voices (download) or the phone's engines and voices (English books / Dutch books) */
+function hookTtsUse(){ document.querySelectorAll('[data-ttsuse]').forEach(b => b.onclick = () => { S.ttsEngine = b.dataset.ttsuse === 'nv' ? '@nv' : ''; saveS(); SYN.clear(); ttsSettings() }) }
 async function ttsSettings(){
   if(!NvTts){ sheet('<h3>Read-aloud voice</h3><p class="muted small">Reading EPUBs aloud works in the Android app.</p>'); return }
   sheet('<h3>Read-aloud voice</h3><p class="muted small">Looking for the voices on this phone…</p>');
+  const [cat, packs] = await Promise.all([voiceCatalog(), voicePacks()]), have = new Set(packs.map(x => x.id)), useNv = S.ttsEngine === '@nv';
+  const nvSel = l => { const own = cat.filter(v => v.lang === l && have.has(v.id)).flatMap(v => packSpeakers(v.id)); return own.length ? `<select data-nvl="${l}" style="max-width:62%">${own.map(o => `<option value="${esc(o.v)}" ${((S.nvVoice || {})[l] || '') === o.v ? 'selected' : ''}>${esc(o.t)}</option>`).join('')}</select>` : '<span class="muted small">download one below</span>' };
+  sheet(`<h3>Read-aloud voice</h3><p class="muted small" style="margin:0 0 8px">For EPUBs you listen to from Bookcase.</p>
+    <div class="chips"><button class="chip ${useNv ? 'on' : ''}" data-ttsuse="nv">Natural voices (Nightvault)</button><button class="chip ${!useNv ? 'on' : ''}" data-ttsuse="phone">The phone's voices</button></div>
+    <div id="ttsbody"></div>`);
+  const body = $('#ttsbody');
+  if(useNv){ body.innerHTML = `<div class="opt"><label>English books</label>${nvSel('en')}</div><div class="opt"><label>Dutch books</label>${nvSel('nl')}</div>
+      <div class="sec">Voices to download (once, then offline)</div>${cat.map(v => `<div class="li" style="cursor:default;flex-wrap:wrap"><div class="n"><div style="color:var(--text)">${esc((PACK_NAME[v.id] || [v.id])[0])}</div><div class="s">${esc((PACK_NAME[v.id] || ['', v.lang])[1])} · ${mb(v.size)}</div></div>
+        ${have.has(v.id) ? `<span class="muted small">✓ on this phone</span><button class="x" data-vrm="${esc(v.id)}" aria-label="Remove this voice">✕</button>` : `<button class="btn sm primary" data-vdl="${esc(v.id)}">Download</button>`}<div data-vprog="${esc(v.id)}" style="flex-basis:100%"></div></div>`).join('') || '<p class="muted small">The list of voices could not be loaded - check the internet connection.</p>'}
+      <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" id="tttest" style="flex:1">Listen to a sample</button></div><p class="muted small" id="ttmsg" style="margin:8px 0 0">Natural voices are made on the phone itself; a fast phone keeps up easily, an older one may need a moment between pieces.</p>`;
+    body.onchange = e => { const sl = e.target.closest('[data-nvl]'); if(!sl) return; S.nvVoice = Object.assign({}, S.nvVoice, {[sl.dataset.nvl]:sl.value}); saveS(); SYN.clear() };
+    body.onclick = async e => { const d = e.target.closest('[data-vdl]'), r = e.target.closest('[data-vrm]');
+      if(d){ const v = cat.find(x => x.id === d.dataset.vdl); d.disabled = true; if(await voiceDownload(v, body.querySelector(`[data-vprog="${CSS.escape(v.id)}"]`))){ toast('Voice ready'); ttsSettings() } else d.disabled = false }
+      if(r){ await NvTts.removeVoice({id:r.dataset.vrm}).catch(() => {}); const nv = Object.assign({}, S.nvVoice); for(const k of Object.keys(nv)) if(String(nv[k]).startsWith(r.dataset.vrm + '#')) delete nv[k]; S.nvVoice = nv; saveS(); SYN.clear(); toast('Voice removed'); ttsSettings() } };
+    $('#tttest').onclick = async () => { const nv = (S.nvVoice || {}).en || (S.nvVoice || {}).nl; if(!nv){ $('#ttmsg').textContent = 'Download a voice first.'; return } $('#ttmsg').textContent = 'Making the sample…';
+      try{ const r = await NvTts.synth({text:/nl_/.test(nv) ? 'Hallo. Zo klinken je boeken. Het was een donkere, stormachtige nacht.' : 'Hello. This is how your books will sound. It was a dark and stormy night, and the rain fell in torrents.', engine:'@nv', voice:nv, id:'sample'});
+        const a = new Audio(linkUrl(r.uri, 'sample.wav')); a.playbackRate = S.speed || 1; await a.play(); $('#ttmsg').textContent = `Playing the sample (made in ${(r.ms / 1000).toFixed(1)} s for ${(r.secs || 0).toFixed(1)} s of speech)` }catch(e){ $('#ttmsg').textContent = 'No sound: ' + (e.message || e) } };
+    hookTtsUse(); return }
+  body.innerHTML = '<p class="muted small">Looking for the voices on this phone…</p>';
   let en = {engines:[], default:''}; try{ en = await NvTts.engines({engine:S.ttsEngine || ''}) }catch(e){}
   const eng = S.ttsEngine || '', list = async () => { try{ return (await NvTts.voices({engine:eng})).voices || [] }catch(e){ return [] } }, vs = (await list()).filter(v => v.installed !== false);
   const opt = l => `<option value="">The engine's own choice</option>` + vs.filter(v => v.lang.toLowerCase().startsWith(l)).sort((a, b) => (b.quality - a.quality) || (a.network - b.network) || coll.compare(a.name, b.name))
     .map(v => `<option value="${esc(v.name)}" ${((S.ttsVoices || {})[l] || '') === v.name ? 'selected' : ''}>${esc(v.name)}${v.network ? ' (needs internet)' : ''}${v.quality >= 400 ? ' ★' : ''}</option>`).join('');
-  sheet(`<h3>Read-aloud voice</h3><p class="muted small" style="margin:0 0 10px">For EPUBs you listen to from Bookcase. The voice comes from a text-to-speech engine on this phone. For a natural voice, install one (for example a Kokoro voice app) and pick it here.</p>
+  body.innerHTML = `<p class="muted small" style="margin:0 0 10px">The voice comes from a text-to-speech engine on this phone (usually Google's).</p>
     <div class="opt"><label for="tteng">Engine</label><select id="tteng" style="max-width:62%"><option value="">The phone's default${en.default ? ' (' + esc((en.engines.find(x => x.name === en.default) || {}).label || en.default) + ')' : ''}</option>${en.engines.map(x => `<option value="${esc(x.name)}" ${eng === x.name ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select></div>
     <div class="opt"><label for="tten">English books</label><select id="tten" style="max-width:60%">${opt('en')}</select></div>
     <div class="opt"><label for="ttnl">Dutch books</label><select id="ttnl" style="max-width:60%">${opt('nl')}</select></div>
     <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" id="tttest" style="flex:1">Listen to a sample</button><button class="btn" id="ttset" style="flex:1">Phone's voice settings</button></div>
-    <p class="muted small" id="ttmsg" style="margin:8px 0 0">${vs.length ? plural(vs.length, 'voice') + ' found' : 'No voices found for this engine.'}</p>`);
+    <p class="muted small" id="ttmsg" style="margin:8px 0 0">${vs.length ? plural(vs.length, 'voice') + ' found' : 'No voices found for this engine.'}</p>`; hookTtsUse();
   const save = () => { S.ttsVoices = Object.assign({}, S.ttsVoices, {en:$('#tten').value, nl:$('#ttnl').value}); saveS(); SYN.clear() };
-  $('#tteng').onchange = e => { S.ttsEngine = e.target.value; S.ttsVoices = {}; saveS(); SYN.clear(); ttsSettings() };
+  $('#tteng').onchange = e => { S.ttsEngine = e.target.value; S.ttsVoices = {}; saveS(); SYN.clear(); S.ttsEngine = S.ttsEngine || ''; ttsSettings() };
   $('#tten').onchange = save; $('#ttnl').onchange = save;
   $('#ttset').onclick = () => NvTts.openSettings().catch(e => toast(e.message || String(e)));
   $('#tttest').onclick = async () => { $('#ttmsg').textContent = 'Making the sample…';
@@ -2206,7 +2253,7 @@ document.addEventListener('visibilitychange', () => { if(document.hidden) saveHe
   /* opened from Bookcase → "Listen as audiobook": take the text over and start playing */
   const tf = P.get('ttsfrom'); if(tf){ try{ history.replaceState(null, '', location.pathname + '?mode=audiobooks') }catch(e){}
     toast('Getting the book ready…'); const b = await ttsImport(tf);
-    if(b){ AV = [{v:'home'}, {v:'book', id:b.id}]; await drawLib(); if(!NvTts){ toast('Reading aloud works in the Android app', 5000); return } await openBook(b.id, true) } }
+    if(b){ AV = [{v:'home'}, {v:'book', id:b.id}]; await drawLib(); if(!NvTts){ toast('Reading aloud works in the Android app', 5000); return } await openBook(b.id, true); ttsOffer(b) } }
 })();
 window.NVAUDIO = {get cur(){ return cur }, get books(){ return BOOKS }, state:st, gpos, seekTo, openBook, togglePlay, mp4Info, mp3Info, flacInfo, oggInfo, wavInfo, fileInfo, review, au,
   music:{get Q(){ return Q }, get tracks(){ return TR }, get vis(){ return VIS }, get pct(){ return PCT }, get pcon(){ return PCON }, pcRefresh, saveOffline, doSave, keepOffline, removeOffline, buildGroups, groupOf, setAlbumGroup, setParent, togglePin, GR, get albums(){ return ALB }, get artists(){ return ARTS }, get lists(){ return LISTS }, get stats(){ return STATS }, curT, playList, qAdd, mNext, mPrev, mPlay, mSeek, toggleShuffle, cycleRepeat, toggleFav, musicScan, makeTrack, drawM, mGo, musicBack}};

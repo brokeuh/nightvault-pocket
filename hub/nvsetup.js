@@ -58,6 +58,7 @@
       {id:'newglow', added:'2026-10-23', icon:'✨', title:'New things glow', body:'Anything new in the app (from a scan of your SD card, a PC sync or added by hand) gets a green glow. It stays for 24 hours from the moment you first see it, or until you open it. A dot on the ☰ button tells you when something needs attention.'},
       {id:'welcome', added:'2026-10-23', icon:'📚', title:'Welcome to Nightvault Bookcase', body:'Comics, manga, books, rulebooks, RPG books and colouring books on their own shelves, with one reader for CBZ, CBR, PDF, EPUB and picture folders.'},
       {id:'add', added:'2026-10-23', icon:'➕', title:'Add your books', body:'Tap <b>Add</b> on a shelf: pick a folder on this phone (nothing is copied) or files to copy into the app. Series are put together by themselves; the reader remembers your page.'},
+      {id:'listen', added:'2026-10-27', icon:'🎧', title:'Listen to a book', android:true, body:'An EPUB with text has a <b>Listen</b> button: Nightvault Audiobooks reads it aloud, chapter by chapter, and remembers where you were. Pick or download a natural voice there (⚙ › Read-aloud voice).'},
       {id:'read', added:'2026-10-23', icon:'📖', title:'Reading', body:'Tap the edges or swipe to turn pages (right-to-left for manga), pinch to zoom. At the end the reader offers the next volume.'},
       {id:'comicvine', added:'2026-10-23', icon:'🔑', title:'Comic Vine (comics info, optional)', body:'A free key from Comic Vine looks up the publisher, series and story of your comics. It stays on this phone.',
         how:['Make a free account at comicvine.gamespot.com.', 'Open comicvine.gamespot.com/api - your key is on that page.', 'Paste it here.'],
@@ -75,7 +76,9 @@
       MYPC]},
     audiobooks:{name:'Audiobooks', prefix:'nvAudio.', steps:[
       {id:'welcome', added:'2026-10-23', icon:'🎧', title:'Welcome to Nightvault Audiobooks', body:'Your audiobooks, with a player that remembers where you were in every book. Faster or slower, a sleep timer, chapters.'},
-      {id:'add', added:'2026-10-23', icon:'➕', title:'Add your books', body:'Tap <b>Add</b> and pick the folder with your audiobooks: one M4B per book, one long MP3/M4A, or a folder of MP3s per book. Nothing is copied.'}]},
+      {id:'add', added:'2026-10-23', icon:'➕', title:'Add your books', body:'Tap <b>Add</b> and pick the folder with your audiobooks: one M4B per book, one long MP3/M4A, or a folder of MP3s per book. Nothing is copied.'},
+      {id:'groups', added:'2026-10-27', icon:'🗂️', title:'Series and groups', body:'Books of one series share a tile, in series order; an author\'s other books share one too. Tap a book for its page (Continue, next in the series, details). Make your own groups with <b>+ Group</b>, long-press tiles to move several, pin favourites with ★ - the same as in Music and Bookcase.'},
+      {id:'voices', added:'2026-10-27', icon:'🗣️', title:'Listen to EPUBs with a natural voice', android:true, body:'In Bookcase, tap <b>Listen</b> on an EPUB: it is read aloud here, with chapters, speed, sleep timer and your place remembered. For a natural voice: ⚙ › <b>Read-aloud voice</b> › <b>Download</b> Kokoro (English, about 150 MB) or Nathalie / Pim (Dutch) - once, then it works without internet.'}]},
     print3d:{name:'3D Print', prefix:'nvPrint.', steps:[
       {id:'welcome', added:'2026-10-23', icon:'🧊', title:'Welcome to Nightvault 3D Print', body:'Your 3D models (STL, OBJ, 3MF) with a 3D viewer, projects with their pictures and print files, and a log of what you printed.'},
       {id:'add', added:'2026-10-23', icon:'➕', title:'Add models', body:'Tap <b>Add</b> and pick a folder or files. One folder or ZIP = one project tile.'},

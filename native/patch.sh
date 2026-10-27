@@ -7,6 +7,12 @@ mkdir -p "$J"
 cp plugin/MainActivity.java plugin/NvOcrPlugin.java plugin/NvUpdatePlugin.java plugin/NvCapturePlugin.java plugin/NvCaptureService.java plugin/NvMediaPlugin.java plugin/NvMediaService.java plugin/NvFilesPlugin.java plugin/NvLogPlugin.java plugin/NvPcPlugin.java plugin/NvPrintPlugin.java plugin/NvBggPlugin.java plugin/NvLaunchPlugin.java plugin/NvTvPlugin.java plugin/NvTtsPlugin.java "$J/"
 # Google ML Kit text recognition (the model is inside the app, works without internet)
 sed -i "s#^dependencies {#dependencies {\n    implementation 'com.google.mlkit:text-recognition:16.0.1'#" android/app/build.gradle
+# read aloud, Nightvault's own natural voices (NvTts "@nv"): the sherpa-onnx engine (Kokoro / Piper), a ready-made Android library
+SHERPA=1.13.7
+mkdir -p android/app/libs
+curl -sSfL -o android/app/libs/sherpa-onnx.aar "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$SHERPA/sherpa-onnx-$SHERPA.aar"
+ls -la android/app/libs/sherpa-onnx.aar
+sed -i "s#^dependencies {#dependencies {\n    implementation files('libs/sherpa-onnx.aar')#" android/app/build.gradle
 # version shown in Android settings: the build number
 sed -i "s/versionCode 1$/versionCode ${BUILD_NUMBER:-1}/; s/versionName \"1.0\"/versionName \"0.1.${BUILD_NUMBER:-1}\"/" android/app/build.gradle
 M=android/app/src/main/AndroidManifest.xml
@@ -61,6 +67,8 @@ PY
 cat >> android/app/build.gradle <<'GRADLE'
 
 android {
+    // phones with 64-bit and 32-bit ARM chips (all ordinary Android phones); keeps the app smaller now it has the voice engine
+    defaultConfig { ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' } }
     signingConfigs {
         nightvault {
             storeFile file("$rootDir/../debug.keystore")

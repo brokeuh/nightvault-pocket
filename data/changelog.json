@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 132,
+   "date": "2026-10-27",
+   "where": [
+    "android"
+   ],
+   "apps": [
+    "audiobooks",
+    "bookcase"
+   ],
+   "title": "Natural voices for reading aloud, in the app",
+   "items": [
+    "Audiobooks → ⚙ → Read-aloud voice → Natural voices: tap Download for Kokoro (English, 11 voices) or Nathalie / Pim (Dutch). Once - then it works without internet, no extra app needed.",
+    "The first time you listen to an EPUB, Audiobooks offers the natural voice itself: one tap.",
+    "Pick the voice for English and for Dutch books, and play a sample. The phone's own voices are still there too."
+   ]
+  },
+  {
    "id": 131,
    "date": "2026-10-27",
    "where": [

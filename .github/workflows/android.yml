@@ -69,7 +69,7 @@ jobs:
           mkdir -p ~/.android
           cp ../debug.keystore ~/.android/debug.keystore     # the same signature every build, so a new APK installs over the old one
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon -q
+          ./gradlew assembleDebug --no-daemon -q 2>&1 | tee /tmp/gradle.log; test ${PIPESTATUS[0]} -eq 0
           cp app/build/outputs/apk/debug/app-debug.apk ../../nightvault-pocket.apk
           # the signature must be the same every time, or phones refuse to update
           keytool -printcert -jarfile ../../nightvault-pocket.apk | grep -q "EE:43:1E:19:C4:EC:7E:D8:C7:C3:75:E0:AE:DA:43:87:1C:65:91:68:D8:67:E3:BB:9D:06:C9:E8:49:9F:DD:A4" || { echo "APK is not signed with the Nightvault key"; keytool -printcert -jarfile ../../nightvault-pocket.apk | grep SHA256; exit 1; }
@@ -88,3 +88,11 @@ jobs:
           gh release view android-test >/dev/null 2>&1 || gh release create android-test --prerelease --title "Android test app" --notes "$NOTES" --target main
           gh release edit android-test --notes "$NOTES"
           gh release upload android-test nightvault-pocket.apk --clobber
+
+      - name: Keep the error messages (chats cannot read the Actions log)
+        if: failure()
+        run: |
+          mkdir -p data/probe; { echo "Android build ${{ github.run_number }} failed ($(date -u))"; grep -E "error:|e: |FAILURE|What went wrong|\.java:[0-9]+|\.kt:[0-9]+" /tmp/gradle.log | head -80; echo ---; tail -60 /tmp/gradle.log; } > data/probe/android-build-failed.txt 2>&1 || true
+          git config user.name "card-bot"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/probe/android-build-failed.txt; git commit -m "Android build failed: error messages" || exit 0
+          for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done
