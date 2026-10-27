@@ -1,1 +1,3 @@
-list
+kokoro-int8-en-v0_19
+vits-piper-nl_BE-nathalie-medium-int8
+vits-piper-nl_NL-pim-medium-int8
