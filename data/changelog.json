@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 133,
+   "date": "2026-10-27",
+   "where": [
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Read along: comics and manga read aloud",
+   "items": [
+    "In a comic or manga, tap the speech-bubble button at the top: the bubbles are read aloud one by one and light up, then the page turns by itself.",
+    "Tap a bubble to hear that one. Auto: it carries on from there. Tap only: it reads just the bubbles you tap - handy for wild page layouts.",
+    "Pause, next bubble and speed in the bar at the bottom. The voice is the one you picked in Audiobooks (⚙ › Read-aloud voice), also the natural voices."
+   ]
+  },
+  {
    "id": 132,
    "date": "2026-10-27",
    "where": [

@@ -1032,7 +1032,7 @@ async function openReader(b, mark){ if(!b) return; if(b.cv && b.cv.id) colSeen(b
   await showAt(start);
   if(!lsGet('nvBooks.hinted', false)){ lsSet('nvBooks.hinted', true); rHint(`Tap the ${R.rtl ? 'left' : 'right'} edge for the next page<br>tap the middle for the menu · pinch or double-tap to zoom`, 4200) }
   setTimeout(() => { if(R && R.ui && sheetOpen() === false) rUI(false) }, 2200) }
-async function closeReader(quiet){ if(!R) return; const r = R; R = null; if(r.b) saveState(r.b.id, true);
+async function closeReader(quiet){ if(!R) return; if(RA) raStop(); const r = R; R = null; if(r.b) saveState(r.b.id, true);
   for(const p of r.cache.values()) p.then(m => URL.revokeObjectURL(m.url)).catch(() => {}); if(r.hi) URL.revokeObjectURL(r.hi);
   try{ r.doc && r.doc.close && r.doc.close() }catch(e){}
   $('#reader').hidden = true; rp().innerHTML = ''; document.body.classList.remove('reading'); awake(false); if(!quiet){ if(r.b && r.b.handed) return leaveHanded(); draw() } }
@@ -1059,7 +1059,7 @@ async function showAt(i){ if(!R) return; const tok = ++R.tok; i = Math.max(0, Ma
   const box = rp(); box.innerHTML = ''; for(const m of imgs) box.appendChild(m.img);
   layout(true); pageInfo();
   const s = st(R.b.id); s.page = i; s.pages = R.n; s.last = Date.now(); s.flow = false; if(i + pages.length >= R.n) s.finished = true; saveState(R.b.id);
-  trimCache(); preload() }
+  trimCache(); preload(); if(RA) raOnPage() }
 function layout(reset){ if(!R || !R.dims) return; const vw = innerWidth, vh = innerHeight, H = 1000, ws = R.dims.map(d => d.w * H / d.h), TW = ws.reduce((a, b) => a + b, 0);
   R.base = S.fit === 'width' ? vw / TW : S.fit === 'height' ? vh / H : Math.min(vw / TW, vh / H);
   const sc = R.base * R.zoom; R.DW = TW * sc; R.DH = H * sc; R.ws = ws;
@@ -1117,7 +1117,7 @@ function showEnd(){ const b = R.b, nx = nextInSeries(b, 1), s = st(b.id); s.fini
   function tap(x, y){ const now = Date.now();
     if(now - lastTap < 300 && Math.hypot(x - lastTapXY[0], y - lastTapXY[1]) < 40){ clearTimeout(tapT); lastTap = 0; if(R.zoom > 1.05){ R.zoom = 1; layout(true) } else { setZoom(2.5, x, y); hiRes() } return }
     lastTap = now; lastTapXY = [x, y]; clearTimeout(tapT);
-    tapT = setTimeout(() => { if(!R || !$('#rend').hidden) return; const vw = innerWidth;
+    tapT = setTimeout(() => { if(!R || !$('#rend').hidden) return; if(RA && raTap(x, y)) return; const vw = innerWidth;
       if(S.edges && x < vw * .28){ R.rtl ? next() : prev(); return } if(S.edges && x > vw * .72){ R.rtl ? prev() : next(); return } rUI() }, 260) }
   let wheelT = 0;
   stage.addEventListener('wheel', e => { if(!R || !R.dims) return; e.preventDefault();
@@ -1145,6 +1145,7 @@ $('#rmark').onclick = async () => { if(!R) return; const s = st(R.b.id); s.marks
   s.marks.push({p:R.s, name:n || 'Page ' + (R.s + 1), at:Date.now()}); s.marks.sort((a, b) => (a.p || 0) - (b.p || 0)); saveState(R.b.id, true); pageInfo(); toast('Bookmark saved') };
 $('#rtoc').onclick = () => tocSheet('contents');
 $('#rset').onclick = () => readSettings();
+if($('#rra')){ $('#rra').hidden = !NATIVE; $('#rra').onclick = () => raStart() }
 
 /* contents · bookmarks · search */
 function tocSheet(tab){ if(!R) return; const s = st(R.b.id), toc = R.doc.toc || [], canSearch = !!R.doc.text;
@@ -2287,3 +2288,93 @@ async function driveDownload(bs){ bs = bs.filter(b => b.src.kind === 'drive' && 
     n++; const p = $('#gdp'); if(p) p.style.width = (100 * n / bs.length) + '%' }
   awake(false); closeSheet(); draw(); toast(`${plural(bs.filter(b => b.src.fid).length, 'book')} on this phone – they work without internet now`, 4000) }
 async function driveUndownload(bs){ for(const b of bs) if(b.src.kind === 'drive' && b.src.fid){ await dbDel('files', b.src.fid).catch(() => {}); delete b.src.fid; await dbPut('books', b) } draw(); toast('Downloaded copy removed – the book stays, read from Drive') }
+
+/* =====================================================================================================================
+   READ ALONG (comics, manga, picture PDFs): the bubbles of the page are read aloud one by one and light up; then the page turns.
+   Text: Google's text reader on the phone (NvOcr, the same as the card scanner). Voice: Audiobooks' read-aloud voices (NvTts –
+   Nightvault's natural voices or the phone's), the choice made in Audiobooks › ⚙ › Read-aloud voice. Tap a bubble to read that one:
+   "Auto" carries on from there, "Tap only" reads just the bubble you tap. Plan: plans/bookcase.md "Read along".
+   ===================================================================================================================== */
+let NvOcr = null, NvTtsB = null; if(NATIVE) try{ NvOcr = Capacitor.registerPlugin('NvOcr'); NvTtsB = Capacitor.registerPlugin('NvTts') }catch(e){}
+let RA = null;
+const raVoice = () => { const a = lsGet('nvAudio.settings', {}) || {}, nv = (a.nvVoice || {}).en;
+  return a.ttsEngine === '@nv' && nv ? {engine:'@nv', voice:nv, lang:'en'} : {engine:a.ttsEngine === '@nv' ? '' : a.ttsEngine || '', voice:(a.ttsVoices || {}).en || '', lang:'en'} };
+/* comic lettering is often ALL CAPITALS: make it normal sentences, so the voice reads words, not shouting or letters */
+function raClean(t){ t = String(t || '').replace(/-\n(?=\p{Ll})/gu, '').replace(/\s*\n\s*/g, ' ').replace(/\s+/g, ' ').trim();
+  const letters = t.replace(/[^\p{L}]/gu, ''), up = letters.replace(/[^\p{Lu}]/gu, '').length;
+  if(letters.length > 3 && up / letters.length > .7) t = t.toLowerCase().replace(/(^|[.!?…]\s+|["“(]\s*)(\p{Ll})/gu, (m, a, b) => a + b.toUpperCase()).replace(/\bi\b/g, 'I').replace(/\bi'(m|ll|d|ve)\b/g, "I'$1");
+  return t }
+/* the bubbles of one page: text blocks → bubbles (blocks close together are one bubble), noise left out, in reading order */
+async function raPageBubbles(p){ R.raCache = R.raCache || new Map(); if(R.raCache.has(p)) return R.raCache.get(p);
+  const pr = (async () => { const m = await getImg(p), k = Math.min(1, 2000 / Math.max(m.w, m.h)), c = document.createElement('canvas'); c.width = Math.round(m.w * k); c.height = Math.round(m.h * k);
+    c.getContext('2d').drawImage(m.img, 0, 0, c.width, c.height);
+    const t0 = Date.now(), r = await NvOcr.recognize({image:c.toDataURL('image/jpeg', 0.9)}), W = r.width || c.width, H = r.height || c.height;
+    let bs = (r.blocks || []).map(b => { const ls = (b.paragraphs || []).flatMap(q => q.lines || []).filter(l => l.box);
+      if(!ls.length) return null; const x0 = Math.min(...ls.map(l => l.box.x0)), y0 = Math.min(...ls.map(l => l.box.y0)), x1 = Math.max(...ls.map(l => l.box.x1)), y1 = Math.max(...ls.map(l => l.box.y1));
+      return {x0, y0, x1, y1, lh:ls.reduce((n, l) => n + (l.box.y1 - l.box.y0), 0) / ls.length, text:ls.map(l => l.text).join('\n'), conf:ls.reduce((n, l) => n + (l.confidence || 0), 0) / ls.length} }).filter(Boolean);
+    /* one bubble often comes back as two blocks: join blocks that sit right under each other and overlap sideways */
+    bs.sort((a, b) => a.y0 - b.y0);
+    for(let i = 0; i < bs.length; i++) for(let j = i + 1; j < bs.length; j++){ const a = bs[i], b = bs[j]; if(!a || !b) continue;
+      const ov = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), gap = b.y0 - a.y1, lh = Math.max(a.lh, b.lh);
+      if(ov > .3 * Math.min(a.x1 - a.x0, b.x1 - b.x0) && gap < lh * 1.1 && gap > -lh){ bs[i] = {x0:Math.min(a.x0, b.x0), y0:Math.min(a.y0, b.y0), x1:Math.max(a.x1, b.x1), y1:Math.max(a.y1, b.y1), lh, text:a.text + '\n' + b.text, conf:(a.conf + b.conf) / 2}; bs[j] = null } }
+    bs = bs.filter(Boolean).map(b => Object.assign(b, {say:raClean(b.text)})).filter(b => { const l = b.say.replace(/[^\p{L}]/gu, '').length; return l >= 2 && l / b.say.length >= .45 && !/^\d+$/.test(b.say) });
+    /* reading order: rows of bubbles from top to bottom (bubbles whose heights overlap are one row), in a row left → right (manga right → left) */
+    const rows = []; for(const b of bs.slice().sort((a, b) => a.y0 - b.y0)){ const h = b.y1 - b.y0;
+      const row = rows.find(r => Math.min(r.y1, b.y1) - Math.max(r.y0, b.y0) > .35 * Math.min(h, r.y1 - r.y0)); if(row){ row.items.push(b); row.y0 = Math.min(row.y0, b.y0); row.y1 = Math.max(row.y1, b.y1) } else rows.push({y0:b.y0, y1:b.y1, items:[b]}) }
+    rows.sort((a, b) => a.y0 - b.y0); const rtl = R.rtl;
+    const out = rows.flatMap(r => r.items.sort((a, b) => rtl ? b.x1 - a.x1 : a.x0 - b.x0)).map(b => ({p, fx0:b.x0 / W, fy0:b.y0 / H, fx1:b.x1 / W, fy1:b.y1 / H, say:b.say}));
+    L('readalong', `page ${p + 1}: ${out.length} bubbles in ${Date.now() - t0} ms`, out.map(b => b.say.slice(0, 40)));
+    return out })();
+  R.raCache.set(p, pr); pr.catch(() => R && R.raCache && R.raCache.delete(p)); return pr }
+/* the bubbles of what is on screen (one page, or two side by side) */
+async function raScreen(){ const ps = R.shown.slice(); const lists = await Promise.all(ps.map(raPageBubbles)); return (R.rtl ? lists.slice().reverse() : lists).flat() }
+/* where a bubble is on screen: as a part of the page box, so it follows zooming and moving */
+function raBox(b){ const k = R.shown.indexOf(b.p); if(k < 0) return null; const ws = R.ws, TW = ws.reduce((a, c) => a + c, 0);
+  const before = R.rtl ? ws.slice(k + 1).reduce((a, c) => a + c, 0) : ws.slice(0, k).reduce((a, c) => a + c, 0), pad = .008;
+  return {l:(before + Math.max(0, b.fx0 - pad) * ws[k]) / TW, t:Math.max(0, b.fy0 - pad), w:(b.fx1 - b.fx0 + 2 * pad) * ws[k] / TW, h:b.fy1 - b.fy0 + 2 * pad} }
+function raDraw(){ rp().querySelectorAll('.rab').forEach(e => e.remove()); if(!RA || !RA.bubbles) return;
+  RA.bubbles.forEach((b, i) => { const x = raBox(b); if(!x) return; const d = document.createElement('div'); d.className = 'rab' + (i === RA.i ? ' on' : '');
+    d.style.cssText = `left:${x.l * 100}%;top:${x.t * 100}%;width:${x.w * 100}%;height:${x.h * 100}%`; rp().appendChild(d) }) }
+function raBar(){ let bar = $('#rabar'); if(!RA){ if(bar) bar.remove(); return }
+  if(!bar){ bar = document.createElement('div'); bar.id = 'rabar'; $('#reader').appendChild(bar) }
+  const sp = RA.speed || 1;
+  bar.innerHTML = `<button class="ib" id="rapp" aria-label="${RA.paused ? 'Read' : 'Pause'}">${RA.paused ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>' : '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>'}</button>
+    <button class="ib" id="raskip" aria-label="Next bubble"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+    <div class="raseg"><button class="${RA.mode === 'auto' ? 'on' : ''}" data-ram="auto">Auto</button><button class="${RA.mode === 'tap' ? 'on' : ''}" data-ram="tap">Tap only</button></div>
+    <button class="rasp" id="rasp">${sp}×</button><span class="rast" id="rast">${esc(RA.status || '')}</span><button class="ib" id="rax" aria-label="Stop reading along">✕</button>`;
+  $('#rapp').onclick = () => RA.paused ? raResume() : raPause(); $('#raskip').onclick = () => raPlay((RA.i == null ? -1 : RA.i) + 1, true);
+  bar.querySelectorAll('[data-ram]').forEach(b => b.onclick = () => { RA.mode = b.dataset.ram; lsSet('nvBooks.raMode', RA.mode); raBar(); if(RA.mode === 'auto' && RA.paused === false && !RA.speaking) raPlay((RA.i == null ? -1 : RA.i) + 1) });
+  $('#rasp').onclick = () => { const L0 = [0.9, 1, 1.15, 1.3, 1.5, 1.75]; RA.speed = L0[(L0.indexOf(sp) + 1) % L0.length]; lsSet('nvBooks.raSpeed', RA.speed); RA.audio.playbackRate = RA.speed; raBar() };
+  $('#rax').onclick = () => raStop() }
+const raStatus = t => { if(!RA) return; RA.status = t; const e = $('#rast'); if(e) e.textContent = t };
+function raSay(i){ const b = RA.bubbles[i], key = R.b.id + ':' + b.p + ':' + i + ':' + JSON.stringify(raVoice());
+  RA.syn = RA.syn || new Map(); if(RA.syn.has(key)) return RA.syn.get(key);
+  const pr = NvTtsB.synth(Object.assign({text:b.say, id:'ra' + (i % 6)}, raVoice())).then(r => linkUrl(r.uri, 'bubble.wav'));
+  RA.syn.set(key, pr); pr.catch(() => RA && RA.syn && RA.syn.delete(key)); if(RA.syn.size > 6) RA.syn.delete(RA.syn.keys().next().value); return pr }
+async function raPlay(i, manual){ if(!RA || !R) return; const me = RA, tok = ++RA.tok;
+  if(!RA.bubbles) return;
+  if(i >= RA.bubbles.length){ RA.i = null; raDraw(); if(RA.mode === 'auto' && !manual || manual && RA.mode === 'auto'){ raStatus('Next page…'); setTimeout(() => { if(RA === me && tok === RA.tok && R) next() }, 700) } else raStatus('End of the page'); return }
+  RA.i = i; RA.paused = false; RA.speaking = true; raDraw(); raBar(); raStatus(`${i + 1} / ${RA.bubbles.length}`);
+  try{ const u = await raSay(i); if(RA !== me || tok !== RA.tok) return; if(i + 1 < RA.bubbles.length) raSay(i + 1).catch(() => {});
+    RA.audio.src = u; RA.audio.playbackRate = RA.speed || 1; try{ RA.audio.preservesPitch = true }catch(e){} await RA.audio.play() }
+  catch(e){ if(RA !== me || tok !== RA.tok) return; RA.speaking = false; LE('readalong', 'voice', e); raStatus('No voice: ' + (e.message || e)); RA.paused = true; raBar() } }
+function raEnded(){ if(!RA) return; RA.speaking = false; if(RA.paused) return; if(RA.mode === 'auto') raPlay(RA.i + 1); else { raStatus('Tap a bubble'); RA.i = null; raDraw() } }
+function raPause(){ if(!RA) return; RA.paused = true; RA.tok++; RA.audio.pause(); RA.speaking = false; raBar() }
+function raResume(){ if(!RA) return; RA.paused = false; if(RA.audio.src && RA.i != null && RA.audio.currentTime > 0 && !RA.audio.ended){ RA.audio.play().catch(() => {}); RA.speaking = true; raBar() } else raPlay(RA.i == null ? 0 : RA.i) }
+/* the page changed (turned by Read along or by you): find its bubbles and, in Auto, read from the first */
+async function raOnPage(){ if(!RA || !R) return; const me = RA, tok = ++RA.tok; RA.audio.pause(); RA.bubbles = null; RA.i = null; raDraw(); raStatus('Reading the page…');
+  let bs = []; try{ bs = await raScreen() }catch(e){ LE('readalong', 'text reader', e); raStatus('The text reader failed: ' + (e.message || e)); return }
+  if(RA !== me || tok !== RA.tok || !R) return; RA.bubbles = bs; raDraw();
+  for(const p of [R.s + R.shown.length]) if(p < R.n) raPageBubbles(p).catch(() => {});    // the next page ahead
+  if(!bs.length){ raStatus('No text on this page'); if(RA.mode === 'auto' && !RA.paused) setTimeout(() => { if(RA === me && tok === RA.tok && R) next() }, 1500); return }
+  if(RA.mode === 'auto' && !RA.paused) raPlay(0); else raStatus(RA.paused ? 'Paused' : 'Tap a bubble') }
+function raStart(){ if(!R || !NvOcr || !NvTtsB) return toast('Read along works in the Android app');
+  if(RA) return raStop();
+  RA = {mode:lsGet('nvBooks.raMode', 'auto'), speed:lsGet('nvBooks.raSpeed', 1), audio:new Audio(), tok:0, paused:false, i:null, bubbles:null};
+  RA.audio.onended = raEnded; rUI(false); raBar(); raOnPage();
+  if(!lsGet('nvBooks.raHinted', false)){ lsSet('nvBooks.raHinted', true); rHint('Tap a bubble to read that one.<br>Auto: carries on from there · Tap only: just the bubbles you tap', 4500) } }
+function raStop(){ if(!RA) return; RA.tok++; RA.audio.pause(); RA.audio.removeAttribute('src'); RA = null; raDraw(); raBar() }
+/* a tap on a bubble while reading along: read that one (the reader's own tap handling calls this first) */
+function raTap(x, y){ if(!RA || !RA.bubbles || !R) return false; const fx = (x - R.x) / R.DW, fy = (y - R.y) / R.DH;
+  const i = RA.bubbles.findIndex(b => { const q = raBox(b); return q && fx >= q.l - .01 && fx <= q.l + q.w + .01 && fy >= q.t - .01 && fy <= q.t + q.h + .01 });
+  if(i < 0) return false; RA.tok++; RA.audio.pause(); raPlay(i, true); return true }
