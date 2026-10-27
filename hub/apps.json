@@ -244,7 +244,7 @@
     },
     {
      "path": "books/app.js",
-     "size": 306482
+     "size": 309772
     },
     {
      "path": "books/manifest.webmanifest",
@@ -294,10 +294,10 @@
    "uses": [],
    "entry": "books/?nv=hub",
    "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted.",
-   "size": 2433844,
-   "hash": "8a4c207edbb6",
-   "version": "2026.10.23.1659",
-   "updated": "2026-10-23"
+   "size": 2437134,
+   "hash": "44c798bebf57",
+   "version": "2026.10.27.1408",
+   "updated": "2026-10-27"
   },
   {
    "id": "music",
@@ -308,7 +308,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 263594
+     "size": 274627
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -320,10 +320,10 @@
     "music"
    ],
    "uses": [],
-   "size": 264155,
-   "hash": "547018212f40",
-   "version": "2026.10.23.1544",
-   "updated": "2026-10-23"
+   "size": 275188,
+   "hash": "0e7c4a27a1ec",
+   "version": "2026.10.27.1408",
+   "updated": "2026-10-27"
   },
   {
    "id": "audiobooks",
@@ -334,7 +334,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 263594
+     "size": 274627
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -346,10 +346,10 @@
     "audiobooks"
    ],
    "uses": [],
-   "size": 264155,
-   "hash": "547018212f40",
-   "version": "2026.10.23.1544",
-   "updated": "2026-10-23"
+   "size": 275188,
+   "hash": "0e7c4a27a1ec",
+   "version": "2026.10.27.1408",
+   "updated": "2026-10-27"
   },
   {
    "id": "cinema",
