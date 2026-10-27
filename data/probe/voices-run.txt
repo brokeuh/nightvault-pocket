@@ -40,7 +40,7 @@
 ./espeak-ng-data/tt_dict
 ./espeak-ng-data/ia_dict
 ./espeak-ng-data/grc_dict
--rw-r--r-- 1 runner runner 158018643 Oct 27 14:56 kokoro-int8-en-v0_19.zip
+-rw-r--r-- 1 runner runner 102636146 Oct 27 15:02 kokoro-int8-en-v0_19.zip
 == vits-piper-nl_BE-nathalie-medium-int8
 .
 ./nl_BE-nathalie-medium.onnx.json
@@ -82,7 +82,7 @@
 ./espeak-ng-data/ia_dict
 ./espeak-ng-data/grc_dict
 ./espeak-ng-data/as_dict
--rw-r--r-- 1 runner runner 36750973 Oct 27 14:57 vits-piper-nl_BE-nathalie-medium-int8.zip
+-rw-r--r-- 1 runner runner 22528051 Oct 27 15:02 vits-piper-nl_BE-nathalie-medium-int8.zip
 == vits-piper-nl_NL-pim-medium-int8
 .
 ./nl_NL-pim-medium.onnx
@@ -124,4 +124,4 @@
 ./espeak-ng-data/tt_dict
 ./espeak-ng-data/ia_dict
 ./espeak-ng-data/grc_dict
--rw-r--r-- 1 runner runner 37398536 Oct 27 14:57 vits-piper-nl_NL-pim-medium-int8.zip
+-rw-r--r-- 1 runner runner 22538837 Oct 27 15:02 vits-piper-nl_NL-pim-medium-int8.zip
