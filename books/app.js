@@ -1195,7 +1195,7 @@ function readSettings(){ if(!R) return; const b = R.b;
   $('#o_sfx').onchange = e => { lsSet('nvBooks.raSfx', e.target.checked); if(R.raSeen) R.raSeen = null; if(PN) pnReplan() };
   $('#o_pfix').onclick = () => pnFixOpen(); $('#o_pshare').onclick = () => pnShareSheet();
   $('.sheet').onclick = async e => { const c = e.target.closest('[data-set],[data-dir]'); if(!c) return;
-    if(c.dataset.dir){ R.rtl = c.dataset.dir === 'rtl'; b.rtl = R.rtl === !!shelfOf(b.shelf).rtl ? null : R.rtl; await dbPut('books', b); rClasses(); $('#rslider').style.direction = R.rtl ? 'rtl' : 'ltr'; layout(true) }
+    if(c.dataset.dir){ R.rtl = c.dataset.dir === 'rtl'; R.raCache = null; if(RA) setTimeout(raOnPage, 0); b.rtl = R.rtl === !!shelfOf(b.shelf).rtl ? null : R.rtl; await dbPut('books', b); rClasses(); $('#rslider').style.direction = R.rtl ? 'rtl' : 'ltr'; layout(true) }
     else { S[c.dataset.set] = c.dataset.v; saveS(); rClasses(); if(c.dataset.set === 'two') showAt(R.s); else layout(true) }
     readSettings() };
   $('#o_night').onchange = e => { S.night = e.target.checked; saveS(); rClasses() };
@@ -2347,12 +2347,42 @@ async function raPageBubbles(p){ R.raCache = R.raCache || new Map(); if(R.raCach
   const pr = (async () => { const m = await getImg(p), Lg = Math.max(m.w, m.h), k = Lg > 2000 ? 2000 / Lg : Lg < 1100 ? Math.min(2.5, 1400 / Lg) : 1, c = document.createElement('canvas'); c.width = Math.round(m.w * k); c.height = Math.round(m.h * k);
     const cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height); cx.drawImage(m.img, 0, 0, c.width, c.height);     // white first: a picture with a see-through background would reach the text reader as black
     const t0 = Date.now(), r = await NvOcr.recognize({image:c.toDataURL('image/jpeg', 0.9)});
-    const out = raBubblesFrom(r, c, R.rtl, p);
+    let out = raBubblesFrom(r, c, R.rtl, p);
     /* the same small text in the same place on other pages = a watermark or a running head */
     R.raSeen = R.raSeen || new Map(); for(const b of out){ const key = Math.round(b.fx0 * 20) + ',' + Math.round(b.fy0 * 20) + ':' + norm(b.say), seen = R.raSeen.get(key); if(seen != null && seen !== p && b.say.length <= 30) b.repeat = true; else if(seen == null) R.raSeen.set(key, p) }
-    L('readalong', `page ${p + 1}: ${out.length} bubbles in ${Date.now() - t0} ms`, out.map(b => (b.edge ? '[edge] ' : b.sfx ? '[sfx] ' : b.repeat ? '[repeat] ' : '') + b.say.slice(0, 40)));
+    /* panels first: a bubble belongs to the panel its middle is in; panels in reading order, the bubbles inside a panel in the order above */
+    let pans = []; try{ pans = raPanels(c, R.rtl) }catch(e){ LE('readalong', 'panels', e) }
+    if(pans.length > 1){ const pin = b => { const x = (b.fx0 + b.fx1) / 2, y = (b.fy0 + b.fy1) / 2, k = pans.findIndex(q => x >= q.x0 && x <= q.x1 && y >= q.y0 && y <= q.y1); return k < 0 ? 1e9 : k };
+      out = out.map((b, k) => ({b, k, n:pin(b)})).sort((a, z) => a.n - z.n || a.k - z.k).map(o => o.b) }
+    L('readalong', `page ${p + 1}: ${out.length} bubbles, ${pans.length} panels in ${Date.now() - t0} ms`, out.map(b => (b.edge ? '[edge] ' : b.sfx ? '[sfx] ' : b.repeat ? '[repeat] ' : '') + b.say.slice(0, 40)));
     return out })();
   R.raCache.set(p, pr); pr.catch(() => R && R.raCache && R.raCache.delete(p)); return pr }
+/* the panels of a page, in reading order, as parts of the page {x0, y0, x1, y1} (0–1). XY-cut: find the empty strips (gutters) that go
+   right across a part of the page – first across the whole width (tiers, top → bottom), then inside a tier from top to bottom (columns,
+   left → right, manga right → left), and so on. Pages without clear gutters give one panel (then the bubbles keep the simple order). */
+function raPanels(src, rtl){
+  const w = 320, h = Math.max(1, Math.round(src.height * w / src.width)), cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d', {willReadFrequently:true}); cx.drawImage(src, 0, 0, w, h); const d = cx.getImageData(0, 0, w, h).data, g = new Uint8Array(w * h);
+  for(let i = 0; i < w * h; i++) g[i] = (d[i * 4] * 3 + d[i * 4 + 1] * 6 + d[i * 4 + 2]) / 10;
+  /* the gutter colour: what most of the page's edge is (white on most comics, black on some) */
+  const edge = []; for(let x = 0; x < w; x += 2){ edge.push(g[x], g[(h - 1) * w + x]) } for(let y = 0; y < h; y += 2){ edge.push(g[y * w], g[y * w + w - 1]) }
+  edge.sort((a, b) => a - b); const bg = edge[edge.length >> 1], near = v => Math.abs(v - bg) < 40;
+  const MIN = 2, out = [];
+  const blankRow = (y, x0, x1) => { let n = 0; for(let x = x0; x < x1; x++) if(!near(g[y * w + x])) n++; return n <= (x1 - x0) * .02 };
+  const blankCol = (x, y0, y1) => { let n = 0; for(let y = y0; y < y1; y++) if(!near(g[y * w + x])) n++; return n <= (y1 - y0) * .02 };
+  /* the parts between gutters along one direction; small bits (less than 4% of the part) are not panels */
+  const parts = (a0, a1, blank) => { const res = []; let s = null, run = 0;
+    for(let a = a0; a < a1; a++){ if(blank(a)){ run++; if(s != null && run >= MIN){ res.push([s, a - run + 1]); s = null } } else { if(s == null) s = a; run = 0 } }
+    if(s != null) res.push([s, a1]); return res.filter(([p0, p1]) => p1 - p0 >= (a1 - a0) * .04) };
+  const cut = (x0, y0, x1, y1, depth) => {
+    if(depth < 6){
+      const ts = parts(y0, y1, y => blankRow(y, x0, x1)); if(ts.length > 1){ for(const [a, b] of ts) cut(x0, a, x1, b, depth + 1); return }
+      const cs = parts(x0, x1, x => blankCol(x, y0, y1)); if(cs.length > 1){ for(const [a, b] of (rtl ? cs.slice().reverse() : cs)) cut(a, y0, b, y1, depth + 1); return }
+      /* trim the empty edge and try once more (a panel group with a margin round it) */
+      if(ts.length === 1 && cs.length === 1 && (ts[0][0] > y0 || ts[0][1] < y1 || cs[0][0] > x0 || cs[0][1] < x1) && depth < 5) return cut(cs[0][0], ts[0][0], cs[0][1], ts[0][1], depth + 1) }
+    out.push({x0:x0 / w, y0:y0 / h, x1:x1 / w, y1:y1 / h}) };
+  cut(0, 0, w, h, 0);
+  return out }
 /* the bubbles of what is on screen (one page, or two side by side) */
 async function raScreen(){ const ps = R.shown.slice(); const lists = await Promise.all(ps.map(raPageBubbles)); return (R.rtl ? lists.slice().reverse() : lists).flat().filter(raWanted) }
 /* where a bubble is on screen: as a part of the page box, so it follows zooming and moving */
