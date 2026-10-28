@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(NvOcrPlugin.class);
+        registerPlugin(NvTranslatePlugin.class);
         registerPlugin(NvUpdatePlugin.class);
         registerPlugin(NvCapturePlugin.class);
         registerPlugin(NvMediaPlugin.class);

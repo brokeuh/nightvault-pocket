@@ -4,9 +4,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 J=android/app/src/main/java/be/brokeuh/nightvault
 mkdir -p "$J"
-cp plugin/MainActivity.java plugin/NvOcrPlugin.java plugin/NvUpdatePlugin.java plugin/NvCapturePlugin.java plugin/NvCaptureService.java plugin/NvMediaPlugin.java plugin/NvMediaService.java plugin/NvFilesPlugin.java plugin/NvLogPlugin.java plugin/NvPcPlugin.java plugin/NvPrintPlugin.java plugin/NvBggPlugin.java plugin/NvLaunchPlugin.java plugin/NvTvPlugin.java plugin/NvTtsPlugin.java "$J/"
+cp plugin/MainActivity.java plugin/NvOcrPlugin.java plugin/NvTranslatePlugin.java plugin/NvUpdatePlugin.java plugin/NvCapturePlugin.java plugin/NvCaptureService.java plugin/NvMediaPlugin.java plugin/NvMediaService.java plugin/NvFilesPlugin.java plugin/NvLogPlugin.java plugin/NvPcPlugin.java plugin/NvPrintPlugin.java plugin/NvBggPlugin.java plugin/NvLaunchPlugin.java plugin/NvTvPlugin.java plugin/NvTtsPlugin.java "$J/"
 # Google ML Kit text recognition (the model is inside the app, works without internet)
-sed -i "s#^dependencies {#dependencies {\n    implementation 'com.google.mlkit:text-recognition:16.0.1'#" android/app/build.gradle
+sed -i "s#^dependencies {#dependencies {\n    implementation 'com.google.mlkit:text-recognition:16.0.1'\n    implementation 'com.google.mlkit:translate:17.0.3'#" android/app/build.gradle
 # read aloud, Nightvault's own natural voices (NvTts "@nv"): the sherpa-onnx engine (Kokoro / Piper), a ready-made Android library
 SHERPA=1.13.7
 mkdir -p android/app/libs

@@ -128,6 +128,7 @@
         "books/app.js",
         "books/panels.js",
         "books/panelview.js",
+        "books/translate.js",
         "books/manifest.webmanifest",
         "books/lib/pdfjs/pdf.min.js",
         "books/lib/pdfjs/pdf.worker.min.js",

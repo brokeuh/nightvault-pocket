@@ -144,6 +144,7 @@ async function stripBubbles(y){ const sc = scEl(), col = colEl(), vh = sc.client
     const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); idx.forEach((i, j) => { const d = R.sl[i]; x.drawImage(ms[j].img, 0, (d.offsetTop - y) * k, c.width, d.offsetHeight * k) });
     const r = await NvOcr.recognize({image:c.toDataURL('image/jpeg', .9)}), bs = raBubblesFrom(r, c, false, -1);
     for(const b of bs){ b.col = {x0:b.fx0 * W, y0:y + b.fy0 * h, x1:b.fx1 * W, y1:y + b.fy1 * h}; b.strip = true }
+    if(trOn()) await trApply(bs).catch(() => {});
     L('readalong', `strip at ${Math.round(y)}: ${bs.length} bubbles`, bs.map(b => b.say.slice(0, 30))); return bs })();
   R.stripCache.set(key, pr); pr.catch(() => R && R.stripCache && R.stripCache.delete(key)); return pr }
 async function raStripStep(){ if(!RA || !R || !PN) return; const me = RA, tok = ++RA.tok, y = PN.y, vh = scEl().clientHeight; RA.audio.pause(); RA.speaking = false; RA.bubbles = null; RA.i = null; raDraw(); raStatus('Reading…');

@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 138,
+   "date": "2026-10-28",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Translate the bubbles (new Android app build)",
+   "items": [
+    "Read along bar › globe (or ⚙ › Translate the bubbles…): pick a language and download it once (about 30 MB, free, works offline afterwards).",
+    "The translation shows as a caption under the bubble you are on; tap the caption to see the original.",
+    "The translation can be read aloud in the voice of that language. Bubbles that carry on in the next bubble are translated together.",
+    "Translated pages are kept per book, so a page is never translated twice. This needs the new Android app: install the update."
+   ]
+  },
+  {
    "id": 137,
    "date": "2026-10-28",
    "where": [

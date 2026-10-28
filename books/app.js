@@ -1188,12 +1188,12 @@ function readSettings(){ if(!R) return; const b = R.b;
     ${b.series ? `<div class="opt"><label for="o_ser">Use this style for the whole series “${esc(b.series)}”</label><input type="checkbox" id="o_ser"></div>` : ''}
     <div class="sec">Panel by panel</div>
     <div class="opt"><label for="o_sfx">Read sound effects aloud (BOOM, CRASH…)</label><input type="checkbox" id="o_sfx" ${lsGet('nvBooks.raSfx', false) ? 'checked' : ''}></div>
-    <div class="mlist"><button class="btn" id="o_pfix" ${R.scroll ? 'disabled' : ''}>Fix the panels on this page…</button><button class="btn" id="o_pshare">Share the fixes of this book…</button></div>
+    <div class="mlist"><button class="btn" id="o_pfix" ${R.scroll ? 'disabled' : ''}>Fix the panels on this page…</button><button class="btn" id="o_pshare">Share the fixes of this book…</button>${NvTrans ? '<button class="btn" id="o_trans">Translate the bubbles…</button>' : ''}</div>
     <div class="mlist" style="margin-top:12px"><button class="btn" id="o_print">Print…</button></div>`);
   $('#o_pages').onclick = () => { if(R.scroll) scSwitch(false, $('#o_ser') && $('#o_ser').checked) };
   $('#o_scroll').onclick = () => { if(!R.scroll) scSwitch(true, $('#o_ser') && $('#o_ser').checked) };
   $('#o_sfx').onchange = e => { lsSet('nvBooks.raSfx', e.target.checked); if(R.raSeen) R.raSeen = null; if(PN) pnReplan() };
-  $('#o_pfix').onclick = () => pnFixOpen(); $('#o_pshare').onclick = () => pnShareSheet();
+  $('#o_pfix').onclick = () => pnFixOpen(); $('#o_pshare').onclick = () => pnShareSheet(); if($('#o_trans')) $('#o_trans').onclick = () => trSheet();
   $('.sheet').onclick = async e => { const c = e.target.closest('[data-set],[data-dir]'); if(!c) return;
     if(c.dataset.dir){ R.rtl = c.dataset.dir === 'rtl'; R.raCache = null; if(RA) setTimeout(raOnPage, 0); b.rtl = R.rtl === !!shelfOf(b.shelf).rtl ? null : R.rtl; await dbPut('books', b); rClasses(); $('#rslider').style.direction = R.rtl ? 'rtl' : 'ltr'; layout(true) }
     else { S[c.dataset.set] = c.dataset.v; saveS(); rClasses(); if(c.dataset.set === 'two') showAt(R.s); else layout(true) }
@@ -2343,7 +2343,8 @@ function raBubblesFrom(r, c, rtl, p){
   return rows.flatMap(r => r.items.sort((a, b) => rtl ? b.x1 - a.x1 : a.x0 - b.x0)).map(b => ({p, fx0:b.x0 / W, fy0:b.y0 / H, fx1:b.x1 / W, fy1:b.y1 / H, say:b.say, edge:b.edge, sfx:b.sfx})) }
 const raWanted = b => !b.edge && !b.repeat && (!b.sfx || lsGet('nvBooks.raSfx', false));
 /* the bubbles of one page */
-async function raPageBubbles(p){ R.raCache = R.raCache || new Map(); if(R.raCache.has(p)) return R.raCache.get(p);
+async function raPageBubbles(p){ const out = await raPageBubblesRaw(p); if(trOn()) await trApply(out); return out }
+async function raPageBubblesRaw(p){ R.raCache = R.raCache || new Map(); if(R.raCache.has(p)) return R.raCache.get(p);
   const pr = (async () => { const m = await getImg(p), Lg = Math.max(m.w, m.h), k = Lg > 2000 ? 2000 / Lg : Lg < 1100 ? Math.min(2.5, 1400 / Lg) : 1, c = document.createElement('canvas'); c.width = Math.round(m.w * k); c.height = Math.round(m.h * k);
     const cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height); cx.drawImage(m.img, 0, 0, c.width, c.height);     // white first: a picture with a see-through background would reach the text reader as black
     const t0 = Date.now(), r = await NvOcr.recognize({image:c.toDataURL('image/jpeg', 0.9)});
@@ -2363,7 +2364,7 @@ async function raScreen(){ const ps = R.shown.slice(); const lists = await Promi
 function raBox(b){ const k = R.shown.indexOf(b.p); if(k < 0) return null; const ws = R.ws, TW = ws.reduce((a, c) => a + c, 0);
   const before = R.rtl ? ws.slice(k + 1).reduce((a, c) => a + c, 0) : ws.slice(0, k).reduce((a, c) => a + c, 0), pad = .008;
   return {l:(before + Math.max(0, b.fx0 - pad) * ws[k]) / TW, t:Math.max(0, b.fy0 - pad), w:(b.fx1 - b.fx0 + 2 * pad) * ws[k] / TW, h:b.fy1 - b.fy0 + 2 * pad} }
-function raDraw(){ document.querySelectorAll('.rab').forEach(e => e.remove()); if(!RA || !RA.bubbles || !R) return; const host = R.scroll ? $('#rcol') : rp(); if(!host) return;
+function raDraw(){ document.querySelectorAll('.rab').forEach(e => e.remove()); trCaption(); if(!RA || !RA.bubbles || !R) return; const host = R.scroll ? $('#rcol') : rp(); if(!host) return;
   RA.bubbles.forEach((b, i) => { const d = document.createElement('div'); d.className = 'rab' + (i === RA.i ? ' on' : '');
     if(b.col) d.style.cssText = `left:${b.col.x0 - 4}px;top:${b.col.y0 - 4}px;width:${b.col.x1 - b.col.x0 + 8}px;height:${b.col.y1 - b.col.y0 + 8}px`;
     else { const x = raBox(b); if(!x) return; d.style.cssText = `left:${x.l * 100}%;top:${x.t * 100}%;width:${x.w * 100}%;height:${x.h * 100}%` }
@@ -2375,8 +2376,9 @@ function raBar(){ let bar = $('#rabar'); if(!RA && !PN){ if(bar) bar.remove(); r
     ${PN ? `<button class="ib" id="rapv" aria-label="Previous panel">${ic('<path d="M6 5h2v14H6zM20 5v14L9 12z"/>')}</button><button class="ib" id="rapn" aria-label="Next panel">${ic('<path d="M16 5h2v14h-2zM4 5v14l11-7z"/>')}</button>` : ''}
     ${RA ? `<button class="ib" id="raskip" aria-label="Next bubble">${ic('<path d="M5 6v12l8.5-6zM15 6h3v12h-3z"/>')}</button>` : ''}
     <div class="raseg"><button class="${mode === 'auto' ? 'on' : ''}" data-ram="auto">Auto</button><button class="${mode === 'tap' ? 'on' : ''}" data-ram="tap">${PN ? 'Manual' : 'Tap only'}</button></div>
-    <button class="rasp" id="rasp">${sp}×</button>${RA ? `<button class="ib" id="ravoice" aria-label="Voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6"/><path d="M18 6c1 1 1.5 2 1.5 3.5S19 12 18 13M21 4c1.5 1.5 2.2 3.3 2.2 5.5S22.5 13.5 21 15"/></svg></button>` : ''}<span class="rast" id="rast">${esc(A.status || '')}</span><button class="ib" id="rax" aria-label="Stop">✕</button>`;
+    <button class="rasp" id="rasp">${sp}×</button>${RA && NvTrans ? `<button class="ib" id="ratr" aria-label="Translate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="${trOn() ? 'color:var(--accent)' : ''}"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg></button>` : ''}${RA ? `<button class="ib" id="ravoice" aria-label="Voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6"/><path d="M18 6c1 1 1.5 2 1.5 3.5S19 12 18 13M21 4c1.5 1.5 2.2 3.3 2.2 5.5S22.5 13.5 21 15"/></svg></button>` : ''}<span class="rast" id="rast">${esc(A.status || '')}</span><button class="ib" id="rax" aria-label="Stop">✕</button>`;
   $('#rapp').onclick = () => RA ? (RA.paused ? raResume() : raPause()) : (PN.paused ? pnResume() : pnPause());
+  if($('#ratr')) $('#ratr').onclick = () => trSheet();
   if($('#raskip')) $('#raskip').onclick = () => raPlay((RA.i == null ? -1 : RA.i) + 1, true);
   if($('#rapv')){ $('#rapv').onclick = () => prev(); $('#rapn').onclick = () => next() }
   bar.querySelectorAll('[data-ram]').forEach(b => b.onclick = () => { const m = b.dataset.ram; lsSet('nvBooks.raMode', m); if(RA) RA.mode = m; if(PN) PN.mode = m; raBar();
@@ -2387,9 +2389,10 @@ function raBar(){ let bar = $('#rabar'); if(!RA && !PN){ if(bar) bar.remove(); r
 const raStatus = t => { if(!RA) return; RA.status = t; const e = $('#rast'); if(e) e.textContent = t };
 /* the sound of one bubble; made ahead (the voice makes one at a time, in order), so the next bubbles are ready when the current one ends */
 const pnStatus = t => { if(!PN) return; PN.status = t; const e = $('#rast'); if(e && !RA) e.textContent = t };
-function raSayB(b){ const key = R.b.id + ':' + b.p + ':' + (b.fx0 != null ? Math.round(b.fx0 * 1000) + ',' + Math.round(b.fy0 * 1000) : b.col ? Math.round(b.col.x0) + ',' + Math.round(b.col.y0) : '') + ':' + b.say + ':' + JSON.stringify(raVoice());
+function raSayB(b){ if(b.trJoined && !b.tr && trOn() && trSpeak() && b.trTo === trTo()) return Promise.resolve('');   // its text is part of the bubble before it
+  const tv = trOn() && trSpeak() && b.trTo === trTo() && b.tr, say = tv ? b.tr : b.say, vc = tv ? trVoice() : raVoice(); const key = (tv ? 'tr:' : '') + R.b.id + ':' + b.p + ':' + (b.fx0 != null ? Math.round(b.fx0 * 1000) + ',' + Math.round(b.fy0 * 1000) : b.col ? Math.round(b.col.x0) + ',' + Math.round(b.col.y0) : '') + ':' + say + ':' + JSON.stringify(vc);
   RA.syn = RA.syn || new Map(); if(RA.syn.has(key)) return RA.syn.get(key);
-  RA.n = (RA.n || 0) + 1; const pr = NvTtsB.synth(Object.assign({text:b.say, id:'ra' + (RA.n % 10)}, raVoice())).then(r => linkUrl(r.uri, 'bubble.wav'));
+  RA.n = (RA.n || 0) + 1; const pr = NvTtsB.synth(Object.assign({text:say, id:'ra' + (RA.n % 10)}, vc)).then(r => linkUrl(r.uri, 'bubble.wav'));
   RA.syn.set(key, pr); pr.catch(() => RA && RA.syn && RA.syn.delete(key)); if(RA.syn.size > 8) RA.syn.delete(RA.syn.keys().next().value); return pr }
 const raSay = i => raSayB(RA.bubbles[i]);
 /* make the next bubbles ahead: two on this page, and near the end of the page the first two of the next page */
@@ -2402,6 +2405,7 @@ async function raPlay(i, manual){ if(!RA || !R) return; const me = RA, tok = ++R
   if(i >= RA.bubbles.length){ RA.i = null; raDraw();
     if(PN){ if(RA.mode === 'auto' && !RA.paused){ raStatus('Next panel…'); setTimeout(() => { if(RA === me && tok === RA.tok && R) next() }, 550 / (RA.speed || 1)) } else raStatus('Tap or swipe for the next panel'); return }
     if(RA.mode === 'auto' && !manual || manual && RA.mode === 'auto'){ raStatus('Next page…'); setTimeout(() => { if(RA === me && tok === RA.tok && R) next() }, 700) } else raStatus('End of the page'); return }
+  { const bj = RA.bubbles[i]; if(!manual && bj && bj.trJoined && !bj.tr && trOn() && trSpeak() && bj.trTo === trTo()) return raPlay(i + 1) }
   RA.i = i; RA.paused = false; RA.speaking = true; raDraw(); raBar(); raStatus(`${i + 1} / ${RA.bubbles.length}`);
   const slow = setTimeout(() => { if(RA === me && tok === RA.tok) raStatus(`${i + 1} / ${RA.bubbles.length} · the voice is getting ready…`) }, 1500);
   try{ const u = raSay(i); raAhead(i); const url = await u; clearTimeout(slow); if(RA !== me || tok !== RA.tok) return; raStatus(`${i + 1} / ${RA.bubbles.length}`);
