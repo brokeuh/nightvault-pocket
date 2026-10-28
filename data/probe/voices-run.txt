@@ -40,7 +40,7 @@
 ./espeak-ng-data/ia_dict
 ./espeak-ng-data/grc_dict
 ./espeak-ng-data/as_dict
--rw-r--r-- 1 runner runner 22385965 Oct 28 13:18 vits-piper-en_US-lessac-medium-int8.zip
+-rw-r--r-- 1 runner runner 22385965 Oct 28 13:21 vits-piper-en_US-lessac-medium-int8.zip
 == vits-piper-en_US-ryan-medium-int8
 .
 ./en_US-ryan-medium.onnx.json
@@ -82,7 +82,7 @@
 ./espeak-ng-data/ia_dict
 ./espeak-ng-data/grc_dict
 ./espeak-ng-data/as_dict
--rw-r--r-- 1 runner runner 22501139 Oct 28 13:18 vits-piper-en_US-ryan-medium-int8.zip
+-rw-r--r-- 1 runner runner 22501139 Oct 28 13:21 vits-piper-en_US-ryan-medium-int8.zip
 == vits-piper-en_GB-alba-medium-int8
 .
 ./en_GB-alba-medium.onnx
@@ -124,7 +124,7 @@
 ./espeak-ng-data/tt_dict
 ./espeak-ng-data/ia_dict
 ./espeak-ng-data/grc_dict
--rw-r--r-- 1 runner runner 22497911 Oct 28 13:18 vits-piper-en_GB-alba-medium-int8.zip
+-rw-r--r-- 1 runner runner 22497911 Oct 28 13:21 vits-piper-en_GB-alba-medium-int8.zip
 == vits-piper-en_GB-northern_english_male-medium-int8
 .
 ./en_GB-northern_english_male-medium.onnx.json
@@ -166,4 +166,4 @@
 ./espeak-ng-data/ia_dict
 ./espeak-ng-data/grc_dict
 ./espeak-ng-data/as_dict
--rw-r--r-- 1 runner runner 22521772 Oct 28 13:18 vits-piper-en_GB-northern_english_male-medium-int8.zip
+-rw-r--r-- 1 runner runner 22521772 Oct 28 13:21 vits-piper-en_GB-northern_english_male-medium-int8.zip
