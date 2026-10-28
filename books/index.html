@@ -161,10 +161,33 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 #rabar .ib{width:36px;height:38px;flex:none;border:0;background:none;color:var(--text)}#rabar .ib svg{width:22px;height:22px}
 #rabar .raseg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}#rabar .raseg button{border:0;background:none;color:var(--dim);padding:7px 8px;font:inherit;font-size:12.5px}#rabar .raseg button.on{background:var(--accentd);color:#fff}
 #rabar .rasp{border:1px solid var(--line);background:none;color:var(--text);border-radius:10px;padding:6px 9px;font:inherit;font-size:12.5px}
-#rabar .rast{font-size:11.5px;color:var(--dim);min-width:0;max-width:90px;overflow:hidden;text-overflow:ellipsis;text-align:center;padding:0 2px}
+#rabar .rast{font-size:11.5px;color:var(--dim);min-width:0;max-width:118px;overflow:hidden;text-overflow:ellipsis;text-align:center;padding:0 2px}
 #reader.invert #rpages img{filter:invert(1) hue-rotate(180deg)}
 #reader.night #rpages{filter:brightness(.72) sepia(.25)}
 #reader.invert.night #rpages img{filter:invert(1) hue-rotate(180deg) brightness(.85)}
+#rscroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-y;background:var(--rbg,#000)}
+#rscroll[hidden]{display:none}
+#reader.scroll #rstage{display:none}
+#reader.scroll{touch-action:auto}
+#rcol{width:100%}
+#rcol .sl{position:relative;width:100%;overflow:hidden}
+#rcol .sl img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
+#reader.invert #rcol img{filter:invert(1) hue-rotate(180deg)}
+#reader.night #rcol{filter:brightness(.72) sepia(.25)}
+#reader.invert.night #rcol img{filter:invert(1) hue-rotate(180deg) brightness(.85)}
+#rpn.on{color:var(--accent)}
+#pnfix{position:absolute;inset:0;z-index:9;background:#0b0e13;color:var(--text);display:flex;flex-direction:column;touch-action:none}
+#pnfix .pfbar{display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 10px 8px}
+#pnfix .pfmsg{flex:1;text-align:center;font-size:13px;color:var(--dim)}
+#pnfix .pfstage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+#pnfix .pfpage{position:relative;touch-action:none}
+#pnfix .pfpage img{width:100%;height:100%;display:block;pointer-events:none}
+#pnfix .pfbox{position:absolute;border:2px solid #5fe0b0aa;background:#5fe0b01a;box-sizing:border-box}
+#pnfix .pfbox.sel{border-color:var(--accent);background:#5fe0b033}
+#pnfix .pfbox b{position:absolute;left:3px;top:2px;min-width:22px;height:22px;border-radius:11px;background:var(--accent);color:#000;font-size:12px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+#pnfix .pfbox .h{position:absolute;width:30px;height:30px;background:var(--accent);border-radius:50%;opacity:.9}
+#pnfix .h[data-h=nw]{left:-15px;top:-15px}#pnfix .h[data-h=ne]{right:-15px;top:-15px}#pnfix .h[data-h=sw]{left:-15px;bottom:-15px}#pnfix .h[data-h=se]{right:-15px;bottom:-15px}
+#pnfix .pfbtns{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:8px 10px calc(10px + env(safe-area-inset-bottom,0px))}
 #rspin{position:absolute;left:50%;top:50%;width:38px;height:38px;margin:-19px;border-radius:50%;border:3px solid #ffffff22;border-top-color:var(--accent);animation:spin .8s linear infinite;pointer-events:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 .rbar{position:absolute;left:0;right:0;z-index:2;background:#0b0e13e8;backdrop-filter:blur(10px);transition:transform .2s,opacity .2s;color:var(--text)}
@@ -218,12 +241,13 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 
 <div id="reader" hidden>
   <div id="rstage"><div id="rpages"></div></div>
+  <div id="rscroll" hidden><div id="rcol"></div></div>
   <div id="rspin" hidden></div>
   <div id="rhint"></div>
   <div class="rbar" id="rtop">
     <button class="ib" id="rclose" aria-label="Close the book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="tt"><b id="rtitle"></b><div id="rsub"></div></div>
-    <button class="ib" id="rra" hidden aria-label="Read along (bubbles read aloud)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h11a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H9l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><path d="M20 9c1 .8 1.5 1.8 1.5 3s-.5 2.2-1.5 3"/></svg></button><button class="ib" id="rmark" aria-label="Bookmark this page"></button>
+    <button class="ib" id="rpn" aria-label="Panel by panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="10" rx="1"/><rect x="13" y="3" width="8" height="6" rx="1"/><rect x="13" y="11" width="8" height="10" rx="1"/><rect x="3" y="15" width="8" height="6" rx="1"/></svg></button><button class="ib" id="rra" hidden aria-label="Read along (bubbles read aloud)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h11a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H9l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><path d="M20 9c1 .8 1.5 1.8 1.5 3s-.5 2.2-1.5 3"/></svg></button><button class="ib" id="rmark" aria-label="Bookmark this page"></button>
     <button class="ib" id="rtoc" aria-label="Contents, bookmarks and search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
     <button class="ib" id="rset" aria-label="Reading settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2.4" fill="#0b0e13"/><circle cx="15" cy="17" r="2.4" fill="#0b0e13"/></svg></button>
   </div>
@@ -264,7 +288,9 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 <input type="file" id="pickpic" accept="image/*" hidden>
 <div id="toast"></div>
 
+<script src="panels.js"></script>
 <script src="app.js"></script>
+<script src="panelview.js"></script>
 <script>try{NVMENU.make({app:'bookcase', btn:'#setbtn', hub:'../hub/index.html', backup:'bookcase', items:() => [{label:'Check for new volumes now', run:() => { NVMENU.toast('Looking for new ones – this can take a minute'); checkNew(true) }}]})}catch(e){console.error(e)}</script>
 <script>try{NVNEW.watch({app:'bookcase-items', sel:'[data-book],[data-grp]', key:el => { if(el.dataset.book) return 'b:' + el.dataset.book; const g = groupByKey(cur().shelf, el.dataset.grp); return g ? (g.all || g.items).map(b => 'b:' + b.id) : null }, keys:() => BOOKS.map(b => 'b:' + b.id)})}catch(e){}</script>
 </body>

@@ -3,6 +3,26 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 137,
+   "date": "2026-10-28",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Panel by panel and scrolling strips",
+   "items": [
+    "New panel button in the reader: the screen zooms to one panel at a time. Auto moves on by itself, Manual waits for your tap.",
+    "Works on odd pages too: it looks for gutters, then panel outlines, then follows the speech bubbles (Android), and falls back to the whole page.",
+    "With Read along on, only the bubbles of the panel on screen are read.",
+    "Long strips (Infinity Comics, webtoons) open as one scrolling column; Panels scrolls them step by step. Switch per book or per series in ⚙ › Reading style.",
+    "Wrong cut? ⚙ › Fix the panels on this page: move, draw, delete boxes and tap them in the order you want. Fixes can be shared as a small file.",
+    "Sound effects are skipped by default; switch them on in ⚙."
+   ]
+  },
+  {
    "id": 136,
    "date": "2026-10-28",
    "where": [

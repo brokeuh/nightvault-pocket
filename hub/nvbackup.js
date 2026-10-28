@@ -31,7 +31,7 @@
     scanner:{title:'Scanner & Binder', ls:['nightvault.pocket.'], scrub:{'nightvault.pocket.test.v1':pocketScrub, 'nightvault.pocket.v1':pocketScrub}, countFn:pocketCount, word:['card', 'cards']},
     music:{title:'Music', ls:['nvMusic.'], skip:['nvMusic.scan'], db:'nvAudio', stores:['tracks', 'lists', 'mstats'], main:'tracks', word:['song', 'songs'], dedupe:{tracks:'uri'}},
     audiobooks:{title:'Audiobooks', ls:['nvAudio.'], db:'nvAudio', stores:['books', 'state'], main:'books', word:['book', 'books']},
-    bookcase:{title:'Bookcase', ls:['nvBooks.'], skip:['nvBooks.cvKey'], db:'nvBooks', stores:['books', 'state'], main:'books', word:['book', 'books']},
+    bookcase:{title:'Bookcase', ls:['nvBooks.'], skip:['nvBooks.cvKey'], db:'nvBooks', stores:['books', 'state', 'panels'], main:'books', word:['book', 'books']},
     games:{title:'Games', ls:['nvGames.'], skip:['nvGames.keys', 'nvGames.igdbTok'], db:'nvGames', stores:['games', 'kv'], main:'games', word:['game', 'games']},
     boardgames:{title:'Boardgames', ls:['nvBoard.'], db:'nvBoard', stores:['items', 'plays', 'kv', 'files'], main:'items', word:['game', 'games']},
     cinema:{title:'Cinema', ls:['nvCinema.'], skip:['nvCinema.tmdb'], db:'nvCinema', stores:['titles', 'files', 'watch', 'kv'], main:'titles', word:['title', 'titles']},

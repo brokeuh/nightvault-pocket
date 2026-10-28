@@ -35,8 +35,8 @@ const PINB = '<span class="pinb">★</span>';
    covers : {id, blob}   (book id, or 'grp:<shelf>:<group key>' for a group's own picture)
    files  : {id, blob}   kv : {id, ...} */
 let DB = null;
-function openDB(){ return new Promise((ok, no) => { const r = indexedDB.open('nvBooks', 1);
-  r.onupgradeneeded = () => { const d = r.result; for(const s of ['books', 'state', 'covers', 'files', 'kv']) if(!d.objectStoreNames.contains(s)) d.createObjectStore(s, {keyPath:'id'}) };
+function openDB(){ return new Promise((ok, no) => { const r = indexedDB.open('nvBooks', 2);
+  r.onupgradeneeded = () => { const d = r.result; for(const s of ['books', 'state', 'covers', 'files', 'kv', 'panels']) if(!d.objectStoreNames.contains(s)) d.createObjectStore(s, {keyPath:'id'}) };
   r.onblocked = () => toast('Close the other Bookcase tab, then reload', 6000);
   r.onsuccess = () => ok(DB = r.result); r.onerror = () => no(r.error) }) }
 function tx(store, mode, fn){ return new Promise((ok, no) => { const t = DB.transaction(store, mode), st = t.objectStore(store); let res; const q = fn(st); if(q) q.onsuccess = () => res = q.result; t.oncomplete = () => ok(res); t.onerror = t.onabort = () => no(t.error || new Error('Storage error')) }) }
@@ -1007,11 +1007,11 @@ function setPublisher(ids){ const known = [...new Set(BOOKS.map(publisherOf).fil
 /* =====================================================================================================================
    THE READER – one reader for every shelf. Pages (CBZ, CBR, PDF, picture folders, picture EPUBs) here; text EPUBs below.
    ===================================================================================================================== */
-let R = null;
+let R = null, PN = null;          // PN = Panel by panel (books/panelview.js)
 const rp = () => $('#rpages');
-const twoOn = () => S.two === 'on' || (S.two === 'auto' && innerWidth > innerHeight && innerWidth >= 700);
+const twoOn = () => !PN && !(R && R.scroll) && (S.two === 'on' || (S.two === 'auto' && innerWidth > innerHeight && innerWidth >= 700));
 const isRtl = b => b.rtl != null ? b.rtl : !!shelfOf(b.shelf).rtl;
-const renderW = () => Math.min(2600, Math.round(Math.max(innerWidth, innerHeight) * Math.min(2, devicePixelRatio || 1) * (twoOn() ? .7 : 1.1)));
+const renderW = () => R && R.scroll ? Math.min(1800, Math.round(innerWidth * Math.min(2, devicePixelRatio || 1) * 1.15)) : Math.min(2600, Math.round(Math.max(innerWidth, innerHeight) * Math.min(2, devicePixelRatio || 1) * (twoOn() ? .7 : 1.1)));
 function rClasses(){ const r = $('#reader'); r.classList.toggle('rtl', !!(R && R.rtl)); r.classList.toggle('night', !!S.night); r.classList.toggle('invert', !!S.invert); r.style.setProperty('--rbg', S.bg) }
 let hintT = 0; function rHint(t, ms){ const h = $('#rhint'); h.innerHTML = t; h.classList.add('on'); clearTimeout(hintT); hintT = setTimeout(() => h.classList.remove('on'), ms || 1600) }
 function rUI(on){ R.ui = on == null ? !R.ui : on; $('#reader').classList.toggle('noui', !R.ui) }
@@ -1029,10 +1029,11 @@ async function openReader(b, mark){ if(!b) return; if(b.cv && b.cv.id) colSeen(b
   if(s.finished && !mark){ s.finished = false; saveState(b.id) }
   const sl = $('#rslider'); sl.max = R.n; sl.style.direction = R.rtl ? 'rtl' : 'ltr';
   $('#rprevb').disabled = !nextInSeries(b, -1); $('#rnextb').disabled = !nextInSeries(b, 1); $('#rprevb').style.opacity = $('#rprevb').disabled ? .3 : 1; $('#rnextb').style.opacity = $('#rnextb').disabled ? .3 : 1;
-  await showAt(start);
+  if(scWanted(b)) await scOpen(start, s.off || 0); else await showAt(start);
+  if(b.pn) pnStart(true);
   if(!lsGet('nvBooks.hinted', false)){ lsSet('nvBooks.hinted', true); rHint(`Tap the ${R.rtl ? 'left' : 'right'} edge for the next page<br>tap the middle for the menu · pinch or double-tap to zoom`, 4200) }
   setTimeout(() => { if(R && R.ui && sheetOpen() === false) rUI(false) }, 2200) }
-async function closeReader(quiet){ if(!R) return; if(RA) raStop(); const r = R; R = null; if(r.b) saveState(r.b.id, true);
+async function closeReader(quiet){ if(!R) return; if(RA) raStop(); if(PN) pnStop(true); if(R.scroll) scClose(); const r = R; R = null; if(r.b) saveState(r.b.id, true);
   for(const p of r.cache.values()) p.then(m => URL.revokeObjectURL(m.url)).catch(() => {}); if(r.hi) URL.revokeObjectURL(r.hi);
   try{ r.doc && r.doc.close && r.doc.close() }catch(e){}
   $('#reader').hidden = true; rp().innerHTML = ''; document.body.classList.remove('reading'); awake(false); if(!quiet){ if(r.b && r.b.handed) return leaveHanded(); draw() } }
@@ -1049,7 +1050,7 @@ function getImg(p){ if(R.cache.has(p)) return R.cache.get(p); const doc = R.doc;
 function trimCache(){ if(!R) return; for(const [p, pr] of R.cache) if(p < R.s - 3 || p > R.s + 7){ R.cache.delete(p); pr.then(m => URL.revokeObjectURL(m.url)).catch(() => {}) } }
 async function preload(){ const me = R, tok = R.tok, a = R.s + R.shown.length; for(const p of [a, a + 1, a + 2, a + 3, R.s - 1, R.s - 2]){ if(R !== me || tok !== R.tok) return; if(p >= 0 && p < R.n) await getImg(p).catch(() => {}) } }
 
-async function showAt(i){ if(!R) return; const tok = ++R.tok; i = Math.max(0, Math.min(R.n - 1, i)); $('#rend').hidden = true;
+async function showAt(i){ if(!R) return; if(R.scroll) return scGoto(Math.max(0, Math.min(R.n - 1, i)), 0); const tok = ++R.tok; i = Math.max(0, Math.min(R.n - 1, i)); $('#rend').hidden = true;
   let pages = !twoOn() || i === 0 || i >= R.n - 1 ? [i] : [i, i + 1];
   const spin = setTimeout(() => { if(R && tok === R.tok) $('#rspin').hidden = false }, 120);
   let imgs = await Promise.all(pages.map(getImg)); clearTimeout(spin); if(!R || tok !== R.tok) return; $('#rspin').hidden = true;
@@ -1059,13 +1060,13 @@ async function showAt(i){ if(!R) return; const tok = ++R.tok; i = Math.max(0, Ma
   const box = rp(); box.innerHTML = ''; for(const m of imgs) box.appendChild(m.img);
   layout(true); pageInfo();
   const s = st(R.b.id); s.page = i; s.pages = R.n; s.last = Date.now(); s.flow = false; if(i + pages.length >= R.n) s.finished = true; saveState(R.b.id);
-  trimCache(); preload(); if(RA) raOnPage() }
+  trimCache(); preload(); if(PN) pnOnPage(); else if(RA) raOnPage() }
 function layout(reset){ if(!R || !R.dims) return; const vw = innerWidth, vh = innerHeight, H = 1000, ws = R.dims.map(d => d.w * H / d.h), TW = ws.reduce((a, b) => a + b, 0);
   R.base = S.fit === 'width' ? vw / TW : S.fit === 'height' ? vh / H : Math.min(vw / TW, vh / H);
   const sc = R.base * R.zoom; R.DW = TW * sc; R.DH = H * sc; R.ws = ws;
   const box = rp(); box.style.width = R.DW + 'px'; box.style.height = R.DH + 'px'; [...box.children].forEach((im, k) => { im.style.width = (ws[k] * sc) + 'px' });
   if(reset){ R.x = R.DW > vw ? (R.rtl ? vw - R.DW : 0) : (vw - R.DW) / 2; R.y = R.DH > vh ? 0 : (vh - R.DH) / 2 }
-  clampPos(); applyPos() }
+  if(PN && !reset) pnRefit(); else { clampPos(); applyPos() } }
 function clampPos(){ const vw = innerWidth, vh = innerHeight; R.x = R.DW <= vw ? (vw - R.DW) / 2 : Math.min(0, Math.max(vw - R.DW, R.x)); R.y = R.DH <= vh ? (vh - R.DH) / 2 : Math.min(0, Math.max(vh - R.DH, R.y)) }
 function applyPos(dx){ rp().style.transform = `translate3d(${R.x + (dx || 0)}px,${R.y}px,0)` }
 function setZoom(z, cx, cy){ const old = R.base * R.zoom, px = (cx - R.x) / old, py = (cy - R.y) / old; R.zoom = Math.max(1, Math.min(6, z));
@@ -1080,8 +1081,8 @@ function pageInfo(){ if(!R) return; const a = R.s + 1, z = R.s + R.shown.length,
   $('#rpageno').textContent = (z > a ? `${a}–${z}` : a) + ' / ' + R.n; $('#rslider').value = a;
   $('#rsub').textContent = [R.b.vol && R.b.series ? R.b.title : '', `Page ${z > a ? a + '–' + z : a} of ${R.n}`].filter(Boolean).join(' · ');
   const marked = (s.marks || []).some(m => m.p != null && m.p >= R.s && m.p < R.s + R.shown.length); $('#rmark').innerHTML = IC_MARK(marked) }
-function next(){ if(!R) return; if(R.s + R.shown.length >= R.n) return showEnd(); showAt(R.s + R.shown.length) }
-function prev(){ if(!R) return; if(R.s === 0){ rHint('This is the first page'); return } if(!twoOn()) return showAt(R.s - 1); let p = R.s - 2; if(p < 1) p = R.s - 1; showAt(Math.max(0, p)) }
+function next(){ if(!R) return; if(R.scroll) return scStep(1); if(PN && pnAdvance(1)) return; if(R.s + R.shown.length >= R.n) return showEnd(); if(PN) PN.enter = 'first'; showAt(R.s + R.shown.length) }
+function prev(){ if(!R) return; if(R.scroll) return scStep(-1); if(PN && pnAdvance(-1)) return; if(R.s === 0){ rHint('This is the first page'); return } if(PN) PN.enter = 'last'; if(!twoOn()) return showAt(R.s - 1); let p = R.s - 2; if(p < 1) p = R.s - 1; showAt(Math.max(0, p)) }
 const goFwd = () => next(), goBack = () => prev();
 function showEnd(){ const b = R.b, nx = nextInSeries(b, 1), s = st(b.id); s.finished = true; s.last = Date.now(); saveState(b.id, true);
   const e = $('#rend'); e.hidden = false;
@@ -1111,7 +1112,7 @@ function showEnd(){ const b = R.b, nx = nextInSeries(b, 1), s = st(b.id); s.fini
     if(ptrs.size) return; const g = G0; G0 = null; const dx = e.clientX - g.sx, dy = e.clientY - g.sy, vw = innerWidth;
     if(!g.moved && Date.now() - g.t < 400) return tap(e.clientX, e.clientY);
     const raw = g.x0 + dx, panH = R.DW > vw + 1, overL = panH ? raw : 999, overR = panH ? (vw - R.DW) - raw : 999;
-    if(Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.3 && (!panH || overL > 70 || overR > 70)){ if(dx < 0) R.rtl ? prev() : next(); else R.rtl ? next() : prev(); return }
+    if(Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.3 && (!panH || PN || overL > 70 || overR > 70)){ if(dx < 0) R.rtl ? prev() : next(); else R.rtl ? next() : prev(); return }
     clampPos(); applyPos() };
   stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
   function tap(x, y){ const now = Date.now();
@@ -1127,6 +1128,7 @@ function showEnd(){ const b = R.b, nx = nextInSeries(b, 1), s = st(b.id); s.fini
     if(Date.now() - wheelT < 350) return; wheelT = Date.now(); e.deltaY > 0 ? next() : prev() }, {passive:false});
   addEventListener('resize', () => { if(!R || !R.dims) return; clearTimeout(R._rz); R._rz = setTimeout(() => { if(!R) return; const two = R.shown.length === 2; if(two !== twoOn() && R.n > 1) showAt(R.s); else layout(true) }, 120) });
   document.addEventListener('keydown', e => { if(!R || $('#reader').hidden || sheetOpen() || /input|textarea|select/i.test((e.target.tagName || ''))) return; const k = e.key, vh = innerHeight;
+    if(R.scroll){ if(scKey(k)) e.preventDefault(); return }
     if(k === 'ArrowRight'){ R.rtl ? prev() : next() } else if(k === 'ArrowLeft'){ R.rtl ? next() : prev() }
     else if(k === 'PageDown' || k === ' ' || k === 'ArrowDown'){ if(R.DH > vh + 1 && R.y > vh - R.DH + 1){ R.y -= vh * .8; clampPos(); applyPos() } else next() }
     else if(k === 'PageUp' || k === 'ArrowUp'){ if(R.DH > vh + 1 && R.y < -1){ R.y += vh * .8; clampPos(); applyPos() } else prev() }
@@ -1182,9 +1184,18 @@ function readSettings(){ if(!R) return; const b = R.b;
     <div class="opt"><label for="o_night">Night mode (softer, warmer pages)</label><input type="checkbox" id="o_night" ${S.night ? 'checked' : ''}></div>
     <div class="opt"><label for="o_inv">Dark pages (white pages turn dark – for text PDFs)</label><input type="checkbox" id="o_inv" ${S.invert ? 'checked' : ''}></div>
     <div class="opt"><label for="o_edge">Tap the edges to turn pages</label><input type="checkbox" id="o_edge" ${S.edges ? 'checked' : ''}></div>
+    <div class="sec">Reading style</div><div class="chips"><button class="chip ${!R.scroll ? 'on' : ''}" id="o_pages">Pages</button><button class="chip ${R.scroll ? 'on' : ''}" id="o_scroll">Scroll (long strips)</button></div>
+    ${b.series ? `<div class="opt"><label for="o_ser">Use this style for the whole series “${esc(b.series)}”</label><input type="checkbox" id="o_ser"></div>` : ''}
+    <div class="sec">Panel by panel</div>
+    <div class="opt"><label for="o_sfx">Read sound effects aloud (BOOM, CRASH…)</label><input type="checkbox" id="o_sfx" ${lsGet('nvBooks.raSfx', false) ? 'checked' : ''}></div>
+    <div class="mlist"><button class="btn" id="o_pfix" ${R.scroll ? 'disabled' : ''}>Fix the panels on this page…</button><button class="btn" id="o_pshare">Share the fixes of this book…</button></div>
     <div class="mlist" style="margin-top:12px"><button class="btn" id="o_print">Print…</button></div>`);
+  $('#o_pages').onclick = () => { if(R.scroll) scSwitch(false, $('#o_ser') && $('#o_ser').checked) };
+  $('#o_scroll').onclick = () => { if(!R.scroll) scSwitch(true, $('#o_ser') && $('#o_ser').checked) };
+  $('#o_sfx').onchange = e => { lsSet('nvBooks.raSfx', e.target.checked); if(R.raSeen) R.raSeen = null; if(PN) pnReplan() };
+  $('#o_pfix').onclick = () => pnFixOpen(); $('#o_pshare').onclick = () => pnShareSheet();
   $('.sheet').onclick = async e => { const c = e.target.closest('[data-set],[data-dir]'); if(!c) return;
-    if(c.dataset.dir){ R.rtl = c.dataset.dir === 'rtl'; R.raCache = null; if(RA) setTimeout(raOnPage, 0); b.rtl = R.rtl === !!shelfOf(b.shelf).rtl ? null : R.rtl; await dbPut('books', b); rClasses(); $('#rslider').style.direction = R.rtl ? 'rtl' : 'ltr'; layout(true) }
+    if(c.dataset.dir){ R.rtl = c.dataset.dir === 'rtl'; b.rtl = R.rtl === !!shelfOf(b.shelf).rtl ? null : R.rtl; await dbPut('books', b); rClasses(); $('#rslider').style.direction = R.rtl ? 'rtl' : 'ltr'; layout(true) }
     else { S[c.dataset.set] = c.dataset.v; saveS(); rClasses(); if(c.dataset.set === 'two') showAt(R.s); else layout(true) }
     readSettings() };
   $('#o_night').onchange = e => { S.night = e.target.checked; saveS(); rClasses() };
@@ -2306,82 +2317,73 @@ function raClean(t){ t = String(t || '').replace(/-\n(?=\p{Ll})/gu, '').replace(
   const letters = t.replace(/[^\p{L}]/gu, ''), up = letters.replace(/[^\p{Lu}]/gu, '').length;
   if(letters.length > 3 && up / letters.length > .7) t = t.toLowerCase().replace(/(^|[.!?…]\s+|["“(]\s*)(\p{Ll})/gu, (m, a, b) => a + b.toUpperCase()).replace(/\bi\b/g, 'I').replace(/\bi'(m|ll|d|ve)\b/g, "I'$1");
   return t }
-/* the bubbles of one page: text blocks → bubbles (blocks close together are one bubble), noise left out, in reading order */
+/* text blocks of one picture → bubbles. c = the canvas the text reader was given (used to look for a balloon's outline between two blocks) */
+function raOutlineBetween(c, sx, sy, a, b){ try{ const x0 = Math.round(Math.max(a.x0, b.x0) * sx), x1 = Math.round(Math.min(a.x1, b.x1) * sx), y0 = Math.round(a.y1 * sy), y1 = Math.round(b.y0 * sy);
+    if(x1 - x0 < 6 || y1 - y0 < 3) return false; const d = c.getContext('2d').getImageData(x0, y0, x1 - x0, Math.min(40, y1 - y0)).data, w = x1 - x0, h = d.length / 4 / w;
+    for(let y = 0; y < h; y++){ let dark = 0, n = 0; for(let x = 0; x < w; x += 2){ const i = (y * w + x) * 4; if(.299 * d[i] + .587 * d[i + 1] + .114 * d[i + 2] < 100) dark++; n++ } if(dark / n > .45) return true } }catch(e){} return false }
+function raBubblesFrom(r, c, rtl, p){
+  const W = r.width || c.width, H = r.height || c.height, sx = c.width / W, sy = c.height / H;
+  let bs = (r.blocks || []).map(b => { const ls = (b.paragraphs || []).flatMap(q => q.lines || []).filter(l => l.box);
+    if(!ls.length) return null; const x0 = Math.min(...ls.map(l => l.box.x0)), y0 = Math.min(...ls.map(l => l.box.y0)), x1 = Math.max(...ls.map(l => l.box.x1)), y1 = Math.max(...ls.map(l => l.box.y1));
+    return {x0, y0, x1, y1, lh:ls.reduce((n, l) => n + (l.box.y1 - l.box.y0), 0) / ls.length, text:ls.map(l => l.text).join('\n'), conf:ls.reduce((n, l) => n + (l.confidence || 0), 0) / ls.length} }).filter(Boolean);
+  /* one bubble often comes back as two blocks: join blocks that sit right under each other and overlap sideways – unless a balloon outline runs between them (two bubbles nearly touching) */
+  bs.sort((a, b) => a.y0 - b.y0);
+  for(let i = 0; i < bs.length; i++) for(let j = i + 1; j < bs.length; j++){ const a = bs[i], b = bs[j]; if(!a || !b) continue;
+    const ov = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), gap = b.y0 - a.y1, lh = Math.max(a.lh, b.lh);
+    if(ov > .3 * Math.min(a.x1 - a.x0, b.x1 - b.x0) && gap < lh * 1.1 && gap > -lh && !raOutlineBetween(c, sx, sy, a, b)){ bs[i] = {x0:Math.min(a.x0, b.x0), y0:Math.min(a.y0, b.y0), x1:Math.max(a.x1, b.x1), y1:Math.max(a.y1, b.y1), lh, text:a.text + '\n' + b.text, conf:(a.conf + b.conf) / 2}; bs[j] = null } }
+  bs = bs.filter(Boolean).map(b => Object.assign(b, {say:raClean(b.text)})).filter(b => { const l = b.say.replace(/[^\p{L}]/gu, '').length; return l >= 2 && l / b.say.length >= .45 && !/^\d+$/.test(b.say) });
+  /* watermarks and page numbers (small text in the outer margin) and sound effects (very big or unsure lettering, "[crying sounds]") are marked, and left out unless the owner wants them */
+  for(const b of bs){ const letters = b.say.replace(/[^\p{L}]/gu, '').length;
+    b.edge = (b.x1 < .05 * W || b.x0 > .95 * W || b.y1 < .06 * H || b.y0 > .94 * H) && b.say.length <= 30;
+    b.sfx = (b.lh > .055 * H && letters <= 14) || (b.conf > 0 && b.conf < .5 && letters <= 6) || /^\[.*\]$/.test(b.say) }
+  /* reading order: rows of bubbles from top to bottom (bubbles whose heights overlap are one row), in a row left → right (manga right → left) */
+  const rows = []; for(const b of bs.slice().sort((a, b) => a.y0 - b.y0)){ const h = b.y1 - b.y0;
+    const row = rows.find(r => Math.min(r.y1, b.y1) - Math.max(r.y0, b.y0) > .35 * Math.min(h, r.y1 - r.y0)); if(row){ row.items.push(b); row.y0 = Math.min(row.y0, b.y0); row.y1 = Math.max(row.y1, b.y1) } else rows.push({y0:b.y0, y1:b.y1, items:[b]}) }
+  rows.sort((a, b) => a.y0 - b.y0);
+  return rows.flatMap(r => r.items.sort((a, b) => rtl ? b.x1 - a.x1 : a.x0 - b.x0)).map(b => ({p, fx0:b.x0 / W, fy0:b.y0 / H, fx1:b.x1 / W, fy1:b.y1 / H, say:b.say, edge:b.edge, sfx:b.sfx})) }
+const raWanted = b => !b.edge && !b.repeat && (!b.sfx || lsGet('nvBooks.raSfx', false));
+/* the bubbles of one page */
 async function raPageBubbles(p){ R.raCache = R.raCache || new Map(); if(R.raCache.has(p)) return R.raCache.get(p);
-  const pr = (async () => { const m = await getImg(p), k = Math.min(1, 2000 / Math.max(m.w, m.h)), c = document.createElement('canvas'); c.width = Math.round(m.w * k); c.height = Math.round(m.h * k);
-    c.getContext('2d').drawImage(m.img, 0, 0, c.width, c.height);
-    const t0 = Date.now(), r = await NvOcr.recognize({image:c.toDataURL('image/jpeg', 0.9)}), W = r.width || c.width, H = r.height || c.height;
-    let bs = (r.blocks || []).map(b => { const ls = (b.paragraphs || []).flatMap(q => q.lines || []).filter(l => l.box);
-      if(!ls.length) return null; const x0 = Math.min(...ls.map(l => l.box.x0)), y0 = Math.min(...ls.map(l => l.box.y0)), x1 = Math.max(...ls.map(l => l.box.x1)), y1 = Math.max(...ls.map(l => l.box.y1));
-      return {x0, y0, x1, y1, lh:ls.reduce((n, l) => n + (l.box.y1 - l.box.y0), 0) / ls.length, text:ls.map(l => l.text).join('\n'), conf:ls.reduce((n, l) => n + (l.confidence || 0), 0) / ls.length} }).filter(Boolean);
-    /* one bubble often comes back as two blocks: join blocks that sit right under each other and overlap sideways */
-    bs.sort((a, b) => a.y0 - b.y0);
-    for(let i = 0; i < bs.length; i++) for(let j = i + 1; j < bs.length; j++){ const a = bs[i], b = bs[j]; if(!a || !b) continue;
-      const ov = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), gap = b.y0 - a.y1, lh = Math.max(a.lh, b.lh);
-      if(ov > .3 * Math.min(a.x1 - a.x0, b.x1 - b.x0) && gap < lh * 1.1 && gap > -lh){ bs[i] = {x0:Math.min(a.x0, b.x0), y0:Math.min(a.y0, b.y0), x1:Math.max(a.x1, b.x1), y1:Math.max(a.y1, b.y1), lh, text:a.text + '\n' + b.text, conf:(a.conf + b.conf) / 2}; bs[j] = null } }
-    bs = bs.filter(Boolean).map(b => Object.assign(b, {say:raClean(b.text)})).filter(b => { const l = b.say.replace(/[^\p{L}]/gu, '').length; return l >= 2 && l / b.say.length >= .45 && !/^\d+$/.test(b.say) });
-    /* reading order: rows of bubbles from top to bottom (bubbles whose heights overlap are one row), in a row left → right (manga right → left) */
-    const rows = []; for(const b of bs.slice().sort((a, b) => a.y0 - b.y0)){ const h = b.y1 - b.y0;
-      const row = rows.find(r => Math.min(r.y1, b.y1) - Math.max(r.y0, b.y0) > .35 * Math.min(h, r.y1 - r.y0)); if(row){ row.items.push(b); row.y0 = Math.min(row.y0, b.y0); row.y1 = Math.max(row.y1, b.y1) } else rows.push({y0:b.y0, y1:b.y1, items:[b]}) }
-    rows.sort((a, b) => a.y0 - b.y0); const rtl = R.rtl;
-    let out = rows.flatMap(r => r.items.sort((a, b) => rtl ? b.x1 - a.x1 : a.x0 - b.x0)).map(b => ({p, fx0:b.x0 / W, fy0:b.y0 / H, fx1:b.x1 / W, fy1:b.y1 / H, say:b.say}));
-    /* panels first: a bubble belongs to the panel its middle is in; panels in reading order, the bubbles inside a panel in the order above */
-    let pans = []; try{ pans = raPanels(c, rtl) }catch(e){ LE('readalong', 'panels', e) }
-    if(pans.length > 1){ const pin = b => { const x = (b.fx0 + b.fx1) / 2, y = (b.fy0 + b.fy1) / 2, k = pans.findIndex(q => x >= q.x0 && x <= q.x1 && y >= q.y0 && y <= q.y1); return k < 0 ? 1e9 : k };
-      out = out.map((b, k) => ({b, k, n:pin(b)})).sort((a, z) => a.n - z.n || a.k - z.k).map(o => o.b) }
-    L('readalong', `page ${p + 1}: ${out.length} bubbles, ${pans.length} panels in ${Date.now() - t0} ms`, out.map(b => b.say.slice(0, 40)));
+  const pr = (async () => { const m = await getImg(p), Lg = Math.max(m.w, m.h), k = Lg > 2000 ? 2000 / Lg : Lg < 1100 ? Math.min(2.5, 1400 / Lg) : 1, c = document.createElement('canvas'); c.width = Math.round(m.w * k); c.height = Math.round(m.h * k);
+    const cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height); cx.drawImage(m.img, 0, 0, c.width, c.height);     // white first: a picture with a see-through background would reach the text reader as black
+    const t0 = Date.now(), r = await NvOcr.recognize({image:c.toDataURL('image/jpeg', 0.9)});
+    const out = raBubblesFrom(r, c, R.rtl, p);
+    /* the same small text in the same place on other pages = a watermark or a running head */
+    R.raSeen = R.raSeen || new Map(); for(const b of out){ const key = Math.round(b.fx0 * 20) + ',' + Math.round(b.fy0 * 20) + ':' + norm(b.say), seen = R.raSeen.get(key); if(seen != null && seen !== p && b.say.length <= 30) b.repeat = true; else if(seen == null) R.raSeen.set(key, p) }
+    L('readalong', `page ${p + 1}: ${out.length} bubbles in ${Date.now() - t0} ms`, out.map(b => (b.edge ? '[edge] ' : b.sfx ? '[sfx] ' : b.repeat ? '[repeat] ' : '') + b.say.slice(0, 40)));
     return out })();
   R.raCache.set(p, pr); pr.catch(() => R && R.raCache && R.raCache.delete(p)); return pr }
-/* the panels of a page, in reading order, as parts of the page {x0, y0, x1, y1} (0–1). XY-cut: find the empty strips (gutters) that go
-   right across a part of the page – first across the whole width (tiers, top → bottom), then inside a tier from top to bottom (columns,
-   left → right, manga right → left), and so on. Pages without clear gutters give one panel (then the bubbles keep the simple order). */
-function raPanels(src, rtl){
-  const w = 320, h = Math.max(1, Math.round(src.height * w / src.width)), cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-  const cx = cv.getContext('2d', {willReadFrequently:true}); cx.drawImage(src, 0, 0, w, h); const d = cx.getImageData(0, 0, w, h).data, g = new Uint8Array(w * h);
-  for(let i = 0; i < w * h; i++) g[i] = (d[i * 4] * 3 + d[i * 4 + 1] * 6 + d[i * 4 + 2]) / 10;
-  /* the gutter colour: what most of the page's edge is (white on most comics, black on some) */
-  const edge = []; for(let x = 0; x < w; x += 2){ edge.push(g[x], g[(h - 1) * w + x]) } for(let y = 0; y < h; y += 2){ edge.push(g[y * w], g[y * w + w - 1]) }
-  edge.sort((a, b) => a - b); const bg = edge[edge.length >> 1], near = v => Math.abs(v - bg) < 40;
-  const MIN = 2, out = [];
-  const blankRow = (y, x0, x1) => { let n = 0; for(let x = x0; x < x1; x++) if(!near(g[y * w + x])) n++; return n <= (x1 - x0) * .02 };
-  const blankCol = (x, y0, y1) => { let n = 0; for(let y = y0; y < y1; y++) if(!near(g[y * w + x])) n++; return n <= (y1 - y0) * .02 };
-  /* the parts between gutters along one direction; small bits (less than 4% of the part) are not panels */
-  const parts = (a0, a1, blank) => { const res = []; let s = null, run = 0;
-    for(let a = a0; a < a1; a++){ if(blank(a)){ run++; if(s != null && run >= MIN){ res.push([s, a - run + 1]); s = null } } else { if(s == null) s = a; run = 0 } }
-    if(s != null) res.push([s, a1]); return res.filter(([p0, p1]) => p1 - p0 >= (a1 - a0) * .04) };
-  const cut = (x0, y0, x1, y1, depth) => {
-    if(depth < 6){
-      const ts = parts(y0, y1, y => blankRow(y, x0, x1)); if(ts.length > 1){ for(const [a, b] of ts) cut(x0, a, x1, b, depth + 1); return }
-      const cs = parts(x0, x1, x => blankCol(x, y0, y1)); if(cs.length > 1){ for(const [a, b] of (rtl ? cs.slice().reverse() : cs)) cut(a, y0, b, y1, depth + 1); return }
-      /* trim the empty edge and try once more (a panel group with a margin round it) */
-      if(ts.length === 1 && cs.length === 1 && (ts[0][0] > y0 || ts[0][1] < y1 || cs[0][0] > x0 || cs[0][1] < x1) && depth < 5) return cut(cs[0][0], ts[0][0], cs[0][1], ts[0][1], depth + 1) }
-    out.push({x0:x0 / w, y0:y0 / h, x1:x1 / w, y1:y1 / h}) };
-  cut(0, 0, w, h, 0);
-  return out }
 /* the bubbles of what is on screen (one page, or two side by side) */
-async function raScreen(){ const ps = R.shown.slice(); const lists = await Promise.all(ps.map(raPageBubbles)); return (R.rtl ? lists.slice().reverse() : lists).flat() }
+async function raScreen(){ const ps = R.shown.slice(); const lists = await Promise.all(ps.map(raPageBubbles)); return (R.rtl ? lists.slice().reverse() : lists).flat().filter(raWanted) }
 /* where a bubble is on screen: as a part of the page box, so it follows zooming and moving */
 function raBox(b){ const k = R.shown.indexOf(b.p); if(k < 0) return null; const ws = R.ws, TW = ws.reduce((a, c) => a + c, 0);
   const before = R.rtl ? ws.slice(k + 1).reduce((a, c) => a + c, 0) : ws.slice(0, k).reduce((a, c) => a + c, 0), pad = .008;
   return {l:(before + Math.max(0, b.fx0 - pad) * ws[k]) / TW, t:Math.max(0, b.fy0 - pad), w:(b.fx1 - b.fx0 + 2 * pad) * ws[k] / TW, h:b.fy1 - b.fy0 + 2 * pad} }
-function raDraw(){ rp().querySelectorAll('.rab').forEach(e => e.remove()); if(!RA || !RA.bubbles) return;
-  RA.bubbles.forEach((b, i) => { const x = raBox(b); if(!x) return; const d = document.createElement('div'); d.className = 'rab' + (i === RA.i ? ' on' : '');
-    d.style.cssText = `left:${x.l * 100}%;top:${x.t * 100}%;width:${x.w * 100}%;height:${x.h * 100}%`; rp().appendChild(d) }) }
-function raBar(){ let bar = $('#rabar'); if(!RA){ if(bar) bar.remove(); return }
+function raDraw(){ document.querySelectorAll('.rab').forEach(e => e.remove()); if(!RA || !RA.bubbles || !R) return; const host = R.scroll ? $('#rcol') : rp(); if(!host) return;
+  RA.bubbles.forEach((b, i) => { const d = document.createElement('div'); d.className = 'rab' + (i === RA.i ? ' on' : '');
+    if(b.col) d.style.cssText = `left:${b.col.x0 - 4}px;top:${b.col.y0 - 4}px;width:${b.col.x1 - b.col.x0 + 8}px;height:${b.col.y1 - b.col.y0 + 8}px`;
+    else { const x = raBox(b); if(!x) return; d.style.cssText = `left:${x.l * 100}%;top:${x.t * 100}%;width:${x.w * 100}%;height:${x.h * 100}%` }
+    host.appendChild(d) }) }
+function raBar(){ let bar = $('#rabar'); if(!RA && !PN){ if(bar) bar.remove(); return }
   if(!bar){ bar = document.createElement('div'); bar.id = 'rabar'; $('#reader').appendChild(bar) }
-  const sp = RA.speed || 1;
-  bar.innerHTML = `<button class="ib" id="rapp" aria-label="${RA.paused ? 'Read' : 'Pause'}">${RA.paused ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>' : '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>'}</button>
-    <button class="ib" id="raskip" aria-label="Next bubble"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
-    <div class="raseg"><button class="${RA.mode === 'auto' ? 'on' : ''}" data-ram="auto">Auto</button><button class="${RA.mode === 'tap' ? 'on' : ''}" data-ram="tap">Tap only</button></div>
-    <button class="rasp" id="rasp">${sp}×</button><button class="ib" id="ravoice" aria-label="Voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6"/><path d="M18 6c1 1 1.5 2 1.5 3.5S19 12 18 13M21 4c1.5 1.5 2.2 3.3 2.2 5.5S22.5 13.5 21 15"/></svg></button><span class="rast" id="rast">${esc(RA.status || '')}</span><button class="ib" id="rax" aria-label="Stop reading along">✕</button>`;
-  $('#rapp').onclick = () => RA.paused ? raResume() : raPause(); $('#raskip').onclick = () => raPlay((RA.i == null ? -1 : RA.i) + 1, true);
-  bar.querySelectorAll('[data-ram]').forEach(b => b.onclick = () => { RA.mode = b.dataset.ram; lsSet('nvBooks.raMode', RA.mode); raBar(); if(RA.mode === 'auto' && RA.paused === false && !RA.speaking) raPlay((RA.i == null ? -1 : RA.i) + 1) });
-  $('#rasp').onclick = () => { const L0 = [0.9, 1, 1.15, 1.3, 1.5, 1.75]; RA.speed = L0[(L0.indexOf(sp) + 1) % L0.length]; lsSet('nvBooks.raSpeed', RA.speed); RA.audio.playbackRate = RA.speed; raBar() };
-  $('#rax').onclick = () => raStop();
-  $('#ravoice').onclick = () => { raPause(); if(window.NVVOICE) NVVOICE.open(RAUI, {intro:'The voice for Read along and for EPUBs read aloud in Audiobooks.'}) } }
+  const A = RA || PN, sp = A.speed || 1, paused = A.paused, mode = A.mode, ic = d => `<svg viewBox="0 0 24 24" fill="currentColor">${d}</svg>`;
+  bar.innerHTML = `<button class="ib" id="rapp" aria-label="${paused ? 'Go on' : 'Pause'}">${paused ? ic('<path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/>') : ic('<rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/>')}</button>
+    ${PN ? `<button class="ib" id="rapv" aria-label="Previous panel">${ic('<path d="M6 5h2v14H6zM20 5v14L9 12z"/>')}</button><button class="ib" id="rapn" aria-label="Next panel">${ic('<path d="M16 5h2v14h-2zM4 5v14l11-7z"/>')}</button>` : ''}
+    ${RA ? `<button class="ib" id="raskip" aria-label="Next bubble">${ic('<path d="M5 6v12l8.5-6zM15 6h3v12h-3z"/>')}</button>` : ''}
+    <div class="raseg"><button class="${mode === 'auto' ? 'on' : ''}" data-ram="auto">Auto</button><button class="${mode === 'tap' ? 'on' : ''}" data-ram="tap">${PN ? 'Manual' : 'Tap only'}</button></div>
+    <button class="rasp" id="rasp">${sp}×</button>${RA ? `<button class="ib" id="ravoice" aria-label="Voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6"/><path d="M18 6c1 1 1.5 2 1.5 3.5S19 12 18 13M21 4c1.5 1.5 2.2 3.3 2.2 5.5S22.5 13.5 21 15"/></svg></button>` : ''}<span class="rast" id="rast">${esc(A.status || '')}</span><button class="ib" id="rax" aria-label="Stop">✕</button>`;
+  $('#rapp').onclick = () => RA ? (RA.paused ? raResume() : raPause()) : (PN.paused ? pnResume() : pnPause());
+  if($('#raskip')) $('#raskip').onclick = () => raPlay((RA.i == null ? -1 : RA.i) + 1, true);
+  if($('#rapv')){ $('#rapv').onclick = () => prev(); $('#rapn').onclick = () => next() }
+  bar.querySelectorAll('[data-ram]').forEach(b => b.onclick = () => { const m = b.dataset.ram; lsSet('nvBooks.raMode', m); if(RA) RA.mode = m; if(PN) PN.mode = m; raBar();
+    if(RA && m === 'auto' && RA.paused === false && !RA.speaking && !PN) raPlay((RA.i == null ? -1 : RA.i) + 1); if(PN) pnArm() });
+  $('#rasp').onclick = () => { const L0 = [0.9, 1, 1.15, 1.3, 1.5, 1.75], nx = L0[(L0.indexOf(sp) + 1) % L0.length]; lsSet('nvBooks.raSpeed', nx); if(RA){ RA.speed = nx; RA.audio.playbackRate = nx } if(PN) PN.speed = nx; raBar() };
+  $('#rax').onclick = () => RA ? raStop() : pnStop();
+  if($('#ravoice')) $('#ravoice').onclick = () => { raPause(); if(window.NVVOICE) NVVOICE.open(RAUI, {intro:'The voice for Read along and for EPUBs read aloud in Audiobooks.'}) } }
 const raStatus = t => { if(!RA) return; RA.status = t; const e = $('#rast'); if(e) e.textContent = t };
 /* the sound of one bubble; made ahead (the voice makes one at a time, in order), so the next bubbles are ready when the current one ends */
-function raSayB(b){ const key = R.b.id + ':' + b.p + ':' + b.say + ':' + JSON.stringify(raVoice());
+const pnStatus = t => { if(!PN) return; PN.status = t; const e = $('#rast'); if(e && !RA) e.textContent = t };
+function raSayB(b){ const key = R.b.id + ':' + b.p + ':' + (b.fx0 != null ? Math.round(b.fx0 * 1000) + ',' + Math.round(b.fy0 * 1000) : b.col ? Math.round(b.col.x0) + ',' + Math.round(b.col.y0) : '') + ':' + b.say + ':' + JSON.stringify(raVoice());
   RA.syn = RA.syn || new Map(); if(RA.syn.has(key)) return RA.syn.get(key);
   RA.n = (RA.n || 0) + 1; const pr = NvTtsB.synth(Object.assign({text:b.say, id:'ra' + (RA.n % 10)}, raVoice())).then(r => linkUrl(r.uri, 'bubble.wav'));
   RA.syn.set(key, pr); pr.catch(() => RA && RA.syn && RA.syn.delete(key)); if(RA.syn.size > 8) RA.syn.delete(RA.syn.keys().next().value); return pr }
@@ -2389,11 +2391,13 @@ const raSay = i => raSayB(RA.bubbles[i]);
 /* make the next bubbles ahead: two on this page, and near the end of the page the first two of the next page */
 function raAhead(i){ if(!RA || !RA.bubbles) return; const me = RA;
   for(const k of [i + 1, i + 2]) if(k < RA.bubbles.length) raSay(k).catch(() => {});
-  if(RA.mode === 'auto' && i + 2 >= RA.bubbles.length){ const np = R.s + R.shown.length;
+  if(RA.mode === 'auto' && !PN && i + 2 >= RA.bubbles.length){ const np = R.s + R.shown.length;
     if(np < R.n) raPageBubbles(np).then(bs => { if(RA === me) for(const b of bs.slice(0, 2)) raSayB(b).catch(() => {}) }).catch(() => {}) } }
 async function raPlay(i, manual){ if(!RA || !R) return; const me = RA, tok = ++RA.tok;
   if(!RA.bubbles) return;
-  if(i >= RA.bubbles.length){ RA.i = null; raDraw(); if(RA.mode === 'auto' && !manual || manual && RA.mode === 'auto'){ raStatus('Next page…'); setTimeout(() => { if(RA === me && tok === RA.tok && R) next() }, 700) } else raStatus('End of the page'); return }
+  if(i >= RA.bubbles.length){ RA.i = null; raDraw();
+    if(PN){ if(RA.mode === 'auto' && !RA.paused){ raStatus('Next panel…'); setTimeout(() => { if(RA === me && tok === RA.tok && R) next() }, 550 / (RA.speed || 1)) } else raStatus('Tap or swipe for the next panel'); return }
+    if(RA.mode === 'auto' && !manual || manual && RA.mode === 'auto'){ raStatus('Next page…'); setTimeout(() => { if(RA === me && tok === RA.tok && R) next() }, 700) } else raStatus('End of the page'); return }
   RA.i = i; RA.paused = false; RA.speaking = true; raDraw(); raBar(); raStatus(`${i + 1} / ${RA.bubbles.length}`);
   const slow = setTimeout(() => { if(RA === me && tok === RA.tok) raStatus(`${i + 1} / ${RA.bubbles.length} · the voice is getting ready…`) }, 1500);
   try{ const u = raSay(i); raAhead(i); const url = await u; clearTimeout(slow); if(RA !== me || tok !== RA.tok) return; raStatus(`${i + 1} / ${RA.bubbles.length}`);
@@ -2412,11 +2416,11 @@ async function raOnPage(){ if(!RA || !R) return; const me = RA, tok = ++RA.tok; 
 function raStart(){ if(!R || !NvOcr || !NvTtsB) return toast('Read along works in the Android app');
   if(RA) return raStop();
   RA = {mode:lsGet('nvBooks.raMode', 'auto'), speed:lsGet('nvBooks.raSpeed', 1), audio:new Audio(), tok:0, paused:false, i:null, bubbles:null};
-  RA.audio.onended = raEnded; rUI(false); raBar(); raOnPage();
+  RA.audio.onended = raEnded; rUI(false); if(R.scroll && !PN) pnStart(true); raBar(); if(PN) pnReplan(); else raOnPage();
   if(window.NVVOICE && NVVOICE.hasNatural('en')) NvTtsB.synth(Object.assign({text:'Hi.', id:'rawarm'}, raVoice())).catch(() => {});   // load the natural voice while the page is read
   if(window.NVVOICE) NVVOICE.offer(RAUI, 'en', ok => { if(ok && RA){ RA.syn = new Map(); if(!RA.paused && RA.i != null) raPlay(RA.i) } });
   if(!lsGet('nvBooks.raHinted', false)){ lsSet('nvBooks.raHinted', true); rHint('Tap a bubble to read that one.<br>Auto: carries on from there · Tap only: just the bubbles you tap', 4500) } }
-function raStop(){ if(!RA) return; RA.tok++; RA.audio.pause(); RA.audio.removeAttribute('src'); RA = null; raDraw(); raBar() }
+function raStop(){ if(!RA) return; RA.tok++; RA.audio.pause(); RA.audio.removeAttribute('src'); RA = null; raDraw(); if(PN) pnArm(); raBar() }
 /* a tap on a bubble while reading along: read that one (the reader's own tap handling calls this first) */
 function raTap(x, y){ if(!RA || !RA.bubbles || !R) return false; const fx = (x - R.x) / R.DW, fy = (y - R.y) / R.DH;
   const i = RA.bubbles.findIndex(b => { const q = raBox(b); return q && fx >= q.l - .01 && fx <= q.l + q.w + .01 && fy >= q.t - .01 && fy <= q.t + q.h + .01 });
