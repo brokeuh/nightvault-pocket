@@ -35,13 +35,33 @@
     {
      "path": "hub/nvsetup.js",
      "size": 25749
+    },
+    {
+     "path": "hub/nvtheme.js",
+     "size": 10296
+    },
+    {
+     "path": "hub/nvmenu.js",
+     "size": 10252
+    },
+    {
+     "path": "hub/nvnew.js",
+     "size": 3679
+    },
+    {
+     "path": "hub/nvsplash.js",
+     "size": 8486
+    },
+    {
+     "path": "hub/nvvoice.js",
+     "size": 13798
     }
    ],
    "provides": [],
    "uses": [],
-   "size": 183312,
-   "hash": "5eaf98816401",
-   "version": "2026.10.28.0935",
+   "size": 229823,
+   "hash": "71f122827fe4",
+   "version": "2026.10.28.0937",
    "updated": "2026-10-28"
   },
   {
