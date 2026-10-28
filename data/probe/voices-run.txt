@@ -1,49 +1,7 @@
 646 /tmp/all.txt
-== kokoro-int8-en-v0_19
+== vits-piper-en_US-lessac-medium-int8
 .
-./LICENSE
-./README.md
-./model.int8.onnx
-./espeak-ng-data
-./espeak-ng-data/sq_dict
-./espeak-ng-data/pl_dict
-./espeak-ng-data/om_dict
-./espeak-ng-data/mi_dict
-./espeak-ng-data/gu_dict
-./espeak-ng-data/lt_dict
-./espeak-ng-data/hu_dict
-./espeak-ng-data/qya_dict
-./espeak-ng-data/nl_dict
-./espeak-ng-data/lb_dict
-./espeak-ng-data/sl_dict
-./espeak-ng-data/en_dict
-./espeak-ng-data/vi_dict
-./espeak-ng-data/ka_dict
-./espeak-ng-data/an_dict
-./espeak-ng-data/phontab
-./espeak-ng-data/qdb_dict
-./espeak-ng-data/pt_dict
-./espeak-ng-data/ca_dict
-./espeak-ng-data/ta_dict
-./espeak-ng-data/smj_dict
-./espeak-ng-data/th_dict
-./espeak-ng-data/ga_dict
-./espeak-ng-data/hak_dict
-./espeak-ng-data/de_dict
-./espeak-ng-data/is_dict
-./espeak-ng-data/ar_dict
-./espeak-ng-data/quc_dict
-./espeak-ng-data/io_dict
-./espeak-ng-data/ba_dict
-./espeak-ng-data/or_dict
-./espeak-ng-data/tn_dict
-./espeak-ng-data/tt_dict
-./espeak-ng-data/ia_dict
-./espeak-ng-data/grc_dict
--rw-r--r-- 1 runner runner 102636146 Oct 27 15:02 kokoro-int8-en-v0_19.zip
-== vits-piper-nl_BE-nathalie-medium-int8
-.
-./nl_BE-nathalie-medium.onnx.json
+./en_US-lessac-medium.onnx.json
 ./MODEL_CARD
 ./espeak-ng-data
 ./espeak-ng-data/sq_dict
@@ -82,11 +40,10 @@
 ./espeak-ng-data/ia_dict
 ./espeak-ng-data/grc_dict
 ./espeak-ng-data/as_dict
--rw-r--r-- 1 runner runner 22528051 Oct 27 15:02 vits-piper-nl_BE-nathalie-medium-int8.zip
-== vits-piper-nl_NL-pim-medium-int8
+-rw-r--r-- 1 runner runner 22385965 Oct 28 13:18 vits-piper-en_US-lessac-medium-int8.zip
+== vits-piper-en_US-ryan-medium-int8
 .
-./nl_NL-pim-medium.onnx
-./nl_NL-pim-medium.onnx.json
+./en_US-ryan-medium.onnx.json
 ./MODEL_CARD
 ./espeak-ng-data
 ./espeak-ng-data/sq_dict
@@ -124,4 +81,89 @@
 ./espeak-ng-data/tt_dict
 ./espeak-ng-data/ia_dict
 ./espeak-ng-data/grc_dict
--rw-r--r-- 1 runner runner 22538837 Oct 27 15:02 vits-piper-nl_NL-pim-medium-int8.zip
+./espeak-ng-data/as_dict
+-rw-r--r-- 1 runner runner 22501139 Oct 28 13:18 vits-piper-en_US-ryan-medium-int8.zip
+== vits-piper-en_GB-alba-medium-int8
+.
+./en_GB-alba-medium.onnx
+./en_GB-alba-medium.onnx.json
+./MODEL_CARD
+./espeak-ng-data
+./espeak-ng-data/sq_dict
+./espeak-ng-data/pl_dict
+./espeak-ng-data/om_dict
+./espeak-ng-data/mi_dict
+./espeak-ng-data/gu_dict
+./espeak-ng-data/lt_dict
+./espeak-ng-data/hu_dict
+./espeak-ng-data/qya_dict
+./espeak-ng-data/nl_dict
+./espeak-ng-data/lb_dict
+./espeak-ng-data/sl_dict
+./espeak-ng-data/en_dict
+./espeak-ng-data/vi_dict
+./espeak-ng-data/ka_dict
+./espeak-ng-data/an_dict
+./espeak-ng-data/phontab
+./espeak-ng-data/qdb_dict
+./espeak-ng-data/pt_dict
+./espeak-ng-data/ca_dict
+./espeak-ng-data/ta_dict
+./espeak-ng-data/smj_dict
+./espeak-ng-data/th_dict
+./espeak-ng-data/ga_dict
+./espeak-ng-data/hak_dict
+./espeak-ng-data/de_dict
+./espeak-ng-data/is_dict
+./espeak-ng-data/ar_dict
+./espeak-ng-data/quc_dict
+./espeak-ng-data/io_dict
+./espeak-ng-data/ba_dict
+./espeak-ng-data/or_dict
+./espeak-ng-data/tn_dict
+./espeak-ng-data/tt_dict
+./espeak-ng-data/ia_dict
+./espeak-ng-data/grc_dict
+-rw-r--r-- 1 runner runner 22497911 Oct 28 13:18 vits-piper-en_GB-alba-medium-int8.zip
+== vits-piper-en_GB-northern_english_male-medium-int8
+.
+./en_GB-northern_english_male-medium.onnx.json
+./MODEL_CARD
+./espeak-ng-data
+./espeak-ng-data/sq_dict
+./espeak-ng-data/pl_dict
+./espeak-ng-data/om_dict
+./espeak-ng-data/mi_dict
+./espeak-ng-data/gu_dict
+./espeak-ng-data/lt_dict
+./espeak-ng-data/hu_dict
+./espeak-ng-data/qya_dict
+./espeak-ng-data/nl_dict
+./espeak-ng-data/lb_dict
+./espeak-ng-data/sl_dict
+./espeak-ng-data/en_dict
+./espeak-ng-data/vi_dict
+./espeak-ng-data/ka_dict
+./espeak-ng-data/an_dict
+./espeak-ng-data/phontab
+./espeak-ng-data/qdb_dict
+./espeak-ng-data/pt_dict
+./espeak-ng-data/ca_dict
+./espeak-ng-data/ta_dict
+./espeak-ng-data/smj_dict
+./espeak-ng-data/th_dict
+./espeak-ng-data/ga_dict
+./espeak-ng-data/hak_dict
+./espeak-ng-data/de_dict
+./espeak-ng-data/is_dict
+./espeak-ng-data/ar_dict
+./espeak-ng-data/quc_dict
+./espeak-ng-data/io_dict
+./espeak-ng-data/ba_dict
+./espeak-ng-data/or_dict
+./espeak-ng-data/tn_dict
+./espeak-ng-data/tt_dict
+./espeak-ng-data/ia_dict
+./espeak-ng-data/grc_dict
+./espeak-ng-data/as_dict
+-rw-r--r-- 1 runner runner 22521772 Oct 28 13:18 vits-piper-en_GB-northern_english_male-medium-int8.zip

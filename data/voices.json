@@ -57,6 +57,82 @@
     "nl_NL-pim-medium.onnx.json",
     "tokens.txt"
    ]
+  },
+  {
+   "id": "vits-piper-en_US-lessac-medium-int8",
+   "kind": "vits",
+   "lang": "en",
+   "size": 22385965,
+   "url": "https://github.com/brokeuh/nightvault-pocket/releases/download/voices/vits-piper-en_US-lessac-medium-int8.zip",
+   "model": "en_US-lessac-medium.onnx",
+   "voices": "",
+   "tokens": "tokens.txt",
+   "dataDir": "espeak-ng-data",
+   "lexicon": "",
+   "files": [
+    "MODEL_CARD",
+    "en_US-lessac-medium.onnx",
+    "en_US-lessac-medium.onnx.json",
+    "espeak-ng-data",
+    "tokens.txt"
+   ]
+  },
+  {
+   "id": "vits-piper-en_US-ryan-medium-int8",
+   "kind": "vits",
+   "lang": "en",
+   "size": 22501139,
+   "url": "https://github.com/brokeuh/nightvault-pocket/releases/download/voices/vits-piper-en_US-ryan-medium-int8.zip",
+   "model": "en_US-ryan-medium.onnx",
+   "voices": "",
+   "tokens": "tokens.txt",
+   "dataDir": "espeak-ng-data",
+   "lexicon": "",
+   "files": [
+    "MODEL_CARD",
+    "en_US-ryan-medium.onnx",
+    "en_US-ryan-medium.onnx.json",
+    "espeak-ng-data",
+    "tokens.txt"
+   ]
+  },
+  {
+   "id": "vits-piper-en_GB-alba-medium-int8",
+   "kind": "vits",
+   "lang": "en",
+   "size": 22497911,
+   "url": "https://github.com/brokeuh/nightvault-pocket/releases/download/voices/vits-piper-en_GB-alba-medium-int8.zip",
+   "model": "en_GB-alba-medium.onnx",
+   "voices": "",
+   "tokens": "tokens.txt",
+   "dataDir": "espeak-ng-data",
+   "lexicon": "",
+   "files": [
+    "MODEL_CARD",
+    "en_GB-alba-medium.onnx",
+    "en_GB-alba-medium.onnx.json",
+    "espeak-ng-data",
+    "tokens.txt"
+   ]
+  },
+  {
+   "id": "vits-piper-en_GB-northern_english_male-medium-int8",
+   "kind": "vits",
+   "lang": "en",
+   "size": 22521772,
+   "url": "https://github.com/brokeuh/nightvault-pocket/releases/download/voices/vits-piper-en_GB-northern_english_male-medium-int8.zip",
+   "model": "en_GB-northern_english_male-medium.onnx",
+   "voices": "",
+   "tokens": "tokens.txt",
+   "dataDir": "espeak-ng-data",
+   "lexicon": "",
+   "files": [
+    "MODEL_CARD",
+    "en_GB-northern_english_male-medium.onnx",
+    "en_GB-northern_english_male-medium.onnx.json",
+    "espeak-ng-data",
+    "tokens.txt"
+   ]
   }
  ]
 }
