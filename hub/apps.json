@@ -248,7 +248,7 @@
     },
     {
      "path": "books/app.js",
-     "size": 332297
+     "size": 329755
     },
     {
      "path": "books/panels.js",
@@ -306,9 +306,9 @@
    "uses": [],
    "entry": "books/?nv=hub",
    "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted.",
-   "size": 2512648,
-   "hash": "2db72713e68e",
-   "version": "2026.10.28.1322",
+   "size": 2510106,
+   "hash": "317d7f1d5ec7",
+   "version": "2026.10.28.1331",
    "updated": "2026-10-28"
   },
   {
