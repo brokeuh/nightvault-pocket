@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 136,
+   "date": "2026-10-28",
+   "where": [
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Read along: panel by panel order",
+   "items": [
+    "Read along now finds the panels on the page (the empty strips between them) and reads panel after panel, left to right, top to bottom; the bubbles inside a panel in order.",
+    "Before, a bubble that sat a little higher in the right panel was read first, which felt like reading right to left.",
+    "Changing a comic's reading direction while Read along is on now takes effect straight away."
+   ]
+  },
+  {
    "id": 135,
    "date": "2026-10-28",
    "where": [
