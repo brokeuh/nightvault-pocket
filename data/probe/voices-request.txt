@@ -1,3 +1,4 @@
-kokoro-int8-en-v0_19
-vits-piper-nl_BE-nathalie-medium-int8
-vits-piper-nl_NL-pim-medium-int8
+vits-piper-en_US-lessac-medium-int8
+vits-piper-en_US-ryan-medium-int8
+vits-piper-en_GB-alba-medium-int8
+vits-piper-en_GB-northern_english_male-medium-int8

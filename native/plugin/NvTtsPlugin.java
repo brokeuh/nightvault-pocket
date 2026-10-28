@@ -201,7 +201,7 @@ public class NvTtsPlugin extends Plugin {
             v.setDataDir(new File(d, c.optString("dataDir", "espeak-ng-data")).getAbsolutePath());
             mc.setVits(v);
         }
-        mc.setNumThreads(Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors() / 2)));
+        mc.setNumThreads(Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors() - 2)));   // 8 or 6 cores → 4 threads, 4 cores → 2
         mc.setProvider("cpu");
         OfflineTtsConfig cfg = new OfflineTtsConfig();
         cfg.setModel(mc);
