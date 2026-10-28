@@ -37,6 +37,8 @@ button{font-family:inherit}
 
 /* the tiles: square, three across */
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+/* tablet / wide window: same tile size as on a phone, just more of them in a row */
+@media (min-width:700px){body{max-width:980px}.grid,.pgrid{grid-template-columns:repeat(auto-fill,112px);justify-content:start;gap:12px}.tile b{font-size:13px}#setup .wz{max-width:560px;margin:0 auto}}
 .tile{position:relative;aspect-ratio:1/1;border-radius:20px;background:var(--pan);border:1px solid var(--line);padding:8px 6px 9px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;text-decoration:none;color:var(--text);text-align:center;min-width:0}
 a.tile:active{transform:scale(.97)}a.tile:hover{border-color:var(--line2)}
 .ico{width:clamp(48px,17vw,64px);height:clamp(48px,17vw,64px);border-radius:20px;margin:auto 0;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--c) 20%,var(--pan));color:color-mix(in srgb,var(--c),#000 var(--dk))}

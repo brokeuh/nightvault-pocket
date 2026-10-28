@@ -10,7 +10,7 @@
    "files": [
     {
      "path": "hub/index.html",
-     "size": 92528
+     "size": 92815
     },
     {
      "path": "hub/core.js",
@@ -59,9 +59,9 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 231181,
-   "hash": "27795af21780",
-   "version": "2026.10.28.1534",
+   "size": 231468,
+   "hash": "cc0aa403c16b",
+   "version": "2026.10.28.2035",
    "updated": "2026-10-28"
   },
   {
@@ -88,8 +88,8 @@
    "keepsData": "Your collection stays: Scanner and Binder share it.",
    "size": 469223,
    "hash": "968a193efea2",
-   "version": "2026.10.23.1445",
-   "updated": "2026-10-23"
+   "version": "2026.10.28.2035",
+   "updated": "2026-10-28"
   },
   {
    "id": "binder",
@@ -112,8 +112,8 @@
    "keepsData": "Your collection stays: Scanner and Binder share it.",
    "size": 469223,
    "hash": "968a193efea2",
-   "version": "2026.10.23.1445",
-   "updated": "2026-10-23"
+   "version": "2026.10.28.2035",
+   "updated": "2026-10-28"
   },
   {
    "id": "convert",
@@ -193,8 +193,8 @@
    "uses": [],
    "size": 4258783,
    "hash": "9a01ddf3b20e",
-   "version": "2026.10.23.1505",
-   "updated": "2026-10-23"
+   "version": "2026.10.28.2035",
+   "updated": "2026-10-28"
   },
   {
    "id": "control",
@@ -215,8 +215,8 @@
    "uses": [],
    "size": 23808,
    "hash": "2313ddd47660",
-   "version": "2026.10.23.1505",
-   "updated": "2026-10-23"
+   "version": "2026.10.28.2035",
+   "updated": "2026-10-28"
   },
   {
    "id": "go",
@@ -233,8 +233,8 @@
    ],
    "size": 0,
    "hash": "e3b0c44298fc",
-   "version": "2026.10.12.1325",
-   "updated": "2026-10-12"
+   "version": "2026.10.28.2035",
+   "updated": "2026-10-28"
   },
   {
    "id": "bookcase",
@@ -312,7 +312,7 @@
    "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted.",
    "size": 2519284,
    "hash": "e3cd929a96d9",
-   "version": "2026.10.28.1534",
+   "version": "2026.10.28.2035",
    "updated": "2026-10-28"
   },
   {
@@ -338,7 +338,7 @@
    "uses": [],
    "size": 272942,
    "hash": "40a886864fb1",
-   "version": "2026.10.28.0935",
+   "version": "2026.10.28.2035",
    "updated": "2026-10-28"
   },
   {
@@ -364,7 +364,7 @@
    "uses": [],
    "size": 272942,
    "hash": "40a886864fb1",
-   "version": "2026.10.28.0935",
+   "version": "2026.10.28.2035",
    "updated": "2026-10-28"
   },
   {
@@ -402,8 +402,8 @@
    "keepsData": "Your list, what you watched, groups and TMDB key stay on this device. Video files are never deleted.",
    "size": 275159,
    "hash": "43118ccef63a",
-   "version": "2026.10.23.1544",
-   "updated": "2026-10-23"
+   "version": "2026.10.28.2035",
+   "updated": "2026-10-28"
   },
   {
    "id": "boardgames",
@@ -432,8 +432,8 @@
    "keepsData": "Your plays, games added by hand, pictures and groups stay on this device. Games from BoardGameGeek come back by themselves.",
    "size": 114134,
    "hash": "4c5fdc368ae1",
-   "version": "2026.10.25.0927",
-   "updated": "2026-10-25"
+   "version": "2026.10.28.2035",
+   "updated": "2026-10-28"
   },
   {
    "id": "print3d",
@@ -466,8 +466,8 @@
    "keepsData": "Your models list, prints, tags, groups and copies in the app stay on this device. Files in phone folders are never deleted.",
    "size": 150710,
    "hash": "fdb9b21ea519",
-   "version": "2026.10.23.1327",
-   "updated": "2026-10-23"
+   "version": "2026.10.28.2035",
+   "updated": "2026-10-28"
   },
   {
    "id": "collectables",
@@ -482,8 +482,8 @@
    "uses": [],
    "size": 0,
    "hash": "e3b0c44298fc",
-   "version": "2026.10.12.1325",
-   "updated": "2026-10-12"
+   "version": "2026.10.28.2035",
+   "updated": "2026-10-28"
   },
   {
    "id": "games",
@@ -516,8 +516,8 @@
    "keepsData": "Your games, copies, wishlist, groups and keys stay on this device.",
    "size": 148456,
    "hash": "749cc3591add",
-   "version": "2026.10.23.1327",
-   "updated": "2026-10-23"
+   "version": "2026.10.28.2035",
+   "updated": "2026-10-28"
   }
  ]
 }

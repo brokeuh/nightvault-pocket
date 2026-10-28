@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 139,
+   "date": "2026-10-28",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "Tablets: more tiles in a row",
+   "items": [
+    "On a tablet or wide window the tiles in The Nightvault keep the same size as on a phone and simply fit more per row (before it stayed at 3)."
+   ]
+  },
+  {
    "id": 138,
    "date": "2026-10-28",
    "where": [
