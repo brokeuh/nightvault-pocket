@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 135,
+   "date": "2026-10-28",
+   "where": [
+    "android"
+   ],
+   "apps": [
+    "bookcase",
+    "audiobooks"
+   ],
+   "title": "Faster natural voices",
+   "items": [
+    "Four new natural English voices that are fast on almost every phone: Lessac and Ryan (US), Alba and Northern English (British) - 21 MB each, in the voice screen.",
+    "Read along makes the next bubbles while one is being read (also the first ones of the next page), and gets the voice ready while it reads the page, so there are fewer pauses.",
+    "Kokoro sounds nicest but is slow on most phones; the voice screen now says which voices are fast, and Read along shows when the voice is still getting ready."
+   ]
+  },
+  {
    "id": 134,
    "date": "2026-10-28",
    "where": [

@@ -2350,17 +2350,25 @@ function raBar(){ let bar = $('#rabar'); if(!RA){ if(bar) bar.remove(); return }
   $('#rax').onclick = () => raStop();
   $('#ravoice').onclick = () => { raPause(); if(window.NVVOICE) NVVOICE.open(RAUI, {intro:'The voice for Read along and for EPUBs read aloud in Audiobooks.'}) } }
 const raStatus = t => { if(!RA) return; RA.status = t; const e = $('#rast'); if(e) e.textContent = t };
-function raSay(i){ const b = RA.bubbles[i], key = R.b.id + ':' + b.p + ':' + i + ':' + JSON.stringify(raVoice());
+/* the sound of one bubble; made ahead (the voice makes one at a time, in order), so the next bubbles are ready when the current one ends */
+function raSayB(b){ const key = R.b.id + ':' + b.p + ':' + b.say + ':' + JSON.stringify(raVoice());
   RA.syn = RA.syn || new Map(); if(RA.syn.has(key)) return RA.syn.get(key);
-  const pr = NvTtsB.synth(Object.assign({text:b.say, id:'ra' + (i % 6)}, raVoice())).then(r => linkUrl(r.uri, 'bubble.wav'));
-  RA.syn.set(key, pr); pr.catch(() => RA && RA.syn && RA.syn.delete(key)); if(RA.syn.size > 6) RA.syn.delete(RA.syn.keys().next().value); return pr }
+  RA.n = (RA.n || 0) + 1; const pr = NvTtsB.synth(Object.assign({text:b.say, id:'ra' + (RA.n % 10)}, raVoice())).then(r => linkUrl(r.uri, 'bubble.wav'));
+  RA.syn.set(key, pr); pr.catch(() => RA && RA.syn && RA.syn.delete(key)); if(RA.syn.size > 8) RA.syn.delete(RA.syn.keys().next().value); return pr }
+const raSay = i => raSayB(RA.bubbles[i]);
+/* make the next bubbles ahead: two on this page, and near the end of the page the first two of the next page */
+function raAhead(i){ if(!RA || !RA.bubbles) return; const me = RA;
+  for(const k of [i + 1, i + 2]) if(k < RA.bubbles.length) raSay(k).catch(() => {});
+  if(RA.mode === 'auto' && i + 2 >= RA.bubbles.length){ const np = R.s + R.shown.length;
+    if(np < R.n) raPageBubbles(np).then(bs => { if(RA === me) for(const b of bs.slice(0, 2)) raSayB(b).catch(() => {}) }).catch(() => {}) } }
 async function raPlay(i, manual){ if(!RA || !R) return; const me = RA, tok = ++RA.tok;
   if(!RA.bubbles) return;
   if(i >= RA.bubbles.length){ RA.i = null; raDraw(); if(RA.mode === 'auto' && !manual || manual && RA.mode === 'auto'){ raStatus('Next page…'); setTimeout(() => { if(RA === me && tok === RA.tok && R) next() }, 700) } else raStatus('End of the page'); return }
   RA.i = i; RA.paused = false; RA.speaking = true; raDraw(); raBar(); raStatus(`${i + 1} / ${RA.bubbles.length}`);
-  try{ const u = await raSay(i); if(RA !== me || tok !== RA.tok) return; if(i + 1 < RA.bubbles.length) raSay(i + 1).catch(() => {});
-    RA.audio.src = u; RA.audio.playbackRate = RA.speed || 1; try{ RA.audio.preservesPitch = true }catch(e){} await RA.audio.play() }
-  catch(e){ if(RA !== me || tok !== RA.tok) return; RA.speaking = false; LE('readalong', 'voice', e); raStatus('No voice: ' + (e.message || e)); RA.paused = true; raBar() } }
+  const slow = setTimeout(() => { if(RA === me && tok === RA.tok) raStatus(`${i + 1} / ${RA.bubbles.length} · the voice is getting ready…`) }, 1500);
+  try{ const u = raSay(i); raAhead(i); const url = await u; clearTimeout(slow); if(RA !== me || tok !== RA.tok) return; raStatus(`${i + 1} / ${RA.bubbles.length}`);
+    RA.audio.src = url; RA.audio.playbackRate = RA.speed || 1; try{ RA.audio.preservesPitch = true }catch(e){} await RA.audio.play() }
+  catch(e){ clearTimeout(slow); if(RA !== me || tok !== RA.tok) return; RA.speaking = false; LE('readalong', 'voice', e); raStatus('No voice: ' + (e.message || e)); RA.paused = true; raBar() } }
 function raEnded(){ if(!RA) return; RA.speaking = false; if(RA.paused) return; if(RA.mode === 'auto') raPlay(RA.i + 1); else { raStatus('Tap a bubble'); RA.i = null; raDraw() } }
 function raPause(){ if(!RA) return; RA.paused = true; RA.tok++; RA.audio.pause(); RA.speaking = false; raBar() }
 function raResume(){ if(!RA) return; RA.paused = false; if(RA.audio.src && RA.i != null && RA.audio.currentTime > 0 && !RA.audio.ended){ RA.audio.play().catch(() => {}); RA.speaking = true; raBar() } else raPlay(RA.i == null ? 0 : RA.i) }
@@ -2375,6 +2383,7 @@ function raStart(){ if(!R || !NvOcr || !NvTtsB) return toast('Read along works i
   if(RA) return raStop();
   RA = {mode:lsGet('nvBooks.raMode', 'auto'), speed:lsGet('nvBooks.raSpeed', 1), audio:new Audio(), tok:0, paused:false, i:null, bubbles:null};
   RA.audio.onended = raEnded; rUI(false); raBar(); raOnPage();
+  if(window.NVVOICE && NVVOICE.hasNatural('en')) NvTtsB.synth(Object.assign({text:'Hi.', id:'rawarm'}, raVoice())).catch(() => {});   // load the natural voice while the page is read
   if(window.NVVOICE) NVVOICE.offer(RAUI, 'en', ok => { if(ok && RA){ RA.syn = new Map(); if(!RA.paused && RA.i != null) raPlay(RA.i) } });
   if(!lsGet('nvBooks.raHinted', false)){ lsSet('nvBooks.raHinted', true); rHint('Tap a bubble to read that one.<br>Auto: carries on from there · Tap only: just the bubbles you tap', 4500) } }
 function raStop(){ if(!RA) return; RA.tok++; RA.audio.pause(); RA.audio.removeAttribute('src'); RA = null; raDraw(); raBar() }

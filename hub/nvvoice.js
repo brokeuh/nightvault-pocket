@@ -22,7 +22,10 @@
   const fileUrl = (uri, name) => '/_nvfile_/' + b64url(uri) + '/' + encodeURIComponent(name);
   const URL_LIST = NATIVE ? 'https://brokeuh.github.io/nightvault-pocket/data/voices.json' : '../data/voices.json';
   const KOKORO = [['Bella', 'US, woman', 1], ['Sarah', 'US, woman', 3], ['Nicole', 'US, woman, soft', 2], ['Sky', 'US, woman', 4], ['Adam', 'US, man', 5], ['Michael', 'US, man', 6], ['Emma', 'British, woman', 7], ['Isabella', 'British, woman', 8], ['George', 'British, man', 9], ['Lewis', 'British, man', 10], ['Default', 'US, woman', 0]];
-  const NAME = {'kokoro-int8-en-v0_19':['Kokoro', 'English · 11 natural voices'], 'vits-piper-nl_BE-nathalie-medium-int8':['Nathalie', 'Dutch (Flemish) · woman'], 'vits-piper-nl_NL-pim-medium-int8':['Pim', 'Dutch (Netherlands) · man']};
+  const NAME = {'kokoro-int8-en-v0_19':['Kokoro', 'English · 11 voices · the nicest sound, but slow on most phones'],
+    'vits-piper-en_US-lessac-medium-int8':['Lessac', 'English (US) · woman · fast'], 'vits-piper-en_US-ryan-medium-int8':['Ryan', 'English (US) · man · fast'],
+    'vits-piper-en_GB-alba-medium-int8':['Alba', 'English (British) · woman · fast'], 'vits-piper-en_GB-northern_english_male-medium-int8':['Northern English', 'English (British) · man · fast'],
+    'vits-piper-nl_BE-nathalie-medium-int8':['Nathalie', 'Dutch (Flemish) · woman · fast'], 'vits-piper-nl_NL-pim-medium-int8':['Pim', 'Dutch (Netherlands) · man · fast']};
   const speakers = id => /kokoro/.test(id) ? KOKORO.map(([n, d, sid]) => ({v:id + '#' + sid, t:n + ' (' + d + ')'})) : [{v:id + '#0', t:(NAME[id] || [id])[0]}];
   let CAT = null;
   async function catalog(){ if(CAT) return CAT; try{ CAT = ((await (await fetch(URL_LIST + '?d=' + new Date().toISOString().slice(0, 10), {cache:'no-cache'})).json()).voices || []) }catch(e){ CAT = [] } return CAT }
@@ -56,7 +59,7 @@
       <div class="sec">Which voice reads</div>
       <div class="opt"><label>English books</label>${sel('en')}</div><div class="opt"><label>Dutch books</label>${sel('nl')}</div>
       <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" id="nvvtest" style="flex:1">Listen to a sample</button><button class="btn" id="nvvphone" style="flex:1">The phone's voices…</button></div>
-      <p class="muted small" id="nvvmsg" style="margin:8px 0 0">Natural voices are made on the phone itself: a fast phone keeps up easily, an older one may need a moment now and then.</p>`);
+      <p class="muted small" id="nvvmsg" style="margin:8px 0 0">Natural voices are made on the phone itself. The "fast" ones keep up on almost every phone; Kokoro sounds nicest but needs a fast phone. Tip: listen to a sample – it shows how quick the voice is.</p>`);
     const root = document.querySelector('.sheet') || document;
     root.addEventListener('change', e => { const sl = e.target.closest('[data-nvl]'); if(!sl) return; choose(sl.dataset.nvl, sl.value) });
     root.addEventListener('click', async e => { const d = e.target.closest('[data-vdl]'), r = e.target.closest('[data-vrm]');
