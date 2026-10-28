@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 134,
+   "date": "2026-10-28",
+   "where": [
+    "android"
+   ],
+   "apps": [
+    "bookcase",
+    "audiobooks"
+   ],
+   "title": "Natural voices easier to find",
+   "items": [
+    "Read along now offers the natural voice itself the first time: one tap on Download, and the bubbles are read in Kokoro's voice.",
+    "The Read along bar has a voice button: download voices, pick the voice for English and Dutch, play a sample.",
+    "Audiobooks › ⚙ › Read-aloud voice shows the Download buttons straight away (no tab to find first)."
+   ]
+  },
+  {
    "id": 133,
    "date": "2026-10-27",
    "where": [

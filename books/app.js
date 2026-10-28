@@ -2297,8 +2297,10 @@ async function driveUndownload(bs){ for(const b of bs) if(b.src.kind === 'drive'
    ===================================================================================================================== */
 let NvOcr = null, NvTtsB = null; if(NATIVE) try{ NvOcr = Capacitor.registerPlugin('NvOcr'); NvTtsB = Capacitor.registerPlugin('NvTts') }catch(e){}
 let RA = null;
-const raVoice = () => { const a = lsGet('nvAudio.settings', {}) || {}, nv = (a.nvVoice || {}).en;
-  return a.ttsEngine === '@nv' && nv ? {engine:'@nv', voice:nv, lang:'en'} : {engine:a.ttsEngine === '@nv' ? '' : a.ttsEngine || '', voice:(a.ttsVoices || {}).en || '', lang:'en'} };
+/* the voice: the shared voice part ../hub/nvvoice.js (the same choice as Audiobooks) */
+const raVoice = () => window.NVVOICE ? NVVOICE.voiceFor('en') : {engine:'', voice:'', lang:'en'};
+const RAUI = {sheet:(h, st) => sheet(h, st), closeSheet:() => closeSheet(), toast:(m, ms) => toast(m, ms)};
+addEventListener('nvvoice', () => { if(RA){ RA.syn = new Map() } });
 /* comic lettering is often ALL CAPITALS: make it normal sentences, so the voice reads words, not shouting or letters */
 function raClean(t){ t = String(t || '').replace(/-\n(?=\p{Ll})/gu, '').replace(/\s*\n\s*/g, ' ').replace(/\s+/g, ' ').trim();
   const letters = t.replace(/[^\p{L}]/gu, ''), up = letters.replace(/[^\p{Lu}]/gu, '').length;
@@ -2341,11 +2343,12 @@ function raBar(){ let bar = $('#rabar'); if(!RA){ if(bar) bar.remove(); return }
   bar.innerHTML = `<button class="ib" id="rapp" aria-label="${RA.paused ? 'Read' : 'Pause'}">${RA.paused ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>' : '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>'}</button>
     <button class="ib" id="raskip" aria-label="Next bubble"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
     <div class="raseg"><button class="${RA.mode === 'auto' ? 'on' : ''}" data-ram="auto">Auto</button><button class="${RA.mode === 'tap' ? 'on' : ''}" data-ram="tap">Tap only</button></div>
-    <button class="rasp" id="rasp">${sp}×</button><span class="rast" id="rast">${esc(RA.status || '')}</span><button class="ib" id="rax" aria-label="Stop reading along">✕</button>`;
+    <button class="rasp" id="rasp">${sp}×</button><button class="ib" id="ravoice" aria-label="Voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6"/><path d="M18 6c1 1 1.5 2 1.5 3.5S19 12 18 13M21 4c1.5 1.5 2.2 3.3 2.2 5.5S22.5 13.5 21 15"/></svg></button><span class="rast" id="rast">${esc(RA.status || '')}</span><button class="ib" id="rax" aria-label="Stop reading along">✕</button>`;
   $('#rapp').onclick = () => RA.paused ? raResume() : raPause(); $('#raskip').onclick = () => raPlay((RA.i == null ? -1 : RA.i) + 1, true);
   bar.querySelectorAll('[data-ram]').forEach(b => b.onclick = () => { RA.mode = b.dataset.ram; lsSet('nvBooks.raMode', RA.mode); raBar(); if(RA.mode === 'auto' && RA.paused === false && !RA.speaking) raPlay((RA.i == null ? -1 : RA.i) + 1) });
   $('#rasp').onclick = () => { const L0 = [0.9, 1, 1.15, 1.3, 1.5, 1.75]; RA.speed = L0[(L0.indexOf(sp) + 1) % L0.length]; lsSet('nvBooks.raSpeed', RA.speed); RA.audio.playbackRate = RA.speed; raBar() };
-  $('#rax').onclick = () => raStop() }
+  $('#rax').onclick = () => raStop();
+  $('#ravoice').onclick = () => { raPause(); if(window.NVVOICE) NVVOICE.open(RAUI, {intro:'The voice for Read along and for EPUBs read aloud in Audiobooks.'}) } }
 const raStatus = t => { if(!RA) return; RA.status = t; const e = $('#rast'); if(e) e.textContent = t };
 function raSay(i){ const b = RA.bubbles[i], key = R.b.id + ':' + b.p + ':' + i + ':' + JSON.stringify(raVoice());
   RA.syn = RA.syn || new Map(); if(RA.syn.has(key)) return RA.syn.get(key);
@@ -2372,6 +2375,7 @@ function raStart(){ if(!R || !NvOcr || !NvTtsB) return toast('Read along works i
   if(RA) return raStop();
   RA = {mode:lsGet('nvBooks.raMode', 'auto'), speed:lsGet('nvBooks.raSpeed', 1), audio:new Audio(), tok:0, paused:false, i:null, bubbles:null};
   RA.audio.onended = raEnded; rUI(false); raBar(); raOnPage();
+  if(window.NVVOICE) NVVOICE.offer(RAUI, 'en', ok => { if(ok && RA){ RA.syn = new Map(); if(!RA.paused && RA.i != null) raPlay(RA.i) } });
   if(!lsGet('nvBooks.raHinted', false)){ lsSet('nvBooks.raHinted', true); rHint('Tap a bubble to read that one.<br>Auto: carries on from there · Tap only: just the bubbles you tap', 4500) } }
 function raStop(){ if(!RA) return; RA.tok++; RA.audio.pause(); RA.audio.removeAttribute('src'); RA = null; raDraw(); raBar() }
 /* a tap on a bubble while reading along: read that one (the reader's own tap handling calls this first) */
