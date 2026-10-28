@@ -35,30 +35,14 @@
     {
      "path": "hub/nvsetup.js",
      "size": 25749
-    },
-    {
-     "path": "hub/nvtheme.js",
-     "size": 10296
-    },
-    {
-     "path": "hub/nvmenu.js",
-     "size": 10252
-    },
-    {
-     "path": "hub/nvnew.js",
-     "size": 3679
-    },
-    {
-     "path": "hub/nvsplash.js",
-     "size": 8486
     }
    ],
    "provides": [],
    "uses": [],
-   "size": 216025,
-   "hash": "39d637a5c9c0",
-   "version": "2026.10.27.1517",
-   "updated": "2026-10-27"
+   "size": 183312,
+   "hash": "5eaf98816401",
+   "version": "2026.10.28.0935",
+   "updated": "2026-10-28"
   },
   {
    "id": "scanner",
@@ -240,11 +224,11 @@
    "files": [
     {
      "path": "books/index.html",
-     "size": 26089
+     "size": 26131
     },
     {
      "path": "books/app.js",
-     "size": 321721
+     "size": 322452
     },
     {
      "path": "books/manifest.webmanifest",
@@ -294,10 +278,10 @@
    "uses": [],
    "entry": "books/?nv=hub",
    "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted.",
-   "size": 2450684,
-   "hash": "ec7d8ecfaa2f",
-   "version": "2026.10.27.1517",
-   "updated": "2026-10-27"
+   "size": 2451457,
+   "hash": "8dc7ce86b331",
+   "version": "2026.10.28.0935",
+   "updated": "2026-10-28"
   },
   {
    "id": "music",
@@ -308,7 +292,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 282917
+     "size": 272381
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -320,10 +304,10 @@
     "music"
    ],
    "uses": [],
-   "size": 283478,
-   "hash": "e58bf5f2e088",
-   "version": "2026.10.27.1501",
-   "updated": "2026-10-27"
+   "size": 272942,
+   "hash": "40a886864fb1",
+   "version": "2026.10.28.0935",
+   "updated": "2026-10-28"
   },
   {
    "id": "audiobooks",
@@ -334,7 +318,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 282917
+     "size": 272381
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -346,10 +330,10 @@
     "audiobooks"
    ],
    "uses": [],
-   "size": 283478,
-   "hash": "e58bf5f2e088",
-   "version": "2026.10.27.1501",
-   "updated": "2026-10-27"
+   "size": 272942,
+   "hash": "40a886864fb1",
+   "version": "2026.10.28.0935",
+   "updated": "2026-10-28"
   },
   {
    "id": "cinema",
