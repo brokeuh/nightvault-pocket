@@ -1347,7 +1347,9 @@ function musicIndex(){
     a.tracks.sort((x, y) => ((x.disc || 0) - (y.disc || 0)) || ((x.track || 0) - (y.track || 0)) || coll.compare(x.name, y.name));
     const va = VARIOUS_RE.test(a.aa.trim()) && !/unknown/i.test(a.aa), k = va ? 'various artists' : norm(a.aa) || 'unknown';   // "Various", "VA", "Various Artists" = one artist
     const ar = ARTK[k] || (ARTK[k] = {key:k, name:va ? 'Various artists' : a.aa, albums:[], n:0}); ar.albums.push(a); ar.n += a.tracks.length }
-  ARTS = Object.values(ARTK).sort((x, y) => coll.compare(x.key, y.key)) }
+  ARTS = Object.values(ARTK).sort((x, y) => coll.compare(x.key, y.key));
+  if(MODE === 'music') try{ const top = ARTS.filter(a => a.key !== 'various artists' && a.key !== 'unknown' && !/^unknown/i.test(a.name)).sort((x, y) => y.n - x.n).slice(0, 150).map(a => a.name); if(top.length) localStorage.setItem('nvCal.musicArtists', JSON.stringify(top)) }catch(e){}      // the Calendar looks for new albums of these artists
+}
 const albumOf = t => ALBK[t.al];
 const artistKey = n => VARIOUS_RE.test(String(n || '').trim()) && !/unknown/i.test(n) ? 'various artists' : norm(n) || 'unknown';
 const stat = key => STATS[key] || (STATS[key] = {id:key, fav:false, plays:[], last:0});

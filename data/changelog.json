@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 142,
+   "date": "2026-10-29",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub",
+    "music"
+   ],
+   "title": "Calendar: new albums of your artists",
+   "items": [
+    "The Calendar has a Music chip: new albums and EPs coming in the next 60 days from the artists in your Music app (up to your 150 biggest), from MusicBrainz. No key needed.",
+    "Open Music once after this update so the Calendar learns your artists."
+   ]
+  },
+  {
    "id": 141,
    "date": "2026-10-29",
    "where": [

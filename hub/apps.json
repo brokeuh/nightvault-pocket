@@ -245,15 +245,15 @@
    "files": [
     {
      "path": "calendar/index.html",
-     "size": 23081
+     "size": 25043
     }
    ],
    "provides": [],
    "uses": [],
    "keepsData": "Your follows stay on this device.",
-   "size": 23081,
-   "hash": "cf7c8fc39a2f",
-   "version": "2026.10.29.0842",
+   "size": 25043,
+   "hash": "fc341418e48e",
+   "version": "2026.10.29.0913",
    "updated": "2026-10-29"
   },
   {
@@ -344,7 +344,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 272381
+     "size": 272728
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -356,10 +356,10 @@
     "music"
    ],
    "uses": [],
-   "size": 272942,
-   "hash": "40a886864fb1",
-   "version": "2026.10.28.2035",
-   "updated": "2026-10-28"
+   "size": 273289,
+   "hash": "2c425608223e",
+   "version": "2026.10.29.0913",
+   "updated": "2026-10-29"
   },
   {
    "id": "audiobooks",
@@ -370,7 +370,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 272381
+     "size": 272728
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -382,10 +382,10 @@
     "audiobooks"
    ],
    "uses": [],
-   "size": 272942,
-   "hash": "40a886864fb1",
-   "version": "2026.10.28.2035",
-   "updated": "2026-10-28"
+   "size": 273289,
+   "hash": "2c425608223e",
+   "version": "2026.10.29.0913",
+   "updated": "2026-10-29"
   },
   {
    "id": "cinema",
