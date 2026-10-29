@@ -250,14 +250,19 @@
     {
       "id": "collectables",
       "name": "Collectables",
-      "desc": "Everything else you collect, in your own groups",
+      "desc": "Everything else you collect: your own fields per collection, photos, values and a barcode scanner",
       "color": "#3a3216",
-      "soon": true,
-      "files": [],
+      "files": [
+        "collectables/index.html",
+        "collectables/app.js",
+        "collectables/manifest.webmanifest"
+      ],
       "provides": [
         "collectables"
       ],
-      "uses": []
+      "uses": [],
+      "entry": "collectables/?nv=hub",
+      "keepsData": "Your collections, templates, items, photos and groups stay on this device."
     },
     {
       "id": "games",

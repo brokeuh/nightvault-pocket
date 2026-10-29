@@ -10,7 +10,7 @@
    "files": [
     {
      "path": "hub/index.html",
-     "size": 93746
+     "size": 94527
     },
     {
      "path": "hub/core.js",
@@ -30,11 +30,11 @@
     },
     {
      "path": "hub/nvbackup.js",
-     "size": 20926
+     "size": 21203
     },
     {
      "path": "hub/nvsetup.js",
-     "size": 27530
+     "size": 29283
     },
     {
      "path": "hub/nvtheme.js",
@@ -59,9 +59,9 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 233752,
-   "hash": "cb3a3dbadbc5",
-   "version": "2026.10.29.0842",
+   "size": 236563,
+   "hash": "2e03a0ab0a4d",
+   "version": "2026.10.29.0945",
    "updated": "2026-10-29"
   },
   {
@@ -492,18 +492,32 @@
   {
    "id": "collectables",
    "name": "Collectables",
-   "desc": "Everything else you collect, in your own groups",
+   "desc": "Everything else you collect: your own fields per collection, photos, values and a barcode scanner",
    "color": "#3a3216",
-   "soon": true,
-   "files": [],
+   "files": [
+    {
+     "path": "collectables/index.html",
+     "size": 19175
+    },
+    {
+     "path": "collectables/app.js",
+     "size": 96794
+    },
+    {
+     "path": "collectables/manifest.webmanifest",
+     "size": 607
+    }
+   ],
    "provides": [
     "collectables"
    ],
    "uses": [],
-   "size": 0,
-   "hash": "e3b0c44298fc",
-   "version": "2026.10.28.2035",
-   "updated": "2026-10-28"
+   "entry": "collectables/?nv=hub",
+   "keepsData": "Your collections, templates, items, photos and groups stay on this device.",
+   "size": 116576,
+   "hash": "753fab7dd1f9",
+   "version": "2026.10.29.0948",
+   "updated": "2026-10-29"
   },
   {
    "id": "games",

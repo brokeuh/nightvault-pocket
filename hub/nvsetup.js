@@ -86,6 +86,12 @@
       {id:'welcome', added:'2026-10-23', icon:'🧊', title:'Welcome to Nightvault 3D Print', body:'Your 3D models (STL, OBJ, 3MF) with a 3D viewer, projects with their pictures and print files, and a log of what you printed.'},
       {id:'add', added:'2026-10-23', icon:'➕', title:'Add models', body:'Tap <b>Add</b> and pick a folder or files. One folder or ZIP = one project tile.'},
       MYPC]},
+    collectables:{name:'Collectables', prefix:'nvCollect.', steps:[
+      {id:'welcome', added:'2026-10-29', icon:'⭐', title:'Welcome to Nightvault Collectables', body:'Anything you collect – coins, figures, stamps, cars, watches … Each collection gets its own tile, and its items show with your photos, notes and what they are worth. Everything stays on this phone.'},
+      {id:'template', added:'2026-10-29', icon:'🧩', title:'Your own template', body:'Tap <b>New collection</b> and pick a starting point (or start empty). The <b>template</b> is the list of fields every item gets – like Country, Year, Condition. Add, rename, sort or remove fields whenever you like (⚙ › <b>Change the template</b>); a removed field keeps what your items had in it.'},
+      {id:'prices', added:'2026-10-29', icon:'💶', title:'What it is worth', body:'With <b>Track prices</b> on in the template, every item has <b>Paid</b> and <b>Worth now</b>, and you see the total of the collection and how much it went up or down. Checking prices online comes later.'},
+      {id:'camera', added:'2026-10-29', icon:'📷', title:'Photo or barcode', body:'<b>Add</b> › take photos of the item, or scan the barcode on the box: the name and a picture are looked up in free product lists, and if you already have it the app tells you. Pick <b>Photo</b> or <b>Barcode</b> at the bottom of the camera.'},
+      {id:'groups', added:'2026-10-29', icon:'🗂️', title:'Groups', body:'Items with the same value in a field you choose (like Country or Series) make one tile by themselves. Make your own groups with <b>+ Group</b>, groups inside groups, long-press tiles to move several, pin favourites with ★ – the same as in Music and Boardgames.'}]},
     calendar:{name:'Calendar', prefix:'nvCal.', steps:[
       {id:'welcome', added:'2026-10-29', icon:'📅', title:'Welcome to Nightvault Calendar', body:'What is coming out, all in one list: movies, series, comics, games and manga. Nothing to add first. Tap <b>♡</b> to follow something - the tile in The Nightvault gets a green dot when it comes out within 3 days.'},
       {id:'keys', added:'2026-10-29', icon:'🔑', title:'Keys', body:'Movies and series use your TMDB key from Cinema, comics your Comic Vine key from Bookcase (Android app only). Games need a free RAWG key: ☰ → Keys.'},
@@ -99,7 +105,7 @@
     if(/\/audio\//.test(p)) return /mode=music/.test(q) ? 'music' : 'audiobooks';
     if(/\/tools\/convert\//.test(p)) return 'convert';
     if(/\/calendar\//.test(p)) return 'calendar';
-    const m = p.match(/\/(books|games|boardgames|cinema|print3d)\//); return m ? (m[1] === 'books' ? 'bookcase' : m[1]) : null }
+    const m = p.match(/\/(books|games|boardgames|cinema|print3d|collectables)\//); return m ? (m[1] === 'books' ? 'bookcase' : m[1]) : null }
   const usable = s => !(s.android && !NATIVE);
   const seen = app => (get('nvSetup', {})[app] || {}).seen || [];
   function markSeen(app, ids){ const all = get('nvSetup', {}), a = all[app] || {seen:[]}; a.seen = [...new Set(a.seen.concat(ids))]; a.at = Date.now(); all[app] = a; set('nvSetup', all) }

@@ -11,6 +11,9 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.google.mlkit.vision.barcode.BarcodeScanner;
+import com.google.mlkit.vision.barcode.BarcodeScanning;
+import com.google.mlkit.vision.barcode.common.Barcode;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.text.Text;
 import com.google.mlkit.vision.text.TextRecognition;
@@ -27,6 +30,40 @@ import java.lang.reflect.Method;
 @CapacitorPlugin(name = "NvOcr")
 public class NvOcrPlugin extends Plugin {
     private TextRecognizer recognizer;
+    private BarcodeScanner barcodeScanner;
+
+    /** Barcodes in a picture (Nightvault Collectables): barcodes({image: "data:image/jpeg;base64,..."}) -> {codes:[{value, format}]}.
+     *  The bundled ML Kit model: works offline, no Google Play services needed. */
+    @PluginMethod
+    public void barcodes(PluginCall call) {
+        String img = call.getString("image");
+        if (img == null || img.isEmpty()) { call.reject("No picture"); return; }
+        int comma = img.indexOf(',');
+        if (comma >= 0) img = img.substring(comma + 1);
+        Bitmap bmp;
+        try {
+            byte[] bytes = Base64.decode(img, Base64.DEFAULT);
+            bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+        } catch (Exception e) { call.reject("Picture could not be read: " + e.getMessage()); return; }
+        if (bmp == null) { call.reject("Picture could not be read"); return; }
+        if (barcodeScanner == null) barcodeScanner = BarcodeScanning.getClient();
+        barcodeScanner.process(InputImage.fromBitmap(bmp, 0))
+            .addOnSuccessListener(list -> {
+                JSArray codes = new JSArray();
+                for (Barcode b : list) {
+                    String v = b.getRawValue();
+                    if (v == null || v.isEmpty()) continue;
+                    JSObject o = new JSObject();
+                    o.put("value", v);
+                    o.put("format", b.getFormat());
+                    codes.put(o);
+                }
+                JSObject out = new JSObject();
+                out.put("codes", codes);
+                call.resolve(out);
+            })
+            .addOnFailureListener(e -> call.reject("Barcode reader: " + e.getMessage()));
+    }
 
     @PluginMethod
     public void available(PluginCall call) {

@@ -36,6 +36,7 @@
     boardgames:{title:'Boardgames', ls:['nvBoard.'], db:'nvBoard', stores:['items', 'plays', 'kv', 'files'], main:'items', word:['game', 'games']},
     cinema:{title:'Cinema', ls:['nvCinema.'], skip:['nvCinema.tmdb'], db:'nvCinema', stores:['titles', 'files', 'watch', 'kv'], main:'titles', word:['title', 'titles']},
     print3d:{title:'3D Print', ls:['nvPrint.'], db:'nvPrint', stores:['models', 'extras', 'prints', 'kv'], main:'models', word:['model', 'models']},
+    collectables:{title:'Collectables', ls:['nvCollect.'], db:'nvCollect', stores:['colls', 'items', 'kv'], main:'items', word:['item', 'items']},
     hub:{title:'The Nightvault', ls:['nvHub.', 'nvOffline'], word:['setting', 'settings']}
   };
   const plural = (n, w) => `${(+n).toLocaleString()} ${n === 1 ? w[0] : w[1]}`;
@@ -71,6 +72,7 @@
     if(d.app === 'music' && d.counts.lists) bits.push(plural(d.counts.lists, ['playlist', 'playlists']));
     if(d.app === 'boardgames' && d.counts.plays) bits.push(plural(d.counts.plays, ['play', 'plays']));
     if(d.app === 'print3d' && d.counts.prints) bits.push(plural(d.counts.prints, ['print', 'prints']));
+    if(d.app === 'collectables' && d.counts.colls) bits.push(plural(d.counts.colls, ['collection', 'collections']));
     return bits.join(' · ') };
 
   /* ---------- packing: gzip when the phone can (much smaller), base64 for the Android bridge ---------- */
@@ -187,7 +189,7 @@
   /* the app this page is (from its address): Music and Audiobooks share audio/ */
   function here(){ const p = location.pathname, q = location.search;
     if(/\/audio\//.test(p)) return /mode=music/.test(q) ? 'music' : 'audiobooks';
-    const m = p.match(/\/(books|games|boardgames|cinema|print3d)\//); return m ? (m[1] === 'books' ? 'bookcase' : m[1]) : null }
+    const m = p.match(/\/(books|games|boardgames|cinema|print3d|collectables)\//); return m ? (m[1] === 'books' ? 'bookcase' : m[1]) : null }
 
   const NVBACKUP = {
     native:!!F, apps:APPS, here, collect, save, auto, list, load, restore, check, describe, count, offer, plural,

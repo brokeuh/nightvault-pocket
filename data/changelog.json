@@ -3,6 +3,26 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 145,
+   "date": "2026-10-29",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "collectables",
+    "hub"
+   ],
+   "title": "New app: Collectables",
+   "items": [
+    "Collectables is here: anything you collect, each collection with its own template – you choose the fields every item gets (text, number, money, date, year, yes/no, a list to pick from, a link). Start from Coins, Stamps, Vinyl figures, Building sets, Die-cast cars, Figures, Trading pins, Watches, Fossils & minerals, or empty.",
+    "Items have photos, notes, tags, how many and a barcode. With 'Track prices' on, you see what you paid, what it is worth now, and the total of the collection.",
+    "The camera has Photo and Barcode mode. A scanned barcode looks up the name and a picture in free product lists, and tells you when you already have it. Text and Recognise come later.",
+    "Groups like Music: items with the same value in a field you choose (Country, Series …) make one tile; your own groups, groups inside groups, pins.",
+    "Install it from The Nightvault › Add more Nightvault apps. Photos are not in the automatic backup."
+   ]
+  },
+  {
    "id": 144,
    "date": "2026-10-29",
    "where": [
