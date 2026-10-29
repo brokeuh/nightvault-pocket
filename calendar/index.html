@@ -64,7 +64,7 @@ const toast = t => { const el = $('#toast'); el.textContent = t; el.hidden = fal
 const DAYS = 60, H12 = 12 * 36e5;
 
 /* ---------- sources: each returns [{id, kind, title, sub, date, img, url}] ---------- */
-const KIND = {movie:{n:'Movies', c:'#ff8f9a'}, tv:{n:'Series', c:'#ffb36b'}, comic:{n:'Comics', c:'#f4b25f'}, game:{n:'Games', c:'#9a9cff'}, manga:{n:'Manga', c:'#c58bff'}, music:{n:'Music', c:'#e68bff'}, book:{n:'Books', c:'#f0b46a'}, ical:{n:'My links', c:'#7be0c6'}};
+const KIND = {movie:{n:'Movies', c:'#ff8f9a'}, tv:{n:'Series', c:'#ffb36b'}, comic:{n:'Comics', c:'#f4b25f'}, game:{n:'Games', c:'#9a9cff'}, manga:{n:'Manga', c:'#c58bff'}, music:{n:'Music', c:'#e68bff'}, book:{n:'Books', c:'#f0b46a'}, board:{n:'Board games', c:'#9be071'}, ical:{n:'My links', c:'#7be0c6'}};
 class Need extends Error {}
 async function tmdb(path, params){ const k = lsGet('nvCinema.tmdb', ''); if(!k) throw new Need('Needs your TMDB key: open Cinema → ⚙ → TMDB and type it once.');
   const u = new URL('https://api.themoviedb.org/3' + path); for(const [a, b] of Object.entries(params || {})) u.searchParams.set(a, b);
@@ -122,6 +122,18 @@ const SRC = {
           const id = 'book:' + v.id; if(seen.has(id)) continue; seen.add(id); out.push({id, kind:'book', title:x.title + (x.subtitle ? ': ' + x.subtitle : ''), sub:(x.authors || []).join(', ') + ' · date from Google Books', date:d, img:((x.imageLinks || {}).thumbnail || '').replace('http:', 'https:'), url:x.infoLink || ''}) } }
       catch(e){ if(++fails > 3 && !out.length) throw e } }
     return out },
+  async board(){ const url = 'https://www.boardgamesnmore.com/index.php?route=information/releaseschedule', H = NATIVE && Capacitor.Plugins && Capacitor.Plugins.CapacitorHttp; let html;
+    if(H){ const r = await H.get({url, headers:{Accept:'text/html', 'User-Agent':'Mozilla/5.0 (Android) NightvaultCalendar/1.0'}, responseType:'text'}); if(r.status >= 400) throw new Error('boardgamesnmore.com answered ' + r.status); html = typeof r.data === 'string' ? r.data : String(r.data) }
+    else { const r = await fetch(url).catch(() => { throw new Need('Board games can only be loaded inside the Nightvault Android app (the shop site blocks web browsers).') }); if(!r.ok) throw new Error('boardgamesnmore.com answered ' + r.status); html = await r.text() }
+    const M = {jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12}, today = addDays(0), cm = today.slice(0, 7), out = [], seen = new Set();
+    const re = /<a\b[^>]*product_id=(\d+)[^>]*>([^<]{3,}?)<\/a>/gi, hits = []; let m; while((m = re.exec(html))) hits.push({id:m[1], title:m[2], at:m.index, end:re.lastIndex});
+    hits.forEach((h, i) => { const next = hits[i + 1] ? hits[i + 1].at : html.length, chunk = html.slice(h.end, Math.min(next, h.end + 900)).replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ');
+      const mm = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?,?[\s-]+(20\d\d)\b/i.exec(chunk); if(!mm || seen.has(h.id)) return;
+      const status = (/(Estimated|Confirmed|Arrived|Delayed|Pre-?order|Available|In stock)/i.exec(chunk) || [''])[1]; if(/arrived|in stock|available/i.test(status)) return;      // already out
+      const ym = `${mm[2]}-${pad(M[mm[1].toLowerCase()])}`; if(ym < cm) return; const date = ym === cm ? today : ym + '-01';
+      const before = html.slice(Math.max(0, h.at - 700), h.at), im = [...before.matchAll(/<img\b[^>]*?src=["']([^"']+)["']/gi)].pop(); let img = im ? im[1] : ''; if(img && !/^https?:/.test(img)) img = 'https://www.boardgamesnmore.com/' + img.replace(/^\/+/, '');
+      seen.add(h.id); out.push({id:'board:' + h.id, kind:'board', title:h.title.replace(/&amp;/g, '&').replace(/&#0?39;/g, "'").trim(), sub:`${mm[1]} ${mm[2]} (month only)${status ? ' · ' + status : ''} · boardgamesnmore.com`, date, img, url:'https://www.boardgamesnmore.com/index.php?route=product/product&product_id=' + h.id}) });
+    if(!out.length) throw new Error('No releases found on the shop page - its layout may have changed.'); return out },
   async ical(){ const links = LINKS(); if(!links.length) throw new Need('Add a calendar link: menu → Calendar links.');
     const from = addDays(0), to = addDays(DAYS), out = [], bad = [];
     for(const L of links){ try{ const ev = icsParse(await icsGet(L.url));
@@ -151,7 +163,7 @@ async function icsGet(url){ url = url.replace(/^webcal:/i, 'https:'); const H = 
   if(H){ const r = await H.get({url, headers:{Accept:'text/calendar,*/*'}, responseType:'text'}); if(r.status >= 400) throw new Error('The link answered ' + r.status); return typeof r.data === 'string' ? r.data : String(r.data) }
   const r = await fetch(url).catch(() => { throw new Error('This link can only be read inside the Nightvault Android app (web browsers block it).') }); if(!r.ok) throw new Error('The link answered ' + r.status); return r.text() }
 /* books and board games: no usable release source found yet (plans/calendar.md) */
-const FUTURE = {board:'Board games: BoardGameGeek has no release calendar - not available yet.'};
+
 
 /* ---------- loading with a 12 h cache ---------- */
 const DATA = {}, ERR = {}, LOAD = {};
@@ -179,7 +191,7 @@ function draw(){ const fol = FOL(), nf = Object.keys(fol).length;
   $('#notes').innerHTML = show.filter(k => LOAD[k]).map(k => `<div class="note"><span class="spin">⟳</span> Loading ${KIND[k].n.toLowerCase()}…</div>`).join('')
     + show.filter(k => ERR[k] && (S.kind !== 'all' || !ERR[k].need)).map(k => `<div class="note err"><b>${KIND[k].n}:</b> ${esc(ERR[k].msg)}</div>`).join('')
     + (S.kind === 'all' && show.some(k => ERR[k] && ERR[k].need && k !== 'ical') ? `<div class="note">Some kinds are off until you add a key: ${show.filter(k => ERR[k] && ERR[k].need && k !== 'ical').map(k => KIND[k].n).join(', ')}. Tap one of them to see how.</div>` : '')
-    + (S.kind === 'all' ? `<div class="note">${esc(FUTURE.board)}</div>` : '');
+    + (S.kind === 'board' ? `<div class="note">Release months come from a shop's schedule (boardgamesnmore.com): only the month is known, so each game shows on the first day of its month.</div>` : '');
   const l = items(); let h = '', last = '';
   for(const x of l){ if(x.date !== last){ last = x.date; h += `<div class="day ${x.date === addDays(0) ? 'today' : ''}">${dlabel(x.date)}</div>` }
     const f = !!fol[x.id], c = (KIND[x.kind] || {}).c;

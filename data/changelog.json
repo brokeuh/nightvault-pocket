@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 144,
+   "date": "2026-10-29",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "Calendar: board games",
+   "items": [
+    "Calendar has a Board games chip with upcoming board games and miniatures from the boardgamesnmore.com release schedule (about 7 months ahead). Only the month is known, so each shows on the 1st of its month. Android app only."
+   ]
+  },
+  {
    "id": 143,
    "date": "2026-10-29",
    "where": [

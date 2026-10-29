@@ -245,15 +245,15 @@
    "files": [
     {
      "path": "calendar/index.html",
-     "size": 26368
+     "size": 28909
     }
    ],
    "provides": [],
    "uses": [],
    "keepsData": "Your follows stay on this device.",
-   "size": 26368,
-   "hash": "d29a10f58dd2",
-   "version": "2026.10.29.0917",
+   "size": 28909,
+   "hash": "24edc645c4e0",
+   "version": "2026.10.29.0921",
    "updated": "2026-10-29"
   },
   {
