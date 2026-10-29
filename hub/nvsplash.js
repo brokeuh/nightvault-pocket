@@ -6,7 +6,7 @@
    Scanner and Binder (Pocket) keep their own animated mark but use the same switch and the same words (they read NVSPLASH.on / NVSPLASH.name). */
 (function(){
   'use strict';
-  const NAMES = {scanner:'Scanner', binder:'Binder', convert:'Convert', control:'Control', go:'GO', bookcase:'Bookcase', music:'Music', audiobooks:'Audiobooks', cinema:'Cinema', boardgames:'Boardgames', print3d:'3D Print', collectables:'Collectables', games:'Games'};
+  const NAMES = {scanner:'Scanner', binder:'Binder', convert:'Convert', calendar:'Calendar', control:'Control', go:'GO', bookcase:'Bookcase', music:'Music', audiobooks:'Audiobooks', cinema:'Cinema', boardgames:'Boardgames', print3d:'3D Print', collectables:'Collectables', games:'Games'};
   const isOn = () => { try{ return JSON.parse(localStorage.getItem('nvSplash')) !== false }catch(e){ return true } };
   const app = (document.currentScript && document.currentScript.dataset.app) || window.NV_APP || '';
   window.NVSPLASH = {names:NAMES, get on(){ return isOn() }, set(v){ try{ localStorage.setItem('nvSplash', JSON.stringify(!!v)) }catch(e){} }, name:id => NAMES[id || app] || ''};
@@ -14,6 +14,7 @@
   const ICON = {
     scanner:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"></path><rect x="8" y="7" width="8" height="10" rx="1"></rect></svg>`,
     binder:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="2"></rect><path d="M9 21h9a2 2 0 0 0 2-2V8"></path></svg>`,
+    calendar:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path><circle cx="12" cy="15" r="1.6" fill="currentColor"></circle></svg>`,
     convert:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="10" height="13" rx="1.5"></rect><path d="M16 9h4v11H9v-3"></path><path d="M13 13l3 3"></path></svg>`,
     go:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M4 12h5M15 12h5"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
     bookcase:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"></path><rect x="4" y="5" width="4" height="15" rx="1"></rect><rect x="9" y="8" width="4" height="12" rx="1"></rect><path d="M15.2 9.2l3.6-1 2.9 11-3.6 1z"></path></svg>`,

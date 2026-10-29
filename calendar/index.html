@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c0f12">
+<title>Nightvault Calendar</title>
+<link rel="icon" href="../favicon.svg">
+<script src="../hub/nvtheme.js"></script>
+<script>NVTHEME.apply('calendar')</script>
+<script src="../hub/nvlog.js"></script>
+<script src="../hub/nvmenu.js"></script>
+<style>
+:root{--bg:#0c0f12;--pan:#151a20;--pan2:#1b2129;--line:#2a323d;--line2:#33404f;--text:#e9edf2;--dim:#93a0ae;--dim2:#8fa0b2;--accent:#ffd166;--red:#e5656a;--g:#4ee0a0;--b:#6aa8ff;--o:#ffa94d}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 'DM Sans',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{max-width:760px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(30px + env(safe-area-inset-bottom,0px))}
+.top{display:flex;align-items:center;gap:10px;justify-content:space-between}
+h1{font-size:22px;margin:0}
+.btn{background:var(--pan);color:var(--text);border:1px solid var(--line);border-radius:14px;min-height:44px;padding:0 14px;font:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.btn.sm{min-height:36px;padding:0 12px;font-size:14px}.btn.primary{background:var(--accent);color:#14110a;border-color:transparent;font-weight:700}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0 6px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;min-height:38px;padding:0 14px;border-radius:20px;border:1px solid var(--line);background:var(--pan);color:var(--text);font:inherit;font-size:14px;cursor:pointer}
+.chip.on{background:color-mix(in srgb,var(--accent) 22%,var(--pan));border-color:var(--accent);color:var(--text);font-weight:700}
+.note{font-size:13px;color:var(--dim);background:var(--pan);border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin:6px 0}
+.note b{color:var(--text)}.note.err{border-color:color-mix(in srgb,var(--o) 60%,transparent)}
+.day{margin:18px 0 6px;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}.day.today{color:var(--accent)}
+.row{display:flex;gap:12px;align-items:center;padding:10px;border-radius:16px;background:var(--pan);border:1px solid var(--line);margin-bottom:8px;color:inherit;text-decoration:none}
+.row .im{flex:none;width:46px;height:64px;border-radius:8px;background:var(--pan2) center/cover no-repeat;border:1px solid var(--line)}
+.row .tx{flex:1;min-width:0}.row b{display:block;font-size:15px;overflow-wrap:anywhere}.row .s{font-size:12.5px;color:var(--dim)}
+.k{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.04em;padding:2px 7px;border-radius:9px;margin-right:6px;color:#101318;background:var(--c,var(--accent))}
+.heart{flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--line2);background:transparent;color:var(--dim);font-size:20px;cursor:pointer}.heart.on{color:#ff5c7a;border-color:#ff5c7a}
+.empty{text-align:center;color:var(--dim);padding:40px 10px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--pan);border:1px solid var(--line2);padding:10px 14px;border-radius:12px;z-index:50;max-width:90vw}
+.modal{position:fixed;inset:0;background:var(--scrim,rgba(0,0,0,.6));display:grid;place-items:center;z-index:40;padding:16px}.modal>div{background:var(--pan);border:1px solid var(--line);border-radius:18px;padding:18px;width:100%;max-width:420px}
+.modal input{width:100%;min-height:44px;border-radius:12px;border:1px solid var(--line2);background:var(--pan2);color:var(--text);padding:0 12px;font:inherit;margin:8px 0}
+.spin{display:inline-block;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body data-app="calendar">
+<script src="../hub/nvsplash.js" data-app="calendar"></script>
+<div class="top"><h1>Calendar</h1><span id="nvhost"></span></div>
+<div class="chips" id="chips"></div>
+<div id="notes"></div>
+<div id="list"></div>
+<div id="toast" hidden></div>
+<script>
+'use strict';
+/* Nightvault Calendar (29 Oct 2026; plans/calendar.md): what is coming out, from every kind of source, without adding anything first.
+   Keys are the ones the apps already keep: TMDB (Cinema ⚙), Comic Vine (Bookcase ⚙, Android only). Games need a RAWG key (menu → Keys).
+   ♥ follows an item (nvCal.follow); a follow that comes out within 3 days gives the hub tile a green dot (nvNew.calendar). */
+const $ = s => document.querySelector(s);
+const lsGet = (k, d) => { try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v) }catch(e){ return d } };
+const lsSet = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)) }catch(e){} };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const NATIVE = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+const pad = n => String(n).padStart(2, '0');
+const dkey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const addDays = n => { const d = new Date(); d.setDate(d.getDate() + n); return dkey(d) };
+const DAYN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const dlabel = k => { const t = dkey(new Date()); if(k === t) return 'Today'; if(k === addDays(1)) return 'Tomorrow'; const [y, m, d] = k.split('-').map(Number), dt = new Date(y, m - 1, d); return `${DAYN[dt.getDay()]} ${d} ${MON[m - 1]}` };
+const toast = t => { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 3500) };
+const DAYS = 60, H12 = 12 * 36e5;
+
+/* ---------- sources: each returns [{id, kind, title, sub, date, img, url}] ---------- */
+const KIND = {movie:{n:'Movies', c:'#ff8f9a'}, tv:{n:'Series', c:'#ffb36b'}, comic:{n:'Comics', c:'#f4b25f'}, game:{n:'Games', c:'#9a9cff'}, manga:{n:'Manga', c:'#c58bff'}};
+class Need extends Error {}
+async function tmdb(path, params){ const k = lsGet('nvCinema.tmdb', ''); if(!k) throw new Need('Needs your TMDB key: open Cinema → ⚙ → TMDB and type it once.');
+  const u = new URL('https://api.themoviedb.org/3' + path); for(const [a, b] of Object.entries(params || {})) u.searchParams.set(a, b);
+  const bearer = k.length > 60; if(!bearer) u.searchParams.set('api_key', k);
+  const r = await fetch(u, {headers:bearer ? {Authorization:'Bearer ' + k, accept:'application/json'} : {accept:'application/json'}}).catch(() => { throw new Error('Can’t reach TMDB - is there internet?') });
+  if(!r.ok) throw new Error('TMDB answered ' + r.status); return r.json() }
+const IMGT = p => p ? 'https://image.tmdb.org/t/p/w185' + p : '';
+const SRC = {
+  async movie(){ const from = addDays(0), to = addDays(DAYS), out = [];
+    for(const page of [1, 2]){ const j = await tmdb('/discover/movie', {region:'BE', with_release_type:'2|3|4', 'release_date.gte':from, 'release_date.lte':to, sort_by:'popularity.desc', page, include_adult:'false', language:'en-US'});
+      for(const m of j.results || []) if(m.release_date) out.push({id:'movie:' + m.id, kind:'movie', title:m.title, sub:'Film' + (m.vote_average ? ' · ★ ' + m.vote_average.toFixed(1) : ''), date:m.release_date, img:IMGT(m.poster_path), url:'https://www.themoviedb.org/movie/' + m.id}) }
+    return out },
+  async tv(){ const from = addDays(0), to = addDays(DAYS), out = [];
+    for(const page of [1, 2]){ const j = await tmdb('/discover/tv', {'first_air_date.gte':from, 'first_air_date.lte':to, sort_by:'popularity.desc', page, language:'en-US'});
+      for(const m of j.results || []) if(m.first_air_date) out.push({id:'tv:' + m.id, kind:'tv', title:m.name, sub:'New series', date:m.first_air_date, img:IMGT(m.poster_path), url:'https://www.themoviedb.org/tv/' + m.id}) }
+    return out },
+  async comic(){ const key = lsGet('nvBooks.cvKey', ''); if(!key) throw new Need('Needs your Comic Vine key: open Bookcase → a comics shelf ⚙ → Comic Vine.');
+    const H = NATIVE && Capacitor.Plugins && Capacitor.Plugins.CapacitorHttp; if(!H) throw new Need('Comics can only be loaded inside the Nightvault Android app (Comic Vine blocks web browsers).');
+    const out = []; for(let off = 0; off < 300; off += 100){ if(off) await sleep(1400);
+      const q = new URLSearchParams({api_key:key, format:'json', filter:`store_date:${addDays(0)}|${addDays(DAYS)}`, sort:'store_date:asc', limit:100, offset:off, field_list:'id,name,issue_number,store_date,volume,image,site_detail_url'});
+      const r = await H.get({url:'https://comicvine.gamespot.com/api/issues/?' + q, headers:{Accept:'application/json', 'User-Agent':'NightvaultCalendar/1.0 (personal app)'}, responseType:'json'});
+      if(r.status === 401 || r.status === 403) throw new Error('Comic Vine refused the key (' + r.status + ')'); if(r.status === 420 || r.status === 429) throw new Error('Comic Vine says: too many requests - try again in an hour'); if(r.status >= 400) throw new Error('Comic Vine answered ' + r.status);
+      const j = typeof r.data === 'string' ? JSON.parse(r.data) : r.data; if(j.status_code !== 1) throw new Error('Comic Vine: ' + (j.error || j.status_code));
+      for(const i of j.results || []) if(i.store_date) out.push({id:'comic:' + i.id, kind:'comic', title:`${(i.volume && i.volume.name) || 'Comic'} #${i.issue_number}`, sub:i.name || 'New issue', date:i.store_date, img:(i.image && i.image.small_url) || '', url:i.site_detail_url});
+      if(!j.results || j.results.length < 100) break }
+    return out },
+  async game(){ const key = lsGet('nvCal.rawg', ''); if(!key) throw new Need('Needs a free RAWG key: menu → Keys (rawg.io/apidocs).');
+    const out = []; for(const page of [1, 2]){ const r = await fetch(`https://api.rawg.io/api/games?key=${encodeURIComponent(key)}&dates=${addDays(0)},${addDays(DAYS)}&ordering=released&page_size=40&page=${page}`).catch(() => { throw new Error('Can’t reach RAWG - is there internet?') });
+      if(!r.ok) throw new Error('RAWG answered ' + r.status + (r.status === 401 ? ' - check the key' : '')); const j = await r.json();
+      for(const g of j.results || []) if(g.released) out.push({id:'game:' + g.id, kind:'game', title:g.name, sub:(g.platforms || []).slice(0, 4).map(p => p.platform.name).join(' · ') || 'Game', date:g.released, img:g.background_image || '', url:'https://rawg.io/games/' + g.slug}) }
+    return out },
+  async manga(){ const n = d => +d.replace(/-/g, ''), q = 'query($a:FuzzyDateInt,$b:FuzzyDateInt){Page(perPage:50){media(type:MANGA,startDate_greater:$a,startDate_lesser:$b,sort:POPULARITY_DESC){id title{romaji english} startDate{year month day} coverImage{medium} siteUrl format}}}';
+    const r = await fetch('https://graphql.anilist.co', {method:'POST', headers:{'Content-Type':'application/json', Accept:'application/json'}, body:JSON.stringify({query:q, variables:{a:n(addDays(-1)), b:n(addDays(DAYS + 1))}})}).catch(() => { throw new Error('Can’t reach AniList - is there internet?') });
+    if(!r.ok) throw new Error('AniList answered ' + r.status); const j = await r.json(), out = [];
+    for(const m of (((j.data || {}).Page || {}).media) || []){ const s = m.startDate || {}; if(!s.year || !s.month) continue; const date = `${s.year}-${pad(s.month)}-${pad(s.day || 1)}`;
+      out.push({id:'manga:' + m.id, kind:'manga', title:m.title.english || m.title.romaji, sub:'New ' + (m.format || 'manga').toLowerCase().replace('_', ' ') + (s.day ? '' : ' · date approximate'), date, img:(m.coverImage || {}).medium || '', url:m.siteUrl}) }
+    return out }
+};
+/* books and board games: no usable release source found yet (plans/calendar.md) */
+const FUTURE = {book:'Books: no good source for upcoming releases found yet.', board:'Board games: BoardGameGeek has no release calendar - not available yet.'};
+
+/* ---------- loading with a 12 h cache ---------- */
+const DATA = {}, ERR = {}, LOAD = {};
+async function load(kind, force){ const c = lsGet('nvCal.c.' + kind, null);
+  if(!force && c && Date.now() - c.at < H12){ DATA[kind] = c.items; return }
+  LOAD[kind] = 1; draw();
+  try{ const items = await SRC[kind](); DATA[kind] = items; delete ERR[kind]; lsSet('nvCal.c.' + kind, {at:Date.now(), items}) }
+  catch(e){ ERR[kind] = {msg:e.message || String(e), need:e instanceof Need}; if(c) DATA[kind] = c.items; try{ window.NVLOG && NVLOG.log('calendar', kind + ': ' + (e.message || e)) }catch(x){} }
+  delete LOAD[kind] }
+const S = {kind:'all'};
+const FOL = () => lsGet('nvCal.follow', {});
+function publishNew(){ try{ const t = addDays(0), e = addDays(3), n = Object.values(FOL()).filter(f => f.date >= t && f.date <= e), m = lsGet('nvNew', {}) || {};
+  if(n.length) m.calendar = {n:n.length, text:n.length === 1 ? n[0].title + ' comes out ' + (/^(Today|Tomorrow)$/.test(dlabel(n[0].date)) ? dlabel(n[0].date).toLowerCase() : 'on ' + dlabel(n[0].date)) : n.length + ' things you follow come out in the next 3 days', at:Date.now()}; else delete m.calendar; lsSet('nvNew', m) }catch(e){} }
+
+/* ---------- screen ---------- */
+function items(){ const t = addDays(0), fol = FOL(); let l;
+  if(S.kind === 'follow') l = Object.entries(fol).map(([id, f]) => Object.assign({id}, f));
+  else l = Object.keys(KIND).filter(k => S.kind === 'all' || S.kind === k).flatMap(k => DATA[k] || []);
+  l = l.filter(x => S.kind === 'follow' ? x.date >= addDays(-7) : x.date >= t);
+  const seen = new Set(); l = l.filter(x => !seen.has(x.id) && seen.add(x.id));
+  return l.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.title.localeCompare(b.title)) }
+function draw(){ const fol = FOL(), nf = Object.keys(fol).length;
+  $('#chips').innerHTML = [['all', 'All'], ...Object.entries(KIND).map(([k, v]) => [k, v.n]), ['follow', '♥ Following' + (nf ? ' · ' + nf : '')]].map(([k, n]) => `<button class="chip ${S.kind === k ? 'on' : ''}" data-k="${k}">${n}</button>`).join('');
+  const show = S.kind === 'all' ? Object.keys(KIND) : Object.keys(KIND).includes(S.kind) ? [S.kind] : [];
+  $('#notes').innerHTML = show.filter(k => LOAD[k]).map(k => `<div class="note"><span class="spin">⟳</span> Loading ${KIND[k].n.toLowerCase()}…</div>`).join('')
+    + show.filter(k => ERR[k] && (S.kind !== 'all' || !ERR[k].need)).map(k => `<div class="note err"><b>${KIND[k].n}:</b> ${esc(ERR[k].msg)}</div>`).join('')
+    + (S.kind === 'all' && show.some(k => ERR[k] && ERR[k].need) ? `<div class="note">Some kinds are off until you add a key: ${show.filter(k => ERR[k] && ERR[k].need).map(k => KIND[k].n).join(', ')}. Tap one of them to see how.</div>` : '')
+    + (S.kind === 'all' ? `<div class="note">${esc(FUTURE.book)} ${esc(FUTURE.board)}</div>` : '');
+  const l = items(); let h = '', last = '';
+  for(const x of l){ if(x.date !== last){ last = x.date; h += `<div class="day ${x.date === addDays(0) ? 'today' : ''}">${dlabel(x.date)}</div>` }
+    const f = !!fol[x.id], c = (KIND[x.kind] || {}).c;
+    h += `<div class="row"><a class="im" ${x.url ? `href="${esc(x.url)}" target="_blank" rel="noopener"` : ''} style="${x.img ? `background-image:url('${esc(x.img)}')` : ''}"></a><div class="tx"><span class="k" style="--c:${c}">${esc((KIND[x.kind] || {n:''}).n.toUpperCase())}</span><b>${esc(x.title)}</b><span class="s">${esc(x.sub || '')}</span></div><button class="heart ${f ? 'on' : ''}" data-f="${esc(x.id)}" aria-label="${f ? 'Stop following' : 'Follow'}">${f ? '♥' : '♡'}</button></div>` }
+  if(!l.length && !show.some(k => LOAD[k])) h = `<div class="empty">${S.kind === 'follow' ? 'Nothing followed yet. Tap ♡ on anything to follow it.' : 'Nothing to show (yet).'}</div>`;
+  $('#list').innerHTML = h;
+  document.querySelectorAll('[data-k]').forEach(b => b.onclick = () => pick(b.dataset.k));
+  document.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { const id = b.dataset.f, all = FOL();
+    if(all[id]) delete all[id]; else { const x = items().find(y => y.id === id); if(!x) return; all[id] = {kind:x.kind, title:x.title, sub:x.sub, date:x.date, img:x.img, url:x.url} }
+    lsSet('nvCal.follow', all); publishNew(); const y = scrollY; draw(); scrollTo(0, y) }) }
+async function pick(k){ S.kind = k; draw(); const ks = k === 'all' ? Object.keys(KIND) : Object.keys(KIND).includes(k) ? [k] : [];
+  await Promise.all(ks.map(x => load(x))); draw(); if(KIND[k] && ERR[k] && ERR[k].need) toast(ERR[k].msg) }
+function keysSheet(){ const el = document.createElement('div'); el.className = 'modal';
+  const st = (ok, t) => `<div class="s" style="color:${ok ? 'var(--g)' : 'var(--dim)'}">${ok ? '✓ ' : ''}${t}</div>`;
+  el.innerHTML = `<div><h3 style="margin:0 0 6px">Keys</h3>${st(!!lsGet('nvCinema.tmdb', ''), 'TMDB (movies, series): taken from Cinema ⚙ → TMDB')}${st(!!lsGet('nvBooks.cvKey', ''), 'Comic Vine (comics): taken from Bookcase ⚙ → Comic Vine')}
+    <p style="margin:12px 0 0"><b>RAWG key (games)</b> - free at rawg.io/apidocs</p><input id="rk" placeholder="Paste your RAWG key" value="${esc(lsGet('nvCal.rawg', ''))}" autocomplete="off">
+    <div style="display:flex;gap:10px;margin-top:6px"><button class="btn" id="kc" style="flex:1">Close</button><button class="btn primary" id="ks" style="flex:1">Save</button></div></div>`;
+  document.body.appendChild(el); $('#kc').onclick = () => el.remove();
+  $('#ks').onclick = () => { lsSet('nvCal.rawg', $('#rk').value.trim()); el.remove(); load('game', true).then(draw); toast('Saved') } }
+function refreshAll(){ for(const k of Object.keys(KIND)) try{ localStorage.removeItem('nvCal.c.' + k) }catch(e){}; toast('Looking again…'); pick(S.kind) }
+try{ NVMENU.make({app:'calendar', mount:'#nvhost', cls:'btn', hub:'../hub/index.html', backHub:true, items:() => [{label:'Look for releases again', run:refreshAll}, {label:'Keys…', run:keysSheet}]}) }catch(e){ console.error(e) }
+publishNew(); draw(); pick('all');
+</script>
+</body>
+</html>

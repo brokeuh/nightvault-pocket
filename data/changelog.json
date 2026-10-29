@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 140,
+   "date": "2026-10-29",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "New: Calendar",
+   "items": [
+    "A new Calendar tile in The Nightvault (it appears by itself) shows what is coming out in the next 60 days: movies, series, comics, games and manga, without adding anything first.",
+    "Filter per kind, tap the heart to follow something. A follow that comes out within 3 days gives the Calendar tile a green dot.",
+    "Movies and series use your TMDB key from Cinema, comics your Comic Vine key from Bookcase (Android app only). Games need a free RAWG key: ☰ → Keys.",
+    "Books and board games are not in yet: no good source was found."
+   ]
+  },
+  {
    "id": 139,
    "date": "2026-10-28",
    "where": [

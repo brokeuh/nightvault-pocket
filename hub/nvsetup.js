@@ -86,6 +86,9 @@
       {id:'welcome', added:'2026-10-23', icon:'🧊', title:'Welcome to Nightvault 3D Print', body:'Your 3D models (STL, OBJ, 3MF) with a 3D viewer, projects with their pictures and print files, and a log of what you printed.'},
       {id:'add', added:'2026-10-23', icon:'➕', title:'Add models', body:'Tap <b>Add</b> and pick a folder or files. One folder or ZIP = one project tile.'},
       MYPC]},
+    calendar:{name:'Calendar', prefix:'nvCal.', steps:[
+      {id:'welcome', added:'2026-10-29', icon:'📅', title:'Welcome to Nightvault Calendar', body:'What is coming out, all in one list: movies, series, comics, games and manga. Nothing to add first. Tap <b>♡</b> to follow something - the tile in The Nightvault gets a green dot when it comes out within 3 days.'},
+      {id:'keys', added:'2026-10-29', icon:'🔑', title:'Keys', body:'Movies and series use your TMDB key from Cinema, comics your Comic Vine key from Bookcase (Android app only). Games need a free RAWG key: ☰ → Keys.'}]},
     convert:{name:'Convert', prefix:'nvConvert', steps:[
       {id:'welcome', added:'2026-10-23', icon:'🖼️', title:'Welcome to Nightvault Convert', body:'Makes your pictures smaller: WebP and/or AVIF, in the browser - nothing is uploaded. Pick pictures or a whole folder, choose the format and quality, then download them (as a ZIP).'}]}
   };
@@ -94,6 +97,7 @@
   function here(){ const p = location.pathname, q = location.search;
     if(/\/audio\//.test(p)) return /mode=music/.test(q) ? 'music' : 'audiobooks';
     if(/\/tools\/convert\//.test(p)) return 'convert';
+    if(/\/calendar\//.test(p)) return 'calendar';
     const m = p.match(/\/(books|games|boardgames|cinema|print3d)\//); return m ? (m[1] === 'books' ? 'bookcase' : m[1]) : null }
   const usable = s => !(s.android && !NATIVE);
   const seen = app => (get('nvSetup', {})[app] || {}).seen || [];

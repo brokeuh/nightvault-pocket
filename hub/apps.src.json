@@ -119,6 +119,19 @@
       ]
     },
     {
+      "id": "calendar",
+      "name": "Calendar",
+      "desc": "What is coming out: movies, series, comics, games and manga, nothing to add first",
+      "color": "#3a3118",
+      "entry": "calendar/?nv=hub",
+      "files": [
+        "calendar/index.html"
+      ],
+      "provides": [],
+      "uses": [],
+      "keepsData": "Your follows stay on this device."
+    },
+    {
       "id": "bookcase",
       "name": "Bookcase",
       "desc": "Comics, manga, books and rulebooks on shelves, with one reader",

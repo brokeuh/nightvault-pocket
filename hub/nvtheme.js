@@ -39,7 +39,7 @@
   const isLight = c => lum(c.bg) > lum(c.text);
   PRESETS.forEach(p => { p.light = isLight(p) });
   /* each app's own colour (the tile colour in The Nightvault) */
-  const APPCOL = {hub:'#5fe0b0', scanner:'#6fa8ff', binder:'#5fe0b0', convert:'#6fd3ea', control:'#c4cdd8', go:'#f1dc6b', bookcase:'#f4b25f', music:'#c58bff', audiobooks:'#7fb2ff', cinema:'#ff8f9a', boardgames:'#9be071', print3d:'#6fd3ea', collectables:'#f1dc6b', games:'#9a9cff'};
+  const APPCOL = {hub:'#5fe0b0', scanner:'#6fa8ff', binder:'#5fe0b0', convert:'#6fd3ea', calendar:'#ffd166', control:'#c4cdd8', go:'#f1dc6b', bookcase:'#f4b25f', music:'#c58bff', audiobooks:'#7fb2ff', cinema:'#ff8f9a', boardgames:'#9be071', print3d:'#6fd3ea', collectables:'#f1dc6b', games:'#9a9cff'};
   const STATUS = {dark:{g:'#4ee0a0', b:'#6aa8ff', o:'#ffa94d', amber:'#f1dc6b', red:'#ef8a8f'}, light:{g:'#0f7a50', b:'#2459c9', o:'#a85500', amber:'#7a5d00', red:'#b3261e'}};
 
   /* ---------- the saved choice ---------- */
@@ -97,7 +97,7 @@
     return r }
   const fix = c => ({bg:c.bg, card:c.card, text:readable(c.text, mix(c.bg, c.card, .5), 7), accent:readable(c.accent, c.bg, 3)});
 
-  const NAMES = {hub:'The Nightvault', scanner:'Scanner', binder:'Binder', convert:'Convert', control:'Control', go:'GO', bookcase:'Bookcase', music:'Music', audiobooks:'Audiobooks', cinema:'Cinema', boardgames:'Boardgames', print3d:'3D Print', collectables:'Collectables', games:'Games'};
+  const NAMES = {hub:'The Nightvault', scanner:'Scanner', binder:'Binder', convert:'Convert', calendar:'Calendar', control:'Control', go:'GO', bookcase:'Bookcase', music:'Music', audiobooks:'Audiobooks', cinema:'Cinema', boardgames:'Boardgames', print3d:'3D Print', collectables:'Collectables', games:'Games'};
   window.NVTHEME = {names:NAMES, presets:PRESETS, dark:PRESETS.filter(p => !p.light), lightOnes:PRESETS.filter(p => p.light), appColor:id => APPCOL[id] || '#6fa8ff',
     state:load, save, resolve, apply, setPreset, setCustom, setMode, setScope, setKeep, clearApp, check, fix, contrast, readable, mix, lum, isLight, hex:hx, preset,
     name:app => resolve(app).name};

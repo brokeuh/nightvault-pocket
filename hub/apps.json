@@ -10,7 +10,7 @@
    "files": [
     {
      "path": "hub/index.html",
-     "size": 92815
+     "size": 93746
     },
     {
      "path": "hub/core.js",
@@ -34,11 +34,11 @@
     },
     {
      "path": "hub/nvsetup.js",
-     "size": 26599
+     "size": 27250
     },
     {
      "path": "hub/nvtheme.js",
-     "size": 10296
+     "size": 10337
     },
     {
      "path": "hub/nvmenu.js",
@@ -50,7 +50,7 @@
     },
     {
      "path": "hub/nvsplash.js",
-     "size": 8486
+     "size": 8867
     },
     {
      "path": "hub/nvvoice.js",
@@ -59,10 +59,10 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 231468,
-   "hash": "cc0aa403c16b",
-   "version": "2026.10.28.2035",
-   "updated": "2026-10-28"
+   "size": 233472,
+   "hash": "268ca9aa6067",
+   "version": "2026.10.29.0835",
+   "updated": "2026-10-29"
   },
   {
    "id": "scanner",
@@ -235,6 +235,26 @@
    "hash": "e3b0c44298fc",
    "version": "2026.10.28.2035",
    "updated": "2026-10-28"
+  },
+  {
+   "id": "calendar",
+   "name": "Calendar",
+   "desc": "What is coming out: movies, series, comics, games and manga, nothing to add first",
+   "color": "#3a3118",
+   "entry": "calendar/?nv=hub",
+   "files": [
+    {
+     "path": "calendar/index.html",
+     "size": 18022
+    }
+   ],
+   "provides": [],
+   "uses": [],
+   "keepsData": "Your follows stay on this device.",
+   "size": 18022,
+   "hash": "24732e0d7fb5",
+   "version": "2026.10.29.0835",
+   "updated": "2026-10-29"
   },
   {
    "id": "bookcase",

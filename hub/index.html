@@ -326,6 +326,7 @@ $('#lg2').innerHTML = LOGO;
 const ICON = {
   scanner:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"></path><rect x="8" y="7" width="8" height="10" rx="1"></rect></svg>`,
   binder:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="2"></rect><path d="M9 21h9a2 2 0 0 0 2-2V8"></path></svg>`,
+  calendar:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path><circle cx="12" cy="15" r="1.6" fill="currentColor"></circle></svg>`,
   convert:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="10" height="13" rx="1.5"></rect><path d="M16 9h4v11H9v-3"></path><path d="M13 13l3 3"></path></svg>`,
   go:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M4 12h5M15 12h5"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
   bookcase:c => `<svg width="${c}" height="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"></path><rect x="4" y="5" width="4" height="15" rx="1"></rect><rect x="9" y="8" width="4" height="12" rx="1"></rect><path d="M15.2 9.2l3.6-1 2.9 11-3.6 1z"></path></svg>`,
@@ -395,7 +396,7 @@ const DEMO = {
 function setup(){
   show('setup');
   const hasCollection = (() => { try{ return !!localStorage.getItem('nightvault.pocket.test.v1') }catch(e){ return false } })();
-  const apps = CAT.filter(a => !a.soon && (!a.owner || isOwner()));
+  const apps = CAT.filter(a => !a.soon && a.id !== 'calendar' && (!a.owner || isOwner()));      // the Calendar comes by itself
   const pages = [{t:'welcome'}, ...apps.map(a => ({t:'app', a})), {t:'done'}];
   const picked = new Set(apps.some(a => a.id === 'scanner') ? ['scanner'] : []);
   let i = 0, busy = false;
@@ -425,9 +426,13 @@ function setup(){
     $('#wznav').hidden = true; $('#setprog').hidden = false; $('#setprog').innerHTML = ids.map(id => `<div style="margin-bottom:10px"><div class="meta" id="pl-${id}">Nightvault ${esc(CAT.find(a => a.id === id).name)} · waiting</div><div class="bar"><i id="pb-${id}"></i></div></div>`).join('');
     for(const id of ids){ try{ await NV.install(id, (d, t) => { $('#pb-' + id).style.width = (100 * d / t) + '%'; $('#pl-' + id).textContent = `Nightvault ${CAT.find(a => a.id === id).name} · ${mb(d)} of ${mb(t)}` }); $('#pl-' + id).textContent += ' · ready' }
       catch(e){ $('#pl-' + id).textContent = `Nightvault ${CAT.find(a => a.id === id).name} · ${e.message}` } }
-    set('nvHub.setupDone', Date.now()); setTimeout(home, 500) };
+    set('nvHub.setupDone', Date.now()); ensureCalendar(); setTimeout(home, 500) };
   render();
 }
+
+/* the Calendar is part of The Nightvault: it is put on the home screen by itself (unless you removed it yourself) */
+async function ensureCalendar(){ try{ if(!CAT.some(a => a.id === 'calendar') || NV.installed().calendar || get('nvHub.calOff', false) || !get('nvHub.setupDone', null) && !Object.keys(NV.installed()).length) return;
+  await NV.install('calendar'); if(!arranging && !$('#home').hidden) home() }catch(e){} }
 
 /* ---------- home ---------- */
 function home(){
@@ -473,7 +478,7 @@ function appsScreen(){
     appsScreen() });
   if($('#apkgo2')) $('#apkgo2').onclick = () => { $('#appsheet').hidden = true; home(); installShell() };
   document.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { const a = CAT.find(x => x.id === b.dataset.rm);
-    if(!confirm(`Remove Nightvault ${a.name} from this device?${a.keepsData ? '\n\n' + a.keepsData : ''}`)) return; await NV.remove(a.id); toast(`Nightvault ${a.name} removed`); appsScreen() });
+    if(!confirm(`Remove Nightvault ${a.name} from this device?${a.keepsData ? '\n\n' + a.keepsData : ''}`)) return; await NV.remove(a.id); if(a.id === 'calendar') set('nvHub.calOff', true); toast(`Nightvault ${a.name} removed`); appsScreen() });
 }
 $('#appsdone').onclick = () => { $('#appsheet').hidden = true; home() };
 $('#ownchk').onchange = e => { set('nvHub.owner', e.target.checked); appsScreen() };
@@ -543,6 +548,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden) check
   if(NV.native) try{ const reg = NV.installed(); let ch = false; for(const a of CAT) if(reg[a.id] && a.version && reg[a.id].version !== a.version){ reg[a.id].version = a.version; reg[a.id].size = a.size; ch = true } if(ch) set('nvHub.installed', reg) }catch(e){}
   // first start: no apps chosen yet (someone who used the earlier test tiles has Binder already)
   if(!get('nvHub.setupDone', null) && !Object.keys(NV.installed()).length) setup(); else home();
+  ensureCalendar();
   if(location.hash === '#pc' && window.NVPC && NVPC.native) setTimeout(() => $('#pcbtn').click(), 80);
 })();
 /* Android app: the hub is the first screen; back closes the Apps screen, otherwise the app goes to the background */

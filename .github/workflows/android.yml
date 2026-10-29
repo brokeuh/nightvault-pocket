@@ -6,7 +6,7 @@ name: Build Android app
 on:
   push:
     branches: [main]
-    paths: ["native/**", "test/index.html", "hub/**", "tools/**", "admin/**", "audio/**", "books/**", "games/**", "boardgames/**", "cinema/**", "print3d/**", ".github/workflows/android.yml"]
+    paths: ["native/**", "test/index.html", "hub/**", "tools/**", "admin/**", "audio/**", "books/**", "games/**", "calendar/**", "boardgames/**", "cinema/**", "print3d/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 
 permissions:
@@ -49,6 +49,7 @@ jobs:
           cp -r ../audio www/audio
           cp -r ../books www/books
           cp -r ../games www/games
+          cp -r ../calendar www/calendar
           cp -r ../boardgames www/boardgames
           cp -r ../cinema www/cinema
           cp -r ../print3d www/print3d
