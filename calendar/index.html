@@ -64,7 +64,7 @@ const toast = t => { const el = $('#toast'); el.textContent = t; el.hidden = fal
 const DAYS = 60, H12 = 12 * 36e5;
 
 /* ---------- sources: each returns [{id, kind, title, sub, date, img, url}] ---------- */
-const KIND = {movie:{n:'Movies', c:'#ff8f9a'}, tv:{n:'Series', c:'#ffb36b'}, comic:{n:'Comics', c:'#f4b25f'}, game:{n:'Games', c:'#9a9cff'}, manga:{n:'Manga', c:'#c58bff'}, music:{n:'Music', c:'#e68bff'}, ical:{n:'My links', c:'#7be0c6'}};
+const KIND = {movie:{n:'Movies', c:'#ff8f9a'}, tv:{n:'Series', c:'#ffb36b'}, comic:{n:'Comics', c:'#f4b25f'}, game:{n:'Games', c:'#9a9cff'}, manga:{n:'Manga', c:'#c58bff'}, music:{n:'Music', c:'#e68bff'}, book:{n:'Books', c:'#f0b46a'}, ical:{n:'My links', c:'#7be0c6'}};
 class Need extends Error {}
 async function tmdb(path, params){ const k = lsGet('nvCinema.tmdb', ''); if(!k) throw new Need('Needs your TMDB key: open Cinema → ⚙ → TMDB and type it once.');
   const u = new URL('https://api.themoviedb.org/3' + path); for(const [a, b] of Object.entries(params || {})) u.searchParams.set(a, b);
@@ -114,6 +114,14 @@ const SRC = {
         const credit = (g['artist-credit'] || []).map(a => a.name).join(''), hit = (g['artist-credit'] || []).some(a => want.has(norm(a.name))); if(!hit) continue;
         out.push({id:'music:' + g.id, kind:'music', title:`${credit} - ${g.title}`, sub:g['primary-type'] || 'Album', date:d, img:`https://coverartarchive.org/release-group/${g.id}/front-250`, url:'https://musicbrainz.org/release-group/' + g.id}) } }
     return out },
+  async book(){ const names = lsGet('nvCal.bookAuthors', []); if(!names.length) throw new Need('Add books to the Books shelf in Bookcase and open Bookcase once: the Calendar looks for new books of the writers you have.');
+    const from = addDays(0), to = addDays(DAYS), norm = x => String(x || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim(), out = [], seen = new Set(); let fails = 0;
+    for(let i = 0; i < names.length; i++){ if(i) await sleep(250);
+      try{ const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent('inauthor:"' + names[i] + '"')}&orderBy=newest&maxResults=20&printType=books`); if(!r.ok) throw new Error('Google Books answered ' + r.status); const j = await r.json();
+        for(const v of j.items || []){ const x = v.volumeInfo || {}, d = x.publishedDate || ''; if(!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < from || d > to) continue; if(!(x.authors || []).some(a => norm(a) === norm(names[i]))) continue;
+          const id = 'book:' + v.id; if(seen.has(id)) continue; seen.add(id); out.push({id, kind:'book', title:x.title + (x.subtitle ? ': ' + x.subtitle : ''), sub:(x.authors || []).join(', ') + ' · date from Google Books', date:d, img:((x.imageLinks || {}).thumbnail || '').replace('http:', 'https:'), url:x.infoLink || ''}) } }
+      catch(e){ if(++fails > 3 && !out.length) throw e } }
+    return out },
   async ical(){ const links = LINKS(); if(!links.length) throw new Need('Add a calendar link: menu → Calendar links.');
     const from = addDays(0), to = addDays(DAYS), out = [], bad = [];
     for(const L of links){ try{ const ev = icsParse(await icsGet(L.url));
@@ -143,7 +151,7 @@ async function icsGet(url){ url = url.replace(/^webcal:/i, 'https:'); const H = 
   if(H){ const r = await H.get({url, headers:{Accept:'text/calendar,*/*'}, responseType:'text'}); if(r.status >= 400) throw new Error('The link answered ' + r.status); return typeof r.data === 'string' ? r.data : String(r.data) }
   const r = await fetch(url).catch(() => { throw new Error('This link can only be read inside the Nightvault Android app (web browsers block it).') }); if(!r.ok) throw new Error('The link answered ' + r.status); return r.text() }
 /* books and board games: no usable release source found yet (plans/calendar.md) */
-const FUTURE = {book:'Books: no good source for upcoming releases found yet.', board:'Board games: BoardGameGeek has no release calendar - not available yet.'};
+const FUTURE = {board:'Board games: BoardGameGeek has no release calendar - not available yet.'};
 
 /* ---------- loading with a 12 h cache ---------- */
 const DATA = {}, ERR = {}, LOAD = {};
@@ -171,7 +179,7 @@ function draw(){ const fol = FOL(), nf = Object.keys(fol).length;
   $('#notes').innerHTML = show.filter(k => LOAD[k]).map(k => `<div class="note"><span class="spin">⟳</span> Loading ${KIND[k].n.toLowerCase()}…</div>`).join('')
     + show.filter(k => ERR[k] && (S.kind !== 'all' || !ERR[k].need)).map(k => `<div class="note err"><b>${KIND[k].n}:</b> ${esc(ERR[k].msg)}</div>`).join('')
     + (S.kind === 'all' && show.some(k => ERR[k] && ERR[k].need && k !== 'ical') ? `<div class="note">Some kinds are off until you add a key: ${show.filter(k => ERR[k] && ERR[k].need && k !== 'ical').map(k => KIND[k].n).join(', ')}. Tap one of them to see how.</div>` : '')
-    + (S.kind === 'all' ? `<div class="note">${esc(FUTURE.book)} ${esc(FUTURE.board)}</div>` : '');
+    + (S.kind === 'all' ? `<div class="note">${esc(FUTURE.board)}</div>` : '');
   const l = items(); let h = '', last = '';
   for(const x of l){ if(x.date !== last){ last = x.date; h += `<div class="day ${x.date === addDays(0) ? 'today' : ''}">${dlabel(x.date)}</div>` }
     const f = !!fol[x.id], c = (KIND[x.kind] || {}).c;

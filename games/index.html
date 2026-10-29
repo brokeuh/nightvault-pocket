@@ -16,6 +16,7 @@
 <script src="../hub/nvbackup.js"></script>
 <script src="../hub/nvsetup.js"></script>
 <script src="../hub/nvmenu.js"></script>
+<script src="../hub/nvnew.js"></script>
 <!-- Nightvault Games (test): your computer, console, retro and handheld games – a list of what you own and what you want, not a player.
      Shelves per platform + a Wishlist shelf, every shelf organised like Music (shared groups: ../hub/nvgroups.js).
      Game info and covers: IGDB + SteamGridDB, Steam import – with the owner's own keys, kept on this device only.
@@ -162,5 +163,6 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 <script src="app.js"></script>
 <script src="play.js"></script>
 <script>try{NVMENU.make({app:'games', btn:'#setbtn', hub:'../hub/index.html', backup:'games'})}catch(e){console.error(e)}</script>
+<script>try{ NVNEW.watch({app:'games', sel:'[data-game],[data-grp]', key:el => { if(el.dataset.game) return 'g:' + el.dataset.game; const g = groupByKey(cur().shelf, el.dataset.grp); return g ? (g.all || g.items).map(b => 'g:' + b.id) : null }, keys:() => GAMES.map(g => 'g:' + g.id)}) }catch(e){}</script>
 </body>
 </html>

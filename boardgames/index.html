@@ -15,6 +15,7 @@
 <script src="../hub/nvbackup.js"></script>
 <script src="../hub/nvsetup.js"></script>
 <script src="../hub/nvmenu.js"></script>
+<script src="../hub/nvnew.js"></script>
 <!-- Nightvault Boardgames (test): shelves Board games, Wishlist, Miniatures & terrain + Plays. Games come from BoardGameGeek every day
      (workflow "Update board games" → ../data/boardgames/collection.json); plays are logged here and sent to BGG by the Android app (NvBgg).
      Organised like Music (shared groups: ../hub/nvgroups.js). Plan: plans/boardgames.md (nightvault-src). -->
@@ -159,5 +160,6 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 
 <script src="app.js"></script>
 <script>try{NVMENU.make({app:'boardgames', btn:'#setbtn', hub:'../hub/index.html', backup:'boardgames'})}catch(e){console.error(e)}</script>
+<script>try{ NVNEW.watch({app:'boardgames', sel:'[data-item],[data-grp]', key:el => { if(el.dataset.item) return 'i:' + el.dataset.item; const g = groupByKey(cur().shelf, el.dataset.grp); return g ? (g.all || g.items).map(b => 'i:' + b.id) : null }, keys:() => ITEMS.map(g => 'i:' + g.id)}) }catch(e){}</script>
 </body>
 </html>

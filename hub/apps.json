@@ -245,15 +245,15 @@
    "files": [
     {
      "path": "calendar/index.html",
-     "size": 25043
+     "size": 26368
     }
    ],
    "provides": [],
    "uses": [],
    "keepsData": "Your follows stay on this device.",
-   "size": 25043,
-   "hash": "fc341418e48e",
-   "version": "2026.10.29.0913",
+   "size": 26368,
+   "hash": "d29a10f58dd2",
+   "version": "2026.10.29.0917",
    "updated": "2026-10-29"
   },
   {
@@ -268,7 +268,7 @@
     },
     {
      "path": "books/app.js",
-     "size": 330854
+     "size": 331370
     },
     {
      "path": "books/panels.js",
@@ -330,10 +330,10 @@
    "uses": [],
    "entry": "books/?nv=hub",
    "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted.",
-   "size": 2519284,
-   "hash": "e3cd929a96d9",
-   "version": "2026.10.28.2035",
-   "updated": "2026-10-28"
+   "size": 2519800,
+   "hash": "d0f96e40e68c",
+   "version": "2026.10.29.0917",
+   "updated": "2026-10-29"
   },
   {
    "id": "music",
@@ -344,7 +344,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 272728
+     "size": 272915
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -356,9 +356,9 @@
     "music"
    ],
    "uses": [],
-   "size": 273289,
-   "hash": "2c425608223e",
-   "version": "2026.10.29.0913",
+   "size": 273476,
+   "hash": "cb862f1398e2",
+   "version": "2026.10.29.0917",
    "updated": "2026-10-29"
   },
   {
@@ -370,7 +370,7 @@
    "files": [
     {
      "path": "audio/index.html",
-     "size": 272728
+     "size": 272915
     },
     {
      "path": "audio/manifest.webmanifest",
@@ -382,9 +382,9 @@
     "audiobooks"
    ],
    "uses": [],
-   "size": 273289,
-   "hash": "2c425608223e",
-   "version": "2026.10.29.0913",
+   "size": 273476,
+   "hash": "cb862f1398e2",
+   "version": "2026.10.29.0917",
    "updated": "2026-10-29"
   },
   {
@@ -433,7 +433,7 @@
    "files": [
     {
      "path": "boardgames/index.html",
-     "size": 14886
+     "size": 15238
     },
     {
      "path": "boardgames/app.js",
@@ -450,10 +450,10 @@
    "uses": [],
    "entry": "boardgames/?nv=hub",
    "keepsData": "Your plays, games added by hand, pictures and groups stay on this device. Games from BoardGameGeek come back by themselves.",
-   "size": 114134,
-   "hash": "4c5fdc368ae1",
-   "version": "2026.10.28.2035",
-   "updated": "2026-10-28"
+   "size": 114486,
+   "hash": "416d1fb1327e",
+   "version": "2026.10.29.0917",
+   "updated": "2026-10-29"
   },
   {
    "id": "print3d",
@@ -463,7 +463,7 @@
    "files": [
     {
      "path": "print3d/index.html",
-     "size": 18583
+     "size": 18920
     },
     {
      "path": "print3d/app.js",
@@ -484,10 +484,10 @@
    "uses": [],
    "entry": "print3d/?nv=hub",
    "keepsData": "Your models list, prints, tags, groups and copies in the app stay on this device. Files in phone folders are never deleted.",
-   "size": 150710,
-   "hash": "fdb9b21ea519",
-   "version": "2026.10.28.2035",
-   "updated": "2026-10-28"
+   "size": 151047,
+   "hash": "347ece86352d",
+   "version": "2026.10.29.0917",
+   "updated": "2026-10-29"
   },
   {
    "id": "collectables",
@@ -513,7 +513,7 @@
    "files": [
     {
      "path": "games/index.html",
-     "size": 15833
+     "size": 16180
     },
     {
      "path": "games/app.js",
@@ -534,10 +534,10 @@
    "uses": [],
    "entry": "games/?nv=hub",
    "keepsData": "Your games, copies, wishlist, groups and keys stay on this device.",
-   "size": 148456,
-   "hash": "749cc3591add",
-   "version": "2026.10.28.2035",
-   "updated": "2026-10-28"
+   "size": 148803,
+   "hash": "e96bfa11f3f0",
+   "version": "2026.10.29.0917",
+   "updated": "2026-10-29"
   }
  ]
 }

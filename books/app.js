@@ -1801,9 +1801,12 @@ async function findSeries(sh, books, force){ const k = cvKeyOf(books[0]), c = CV
    phys:{'<num>':{price, at}}, at}. Digital = a book of this shelf with b.cv.id = vid (or the same series name when it was never looked up).
    ===================================================================================================================== */
 let COLS = {};
-async function loadCols(){ COLS = {}; for(const r of await dbAll('kv')) if(String(r.id).startsWith('col:')) COLS[r.vid] = r; await loadArcs(); setTimeout(publishNew, 1500) }
+async function loadCols(){ COLS = {}; for(const r of await dbAll('kv')) if(String(r.id).startsWith('col:')) COLS[r.vid] = r; await loadArcs(); setTimeout(publishNew, 1500); setTimeout(publishAuthors, 2500) }
 const colSave = c => { setTimeout(publishNew, 300); return dbPut('kv', c) };
 /* tells The Nightvault (green dot on the tile + "New in your apps"): localStorage.nvNew.bookcase = {n, text, at} */
+/* the Calendar looks for new books of the writers on your Books shelf */
+function publishAuthors(){ try{ const n = {}; for(const b of BOOKS) if(b.shelf === 'books' && b.writer) for(const w of String(b.writer).split(/,|&| and /i).map(x => x.trim()).filter(x => x.length > 2)) n[w] = (n[w] || 0) + 1;
+  const top = Object.entries(n).sort((a, b) => b[1] - a[1]).slice(0, 100).map(x => x[0]); if(top.length) localStorage.setItem('nvCal.bookAuthors', JSON.stringify(top)) }catch(e){} }
 function publishNew(){ try{ const cs = Object.values(COLS).map(c => [c, newCount(c)]).filter(x => x[1] > 0), n = cs.reduce((t, x) => t + x[1], 0), m = JSON.parse(localStorage.getItem('nvNew') || '{}') || {};
   if(n > 0){ const names = cs.slice(0, 3).map(x => `${x[0].name} (${x[1]})`).join(', ') + (cs.length > 3 ? ' …' : '');
     m.bookcase = {n, text:plural(n, 'new volume or issue', 'new volumes or issues') + ': ' + names, at:Date.now()} } else delete m.bookcase; localStorage.setItem('nvNew', JSON.stringify(m)) }catch(e){} }

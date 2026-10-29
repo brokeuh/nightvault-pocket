@@ -16,6 +16,7 @@
 <script src="../hub/nvbackup.js"></script>
 <script src="../hub/nvsetup.js"></script>
 <script src="../hub/nvmenu.js"></script>
+<script src="../hub/nvnew.js"></script>
 <!-- Nightvault 3D Print (test): your 3D models (STL, OBJ, 3MF) from a phone folder, copied into the app or from the PC (Take with me),
      a 3D viewer (viewer.js), projects (one folder = one tile, shared groups ../hub/nvgroups.js) and a print log. Plan: plans/print3d.md (nightvault-src). -->
 <style>
@@ -192,5 +193,6 @@ select{height:34px;border-radius:11px;border:1px solid var(--line);background:va
 <script src="viewer.js"></script>
 <script src="app.js"></script>
 <script>try{NVMENU.make({app:'print3d', btn:'#setbtn', hub:'../hub/index.html', backup:'print3d', hide:['#prbtn'], items:() => [{label:'Prints', click:'#prbtn'}]})}catch(e){console.error(e)}</script>
+<script>try{ NVNEW.watch({app:'print3d', sel:'[data-item],[data-grp]', key:el => { if(el.dataset.item) return 'm:' + el.dataset.item; const g = groupByKey(el.dataset.grp); return g ? (g.all || g.items).map(b => 'm:' + b.id) : null }, keys:() => MODELS.map(m => 'm:' + m.id)}) }catch(e){}</script>
 </body>
 </html>

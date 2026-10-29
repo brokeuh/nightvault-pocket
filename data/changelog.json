@@ -3,6 +3,27 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 143,
+   "date": "2026-10-29",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub",
+    "bookcase",
+    "games",
+    "boardgames",
+    "print3d",
+    "audiobooks"
+   ],
+   "title": "Calendar: new books; green glow in more apps",
+   "items": [
+    "Calendar: a Books chip with new books by the writers on your Books shelf (up to 100, from Google Books; only exact dates). Open Bookcase once after this update.",
+    "The green glow on new items now also works in Games, Boardgames, 3D Print and Audiobooks (Audiobooks: single books; groups do not glow yet)."
+   ]
+  },
+  {
    "id": 142,
    "date": "2026-10-29",
    "where": [
