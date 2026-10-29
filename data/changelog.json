@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 141,
+   "date": "2026-10-29",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "Calendar: your own iCal links",
+   "items": [
+    "Calendar ☰ → Calendar links (iCal): paste a link such as your Otaku Calendar feed and its releases show under \"My links\" next to everything else (repeating events too).",
+    "Links are read inside the Android app only."
+   ]
+  },
+  {
    "id": 140,
    "date": "2026-10-29",
    "where": [

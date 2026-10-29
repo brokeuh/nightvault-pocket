@@ -88,7 +88,8 @@
       MYPC]},
     calendar:{name:'Calendar', prefix:'nvCal.', steps:[
       {id:'welcome', added:'2026-10-29', icon:'📅', title:'Welcome to Nightvault Calendar', body:'What is coming out, all in one list: movies, series, comics, games and manga. Nothing to add first. Tap <b>♡</b> to follow something - the tile in The Nightvault gets a green dot when it comes out within 3 days.'},
-      {id:'keys', added:'2026-10-29', icon:'🔑', title:'Keys', body:'Movies and series use your TMDB key from Cinema, comics your Comic Vine key from Bookcase (Android app only). Games need a free RAWG key: ☰ → Keys.'}]},
+      {id:'keys', added:'2026-10-29', icon:'🔑', title:'Keys', body:'Movies and series use your TMDB key from Cinema, comics your Comic Vine key from Bookcase (Android app only). Games need a free RAWG key: ☰ → Keys.'},
+      {id:'links', added:'2026-10-29', icon:'🔗', title:'Your own calendar links', body:'Paste an iCal link (for example your feed from Otaku Calendar) in ☰ → Calendar links (iCal). Its releases show under <b>My links</b>. Read inside the Android app only.', android:true}]},
     convert:{name:'Convert', prefix:'nvConvert', steps:[
       {id:'welcome', added:'2026-10-23', icon:'🖼️', title:'Welcome to Nightvault Convert', body:'Makes your pictures smaller: WebP and/or AVIF, in the browser - nothing is uploaded. Pick pictures or a whole folder, choose the format and quality, then download them (as a ZIP).'}]}
   };

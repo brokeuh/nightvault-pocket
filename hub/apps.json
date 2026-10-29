@@ -34,7 +34,7 @@
     },
     {
      "path": "hub/nvsetup.js",
-     "size": 27250
+     "size": 27530
     },
     {
      "path": "hub/nvtheme.js",
@@ -59,9 +59,9 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 233472,
-   "hash": "268ca9aa6067",
-   "version": "2026.10.29.0835",
+   "size": 233752,
+   "hash": "cb3a3dbadbc5",
+   "version": "2026.10.29.0842",
    "updated": "2026-10-29"
   },
   {
@@ -245,15 +245,15 @@
    "files": [
     {
      "path": "calendar/index.html",
-     "size": 18022
+     "size": 23081
     }
    ],
    "provides": [],
    "uses": [],
    "keepsData": "Your follows stay on this device.",
-   "size": 18022,
-   "hash": "24732e0d7fb5",
-   "version": "2026.10.29.0835",
+   "size": 23081,
+   "hash": "cf7c8fc39a2f",
+   "version": "2026.10.29.0842",
    "updated": "2026-10-29"
   },
   {

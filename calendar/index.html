@@ -64,7 +64,7 @@ const toast = t => { const el = $('#toast'); el.textContent = t; el.hidden = fal
 const DAYS = 60, H12 = 12 * 36e5;
 
 /* ---------- sources: each returns [{id, kind, title, sub, date, img, url}] ---------- */
-const KIND = {movie:{n:'Movies', c:'#ff8f9a'}, tv:{n:'Series', c:'#ffb36b'}, comic:{n:'Comics', c:'#f4b25f'}, game:{n:'Games', c:'#9a9cff'}, manga:{n:'Manga', c:'#c58bff'}};
+const KIND = {movie:{n:'Movies', c:'#ff8f9a'}, tv:{n:'Series', c:'#ffb36b'}, comic:{n:'Comics', c:'#f4b25f'}, game:{n:'Games', c:'#9a9cff'}, manga:{n:'Manga', c:'#c58bff'}, ical:{n:'My links', c:'#7be0c6'}};
 class Need extends Error {}
 async function tmdb(path, params){ const k = lsGet('nvCinema.tmdb', ''); if(!k) throw new Need('Needs your TMDB key: open Cinema → ⚙ → TMDB and type it once.');
   const u = new URL('https://api.themoviedb.org/3' + path); for(const [a, b] of Object.entries(params || {})) u.searchParams.set(a, b);
@@ -101,8 +101,35 @@ const SRC = {
     if(!r.ok) throw new Error('AniList answered ' + r.status); const j = await r.json(), out = [];
     for(const m of (((j.data || {}).Page || {}).media) || []){ const s = m.startDate || {}; if(!s.year || !s.month) continue; const date = `${s.year}-${pad(s.month)}-${pad(s.day || 1)}`;
       out.push({id:'manga:' + m.id, kind:'manga', title:m.title.english || m.title.romaji, sub:'New ' + (m.format || 'manga').toLowerCase().replace('_', ' ') + (s.day ? '' : ' · date approximate'), date, img:(m.coverImage || {}).medium || '', url:m.siteUrl}) }
-    return out }
+    return out },
+  async ical(){ const links = LINKS(); if(!links.length) throw new Need('Add a calendar link: menu → Calendar links.');
+    const from = addDays(0), to = addDays(DAYS), out = [], bad = [];
+    for(const L of links){ try{ const ev = icsParse(await icsGet(L.url));
+        for(const e of ev) for(const date of icsDates(e, from, to)) out.push({id:`ical:${L.id}:${e.UID || e.SUMMARY}:${date}`, kind:'ical', title:icsUnesc(e.SUMMARY) || 'Event', sub:L.name + (e.DESCRIPTION ? ' · ' + icsUnesc(e.DESCRIPTION).slice(0, 80) : ''), date, img:'', url:e.URL && /^https?:/.test(e.URL) ? e.URL : ''}) }
+      catch(e){ bad.push(L.name + ': ' + (e.message || e)) } }
+    if(bad.length && !out.length) throw new Error(bad.join(' | ')); return out }
 };
+
+/* ---------- iCal links (Otaku Calendar, a publisher's or a shop's calendar … any .ics link) ---------- */
+const LINKS = () => lsGet('nvCal.ics', []);
+const icsUnesc = v => String(v || '').replace(/\\n/gi, ' ').replace(/\\([,;\\])/g, '$1').trim();
+function icsDate(v, params){ // -> 'YYYY-MM-DD' in local time
+  const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec(String(v).trim()); if(!m) return null;
+  if(m[7]){ const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0))); return dkey(d) }
+  return `${m[1]}-${m[2]}-${m[3]}` }
+function icsParse(txt){ const lines = txt.replace(/\r\n?/g, '\n').replace(/\n[ \t]/g, '').split('\n'), out = []; let ev = null;
+  for(const ln of lines){ if(ln === 'BEGIN:VEVENT'){ ev = {}; continue } if(ln === 'END:VEVENT'){ if(ev && ev.DTSTART) out.push(ev); ev = null; continue } if(!ev) continue;
+    const i = ln.indexOf(':'); if(i < 0) continue; const name = ln.slice(0, i).split(';')[0].toUpperCase(); if(!ev[name]) ev[name] = ln.slice(i + 1) }
+  return out }
+function icsDates(ev, from, to){ const start = icsDate(ev.DTSTART); if(!start) return []; const r = {}; (ev.RRULE || '').split(';').forEach(p => { const [k, v] = p.split('='); if(k) r[k] = v });
+  if(!r.FREQ) return start >= from && start <= to ? [start] : [];
+  const step = Math.max(1, +r.INTERVAL || 1), until = r.UNTIL ? icsDate(r.UNTIL) : null, max = +r.COUNT || 1e9, out = []; let [y, m, d] = start.split('-').map(Number), n = 0;
+  for(let g = 0; g < 4000 && n < max; g++){ const dt = new Date(y, m - 1, d), k = dkey(dt); if(until && k > until) break; if(k > to) break; n++; if(k >= from) out.push(k);
+    if(r.FREQ === 'DAILY') d += step; else if(r.FREQ === 'WEEKLY') d += 7 * step; else if(r.FREQ === 'MONTHLY') m += step; else if(r.FREQ === 'YEARLY') y += step; else break }
+  return out }
+async function icsGet(url){ url = url.replace(/^webcal:/i, 'https:'); const H = NATIVE && Capacitor.Plugins && Capacitor.Plugins.CapacitorHttp;
+  if(H){ const r = await H.get({url, headers:{Accept:'text/calendar,*/*'}, responseType:'text'}); if(r.status >= 400) throw new Error('The link answered ' + r.status); return typeof r.data === 'string' ? r.data : String(r.data) }
+  const r = await fetch(url).catch(() => { throw new Error('This link can only be read inside the Nightvault Android app (web browsers block it).') }); if(!r.ok) throw new Error('The link answered ' + r.status); return r.text() }
 /* books and board games: no usable release source found yet (plans/calendar.md) */
 const FUTURE = {book:'Books: no good source for upcoming releases found yet.', board:'Board games: BoardGameGeek has no release calendar - not available yet.'};
 
@@ -131,7 +158,7 @@ function draw(){ const fol = FOL(), nf = Object.keys(fol).length;
   const show = S.kind === 'all' ? Object.keys(KIND) : Object.keys(KIND).includes(S.kind) ? [S.kind] : [];
   $('#notes').innerHTML = show.filter(k => LOAD[k]).map(k => `<div class="note"><span class="spin">⟳</span> Loading ${KIND[k].n.toLowerCase()}…</div>`).join('')
     + show.filter(k => ERR[k] && (S.kind !== 'all' || !ERR[k].need)).map(k => `<div class="note err"><b>${KIND[k].n}:</b> ${esc(ERR[k].msg)}</div>`).join('')
-    + (S.kind === 'all' && show.some(k => ERR[k] && ERR[k].need) ? `<div class="note">Some kinds are off until you add a key: ${show.filter(k => ERR[k] && ERR[k].need).map(k => KIND[k].n).join(', ')}. Tap one of them to see how.</div>` : '')
+    + (S.kind === 'all' && show.some(k => ERR[k] && ERR[k].need && k !== 'ical') ? `<div class="note">Some kinds are off until you add a key: ${show.filter(k => ERR[k] && ERR[k].need && k !== 'ical').map(k => KIND[k].n).join(', ')}. Tap one of them to see how.</div>` : '')
     + (S.kind === 'all' ? `<div class="note">${esc(FUTURE.book)} ${esc(FUTURE.board)}</div>` : '');
   const l = items(); let h = '', last = '';
   for(const x of l){ if(x.date !== last){ last = x.date; h += `<div class="day ${x.date === addDays(0) ? 'today' : ''}">${dlabel(x.date)}</div>` }
@@ -152,8 +179,17 @@ function keysSheet(){ const el = document.createElement('div'); el.className = '
     <div style="display:flex;gap:10px;margin-top:6px"><button class="btn" id="kc" style="flex:1">Close</button><button class="btn primary" id="ks" style="flex:1">Save</button></div></div>`;
   document.body.appendChild(el); $('#kc').onclick = () => el.remove();
   $('#ks').onclick = () => { lsSet('nvCal.rawg', $('#rk').value.trim()); el.remove(); load('game', true).then(draw); toast('Saved') } }
+function linksSheet(){ const el = document.createElement('div'); el.className = 'modal';
+  const paint = () => { el.innerHTML = `<div><h3 style="margin:0 0 6px">Calendar links</h3><p class="s" style="margin:0 0 8px;color:var(--dim);font-size:13px">Paste an iCal link (.ics or webcal://), for example your feed from Otaku Calendar. Its releases show under "My links". Links are read inside the Android app only.</p>
+    ${LINKS().map(l => `<div class="row" style="padding:8px 10px"><div class="tx"><b style="font-size:14px">${esc(l.name)}</b><span class="s">${esc(l.url.slice(0, 48))}${l.url.length > 48 ? '…' : ''}</span></div><button class="btn sm" data-rm="${esc(l.id)}">Remove</button></div>`).join('')}
+    <input id="ln" placeholder="Name (e.g. Otaku Calendar)" autocomplete="off"><input id="lu" placeholder="https://… or webcal://…" autocomplete="off" inputmode="url">
+    <div style="display:flex;gap:10px;margin-top:6px"><button class="btn" id="lc" style="flex:1">Close</button><button class="btn primary" id="la" style="flex:1">Add link</button></div></div>`;
+    $('#lc').onclick = () => el.remove(); el.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { lsSet('nvCal.ics', LINKS().filter(l => l.id !== b.dataset.rm)); try{ localStorage.removeItem('nvCal.c.ical') }catch(e){} paint(); pick('ical') });
+    $('#la').onclick = () => { const url = $('#lu').value.trim(), name = $('#ln').value.trim() || 'My link'; if(!/^(https?|webcal):\/\//i.test(url)){ toast('The link must start with https:// or webcal://'); return }
+      lsSet('nvCal.ics', LINKS().concat({id:Date.now().toString(36), name, url})); try{ localStorage.removeItem('nvCal.c.ical') }catch(e){} paint(); pick('ical') } };
+  paint(); document.body.appendChild(el) }
 function refreshAll(){ for(const k of Object.keys(KIND)) try{ localStorage.removeItem('nvCal.c.' + k) }catch(e){}; toast('Looking again…'); pick(S.kind) }
-try{ NVMENU.make({app:'calendar', mount:'#nvhost', cls:'btn', hub:'../hub/index.html', backHub:true, items:() => [{label:'Look for releases again', run:refreshAll}, {label:'Keys…', run:keysSheet}]}) }catch(e){ console.error(e) }
+try{ NVMENU.make({app:'calendar', mount:'#nvhost', cls:'btn', hub:'../hub/index.html', backHub:true, items:() => [{label:'Look for releases again', run:refreshAll}, {label:'Calendar links (iCal)…', run:linksSheet}, {label:'Keys…', run:keysSheet}]}) }catch(e){ console.error(e) }
 publishNew(); draw(); pick('all');
 </script>
 </body>
