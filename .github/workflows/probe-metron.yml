@@ -1,0 +1,30 @@
+# Looks at what metron.cloud answers (for building Bookcase's Metron source). Run by hand; changes nothing. Answers on branch probe-metron.
+name: Bookcase - look at Metron
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask
+        run: |
+          set +e
+          exec > /tmp/out.txt 2>&1
+          UA="NightvaultBookcase/1.0 (personal app; github.com/brokeuh)"
+          g(){ echo; echo "===== $1"; curl -sS -m 30 -A "$UA" -H "Origin: https://brokeuh.github.io" -D /tmp/h -o /tmp/b "$1"; grep -i -E "^HTTP|access-control|content-type|www-auth|ratelimit|retry" /tmp/h; head -c ${2:-1500} /tmp/b; echo; sleep 3; }
+          g "https://metron.cloud/api/series/?name=saga"
+          g "https://metron.cloud/api/"
+          curl -sS -m 30 -X OPTIONS -H "Origin: https://brokeuh.github.io" -H "Access-Control-Request-Method: GET" -H "Access-Control-Request-Headers: authorization" -D - -o /dev/null "https://metron.cloud/api/series/?name=saga" | grep -i -E "^HTTP|access-control"
+          g "https://metron.cloud/api/schema/" 300
+          curl -sS -m 30 -A "$UA" "https://metron.cloud/api/schema/" -o /tmp/schema.yml; ls -la /tmp/schema.yml
+      - name: Save the answers on the branch probe-metron (not main)
+        run: |
+          cd /tmp && rm -rf p && mkdir p && cd p && git init -q && cp /tmp/out.txt answers.txt; cp /tmp/schema.yml schema.yml 2>/dev/null || true
+          git config user.name card-bot; git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A && git commit -q -m "Metron answers"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:refs/heads/probe-metron
