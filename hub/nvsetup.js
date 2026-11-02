@@ -66,6 +66,11 @@
       {id:'comicvine', added:'2026-10-23', icon:'🔑', title:'Comic Vine (comics info, optional)', body:'A free key from Comic Vine looks up the publisher, series and story of your comics. It stays on this phone.',
         how:['Make a free account at comicvine.gamespot.com.', 'Open comicvine.gamespot.com/api - your key is on that page.', 'Paste it here.'],
         link:{url:'https://comicvine.gamespot.com/api/', text:'Get a free Comic Vine key'}, keys:[{ls:'nvBooks.cvKey', json:true, label:'Comic Vine key', ph:'40 letters and numbers', pattern:/^[0-9a-f]{40}$/i, secret:true}]},
+      {id:'metron', added:'2026-11-02', icon:'🔑', title:'Metron (comics info, optional)', android:true, body:'Metron is a free comics database made by fans: every issue of a series with its cover, reading orders and what comes out this week. Bookcase uses it next to Comic Vine. Your account stays on this phone.',
+        how:['Make a free account at metron.cloud (Sign up).', 'Type your username and password here.'],
+        link:{url:'https://metron.cloud/', text:'Open metron.cloud (Sign up)'}, keys:[{ls:'nvBooks.mtr', field:'u', label:'Metron username', ph:'your user name'}, {ls:'nvBooks.mtr', field:'p', label:'Metron password', ph:'your password', secret:true}]},
+      {id:'drive', added:'2026-11-02', icon:'☁️', title:'Books from Google Drive', body:'Add › <b>From Google Drive</b> reads a Drive folder of yours (shared with a link) like a folder on the phone: books open straight from Drive, <b>Download to this phone</b> keeps a copy for offline and printing. <b>Sign in with Google</b> there (or shelf ⚙ › Google Drive folders) – Google then pauses downloads far less often than with a key.'},
+      {id:'flemish', added:'2026-11-02', icon:'🇧🇪', title:'Flemish and Dutch comics', body:'Suske en Wiske, Jommeke, De Kiekeboes, Nero … get their full album list too, from GCD and the Dutch Wikipedia (no key needed). Choose where to look in shelf ⚙ › Online › <b>Where to look</b>.'},
       MYPC]},
     boardgames:{name:'Boardgames', prefix:'nvBoard.', steps:[
       {id:'welcome', added:'2026-10-23', icon:'🎲', title:'Welcome to Nightvault Boardgames', body:'The board games you own (from BoardGameGeek), your wishlist, miniatures and terrain, and the plays of your game nights.'},

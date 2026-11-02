@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 147,
+   "date": "2026-11-02",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: set-up steps for Metron, Google Drive and Flemish comics",
+   "items": [
+    "The next time Bookcase opens it shows what's new: the Metron account (with where to sign up), books from Google Drive with Sign in with Google, and the album lists for Flemish and Dutch comics. Also under the ? button."
+   ]
+  },
+  {
    "id": 146,
    "date": "2026-11-02",
    "where": [
