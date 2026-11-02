@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 146,
+   "date": "2026-11-02",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "bookcase"
+   ],
+   "title": "Bookcase: Metron, and Sign in with Google for Drive",
+   "items": [
+    "Metron (metron.cloud), a free comics database made by fans, is now a source next to Comic Vine, GCD and Wikipedia: series, every issue with its cover, reading orders (story arcs) and what came out this week. Shelf ⚙ → Online → Metron account (free account, Android app).",
+    "Discover shows new releases from Metron when you have no Comic Vine key (or tap “from … ⇄” to switch).",
+    "Google Drive: Sign in with Google (Add → From Google Drive, or shelf ⚙ → Google Drive folders). Google trusts a signed-in account much more than the key, so it pauses downloads far less. Needs the setup in Google's console first."
+   ]
+  },
+  {
    "id": 145,
    "date": "2026-10-29",
    "where": [

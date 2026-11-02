@@ -73,7 +73,7 @@ function shelfSet(id, patch){ const own = lsGet('nvBooks.shelves', {});
   else own._own = (own._own || []).map(s => s.id === id ? Object.assign({}, s, patch) : s);
   lsSet('nvBooks.shelves', own) }
 /* what a shelf holds decides where it looks things up: comics (Comic Vine, GCD, Wikipedia) or manga (MangaDex, AniList) – shelf ⚙ → Online */
-const KIND_SRCS = {comics:['cv', 'gcd', 'wiki'], manga:['mdx', 'anl']};
+const KIND_SRCS = {comics:['cv', 'mtr', 'gcd', 'wiki'], manga:['mdx', 'anl']};
 const kindOf = sh => { const s = shelfOf(sh); return s.kind === 'manga' || s.kind === 'comics' ? s.kind : s.id === 'manga' ? 'manga' : 'comics' };
 const isManga = sh => kindOf(sh) === 'manga';
 const W = sh => isManga(sh) ? {i:'volume', is:'volumes', I:'Volumes', c:'manga', cs:'manga'} : {i:'issue', is:'issues', I:'Issues', c:'comic', cs:'comics'};
@@ -1359,10 +1359,10 @@ function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh), folders = lsGet
     <div class="opt"><label for="ss_pub">Bundle series by publisher (Marvel › Spider-Man › …)</label><input type="checkbox" id="ss_pub" ${s.byPub ? 'checked' : ''}></div>
     <div class="opt"><label for="ss_aut">A writer's books without a series make one tile</label><input type="checkbox" id="ss_aut" ${s.authors ? 'checked' : ''}></div>
     ${NvFiles ? `<div class="sec">Folders on this phone</div>${folders.map((f, i) => /^gd:/.test(f.tree) ? '' : `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(inShelf(sh).filter(b => b.src.kind === 'link' && b.src.tree === f.tree).length, 'book')}</div></div><button class="btn sm" data-look="${i}">Look again</button><button class="btn sm danger" data-forget="${i}">Stop</button></div>`).join('') || '<p class="muted small">None yet - Add → Use a folder on this phone.</p>'}` : ''}
-    ${folders.some(f => /^gd:/.test(f.tree)) ? `<div class="sec">Google Drive folders</div>${folders.map((f, i) => /^gd:/.test(f.tree) ? `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(inShelf(sh).filter(b => b.src.kind === 'drive' && b.src.tree === f.tree).length, 'book')} · ${inShelf(sh).filter(b => b.src.kind === 'drive' && b.src.tree === f.tree && b.src.fid).length} downloaded</div></div><button class="btn sm" data-look="${i}">Look again</button><button class="btn sm danger" data-forget="${i}">Stop</button></div>` : '').join('')}<button class="btn sm" id="ss_gdkey" style="margin-top:6px">Google key</button> <button class="btn sm" id="ss_gdc" style="margin-top:6px">Clear the kept parts (${mb(Object.values(lsGet('nvBooks.gdcache', {})).reduce((a, x) => a + x.n.length * 4 * 1048576, 0))})</button><div class="muted small" style="margin-top:4px">Books you open are kept on the phone in parts (up to 600 MB, oldest go first), so opening them again doesn't ask Google.</div>` : ''}
+    ${folders.some(f => /^gd:/.test(f.tree)) ? `<div class="sec">Google Drive folders</div>${folders.map((f, i) => /^gd:/.test(f.tree) ? `<div class="li" style="cursor:default"><div class="n"><div>${esc(f.name)}</div><div class="s">${plural(inShelf(sh).filter(b => b.src.kind === 'drive' && b.src.tree === f.tree).length, 'book')} · ${inShelf(sh).filter(b => b.src.kind === 'drive' && b.src.tree === f.tree && b.src.fid).length} downloaded</div></div><button class="btn sm" data-look="${i}">Look again</button><button class="btn sm danger" data-forget="${i}">Stop</button></div>` : '').join('')}<button class="btn sm" id="ss_gdkey" style="margin-top:6px">${gSigned() ? 'Google: signed in ✓' : 'Sign in with Google / key'}</button> <button class="btn sm" id="ss_gdc" style="margin-top:6px">Clear the kept parts (${mb(Object.values(lsGet('nvBooks.gdcache', {})).reduce((a, x) => a + x.n.length * 4 * 1048576, 0))})</button><div class="muted small" style="margin-top:4px">Books you open are kept on the phone in parts (up to 600 MB, oldest go first), so opening them again doesn't ask Google.</div>` : ''}
     <div class="sec">Online</div><div class="opt"><label for="ss_kind">What is on this shelf</label><select id="ss_kind"><option value="comics" ${isManga(sh) ? '' : 'selected'}>Comics</option><option value="manga" ${isManga(sh) ? 'selected' : ''}>Manga</option></select></div>
-    <div class="opt"><label for="ss_src">Where to look</label><select id="ss_src">${(isManga(sh) ? [['auto', 'MangaDex, then AniList'], ['mdx', 'Only MangaDex'], ['anl', 'Only AniList']] : [['auto', 'Comic Vine, then GCD, then Wikipedia'], ['cv', 'Only Comic Vine'], ['gcd', 'Only GCD (comics.org)'], ['wiki', 'Only Wikipedia (Dutch)']]).map(([k, t]) => `<option value="${k}" ${srcPref(sh) === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-    ${isManga(sh) ? `<div class="muted small" style="margin:-4px 0 8px">MangaDex has every volume cover of most manga, AniList has the story, writer and artist. Neither needs a key. Only official volumes are used – never chapter scans.</div><div class="mlist"><button class="btn primary" id="ss_cv">Look up the manga that are not looked up yet</button><button class="btn" id="ss_cvall">Look up all manga on this shelf</button><div class="muted small" style="margin:-2px 0 0">Once per series; the results are remembered. Needs the internet only while it looks.</div></div>` : `<div class="muted small" style="margin:-4px 0 8px">Comic Vine knows most American comics (needs your free key). GCD and Wikipedia also know Flemish and Dutch comics (Suske en Wiske, Jommeke, De Kiekeboes …) and need no key; GCD works in the Android app. The first one whose list holds all your numbers is used.</div><div class="mlist"><button class="btn primary" id="ss_cv">Look up the comics without a publisher</button><button class="btn" id="ss_cvall">Look up all comics on this shelf</button><button class="btn" id="ss_cvkey">${CV.key() ? 'Change your Comic Vine key' : 'Type your Comic Vine key'}</button><div class="muted small" style="margin:-2px 0 0">Once per series; the results are remembered. Needs the internet only while it looks.</div></div>`}
+    <div class="opt"><label for="ss_src">Where to look</label><select id="ss_src">${(isManga(sh) ? [['auto', 'MangaDex, then AniList'], ['mdx', 'Only MangaDex'], ['anl', 'Only AniList']] : [['auto', 'Comic Vine, Metron, GCD, then Wikipedia'], ['cv', 'Only Comic Vine'], ['mtr', 'Only Metron'], ['gcd', 'Only GCD (comics.org)'], ['wiki', 'Only Wikipedia (Dutch)']]).map(([k, t]) => `<option value="${k}" ${srcPref(sh) === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    ${isManga(sh) ? `<div class="muted small" style="margin:-4px 0 8px">MangaDex has every volume cover of most manga, AniList has the story, writer and artist. Neither needs a key. Only official volumes are used – never chapter scans.</div><div class="mlist"><button class="btn primary" id="ss_cv">Look up the manga that are not looked up yet</button><button class="btn" id="ss_cvall">Look up all manga on this shelf</button><div class="muted small" style="margin:-2px 0 0">Once per series; the results are remembered. Needs the internet only while it looks.</div></div>` : `<div class="muted small" style="margin:-4px 0 8px">Comic Vine knows most American comics (needs your free key); Metron too, and often has the newest releases first (needs a free account, Android app). GCD and Wikipedia also know Flemish and Dutch comics (Suske en Wiske, Jommeke, De Kiekeboes …) and need no key; GCD works in the Android app. The first one whose list holds all your numbers is used.</div><div class="mlist"><button class="btn primary" id="ss_cv">Look up the comics without a publisher</button><button class="btn" id="ss_cvall">Look up all comics on this shelf</button><button class="btn" id="ss_cvkey">${CV.key() ? 'Change your Comic Vine key' : 'Type your Comic Vine key'}</button><button class="btn" id="ss_mtr">${MTR.acc() ? 'Metron account ✓' : 'Metron account (free)'}</button><div class="muted small" style="margin:-2px 0 0">Once per series; the results are remembered. Needs the internet only while it looks.</div></div>`}
     <div class="mlist" style="margin-top:10px"><button class="btn" id="ss_reread">Read the details of all books again</button><div class="muted small" style="margin:-2px 0 0">Fills in what is missing (publisher, writer, year …). What you edited by hand stays.</div></div>
     <div class="sec">Your groups</div><div class="mlist"><button class="btn" id="ss_save">Save my groups</button><button class="btn" id="ss_load">Load from a file</button></div>
     <div class="sec">This shelf</div><div class="mlist"><button class="btn" id="ss_ren">Rename the shelf</button><button class="btn" id="ss_hide">Hide this shelf</button>${s.own ? `<button class="btn danger" id="ss_del">Remove this shelf${n ? ' (its books move to Books)' : ''}</button>` : ''}</div>`);
@@ -1372,7 +1372,7 @@ function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh), folders = lsGet
   $('#ss_full').onchange = e => { shelfSet(sh, {fullSeries:e.target.checked}); draw(); toast('Saved') };
   $('#ss_pub').onchange = e => { shelfSet(sh, {byPub:e.target.checked}); regroup(); draw(); toast(e.target.checked ? 'Series are now bundled by publisher' : 'Publisher tiles are off') };
   $('#ss_reread').onclick = () => { closeSheet(); rereadShelf(sh) };
-  $('#ss_cv').onclick = () => cvLookup(sh, false); $('#ss_cvall').onclick = () => cvLookup(sh, true); if($('#ss_cvkey')) $('#ss_cvkey').onclick = () => cvKeySheet();
+  $('#ss_cv').onclick = () => cvLookup(sh, false); $('#ss_cvall').onclick = () => cvLookup(sh, true); if($('#ss_cvkey')) $('#ss_cvkey').onclick = () => cvKeySheet(); if($('#ss_mtr')) $('#ss_mtr').onclick = () => mtrSheet(() => shelfSettings(sh));
   $('#ss_aut').onchange = e => { shelfSet(sh, {authors:e.target.checked}); delete GRS[sh]; regroup(); draw(); toast('Saved') };
   $('.sheet').addEventListener('click', async e => { const lk = e.target.closest('[data-look]'), fg = e.target.closest('[data-forget]');
     if(lk){ closeSheet(); lookAgain(folders[+lk.dataset.look]) }
@@ -1383,7 +1383,7 @@ function shelfSettings(sh){ const s = shelfOf(sh), G = grOf(sh), folders = lsGet
       lsSet('nvBooks.folders', lsGet('nvBooks.folders', []).filter(x => !(x.tree === f.tree && x.shelf === sh)));
       if(NvFiles && NvFiles.forget && !/^gd:/.test(f.tree) && !lsGet('nvBooks.folders', []).some(x => x.tree === f.tree)) NvFiles.forget({tree:f.tree}).catch(() => {});
       closeSheet(); draw(); toast('Folder removed') } });
-  if($('#ss_gdkey')) $('#ss_gdkey').onclick = () => driveKeySheet();
+  if($('#ss_gdkey')) $('#ss_gdkey').onclick = () => gSignSheet(() => shelfSettings(sh));
   if($('#ss_gdc')) $('#ss_gdc').onclick = () => { for(const id of Object.keys(lsGet('nvBooks.gdcache', {}))) gdcDrop(id); toast('Kept parts cleared'); closeSheet() };
   $('#ss_save').onclick = async () => { try{ const r = await G.saveBackup(); if(r !== 'cancelled') toast('Groups saved') }catch(e){ toast(e.message || String(e), 4000) } };
   $('#ss_load').onclick = async () => { const t = await G.pickFile(); if(!t) return; const c = G.checkBackup(t); if(!c.ok){ toast(c.msg, 5000); return }
@@ -1525,7 +1525,7 @@ function cvKeySheet(then){
   $('#cvksave').onclick = () => { const k = $('#cvk').value.trim().replace(/\s+/g, ''); if(!/^[0-9a-f]{40}$/i.test(k)){ toast('That does not look like a Comic Vine key (40 letters and numbers)', 4000); return } lsSet('nvBooks.cvKey', k); closeSheet(); toast('Key saved'); if(then) then() } }
 /* search one source by hand: rows to tap (book ⋯ → Look up online, and + Add a series). books = your comics of that series (or []) */
 async function srcSearch(src, q, books){ const th = u => u ? `<img class="f" src="${esc(u)}" alt="" style="object-fit:cover">` : '';
-  if(src === 'mdx') return mdxRows(q, books); if(src === 'anl') return anlRows(q, books);
+  if(src === 'mdx') return mdxRows(q, books); if(src === 'anl') return anlRows(q, books); if(src === 'mtr') return mtrRows(q, books);
   if(src === 'cv'){ const j = await cvGet('search', {resources:'volume', query:q, limit:40, field_list:'id,name,start_year,publisher,count_of_issues,image'});
     const l = books.length ? cvPick(j.results || [], books).map(x => x.v) : (j.results || []).sort((a, b) => (b.count_of_issues || 0) - (a.count_of_issues || 0));
     return l.map(v => ({key:v.id, name:v.name, start:v.start_year, pub:cleanPub(v.publisher && v.publisher.name), thumb:th(v.image && v.image.thumb_url), sub:`${esc(cleanPub(v.publisher && v.publisher.name) || '?')} · ${plural(v.count_of_issues || 0, 'issue')}`,
@@ -1535,7 +1535,7 @@ async function srcSearch(src, q, books){ const th = u => u ? `<img class="f" src
       hit:() => gcdHit(s, list, books)})) }
   const pages = await wikiFind(q); return pages.map(p => ({key:'w' + p.id, name:p.name, start:'', thumb:'', sub:esc(p.title), hit:async () => { const pg = await wikiPage(p.id); if(pg.list.length < 5) throw new Error('No numbered album list found on that page'); return wikiHit(pg, books) }})) }
 function srcChips(on, sh){ return `<div class="chips" id="srcch">${KIND_SRCS[kindOf(sh)].map(k => `<button class="chip ${on === k ? 'on' : ''}" data-src="${k}">${SRC_NAME[k]}</button>`).join('')}</div>` }
-const firstSrc = sh => srcPref(sh) !== 'auto' ? srcPref(sh) : isManga(sh) ? 'mdx' : CV.key() ? 'cv' : canGcd() ? 'gcd' : 'wiki';
+const firstSrc = sh => srcPref(sh) !== 'auto' ? srcPref(sh) : isManga(sh) ? 'mdx' : CV.key() ? 'cv' : canMtr() ? 'mtr' : canGcd() ? 'gcd' : 'wiki';
 /* book ⋯ → "Look up online…": pick the right series yourself (for the whole series of this book), in Comic Vine, GCD or Wikipedia */
 async function cvChoose(b){
   const bs = inShelf(b.shelf).filter(x => cvName(x) && norm(cvName(x)) === norm(cvName(b))); let src = firstSrc(b.shelf), rows = [];
@@ -1565,8 +1565,8 @@ async function cvChoose(b){
    Ids: Comic Vine = a number, GCD = 'g<series id>', Wikipedia = 'w<page id>'. A book's b.cv = {id, name, start, src}.
    Shelf ⚙ → "Where to look": auto (Comic Vine, then GCD, then Wikipedia – the first whose list holds all your numbers wins) or one of them.
    ===================================================================================================================== */
-const srcOf = id => /^g/.test(String(id)) ? 'gcd' : /^w/.test(String(id)) ? 'wiki' : /^m/.test(String(id)) ? 'mdx' : /^a\d/.test(String(id)) ? 'anl' : 'cv';
-const SRC_NAME = {cv:'Comic Vine', gcd:'GCD', wiki:'Wikipedia', mdx:'MangaDex', anl:'AniList'};
+const srcOf = id => /^n\d/.test(String(id)) ? 'mtr' : /^g/.test(String(id)) ? 'gcd' : /^w/.test(String(id)) ? 'wiki' : /^m/.test(String(id)) ? 'mdx' : /^a\d/.test(String(id)) ? 'anl' : 'cv';
+const SRC_NAME = {cv:'Comic Vine', mtr:'Metron', gcd:'GCD', wiki:'Wikipedia', mdx:'MangaDex', anl:'AniList'};
 const vidOf = s => /^\d+$/.test(String(s)) ? +s : String(s);
 const UA = 'NightvaultBookcase/1.0 (personal app; github.com/brokeuh)';
 const LISTS = {};   // id → issues, while the app is open (saves asking twice)
@@ -1775,21 +1775,22 @@ async function allIssues(vid, onPage, fresh){ if(LISTS[vid] && !fresh) return LI
   if(s === 'wiki'){ if(fresh) await dbDel('kv', 'disc:wikip:' + String(vid).slice(1)).catch(() => {}); return LISTS[vid] = (await wikiPage(String(vid).slice(1))).list }
   if(s === 'mdx') return LISTS[vid] = await mdxList(String(vid).slice(1), fresh);
   if(s === 'anl') return LISTS[vid] = await anlList(String(vid).slice(1));
+  if(s === 'mtr') return LISTS[vid] = await mtrList(String(vid).slice(1), onPage);
   return cvAllIssues(vid, onPage) }
 /* which sources a shelf may use right now */
 const srcPref = sh => { const p = shelfOf(sh).src || 'auto'; return p === 'auto' || KIND_SRCS[kindOf(sh)].includes(p) ? p : 'auto' };
-function srcOrder(sh){ const p = srcPref(sh); return (p === 'auto' ? KIND_SRCS[kindOf(sh)] : [p]).filter(s => !(BLOCK[s] > Date.now()) && (s !== 'cv' || CV.key()) && (s !== 'gcd' || canGcd())) }
+function srcOrder(sh){ const p = srcPref(sh); return (p === 'auto' ? KIND_SRCS[kindOf(sh)] : [p]).filter(s => !(BLOCK[s] > Date.now()) && (s !== 'cv' || CV.key()) && (s !== 'mtr' || canMtr()) && (s !== 'gcd' || canGcd())) }
 const canLookOnline = sh => srcOrder(sh).length > 0;
-const whyNoSource = sh => { const p = srcPref(sh); return p === 'cv' && !CV.key() ? 'nokey' : p === 'gcd' && !canGcd() ? 'GCD (comics.org) can only be reached from the Nightvault Android app' : BLOCK[p] > Date.now() ? SRC_NAME[p] + ' said: too many requests – try again in an hour' : '' };
+const whyNoSource = sh => { const p = srcPref(sh); return p === 'cv' && !CV.key() ? 'nokey' : p === 'mtr' && !canMtr() ? (MTR.acc() ? 'Metron can only be reached from the Nightvault Android app' : 'Type your Metron account first (shelf ⚙ → Online → Metron)') : p === 'gcd' && !canGcd() ? 'GCD (comics.org) can only be reached from the Nightvault Android app' : BLOCK[p] > Date.now() ? SRC_NAME[p] + ' said: too many requests – try again in an hour' : '' };
 /* the best series for these books: a series you picked by hand wins; then each source in turn, until one holds all your numbers */
 async function findSeries(sh, books, force){ const k = cvKeyOf(books[0]), c = CV.cache(); if(c['pick:' + k] && c['pick:' + k].id) return c['pick:' + k];
   const order = srcOrder(sh); if(!order.length){ const w = whyNoSource(sh); throw Object.assign(new Error(w === 'nokey' ? 'Type your Comic Vine key first (shelf ⚙ → Online)' : w || 'Nothing to look in'), {nokey:w === 'nokey'}) }
   const maxN = Math.max(0, ...books.map(b => b.num || 0)); let best = null, pub = ''; const hasNums = books.some(b => b.num != null);
   for(const s of order){ let hit;
-    try{ hit = s === 'cv' ? await cvSeries(books, force) : s === 'gcd' ? await gcdSeries(books, force) : s === 'mdx' ? await mdxSeries(books, force) : s === 'anl' ? await anlSeries(books, force) : await wikiSeries(books, force) }
+    try{ hit = s === 'cv' ? await cvSeries(books, force) : s === 'mtr' ? await mtrSeries(books, force) : s === 'gcd' ? await gcdSeries(books, force) : s === 'mdx' ? await mdxSeries(books, force) : s === 'anl' ? await anlSeries(books, force) : await wikiSeries(books, force) }
     catch(e){ if(e.limit) BLOCK[s] = Date.now() + 3600e3; if(order.length === 1) throw e; LE('src', SRC_NAME[s] + ' ' + cvName(books[0]), e); continue }
     if(!hit || !hit.id) continue; if(hit.pub && !pub) pub = hit.pub;
-    const cov = s === 'cv' ? (!maxN || hit.n >= maxN ? 1 : (hit.n || 0) / maxN) : hit.cov || 0;
+    const cov = s === 'cv' || s === 'mtr' ? (!maxN || hit.n >= maxN ? 1 : (hit.n || 0) / maxN) : hit.cov || 0;
     if(!best || cov > best.cov){ best = Object.assign({}, hit, {cov, src:s}) } if(cov >= 1 || (!hasNums && best)) break }
   if(best && !best.pub && pub) best.pub = pub;
   return best || {id:0} }
@@ -1898,7 +1899,7 @@ function drawCol(v){ const s = shelfOf(v.shelf), cs = colsOf(v.shelf), q = norm(
   $('#body').innerHTML = h; lazyCovers($('#body')); hookCol(v); hookNew(v.shelf) }
 const colTabs = (sh, on) => `<div class="chips"><button class="chip ${on === 'books' ? 'on' : ''}" data-tabgo="books">My ${esc(shelfOf(sh).name.toLowerCase())}</button><button class="chip ${on === 'col' ? 'on' : ''}" data-tabgo="col">Collection lists${colsOf(sh).length ? ' (' + colsOf(sh).length + ')' : ''}</button>${isManga(sh) ? '' : `<button class="chip ${on === 'arcs' ? 'on' : ''}" data-tabgo="arcs">Reading orders${arcsOf(sh).length ? ' (' + arcsOf(sh).length + ')' : ''}</button>`}</div>`;
 const showColTabs = sh => colsOf(sh).length || arcsOf(sh).length || shelfOf(sh).byPub || shelfOf(sh).fullSeries;
-function hookCol(v){ const a = $('#coladd'); if(a) a.onclick = () => colSearch(v.shelf); const dz = $('#coldisc'); if(dz) dz.onclick = () => CV.key() ? go({v:'disc', shelf:v.shelf, tab:'week'}) : cvKeySheet(() => go({v:'disc', shelf:v.shelf, tab:'week'})); const m = $('#colmine'); if(m) m.onclick = () => colMine(v.shelf);
+function hookCol(v){ const a = $('#coladd'); if(a) a.onclick = () => colSearch(v.shelf); const dz = $('#coldisc'); if(dz) dz.onclick = () => CV.key() || canMtr() ? go({v:'disc', shelf:v.shelf, tab:'week'}) : cvKeySheet(() => go({v:'disc', shelf:v.shelf, tab:'week'})); const m = $('#colmine'); if(m) m.onclick = () => colMine(v.shelf);
   const q = $('#colq'); if(q) q.oninput = () => { Q['col:' + v.shelf] = q.value; clearTimeout(q._t); q._t = setTimeout(() => { const p = q.selectionStart; draw(); const n = $('#colq'); if(n){ n.focus(); try{ n.setSelectionRange(p, p) }catch(e){} } }, 250) } }
 /* + Add a series: search Comic Vine, GCD or Wikipedia, tap one */
 function colSearch(sh, pre){ let src = firstSrc(sh), rows = [], pub = '';
@@ -2031,12 +2032,14 @@ async function discPub(name){ return discCache('pub:' + norm(name), 7 * 864e5, a
     return {id:p.id, name:p.name, vols:(r.volumes || []).map(v => ({id:v.id, name:v.name}))} }) }
 function drawDisc(v){ const s = shelfOf(v.shelf); $('#vtitle').textContent = 'Discover'; document.title = 'Discover · ' + s.name;
   const tabs = [['week', 'New this week'], ['month', 'New this month'], ['pub', 'By publisher']];
-  let h = `<div class="chips">${tabs.map(([k, t]) => `<button class="chip ${v.tab === k ? 'on' : ''}" data-dtab="${k}">${t}</button>`).join('')}</div><div class="muted small" id="dst">Loading from Comic Vine…</div><div id="dbody"></div>`;
+  const useM = v.tab !== 'pub' && canMtr() && (!CV.key() || v.dsrc === 'mtr');   // new releases from Metron (owner, 2 Nov) when there is no Comic Vine key, or by choice
+  let h = `<div class="chips">${tabs.map(([k, t]) => `<button class="chip ${v.tab === k ? 'on' : ''}" data-dtab="${k}">${t}</button>`).join('')}${v.tab !== 'pub' && CV.key() && canMtr() ? `<span style="flex:1"></span><button class="chip" data-dsrc="${useM ? 'cv' : 'mtr'}">from ${useM ? 'Metron' : 'Comic Vine'} ⇄</button>` : ''}</div><div class="muted small" id="dst">Loading from ${useM ? 'Metron' : 'Comic Vine'}…</div><div id="dbody"></div>`;
   $('#body').innerHTML = h;
   $('#body').querySelectorAll('[data-dtab]').forEach(b => b.onclick = () => { v.tab = b.dataset.dtab; draw() });
+  $('#body').querySelectorAll('[data-dsrc]').forEach(b => b.onclick = () => { v.dsrc = b.dataset.dsrc; draw() });
   const st = t => { const e = $('#dst'); if(e) e.textContent = t }, me = v;
   const mine = new Set(BOOKS.filter(b => b.cv && b.cv.id).map(b => b.cv.id));
-  if(v.tab === 'week' || v.tab === 'month') discNew(v.tab === 'week' ? 7 : 31).then(list => { if(cur() !== me) return;
+  if(v.tab === 'week' || v.tab === 'month') (useM ? mtrNew : discNew)(v.tab === 'week' ? 7 : 31).then(list => { if(cur() !== me) return;
       const seen = new Set(), l = list.filter(i => i.vid && !seen.has(i.vid + '|' + i.num) && seen.add(i.vid + '|' + i.num));
       st(`${plural(l.length, 'new comic')} · tap one to see its whole series${l.length >= 400 ? ' (the newest 400)' : ''}`);
       $('#dbody').innerHTML = `<div class="grid">${l.map(i => `<div class="bk" data-cvs="${i.vid}"><div class="cv">${i.thumb ? `${remImg(i.thumb)}` : phHTML({title:i.vname, shelf:v.shelf}, i.vname)}<span class="vol">#${esc(i.num)}</span>${mine.has(i.vid) || COLS[i.vid] ? '<span class="bd dg">✓</span>' : ''}</div><div class="t">${esc(i.vname)}</div><div class="a">${esc(i.date || '')}</div></div>`).join('')}</div>` }).catch(e => st(e.message || String(e)));
@@ -2049,7 +2052,11 @@ function drawDisc(v){ const s = shelfOf(v.shelf); $('#vtitle').textContent = 'Di
         st(`${cleanPub(P.name)}: ${plural(P.vols.length, 'series', 'series')} on Comic Vine${q ? ` · ${l.length} found` : ''} · tap one to see all its issues`);
         $('#dlist').innerHTML = l.slice(0, 600).map(x => `<div class="li" data-cvs="${x.id}"><div class="n"><div>${esc(x.name)}</div></div><span class="r">${mine.has(x.id) ? '✓ you have comics' : COLS[x.id] ? '✓ in your lists' : ''}</span></div>`).join('') + (l.length > 600 ? `<p class="muted small">… and ${l.length - 600} more – type to narrow it down</p>` : '') };
       show(); const q = $('#dq'); q.oninput = () => { v.q = q.value; clearTimeout(q._t); q._t = setTimeout(show, 200) } }).catch(e => st(e.message || String(e))) }
-  $('#dbody').onclick = e => { const t = e.target.closest('[data-cvs]'); if(t) go({v:'cvser', shelf:v.shelf, vid:+t.dataset.cvs}) } }   // on #dbody (new every draw), so one tap opens it once
+  $('#dbody').onclick = e => { const t = e.target.closest('[data-cvs]'); if(!t) return; const vid = vidOf(t.dataset.cvs);
+    if(srcOf(vid) !== 'mtr') return go({v:'cvser', shelf:v.shelf, vid});
+    if(COLS[vid]) return go({v:'colser', shelf:v.shelf, vid}); const name = (t.querySelector('.t') || {}).textContent || 'this series';
+    sheet(`<h3>${esc(name)}</h3><p class="muted small">Add this series to your collection lists? Bookcase gets every issue from Metron – the ones you don't have show grey.</p><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Not now</button><button class="btn primary" style="flex:2" id="dmadd">Add to my lists</button></div>`);
+    $('#dmadd').onclick = async () => { try{ const c = await colAdd(v.shelf, await mtrHit({id:String(vid).slice(1), series:name})); go({v:'colser', shelf:v.shelf, vid:c.vid}) }catch(err){ closeSheet(); toast(err.message || String(err), 5000) } } } }   // on #dbody (new every draw), so one tap opens it once
 /* a series from Comic Vine, before (or without) adding it: every issue, yours in colour */
 const CVSER = {};
 async function cvSerInfo(vid){ if(CVSER[vid]) return CVSER[vid];
@@ -2108,12 +2115,12 @@ async function loadArcs(){ ARCS = {}; for(const r of await dbAll('kv')) if(Strin
 const arcsOf = sh => Object.values(ARCS).filter(a => a.shelf === sh);
 /* your comic for an item of an order: the same Comic Vine series and number, else the same series name and number */
 function arcOwned(a){ const by = {}, byName = {};
-  for(const b of inShelf(a.shelf)){ if(b.num == null) continue; if(b.cv && srcOf(b.cv.id) === 'cv') by[b.cv.id + '|' + numKey(b.num)] = by[b.cv.id + '|' + numKey(b.num)] || b;
+  for(const b of inShelf(a.shelf)){ if(b.num == null) continue; if(b.cv && (srcOf(b.cv.id) === 'cv' || srcOf(b.cv.id) === 'mtr')) by[b.cv.id + '|' + numKey(b.num)] = by[b.cv.id + '|' + numKey(b.num)] || b;
     else if(b.series) byName[bare(b.series) + '|' + numKey(b.num)] = byName[bare(b.series) + '|' + numKey(b.num)] || b }
   const m = {}; for(const it of a.items){ const b = by[it.vid + '|' + numKey(it.num)] || byName[bare(it.vname) + '|' + numKey(it.num)]; if(b) m[it.iid] = b } return m }
 function arcStats(a){ const m = arcOwned(a), P = it => ((COLS[it.vid] || {}).phys || {})[numKey(it.num)];
   return {total:a.items.length, have:a.items.filter(it => m[it.iid] || P(it)).length, read:a.items.filter(it => m[it.iid] && (STATE[m[it.iid].id] || {}).finished).length, m, P} }
-async function arcFetch(aid, onStep){ const j = await cvGet('story_arc/4045-' + aid, {field_list:'id,name,deck,description,publisher,image,issues'}), r = j.results || {};
+async function arcFetch(aid, onStep){ if(srcOf(aid) === 'mtr') return mtrArcFetch(aid, onStep); const j = await cvGet('story_arc/4045-' + aid, {field_list:'id,name,deck,description,publisher,image,issues'}), r = j.results || {};
   const ids = (r.issues || []).map(x => x.id), info = {};
   for(let i = 0; i < ids.length; i += 100){ onStep && onStep(i, ids.length);
     const k = await cvGet('issues', {filter:'id:' + ids.slice(i, i + 100).join('|'), limit:100, field_list:'id,issue_number,name,cover_date,store_date,image,volume'});
@@ -2137,15 +2144,19 @@ function drawArcs(v){ const s = shelfOf(v.shelf), as = arcsOf(v.shelf).sort((a, 
     : `<div class="empty"><h2 style="margin:4px 0;font-size:17px">No reading orders yet</h2><p class="muted small" style="margin:0">A reading order is a big story or event told over several series (like <b>Secret Wars</b>, <b>House of X</b> or <b>Court of Owls</b>), in the order to read it: yours in colour, the others grey. Tap <b>+ Find a reading order</b>. (Comic Vine)</p></div>`;
   $('#body').innerHTML = h; lazyCovers($('#body'));
   $('#arcadd').onclick = () => arcSearch(v.shelf);
-  $('#body').querySelectorAll('[data-arc]').forEach(el => el.onclick = () => go({v:'arc', shelf:v.shelf, aid:+el.dataset.arc})) }
-function arcSearch(sh){ if(!CV.key()) return cvKeySheet(() => arcSearch(sh)); let res = [];
-  sheet(`<h3>Find a reading order</h3><div style="display:flex;gap:8px"><input type="search" id="asq" placeholder="An event or story, like Secret Wars or Civil War"><button class="btn primary" id="asgo">Search</button></div><div class="muted small" id="asst" style="margin:6px 0">Reading orders come from Comic Vine's story arcs.</div><div id="asres"></div><button class="btn" style="width:100%;margin-top:10px" onclick="closeSheet()">Close</button>`);
-  const run = async () => { const q = $('#asq').value.trim(); if(!q) return; $('#asst').textContent = 'Searching…'; $('#asres').innerHTML = '';
-    try{ const j = await cvGet('search', {resources:'story_arc', query:q, limit:30, field_list:'id,name,publisher,image,deck,count_of_isssue_appearances'}); res = j.results || [];
+  $('#body').querySelectorAll('[data-arc]').forEach(el => el.onclick = () => go({v:'arc', shelf:v.shelf, aid:vidOf(el.dataset.arc)})) }
+function arcSearch(sh){ const srcs = ['cv', 'mtr'].filter(k => k === 'cv' ? CV.key() : canMtr()); let src = srcs[0], res = [];
+  if(!src) return CV.key() || !cvHttp() ? cvKeySheet(() => arcSearch(sh)) : sheet(`<h3>Reading orders</h3><p class="muted small">Reading orders come from Comic Vine (your free key) or Metron (a free account, Android app).</p><div class="mlist"><button class="btn" id="arck">Type your Comic Vine key</button><button class="btn" id="arcm">Metron account</button></div>`) || ($('#arck').onclick = () => cvKeySheet(() => arcSearch(sh)), $('#arcm').onclick = () => mtrSheet(() => arcSearch(sh)));
+  sheet(`<h3>Find a reading order</h3>${srcs.length > 1 ? `<div class="chips" id="arsrc">${srcs.map(k => `<button class="chip ${k === src ? 'on' : ''}" data-asrc="${k}">${SRC_NAME[k]}</button>`).join('')}</div>` : ''}<div style="display:flex;gap:8px"><input type="search" id="asq" placeholder="An event or story, like Secret Wars or Civil War"><button class="btn primary" id="asgo">Search</button></div><div class="muted small" id="asst" style="margin:6px 0">Reading orders come from ${SRC_NAME[src]}'s story arcs.</div><div id="asres"></div><button class="btn" style="width:100%;margin-top:10px" onclick="closeSheet()">Close</button>`);
+  const run = async () => { const q = $('#asq').value.trim(); if(!q) return; $('#asst').textContent = 'Searching…'; $('#asres').innerHTML = ''; const me = src;
+    try{ if(src === 'mtr') res = await mtrArcSearch(q);
+      else { const j = await cvGet('search', {resources:'story_arc', query:q, limit:30, field_list:'id,name,publisher,image,deck,count_of_isssue_appearances'}); res = (j.results || []).map(r => ({id:r.id, name:r.name, pub:cleanPub(r.publisher && r.publisher.name) || '', n:r.count_of_isssue_appearances || 0, thumb:r.image && r.image.thumb_url || ''})) }
+      if(me !== src) return;
       $('#asst').textContent = res.length ? 'Tap one to get its reading order' : 'Nothing found - try other words';
-      $('#asres').innerHTML = res.map((r, n) => `<div class="li" data-ares="${n}"><span class="th"><div class="cv">${r.image && r.image.thumb_url ? `<img class="f" src="${esc(r.image.thumb_url)}" alt="" style="object-fit:cover">` : ''}</div></span><div class="n"><div>${esc(r.name)}</div><div class="s">${esc(cleanPub(r.publisher && r.publisher.name) || '?')}${r.count_of_isssue_appearances ? ' · ' + plural(r.count_of_isssue_appearances, 'issue') : ''}</div></div><span class="r">${ARCS[r.id] ? '✓ yours' : ''}</span></div>`).join('') }
+      $('#asres').innerHTML = res.map((r, n) => `<div class="li" data-ares="${n}"><span class="th"><div class="cv">${r.thumb ? `<img class="f" src="${esc(r.thumb)}" alt="" style="object-fit:cover">` : ''}</div></span><div class="n"><div>${esc(r.name)}</div><div class="s">${esc([r.pub, r.n ? plural(r.n, 'issue') : '', SRC_NAME[srcOf(r.id)]].filter(Boolean).join(' · '))}</div></div><span class="r">${ARCS[r.id] ? '✓ yours' : ''}</span></div>`).join('') }
     catch(e){ $('#asst').textContent = e.message || String(e) } };
   $('#asgo').onclick = run; $('#asq').onkeydown = e => { if(e.key === 'Enter') run() }; setTimeout(() => $('#asq').focus(), 50);
+  if($('#arsrc')) $('#arsrc').onclick = e => { const c = e.target.closest('[data-asrc]'); if(!c) return; src = c.dataset.asrc; $('#arsrc').querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === c)); run() };
   $('#asres').onclick = async e => { const r = e.target.closest('[data-ares]'); if(!r) return; const x = res[+r.dataset.ares];
     try{ const a = await arcAdd(sh, x.id); go({v:'arc', shelf:sh, aid:a.aid}) }catch(err){ toast(err.message || String(err), 5000) } } }
 function drawArc(v){ const a = ARCS[v.aid]; if(!a){ V.pop(); return draw() } const st = arcStats(a), f = S.filter['arc'] || 'all';
@@ -2201,6 +2212,38 @@ function leaveHanded(){ if(history.length > 1) history.back(); else location.rep
    No "share with friends": this is for your own folder only (owner agreed, 21 Oct).
    ===================================================================================================================== */
 const GD = 'https://www.googleapis.com/drive/v3/', gkey = () => lsGet('nvBooks.gkey', '');
+/* Sign in with Google (owner, 22 Oct / 2 Nov): Google trusts a signed-in account much more than the anonymous key (its "Sorry… unusual
+   traffic" robot check came after ~2 books with the key). Only the right to LOOK at Drive files (drive.readonly). Android app: Google's
+   own sign-in screen (NvGoogle plugin, needs the "Android" client in the owner's Google console); web: Google's token client with the
+   owner's web client id (nvBooks.gclient). Signed in = nvBooks.gsign {email, name}; the token itself only lives in memory (~1 hour,
+   a fresh one is asked for without a screen). Signed in → every Drive request uses the account; the key is then not needed. */
+let NvGoogle = null; if(NATIVE) try{ NvGoogle = Capacitor.registerPlugin('NvGoogle') }catch(e){ NvGoogle = null }
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly', gSigned = () => !!lsGet('nvBooks.gsign', null), gClient = () => lsGet('nvBooks.gclient', '');
+let GTOK = null;
+const gsiLoad = () => window.google && google.accounts ? Promise.resolve() : new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.onload = ok; sc.onerror = () => no(new Error('Google sign-in could not be loaded')); document.head.appendChild(sc) });
+async function gToken(interactive){ if(GTOK && GTOK.exp > Date.now()) return GTOK.t;
+  if(NvGoogle){ let r; try{ r = await NvGoogle.authorize({scope:DRIVE_SCOPE, interactive:!!interactive}) }catch(e){ throw new Error(e.message || String(e)) }
+    if(!r || !r.token) throw Object.assign(new Error('Sign in with Google again (shelf ⚙ → Google Drive folders)'), {signin:true});
+    GTOK = {t:r.token, exp:Date.now() + 50 * 60000}; return GTOK.t }
+  if(!gClient()) throw Object.assign(new Error('Google sign-in in the web version needs the web client id (shelf ⚙ → Google Drive folders → Google key)'), {signin:true});
+  await gsiLoad();
+  return new Promise((ok, no) => { const tc = google.accounts.oauth2.initTokenClient({client_id:gClient(), scope:DRIVE_SCOPE,
+      callback:r => r && r.access_token ? (GTOK = {t:r.access_token, exp:Date.now() + ((+r.expires_in || 3600) - 120) * 1000}, ok(r.access_token)) : no(new Error((r && (r.error_description || r.error)) || 'Sign-in failed')),
+      error_callback:e => no(new Error(e && (e.message || e.type) || 'Sign-in failed'))});
+    tc.requestAccessToken({prompt:interactive ? 'select_account' : ''}) }) }
+/* how a Drive request proves itself: the account when signed in, else the key */
+async function gdAuth(){ if(gSigned()){ const t = await gToken(false); return {q:'', h:{Authorization:'Bearer ' + t}} } return {q:'&key=' + encodeURIComponent(gkey()), h:{}} }
+async function gSignIn(){ GTOK = null; await gToken(true);
+  let who = {}; try{ const r = await gdFetch(GD + 'about?fields=user(displayName,emailAddress)', {Authorization:'Bearer ' + GTOK.t}); who = ((await r.json()).user) || {} }catch(e){ LE('drive', 'who is signed in', e) }
+  lsSet('nvBooks.gsign', {email:who.emailAddress || '', name:who.displayName || '', at:Date.now()}); L('drive', 'signed in with Google', who.emailAddress || '?'); return who }
+function gSignOut(){ localStorage.removeItem('nvBooks.gsign'); GTOK = null; toast('Signed out of Google – Drive uses your key again (if you have one)') }
+async function gSignSheet(then){ const g = lsGet('nvBooks.gsign', null);
+  sheet(`<h3>Google Drive</h3><p class="muted small" style="margin:0 0 10px">${g ? `Signed in as <b>${esc(g.email || g.name || 'your Google account')}</b>. Bookcase can only look at Drive files that this account can see.` : 'Sign in with your own Google account to read Drive folders you can see. Google trusts this much more than the key, so it pauses downloads far less often. Bookcase can only look – it can never change or delete anything.'}</p>
+    <div class="mlist">${g ? '<button class="btn danger" id="gsout">Sign out</button>' : '<button class="btn primary" id="gsin">Sign in with Google</button>'}<button class="btn" id="gskey">${gkey() ? 'Change the Google key' : 'Use a Google key instead'}</button>${!NvGoogle ? '<button class="btn" id="gscl">Web client id (for this web version)</button>' : ''}<button class="btn" onclick="closeSheet()">Close</button></div><p class="muted small" id="gsst"></p>`);
+  if($('#gsin')) $('#gsin').onclick = async () => { $('#gsst').textContent = 'Opening Google…'; try{ const who = await gSignIn(); closeSheet(); toast('Signed in' + (who.emailAddress ? ' as ' + who.emailAddress : ''), 4000); GDBLOCK = 0; if(then) then() }catch(e){ $('#gsst').textContent = e.message || String(e); LE('drive', 'sign in', e) } };
+  if($('#gsout')) $('#gsout').onclick = () => { gSignOut(); closeSheet() };
+  $('#gskey').onclick = () => driveKeySheet(then);
+  if($('#gscl')) $('#gscl').onclick = async () => { const v = await ask('Web client id', 'Ends in .apps.googleusercontent.com', gClient(), 'Save'); if(v != null){ lsSet('nvBooks.gclient', v.trim()); toast('Saved') } } }
 const gdFolderId = t => { t = String(t || '').trim(); const m = t.match(/folders\/([A-Za-z0-9_-]{10,})/) || t.match(/[?&]id=([A-Za-z0-9_-]{10,})/) || t.match(/^([A-Za-z0-9_-]{20,})$/); return m ? m[1] : '' };
 const fetchT = (url, opt, ms) => { const c = new AbortController(), t = setTimeout(() => c.abort(), ms); return fetch(url, Object.assign({}, opt || {}, {signal:c.signal})).finally(() => clearTimeout(t)) };
 async function gdFetch(url, hdr, ms){ let r;
@@ -2215,9 +2258,10 @@ const b64u8 = d => { const bin = atob(String(d || '').replace(/^data:[^,]*,/, ''
    It goes away by itself after a while; until then Bookcase stops asking (asking more makes it last longer). */
 let GDBLOCK = 0; const GDBUSY = 'Google is pausing downloads from this phone for a while (it saw a lot of requests at once and thinks it might be a robot). Try again in an hour or two – or on another network (home wifi instead of 5G).';
 async function driveRead(id, a, z){ if(z <= a) return new ArrayBuffer(0); if(GDBLOCK > Date.now()) throw new Error(GDBUSY);
-  const url = `${GD}files/${id}?alt=media&key=${encodeURIComponent(gkey())}`, H = cvHttp();
-  for(let t = 0; ; t++){ try{
-      if(H){ let r; try{ r = await H.get({url, headers:{Range:`bytes=${a}-${z - 1}`}, responseType:'blob', connectTimeout:30000, readTimeout:90000}) }catch(e){ throw new Error('Google Drive could not be reached – no internet?') }
+  const H = cvHttp();
+  for(let t = 0; ; t++){ try{ const au = await gdAuth(), url = `${GD}files/${id}?alt=media${au.q}`;
+      if(H){ let r; try{ r = await H.get({url, headers:Object.assign({Range:`bytes=${a}-${z - 1}`}, au.h), responseType:'blob', connectTimeout:30000, readTimeout:90000}) }catch(e){ throw new Error('Google Drive could not be reached – no internet?') }
+        if(r.status === 401 && gSigned()){ GTOK = null; throw new Error('Google asked to sign in again – trying once more') }
         if(r.status === 403 || r.status === 400){ let why = ''; try{ const t = typeof r.data === 'string' ? (r.data.length < 20000 ? (() => { try{ return new TextDecoder().decode(b64u8(r.data)) }catch(x){ return r.data } })() : '') : JSON.stringify(r.data); const j = JSON.parse(t.slice(t.indexOf('{'))); why = ((j.error || {}).errors || [{}])[0].reason + ': ' + (j.error || {}).message }catch(x){ why = String(typeof r.data === 'string' ? r.data.slice(0, 300) : JSON.stringify(r.data || '').slice(0, 300)) }
           LE('drive', `refused ${r.status} for ${id}`, why);
           if(/Sorry\.\.\.|unusual traffic|automated queries/i.test(String(r.data && typeof r.data === 'string' && r.data.length < 20000 ? (() => { try{ return new TextDecoder().decode(b64u8(r.data)) }catch(x){ return r.data } })() : '') + why)){ GDBLOCK = Date.now() + 30 * 60000; throw new Error(GDBUSY) }
@@ -2225,8 +2269,8 @@ async function driveRead(id, a, z){ if(z <= a) return new ArrayBuffer(0); if(GDB
         if(r.status === 404) throw new Error('Not found on Google Drive – is the folder still shared with “Anyone with the link”?');
         if(r.status >= 400) throw new Error('Google Drive answered ' + r.status);
         const u8 = b64u8(r.data); return (r.status === 200 && u8.length > z - a ? u8.slice(a, z) : u8).buffer }
-      const r = await gdFetch(url, {Range:`bytes=${a}-${z - 1}`}), b = await r.arrayBuffer();
-      return r.status === 200 && b.byteLength > z - a ? b.slice(a, z) : b }catch(e){ if(t >= 2 || /key|refused|Not found|pausing/.test(e.message)) throw e; await sleep(800 * (t + 1)) } } }
+      const r = await gdFetch(url, Object.assign({Range:`bytes=${a}-${z - 1}`}, au.h)), b = await r.arrayBuffer();
+      return r.status === 200 && b.byteLength > z - a ? b.slice(a, z) : b }catch(e){ if(t >= 2 || e.signin || /key|refused|Not found|pausing|[Ss]ign/.test(e.message) && !/once more/.test(e.message)) throw e; await sleep(800 * (t + 1)) } } }
 /* the whole file (Download to this phone): in 8 MB parts, so a big PDF never has to fit in one answer */
 async function driveBlob(f, onPart){ const parts = []; for(let n = 0; n * GDC_BLK < f.size; n++){ parts.push(await gdcBlock(f, n)); onPart && onPart(Math.min(f.size, (n + 1) * GDC_BLK), f.size) }
   return new Blob(parts, {type:f.name && /\.pdf$/i.test(f.name) ? 'application/pdf' : 'application/octet-stream'}) }
@@ -2253,8 +2297,8 @@ const gdThumb = async u => { try{ const r = await fetchT(String(u).replace(/=s\d
 /* every file in a folder and its subfolders (one request per folder, 1000 per page) */
 async function driveList(root, onStep){ const out = [], todo = [{id:root, path:''}]; let folders = 0;
   while(todo.length){ const d = todo.shift(); folders++; let tok = ''; if(folders > 1) await sleep(250);   // gently: 300+ folder requests in a row made Google suspicious
-    do{ const q = new URLSearchParams({q:`'${d.id}' in parents and trashed = false`, key:gkey(), pageSize:'1000', fields:'nextPageToken,files(id,name,mimeType,size,thumbnailLink)', supportsAllDrives:'true', includeItemsFromAllDrives:'true'});
-      if(tok) q.set('pageToken', tok); const j = await (await gdFetch(GD + 'files?' + q)).json();
+    do{ const au = await gdAuth(), q = new URLSearchParams({q:`'${d.id}' in parents and trashed = false`, pageSize:'1000', fields:'nextPageToken,files(id,name,mimeType,size,thumbnailLink)', supportsAllDrives:'true', includeItemsFromAllDrives:'true'});
+      if(tok) q.set('pageToken', tok); const j = await (await gdFetch(GD + 'files?' + q + au.q, au.h)).json();
       for(const f of j.files || []){ if(f.mimeType === 'application/vnd.google-apps.folder') todo.push({id:f.id, path:d.path + f.name + '/'});
         else if(f.size) out.push({f:{uri:'gd:' + f.id, id:f.id, name:f.name, size:+f.size, thumb:f.thumbnailLink || ''}, path:d.path + f.name}) }
       tok = j.nextPageToken || ''; onStep && onStep(out.length, folders) }while(tok) }
@@ -2274,13 +2318,13 @@ function driveKeySheet(then){
     <div class="field"><label>Your key</label><input type="text" id="gdk" value="${esc(gkey())}" placeholder="AIza…" autocomplete="off" spellcheck="false"></div>
     <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="gdksave">Save</button></div>`);
   $('#gdksave').onclick = () => { const k = $('#gdk').value.trim().replace(/\s+/g, ''); if(!/^AIza[0-9A-Za-z_-]{30,}$/.test(k)){ toast('That does not look like a Google key (it starts with AIza)', 4000); return } lsSet('nvBooks.gkey', k); closeSheet(); toast('Key saved'); if(then) then() } }
-function driveSheet(shelf){ if(!gkey()) return driveKeySheet(() => driveSheet(shelf));
+function driveSheet(shelf){ if(!gkey() && !gSigned()) return gSignSheet(() => driveSheet(shelf));
   sheet(`<h3>From Google Drive</h3><p class="muted small" style="margin:0 0 10px">In Google Drive: the folder → Share → General access: <b>Anyone with the link</b> (Viewer) → Copy link. Paste the link here. All folders inside it are read too.</p>
     <div class="field"><label>Folder link</label><input type="text" id="gdl" placeholder="https://drive.google.com/drive/folders/…" autocomplete="off" spellcheck="false"></div>
     <div class="field"><label>Name (optional)</label><input type="text" id="gdn" placeholder="Like My colouring books"></div>
     <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button><button class="btn primary" style="flex:2" id="gdgo">Look in this folder</button></div>
-    <button class="btn sm" id="gdkey2" style="margin-top:10px">Change the Google key</button>`);
-  $('#gdkey2').onclick = () => driveKeySheet(() => driveSheet(shelf));
+    <button class="btn sm" id="gdkey2" style="margin-top:10px">${gSigned() ? 'Google: ' + esc((lsGet('nvBooks.gsign', {}) || {}).email || 'signed in') : 'Sign in with Google'}</button>`);
+  $('#gdkey2').onclick = () => gSignSheet(() => driveSheet(shelf));
   $('#gdgo').onclick = () => { const id = gdFolderId($('#gdl').value); if(!id){ toast('That is not a Drive folder link', 4000); return } driveAdd(shelf, {id, name:$('#gdn').value.trim() || 'Google Drive'}) } }
 async function driveAdd(shelf, f){ const tree = 'gd:' + f.id;
   awake(true); sheet(`<h3>Looking in “${esc(f.name)}” on Google Drive…</h3><div class="prog busy"><i></i></div><div class="small" id="gdst">Starting…</div><p class="muted small">Only the list of files is read now – books are read from Drive when you open them.</p>`, true);
@@ -2436,3 +2480,62 @@ function raStop(){ if(!RA) return; RA.tok++; RA.audio.pause(); RA.audio.removeAt
 function raTap(x, y){ if(!RA || !RA.bubbles || !R) return false; const fx = (x - R.x) / R.DW, fy = (y - R.y) / R.DH;
   const i = RA.bubbles.findIndex(b => { const q = raBox(b); return q && fx >= q.l - .01 && fx <= q.l + q.w + .01 && fy >= q.t - .01 && fy <= q.t + q.h + .01 });
   if(i < 0) return false; RA.tok++; RA.audio.pause(); raPlay(i, true); return true }
+
+/* =====================================================================================================================
+   METRON (metron.cloud, owner 2 Nov): a free comics database made by fans (licence CC BY-SA), with its own API. Needs a free account
+   (username + password, kept on this device only: nvBooks.mtr) – the API answers 401 without it. No CORS headers → Android app only
+   (CapacitorHttp, like Comic Vine). Limits: 20 requests a minute, 5,000 a day → one request every 3.2 s.
+   Ids 'n<series id>' (srcOf → 'mtr'); arcs 'n<arc id>' in Reading orders. Used: series search, every issue of a series (with covers),
+   story arcs (reading orders), new releases (Discover).
+   ===================================================================================================================== */
+const MTR = {last:0, q:Promise.resolve(), acc:() => lsGet('nvBooks.mtr', null)};
+const canMtr = () => !!(MTR.acc() && MTR.acc().u && cvHttp());
+async function mtrGet(path, params){ const a = MTR.acc(); if(!a || !a.u) throw Object.assign(new Error('Type your Metron account first (shelf ⚙ → Online → Metron)'), {nokey:true});
+  const H = cvHttp(); if(!H) throw new Error('Metron can only be reached from the Nightvault Android app');
+  const url = /^https?:/.test(path) ? path : `https://metron.cloud/api/${path}/${params ? '?' + new URLSearchParams(params) : ''}`;
+  return polite(MTR, 3200, async () => {
+    const r = await H.get({url, headers:{Accept:'application/json', 'User-Agent':UA, Authorization:'Basic ' + btoa(unescape(encodeURIComponent(a.u + ':' + a.p)))}, responseType:'json'});
+    if(r.status === 401 || r.status === 403) throw Object.assign(new Error('Metron says the username or password is not right'), {nokey:true});
+    if(r.status === 429) throw Object.assign(new Error('Metron says: too many requests – try again later'), {limit:true});
+    if(r.status === 404) return null; if(r.status >= 400) throw new Error('Metron answered ' + r.status);
+    return typeof r.data === 'string' ? JSON.parse(r.data) : r.data }) }
+async function mtrAll(path, params, max, onPage){ const out = []; let j = await mtrGet(path, params);
+  for(let p = 0; j; p++){ out.push(...(j.results || [])); onPage && onPage(out.length, j.count); if(!j.next || p + 1 >= (max || 20)) break; j = await mtrGet(j.next) } return out }
+const mtrNum = x => { const n = parseFloat(String(x.number || '').replace(',', '.')); return isNaN(n) ? null : n };
+function mtrIssues(l){ const seen = new Set(), out = [];
+  for(const x of l){ const n = mtrNum(x); if(n == null || seen.has(numKey(n))) continue; seen.add(numKey(n));
+    out.push({num:n, label:'#' + x.number, name:(Array.isArray(x.name) ? x.name[0] : x.name) || '', date:x.cover_date || x.store_date || '', img:x.image || '', thumb:x.image || '', mid:x.id}) }
+  return out.sort((a, b) => a.num - b.num) }
+const mtrSerName = s => String(s.series || s.name || '').replace(/\s*\(\d{4}\)\s*$/, '');
+async function mtrSearch(name){ return discCache('mtrs:' + norm(name), 7 * 864e5, () => mtrAll('series', {name}, 2)) }
+function mtrPick(results, books){ const name = bare(cvName(books[0])), years = books.map(b => +b.year).filter(Boolean), y = years.length ? Math.max(...years) : 0, maxN = Math.max(0, ...books.map(b => b.num || 0));
+  return results.map(v => { const vn = bare(mtrSerName(v)); let s = vn === name ? 60 : vn.includes(name) || name.includes(vn) ? 25 : 0; const st = +v.year_began || 0;
+      if(y && st){ if(st > y) s -= 60; else s += Math.max(0, 30 - (y - st) * 2) } if(maxN && v.issue_count >= maxN) s += 10; else if(maxN && v.issue_count) s -= 10;
+      return {v, s} }).sort((a, b) => b.s - a.s) }
+async function mtrHit(v){ let pub = '', d = null; try{ d = await discCache('mtrv:' + v.id, 30 * 864e5, () => mtrGet('series/' + v.id)); pub = d && d.publisher ? d.publisher.name : '' }catch(e){ if(e.limit || e.nokey) throw e }
+  return {id:'n' + v.id, name:(d && d.name) || mtrSerName(v), start:v.year_began || (d && d.year_began) || '', pub, n:v.issue_count || (d && d.issue_count) || 0, src:'mtr', at:Date.now()} }
+async function mtrSeries(books, force){ const k = 'mtr:' + cvKeyOf(books[0]), c = CV.cache(); if(!force && c[k] && (c[k].id || Date.now() - c[k].at < 14 * 864e5)) return c[k];
+  const best = mtrPick(await mtrSearch(cvName(books[0])), books)[0];
+  const hit = best && best.s >= 40 ? await mtrHit(best.v) : {id:0, at:Date.now()}; const c2 = CV.cache(); c2[k] = hit; CV.save(c2); return hit }
+const mtrList = (sid, onPage) => mtrAll('series/' + sid + '/issue_list', null, 30, onPage).then(mtrIssues);
+async function mtrRows(q, books){ const res = await mtrSearch(q), l = books.length ? mtrPick(res, books).map(x => x.v) : res.slice().sort((a, b) => (b.issue_count || 0) - (a.issue_count || 0));
+  return l.slice(0, 40).map(v => ({key:'n' + v.id, name:mtrSerName(v), start:v.year_began, thumb:'', sub:`${v.volume ? 'Vol. ' + esc(v.volume) + ' · ' : ''}${plural(v.issue_count || 0, 'issue')}`, hit:() => mtrHit(v)})) }
+function mtrSheet(then){ const a = MTR.acc() || {};
+  sheet(`<h3>Metron</h3><p class="muted small" style="margin:0 0 10px">Metron (metron.cloud) is a free comics database made by fans: series, every issue with its cover, story arcs and what comes out this week. Make a free account there and type it here – it stays on this phone. Works in the Android app.</p>
+    <div class="field"><label>Username</label><input type="text" id="mtu" value="${esc(a.u || '')}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+    <div class="field"><label>Password</label><input type="password" id="mtp" value="${esc(a.p || '')}" autocomplete="off"></div>
+    <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="closeSheet()">Cancel</button>${a.u ? '<button class="btn danger" style="flex:1" id="mtx">Forget</button>' : ''}<button class="btn primary" style="flex:2" id="mtok">Save</button></div>`);
+  if($('#mtx')) $('#mtx').onclick = () => { localStorage.removeItem('nvBooks.mtr'); closeSheet(); toast('Metron account forgotten') };
+  $('#mtok').onclick = async () => { const u = $('#mtu').value.trim(), p = $('#mtp').value; if(!u || !p){ toast('Type your username and password', 3000); return }
+    lsSet('nvBooks.mtr', {u, p}); if(cvHttp()) try{ $('#mtok').textContent = 'Checking…'; await mtrGet('series', {name:'saga'}) }catch(e){ if(e.nokey){ localStorage.removeItem('nvBooks.mtr'); toast(e.message, 5000); $('#mtok').textContent = 'Save'; return } }
+    closeSheet(); toast('Metron account saved'); if(then) then() } }
+/* reading orders from Metron: arc search and its issues in order */
+async function mtrArcSearch(q){ return (await mtrAll('arc', {name:q}, 1)).map(r => ({id:'n' + r.id, name:r.name, pub:'', n:0, thumb:''})) }
+async function mtrArcFetch(aid, onStep){ const id = String(aid).slice(1), d = await mtrGet('arc/' + id) || {}, l = await mtrAll('arc/' + id + '/issue_list', null, 20, n => onStep && onStep(n, '?'));
+  const items = l.map((x, n) => { const s = x.series || {}; return {iid:'n' + x.id, vid:'n' + (s.id || ''), vname:s.name || String(x.issue || '').replace(/\s*#.*$/, ''), num:mtrNum(x) ?? 0, label:'#' + (x.number || '?'), name:'', date:x.cover_date || x.store_date || '', img:x.image || '', thumb:x.image || '', n} })
+    .sort((a, b) => (a.date.slice(0, 7) || '9999').localeCompare(b.date.slice(0, 7) || '9999') || a.n - b.n);
+  return {name:d.name || 'Reading order', pub:'', deck:String(d.desc || '').slice(0, 1500), img:d.image || '', items} }
+/* new this week / month from Metron (Discover, when there is no Comic Vine key or by choice) */
+async function mtrNew(days){ const to = new Date(), from = new Date(Date.now() - days * 864e5);
+  return discCache('mtrnew' + days + ':' + ymd(to), 6 * 3600e3, async () => (await mtrAll('issue', {store_date_range_after:ymd(from), store_date_range_before:ymd(to)}, 4))
+    .map(x => ({vid:'n' + ((x.series || {}).id || ''), vname:(x.series || {}).name || String(x.issue || ''), num:x.number, date:x.store_date || x.cover_date || '', thumb:x.image || ''})).sort((a, b) => b.date.localeCompare(a.date))) }
