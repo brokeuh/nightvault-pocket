@@ -1,0 +1,43 @@
+
+===== https://metron.cloud/api/series/?name=saga
+HTTP/2 401 
+content-type: application/json
+www-authenticate: Basic realm="api"
+x-content-type-options: nosniff
+x-content-type-options: nosniff
+{"detail":"Authentication credentials were not provided."}
+
+===== https://metron.cloud/api/
+HTTP/2 401 
+content-type: application/json
+www-authenticate: Basic realm="api"
+x-content-type-options: nosniff
+x-content-type-options: nosniff
+{"detail":"Authentication credentials were not provided."}
+HTTP/2 401 
+
+===== https://metron.cloud/api/schema/
+HTTP/2 200 
+content-type: application/vnd.oai.openapi; charset=utf-8
+x-content-type-options: nosniff
+x-ratelimit-burst-limit: 20
+x-ratelimit-burst-remaining: 19
+x-ratelimit-burst-reset: 1793618836
+x-ratelimit-sustained-limit: 5000
+x-ratelimit-sustained-remaining: 4999
+x-ratelimit-sustained-reset: 1793705176
+x-content-type-options: nosniff
+openapi: 3.0.3
+info:
+  title: Metron Comicbook Database
+  version: 1.0.0
+  description: API to retrieve comic book data
+  contact:
+    name: API Support
+    email: admin@metron.cloud
+  license:
+    name: Creative Commons License
+    url: https://creativecommons.org/licenses/by-sa/4.0/
+paths:
+  /api/
+-rw-r--r-- 1 runner runner 1753 Nov  2 11:26 /tmp/schema.yml
