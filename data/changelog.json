@@ -3,6 +3,25 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 150,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "Card pictures on the phone (first part)",
+   "items": [
+    "New: save card pictures on your phone, like the PC downloaders do. Open Proxies, tap the menu (three lines) and choose Card pictures. Pick a folder once (also the SD card), then a game and the sets you want.",
+    "The pictures land in the same folders and names as on the PC (game / set / number_name.jpg), so a folder can be copied between the PC and the phone. A download you stop continues where it was.",
+    "First games: Magic (small, normal, large or PNG, the size is shown first), Lorcana, Gundam, Digimon, Flesh and Blood, Sorcery, Weiss Schwarz and Dragon Ball. The other games follow. Android app only.",
+    "Using the saved pictures in Proxies (printing offline), copying sets from your PC, and Binder come in later updates."
+   ]
+  },
+  {
    "id": 149,
    "date": "2026-11-09",
    "where": [

@@ -18,7 +18,8 @@
         "hub/nvmenu.js",
         "hub/nvnew.js",
         "hub/nvsplash.js",
-        "hub/nvvoice.js"
+        "hub/nvvoice.js",
+        "hub/nvcards.js"
       ],
       "provides": [],
       "uses": []

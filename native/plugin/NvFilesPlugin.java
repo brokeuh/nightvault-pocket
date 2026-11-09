@@ -24,12 +24,16 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 
@@ -230,6 +234,160 @@ public class NvFilesPlugin extends Plugin {
                 call.resolve(o);
             } catch (Exception e) { call.reject("Could not remove the file: " + e.getMessage()); }
         }).start();
+    }
+
+    /* ---------- card pictures (Nightvault > Card pictures, hub/nvcards.js) ----------
+       download({tree, items:[{dir:"mtg/neo - Kamigawa", name:"12_Card.jpg", url}], pauseMs}) saves each address straight into
+       sub-folders of the picked folder (made when missing), SKIPS a file that is already there (so a stopped download continues where
+       it was), waits pauseMs between pictures, and answers {got, skipped, missed, bytes, stopped, refused}. Event "dlProgress" about
+       twice a second. A picture is read completely first and only then written, so a failed one never leaves half a file. */
+    private volatile boolean dlStop = false;
+
+    @PluginMethod
+    public void stopDownload(PluginCall call) { dlStop = true; call.resolve(); }
+
+    @PluginMethod
+    public void download(PluginCall call) {
+        final String t = call.getString("tree", "");
+        final JSArray items = call.getArray("items");
+        final int pause = Math.max(0, Math.min(5000, call.getInt("pauseMs", 250)));
+        if (t.isEmpty() || items == null) { call.reject("No folder or list"); return; }
+        dlStop = false;
+        new Thread(() -> {
+            int got = 0, skipped = 0, missed = 0, misses = 0;
+            long bytes = 0, lastNote = 0;
+            boolean refused = false;
+            String at = "";
+            try {
+                ContentResolver cr = getContext().getContentResolver();
+                Uri tree = Uri.parse(t);
+                HashMap<String, String> dirIds = new HashMap<>();
+                HashMap<String, HashSet<String>> have = new HashMap<>();
+                dirIds.put("", DocumentsContract.getTreeDocumentId(tree));
+                final int total = items.length();
+                for (int i = 0; i < total; i++) {
+                    if (dlStop) break;
+                    org.json.JSONObject it = items.getJSONObject(i);
+                    String dir = it.optString("dir", ""), name = it.optString("name", ""), url = it.optString("url", "");
+                    if (name.isEmpty() || name.contains("/") || url.isEmpty()) { missed++; continue; }
+                    at = dir + "/" + name;
+                    String dirId = ensureDir(cr, tree, dirIds, dir);
+                    HashSet<String> names = have.get(dir);
+                    if (names == null) { names = namesIn(cr, tree, dirId); have.put(dir, names); }
+                    if (names.contains(name)) { skipped++; }
+                    else {
+                        byte[] data = null;
+                        try { data = httpGet(url); } catch (IOException e) { Log.w("NvFiles", "download " + url + ": " + e); }
+                        if (data == null || data.length == 0) {
+                            missed++; misses++;
+                            if (misses >= 25) { refused = true; break; }      // the picture site keeps refusing: stop, continue later
+                        } else {
+                            misses = 0;
+                            Uri f = DocumentsContract.createDocument(cr, DocumentsContract.buildDocumentUriUsingTree(tree, dirId), mimeOf(name), name);
+                            if (f == null) throw new IOException("the folder did not make the file");
+                            try (OutputStream o = cr.openOutputStream(f, "wt")) {
+                                if (o == null) throw new IOException("the file can't be written");
+                                o.write(data);
+                            } catch (IOException e) {
+                                try { DocumentsContract.deleteDocument(cr, f); } catch (Exception x) {}
+                                throw e;
+                            }
+                            names.add(name); got++; bytes += data.length;
+                            if (pause > 0) try { Thread.sleep(pause); } catch (InterruptedException e) { dlStop = true; }
+                        }
+                    }
+                    long now = System.currentTimeMillis();
+                    if (now - lastNote > 450) {
+                        lastNote = now;
+                        JSObject e = new JSObject();
+                        e.put("done", i + 1); e.put("total", total); e.put("got", got); e.put("skipped", skipped); e.put("missed", missed); e.put("bytes", bytes); e.put("at", at);
+                        notifyListeners("dlProgress", e);
+                    }
+                }
+                JSObject r = new JSObject();
+                r.put("got", got); r.put("skipped", skipped); r.put("missed", missed); r.put("bytes", bytes); r.put("stopped", dlStop); r.put("refused", refused);
+                call.resolve(r);
+            } catch (SecurityException e) {
+                call.reject("Nightvault may not write in this folder - pick it again", "permission");
+            } catch (IllegalStateException e) {
+                call.reject(e.getMessage(), "unreachable");
+            } catch (Exception e) {
+                call.reject("Could not save the pictures: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    private static String ensureDir(ContentResolver cr, Uri tree, HashMap<String, String> ids, String path) throws IOException {
+        String known = ids.get(path);
+        if (known != null) return known;
+        int k = path.lastIndexOf('/');
+        String parent = ensureDir(cr, tree, ids, k < 0 ? "" : path.substring(0, k)), leaf = k < 0 ? path : path.substring(k + 1), found = null;
+        try (Cursor q = cr.query(DocumentsContract.buildChildDocumentsUriUsingTree(tree, parent),
+                new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
+            if (q == null) throw new IllegalStateException("The folder can't be reached right now - is the SD card in the phone?");
+            while (q.moveToNext()) if (leaf.equals(q.getString(1)) && DocumentsContract.Document.MIME_TYPE_DIR.equals(q.getString(2))) { found = q.getString(0); break; }
+        }
+        if (found == null) {
+            Uri d = DocumentsContract.createDocument(cr, DocumentsContract.buildDocumentUriUsingTree(tree, parent), DocumentsContract.Document.MIME_TYPE_DIR, leaf);
+            if (d == null) throw new IOException("the folder did not make the folder " + leaf);
+            found = DocumentsContract.getDocumentId(d);
+        }
+        ids.put(path, found);
+        return found;
+    }
+
+    private static HashSet<String> namesIn(ContentResolver cr, Uri tree, String dirId) {
+        HashSet<String> out = new HashSet<>();
+        try (Cursor q = cr.query(DocumentsContract.buildChildDocumentsUriUsingTree(tree, dirId), new String[]{DocumentsContract.Document.COLUMN_DISPLAY_NAME}, null, null, null)) {
+            if (q == null) throw new IllegalStateException("The folder can't be reached right now - is the SD card in the phone?");
+            while (q.moveToNext()) out.add(q.getString(0));
+        }
+        return out;
+    }
+
+    private static String mimeOf(String name) {
+        String n = name.toLowerCase(Locale.ROOT);
+        if (n.endsWith(".png")) return "image/png";
+        if (n.endsWith(".webp")) return "image/webp";
+        if (n.endsWith(".avif")) return "image/avif";
+        if (n.endsWith(".gif")) return "image/gif";
+        return "image/jpeg";
+    }
+
+    /** one picture as bytes; null = the site says no (403/404) or kept failing. Waits and tries again on 429/503/network errors (like the PC downloaders). */
+    private byte[] httpGet(String url) throws IOException {
+        IOException last = null;
+        long wait = 5000;
+        for (int attempt = 0; attempt < 4 && !dlStop; attempt++) {
+            HttpURLConnection c = null;
+            try {
+                c = (HttpURLConnection) new URL(url).openConnection();
+                c.setConnectTimeout(20000); c.setReadTimeout(60000); c.setInstanceFollowRedirects(true);
+                c.setRequestProperty("User-Agent", "Nightvault (personal card collection app)");
+                c.setRequestProperty("Accept", "image/*,*/*;q=0.8");
+                int rc = c.getResponseCode();
+                if (rc == 200) {
+                    ByteArrayOutputStream bo = new ByteArrayOutputStream(1 << 17);
+                    try (InputStream in = c.getInputStream()) {
+                        byte[] buf = new byte[16384];
+                        int n;
+                        while ((n = in.read(buf)) > 0) { bo.write(buf, 0, n); if (bo.size() > 30 * 1024 * 1024) throw new IOException("picture too big"); }
+                    }
+                    return bo.toByteArray();
+                }
+                if (rc == 403 || rc == 404 || rc == 410) return null;
+                String ra = c.getHeaderField("Retry-After");
+                if ((rc == 429 || rc == 503) && ra != null && ra.matches("\\d{1,3}")) wait = Math.max(wait, Long.parseLong(ra) * 1000);
+                last = new IOException("HTTP " + rc);
+            } catch (IOException e) { last = e; }
+            finally { if (c != null) c.disconnect(); }
+            if (attempt < 3) {
+                for (long w = 0; w < wait && !dlStop; w += 250) try { Thread.sleep(250); } catch (InterruptedException e) { dlStop = true; }
+                wait *= 3;
+            }
+        }
+        if (last != null && !dlStop) throw last;
+        return null;
     }
 
     /** a piece of a file, as base64 (for reading tags when the /_nvfile_/ address does not work) */

@@ -351,10 +351,11 @@ function wire(){
 }
 const fromHub = () => { try{ return sessionStorage.getItem('nvHub') === '1' }catch(e){ return false } };
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(window.NVMENU && NVMENU.close()) return; if(closeSheet()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
+  A.addListener('backButton', () => { if(window.NVMENU && NVMENU.close()) return; if(window.NVCARDS && NVCARDS.close()) return; if(closeSheet()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 
 window.NVPX = {S, parseDeck, resolveOne, resolveList, layout, prints, buildPdf, draw, pickIndex, ART:() => ART, artAdd,
-  menu:() => [{label:'Clear the deck', run:() => { if(!S.entries.length || confirm('Remove every card from the deck?')) clearDeck() }},
+  menu:() => [{label:'Card pictures (save on this phone)', run:() => NVCARDS.open()},
+              {label:'Clear the deck', run:() => { if(!S.entries.length || confirm('Remove every card from the deck?')) clearDeck() }},
               {label:'Saved decks', run:() => { const d = $('#decks').closest('details'); d.open = true; d.scrollIntoView({behavior:'smooth'}) }}]};
 (async () => {
   try{ await artLoad(); S.back = (await tx('kv', 'readonly', s => s.get('back'))) || null }catch(e){ L('storage', e.message) }
