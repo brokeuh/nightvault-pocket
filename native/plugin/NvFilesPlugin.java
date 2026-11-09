@@ -167,6 +167,38 @@ public class NvFilesPlugin extends Plugin {
         }).start();
     }
 
+    /** copies a file the page made (in the app's cache) into the phone's Downloads folder: saveToDownloads({uri:"file:///...", name:"deck.pdf", mime:"application/pdf"}) */
+    @PluginMethod
+    public void saveToDownloads(PluginCall call) {
+        String uri = call.getString("uri"), name = call.getString("name", "file"), mime = call.getString("mime", "application/octet-stream");
+        if (uri == null) { call.reject("No file"); return; }
+        new Thread(() -> {
+            try {
+                ContentResolver cr = getContext().getContentResolver();
+                String safe = name.replaceAll("[\\\\/:*?\"<>|]+", "_").trim();
+                if (safe.isEmpty()) safe = "file";
+                if (android.os.Build.VERSION.SDK_INT < 29) { call.reject("Saving to Downloads needs Android 10 or newer - use Share instead"); return; }
+                android.content.ContentValues v = new android.content.ContentValues();
+                v.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, safe);
+                v.put(android.provider.MediaStore.Downloads.MIME_TYPE, mime);
+                v.put(android.provider.MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
+                v.put(android.provider.MediaStore.Downloads.IS_PENDING, 1);
+                Uri out = cr.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                if (out == null) throw new IOException("Downloads did not accept the file");
+                try (InputStream in = cr.openInputStream(Uri.parse(uri)); OutputStream o = cr.openOutputStream(out)) {
+                    if (in == null || o == null) throw new IOException("could not open the file");
+                    byte[] buf = new byte[65536]; int n;
+                    while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+                } catch (IOException e) { try { cr.delete(out, null, null); } catch (Exception x) {} throw e; }
+                v.clear(); v.put(android.provider.MediaStore.Downloads.IS_PENDING, 0);
+                cr.update(out, v, null, null);
+                JSObject r = new JSObject(); r.put("name", safe); call.resolve(r);
+            } catch (Exception e) {
+                call.reject("Could not save to Downloads: " + e.getMessage());
+            }
+        }).start();
+    }
+
     /** keeps the screen on while true (used while adding a big music folder, so the phone does not go to sleep and stop it) */
     @PluginMethod
     public void keepAwake(PluginCall call) {

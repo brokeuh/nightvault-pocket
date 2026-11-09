@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 161,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies"
+   ],
+   "title": "Proxies: Save the PDF to your Downloads folder",
+   "items": [
+    "After Make PDF the app now shows \"Your file is ready\" with two buttons: Save to Downloads (puts the PDF in your phone's Downloads folder, find it in your Files app) and Share or send (opens Android's share menu, for mail, WhatsApp, a printer app). Before, only the share menu opened, which has no way to save on the phone.",
+    "Needs Android 10 or newer for Save to Downloads."
+   ]
+  },
+  {
    "id": 160,
    "date": "2026-11-09",
    "where": [

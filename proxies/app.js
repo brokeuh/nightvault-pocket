@@ -302,8 +302,15 @@ async function buildPdf(onStatus){
 const blobB64 = b => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => no(r.error); r.readAsDataURL(b) });
 async function deliver(blob, name){
   if(NATIVE){ const FS = Capacitor.registerPlugin('Filesystem'), SH = Capacitor.registerPlugin('Share');
-    const r = await FS.writeFile({path:name, data:await blobB64(blob), directory:'CACHE'});
-    try{ await SH.share({title:name, files:[r.uri], dialogTitle:'Save or send ' + name}) }catch(e){ if(!/cancel/i.test(String(e && e.message))) throw e } return }
+    const r = await FS.writeFile({path:name, data:await blobB64(blob), directory:'CACHE'}), NV = Capacitor.registerPlugin('NvFiles');
+    const share = async () => { try{ await SH.share({title:name, files:[r.uri], dialogTitle:'Send ' + name}) }catch(e){ if(!/cancel/i.test(String(e && e.message))) toast('Could not share: ' + e.message) } };
+    const sh = openSheet(`<h3>Your file is ready</h3><div class="muted small" style="word-break:break-all">${esc(name)} · ${(blob.size / 1048576).toFixed(1)} MB</div>
+      <div class="row" style="margin-top:14px"><button class="btn primary" id="pdfsave">Save to Downloads</button><button class="btn" id="pdfshare">Share or send ...</button></div>
+      <div class="muted small" style="margin-top:10px">“Save to Downloads” puts it in your phone's Downloads folder, where you can find it with your Files app. “Share” is for sending it to another app (mail, WhatsApp, a printer app).</div>
+      <div class="row" style="justify-content:flex-end"><button class="btn" id="pdfdone">Done</button></div>`);
+    $('#pdfdone', sh).onclick = closeSheet; $('#pdfshare', sh).onclick = share;
+    $('#pdfsave', sh).onclick = async () => { const b = $('#pdfsave', sh); b.disabled = true; try{ const o = await NV.saveToDownloads({uri:r.uri, name, mime:blob.type || 'application/pdf'}); toast('Saved in Downloads: ' + o.name); closeSheet() }catch(e){ b.disabled = false; toast(e.message || 'Could not save'); L('save to downloads failed', e.message) } };
+    return }
   const a = Object.assign(document.createElement('a'), {href:URL.createObjectURL(blob), download:name}); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000);
 }
 async function makePdf(){
