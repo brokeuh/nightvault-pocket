@@ -114,9 +114,10 @@
   async function pickFolder(){ if(!F) throw new Error('This needs the Android app'); const r = await F.pickFolder(); lsSet('nvCards.folder', {tree:r.tree, name:r.name}); return r }
 
   /* ---- the files of one set: [{dir, name, url}] named like the PC ---- */
-  function itemsOf(game, st, cards, quality){
-    const ext0 = game === 'mtg' && quality === 'png' ? 'png' : 'jpg', base = `${game}/${safe(st.code, 20)} - ${safe(st.name, 60)}`, out = [];
-    for(const c of cards){ const stem = `${encNum(c.num)}_${safe(c.name)}`, ext = c.ext || ext0, dir = c.sub ? `${base}/${safe(c.sub, 40)}` : base;   // c.sub: one folder per version (Star Wars: Unlimited)
+  const FMT_WEBP_Q = 90, fmtOf = () => lsGet('nvCards.fmt', 'orig');   // 'webp': the phone converts each picture while saving (smaller, nearly the same)
+  function itemsOf(game, st, cards, quality, fmt){
+    const ext0 = fmt === 'webp' ? 'webp' : game === 'mtg' && quality === 'png' ? 'png' : 'jpg', base = `${game}/${safe(st.code, 20)} - ${safe(st.name, 60)}`, out = [];
+    for(const c of cards){ const stem = `${encNum(c.num)}_${safe(c.name)}`, ext = fmt === 'webp' ? 'webp' : (c.ext || ext0), dir = c.sub ? `${base}/${safe(c.sub, 40)}` : base;   // c.sub: one folder per version (Star Wars: Unlimited)
       out.push({dir, name:`${stem}.${ext}`, url:c.url}); if(c.back) out.push({dir, name:`${stem}_back.${ext}`, url:c.back}) }
     return out;
   }
@@ -135,8 +136,8 @@
         if(RUN.stop) break; const st = sets[i]; RUN.cur = st; RUN.n = i + 1;
         say({kind:'list', set:st, setN:i + 1, setOf:sets.length, got:T.got, skipped:T.skipped, missed:T.missed, bytes:T.bytes});
         let cards; try{ cards = await src.cards(st, quality) }catch(e){ L('card list failed', {game, set:st.code, err:e.message}); T.missed++; say({kind:'warn', text:`${st.name}: the card list could not be loaded (${e.message})`}); continue }
-        const items = itemsOf(game, st, cards, quality); if(!items.length) continue;
-        const r = await F.download({tree:fo.tree, items, pauseMs:250});
+        const fmt = fmtOf(), items = itemsOf(game, st, cards, quality, fmt); if(!items.length) continue;
+        const r = await F.download({tree:fo.tree, items, pauseMs:250, webpQ:FMT_WEBP_Q});
         T.got += r.got; T.skipped += r.skipped; T.missed += r.missed; T.bytes += r.bytes; T.sets++;
         L('set done', {game, set:st.code, got:r.got, skipped:r.skipped, missed:r.missed});
         if(r.refused){ T.refused = true; break } if(r.stopped || RUN.stop){ T.stopped = true; break }
@@ -175,6 +176,7 @@
       ${NATIVE && F ? '' : '<div class="nt bad">This needs the Android app. The website cannot save thousands of pictures into a folder.</div>'}
       <div class="rw"><div style="flex:1;min-width:0"><div class="mu">Folder</div><b id="nvcf" style="word-break:break-all"></b></div><button id="nvcpick" class="s">Choose</button></div>
       <label class="lb" for="nvcg">Game</label><select id="nvcg">${gamesList().map(([g, l]) => `<option value="${g}">${esc(l)}</option>`).join('')}</select>
+      <label class="lb" for="nvcfmt">Save pictures as</label><select id="nvcfmt"><option value="orig">As the site has them (JPG / PNG)</option><option value="webp">WebP - about 3-5x smaller, looks the same</option></select>
       <div id="nvcqrow"><label class="lb" for="nvcq">Picture quality</label><select id="nvcq"></select></div>
       <div class="rw"><input type="text" id="nvcfind" placeholder="Search sets" style="flex:1;min-width:120px" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button id="nvcall" class="s">All shown</button><button id="nvcnone" class="s">None</button></div>
       <div class="ls" id="nvcl"><div class="it mu">Loading the sets ...</div></div>
@@ -188,7 +190,7 @@
     const quals = () => { const g = SRCG(); $('#nvcqrow').hidden = !g.qualities; if(g.qualities){ if(!g.qualities.includes(st.q)) st.q = g.defQ; $('#nvcq').innerHTML = g.qualities.map(q => `<option value="${q}" ${q === st.q ? 'selected' : ''}>${q}${q === g.defQ ? ' (recommended)' : ''}</option>`).join('') } };
     const shown = () => { const f = st.find.trim().toLowerCase(); return f ? st.sets.filter(s => (s.name + ' ' + s.code).toLowerCase().includes(f)) : st.sets };
     const estimate = () => { const g = SRCG(), picked = st.sets.filter(s => st.picked.has(s.code)), known = picked.reduce((a, s) => a + s.total, 0), unk = picked.filter(s => !s.total).length;
-      $('#nvcest').innerHTML = picked.length ? `${picked.length} set${picked.length === 1 ? '' : 's'} · ${known ? 'about <b>' + fmtMB(known * g.per(st.q)) + '</b> for ' + known.toLocaleString() + ' pictures' : 'size shown while it runs'}${unk && known ? ` (+ ${unk} set${unk === 1 ? '' : 's'} of unknown size)` : ''}. Pictures already in the folder are skipped.` : 'Tick the sets you want.';
+      $('#nvcest').innerHTML = picked.length ? `${picked.length} set${picked.length === 1 ? '' : 's'} · ${known ? 'about <b>' + fmtMB(known * g.per(st.q) * (fmtOf() === 'webp' ? .3 : 1)) + '</b> for ' + known.toLocaleString() + ' pictures' : 'size shown while it runs'}${unk && known ? ` (+ ${unk} set${unk === 1 ? '' : 's'} of unknown size)` : ''}. Pictures already in the folder are skipped.` : 'Tick the sets you want.';
       $('#nvcgo').disabled = RUN.on || !picked.length || !NATIVE || !F };
     const draw = () => { const l = shown();
       $('#nvcl').innerHTML = st.loading ? '<div class="it mu">Loading the sets ...</div>' : l.length ? l.map(s => `<label class="it"><input type="checkbox" data-c="${esc(s.code)}" ${st.picked.has(s.code) ? 'checked' : ''}><span class="nm"><b>${esc(s.name)}</b><span class="mu">${esc(String(s.code).toUpperCase())}${s.released ? ' · ' + esc(s.released.slice(0, 4)) : ''}${s.total ? ' · ' + s.total + ' cards' : ''}</span></span></label>`).join('') : '<div class="it mu">No sets found.</div>';
@@ -198,6 +200,7 @@
       st.loading = false; draw() };
     $('#nvcg').value = st.game; fo(); quals(); load();
     $('#nvcg').onchange = e => { st.game = e.target.value; lsSet('nvCards.game', st.game); quals(); load() };
+    $('#nvcfmt').value = fmtOf(); $('#nvcfmt').onchange = e => { lsSet('nvCards.fmt', e.target.value); estimate() };
     $('#nvcq').onchange = e => { st.q = e.target.value; lsSet('nvCards.q', st.q); estimate() };
     $('#nvcfind').oninput = e => { st.find = e.target.value; draw() };
     $('#nvcall').onclick = () => { shown().forEach(s => st.picked.add(s.code)); draw() }; $('#nvcnone').onclick = () => { st.picked.clear(); draw() };
@@ -206,7 +209,7 @@
     $('#nvcgo').onclick = async () => {
       if(!folder()){ $('#nvcst').innerHTML = '<span class="bad">Choose a folder first.</span>'; return }
       const sets = st.sets.filter(s => st.picked.has(s.code)); if(!sets.length) return;
-      $('#nvcgo').disabled = true; $('#nvcstop').disabled = false; $('#nvcpick').disabled = $('#nvcg').disabled = $('#nvcq').disabled = true; $('#nvcbar').style.width = '0';
+      $('#nvcgo').disabled = true; $('#nvcstop').disabled = false; $('#nvcpick').disabled = $('#nvcg').disabled = $('#nvcq').disabled = $('#nvcfmt').disabled = true; $('#nvcbar').style.width = '0';
       const warns = [];
       try{
         const T = await download(st.game, sets, st.q, p => {
@@ -216,7 +219,7 @@
         $('#nvcbar').style.width = T.stopped || T.refused ? $('#nvcbar').style.width : '100%';
         $('#nvcst').innerHTML = `<span class="${T.refused ? 'bad' : 'ok'}">${T.refused ? 'The picture site keeps refusing - stopped. Start again later: it continues where it was.' : T.stopped ? 'Stopped - start again to continue where it was.' : 'Done.'}</span><br>${T.got.toLocaleString()} saved · ${T.skipped.toLocaleString()} already there${T.missed ? ` · ${T.missed} without a picture` : ''} · ${fmtMB(T.bytes)}${warns.length ? '<br><span class="bad">' + warns.map(esc).join('<br>') + '</span>' : ''}`;
       }catch(e){ const msg = e && e.code === 'permission' ? 'The app may no longer write in this folder - choose it again.' : (e.message || String(e)); $('#nvcst').innerHTML = `<span class="bad">${esc(msg)}</span>`; L('download failed', {err:msg}) }
-      $('#nvcstop').disabled = true; $('#nvcpick').disabled = $('#nvcg').disabled = $('#nvcq').disabled = false; estimate();
+      $('#nvcstop').disabled = true; $('#nvcpick').disabled = $('#nvcg').disabled = $('#nvcq').disabled = $('#nvcfmt').disabled = false; estimate();
     };
   }
   function close(){ if(!UI) return false; if(RUN.on){ stop() } UI.remove(); UI = null; return true }

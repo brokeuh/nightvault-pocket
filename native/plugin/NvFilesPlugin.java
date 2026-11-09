@@ -251,6 +251,7 @@ public class NvFilesPlugin extends Plugin {
         final String t = call.getString("tree", "");
         final JSArray items = call.getArray("items");
         final int pause = Math.max(0, Math.min(5000, call.getInt("pauseMs", 250)));
+        final int webpQ = Math.max(40, Math.min(100, call.getInt("webpQ", 90)));
         if (t.isEmpty() || items == null) { call.reject("No folder or list"); return; }
         dlStop = false;
         new Thread(() -> {
@@ -283,6 +284,11 @@ public class NvFilesPlugin extends Plugin {
                             if (misses >= 25) { refused = true; break; }      // the picture site keeps refusing: stop, continue later
                         } else {
                             misses = 0;
+                            if (name.endsWith(".webp") && !isWebp(data)) {      // the picture came as JPG/PNG: save it as WebP (smaller)
+                                byte[] w = toWebp(data, webpQ);
+                                if (w == null) { missed++; continue; }
+                                data = w;
+                            }
                             Uri f = DocumentsContract.createDocument(cr, DocumentsContract.buildDocumentUriUsingTree(tree, dirId), mimeOf(name), name);
                             if (f == null) throw new IOException("the folder did not make the file");
                             try (OutputStream o = cr.openOutputStream(f, "wt")) {
@@ -315,6 +321,23 @@ public class NvFilesPlugin extends Plugin {
                 call.reject("Could not save the pictures: " + e.getMessage());
             }
         }).start();
+    }
+
+    private static boolean isWebp(byte[] d) {
+        return d.length > 12 && d[0] == 'R' && d[1] == 'I' && d[2] == 'F' && d[3] == 'F' && d[8] == 'W' && d[9] == 'E' && d[10] == 'B' && d[11] == 'P';
+    }
+
+    @SuppressWarnings("deprecation")
+    private static byte[] toWebp(byte[] d, int q) {
+        try {
+            android.graphics.Bitmap bm = android.graphics.BitmapFactory.decodeByteArray(d, 0, d.length);
+            if (bm == null) return null;
+            ByteArrayOutputStream o = new ByteArrayOutputStream(Math.max(4096, d.length / 3));
+            android.graphics.Bitmap.CompressFormat fmt = android.os.Build.VERSION.SDK_INT >= 30 ? android.graphics.Bitmap.CompressFormat.WEBP_LOSSY : android.graphics.Bitmap.CompressFormat.WEBP;
+            boolean ok = bm.compress(fmt, q, o);
+            bm.recycle();
+            return ok ? o.toByteArray() : null;
+        } catch (Throwable t) { Log.w("NvFiles", "webp: " + t); return null; }
     }
 
     private static String ensureDir(ContentResolver cr, Uri tree, HashMap<String, String> ids, String path) throws IOException {

@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 154,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "Card pictures: save as WebP while downloading",
+   "items": [
+    "New choice in Card pictures: \"Save pictures as\" - As the site has them (JPG/PNG) or WebP. With WebP the phone converts every picture while it saves it, so the folder ends up about 3-5 times smaller and the pictures look the same.",
+    "The size shown before you start is adjusted for WebP. Pictures that already come as WebP are saved as they are.",
+    "Proxies can print WebP pictures. Note: PC folders hold JPG, so a WebP folder is not identical to the PC layout (file ends in .webp)."
+   ]
+  },
+  {
    "id": 153,
    "date": "2026-11-09",
    "where": [
