@@ -121,6 +121,21 @@
       return d.sets.map(x => ({code:String(x.code), id:x.id, name:x.name || 'Set ' + x.code, released:x.released || '', total:n.get(x.id) || 0})).filter(x => x.total) },
     cards:async st => (await ccData(id)).cards.filter(r => r[0] === st.id && r[4]).map(r => ({num:r[1] != null && r[1] !== '' ? normNum(r[1]) : slugOf(r[2]), name:r[2], url:`https://api.ccgtrader.co.uk/_/assets/${r[4]}?key=directus-large-contain`})) };
 
+  /* ---- every other CCG Trader game (data/ccgt/index.json lists them, data/ccgt/<id>.json has the cards): one entry "ccgt<id>" per game, folder "ccgtrader - <name>" ----
+     Magic, Yu-Gi-Oh! and Pokémon are left out: they have better sources above. The three built-in ones (WoW, DBZ CCG, DB GT) have their own entry. */
+  const CCGT_SKIP = new Set([21, 130, 158, 22, 128, 127]);
+  let _ccIdx = null;
+  const ccgtMore = () => _ccIdx || (_ccIdx = (async () => {
+    let idx = null; for(const u of [`${BASE}data/ccgt/index.json`, `https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/ccgt/index.json`]) try{ idx = await getJSON(u); if(idx && idx.games) break }catch(e){}
+    if(!idx || !idx.games){ _ccIdx = null; throw new Error('The CCG Trader game list is not available right now') }
+    const keys = [];
+    for(const [id, name, count] of idx.games){ if(CCGT_SKIP.has(id)) continue; const k = 'ccgt' + id; keys.push(k);
+      SRC[k] = {label:String(name).trim(), group:'More games from CCG Trader (' + idx.games.length + ' games)', folder:'ccgtrader - ' + safe(name, 50), count, per:() => 110e3,
+        sets:async () => { const d = await ccData(id), n = new Map(); for(const r of d.cards) if(r[4]) n.set(r[0], (n.get(r[0]) || 0) + 1);
+          return d.sets.map(x => ({code:String(x.code), id:x.id, name:x.name || 'Set ' + x.code, released:x.released || '', total:n.get(x.id) || 0})).filter(x => x.total) },
+        cards:async st => (await ccData(id)).cards.filter(r => r[0] === st.id && r[4]).map(r => ({num:r[1] != null && r[1] !== '' && r[1] !== 0 ? normNum(r[1]) : slugOf(r[2]), name:r[2], url:`https://api.ccgtrader.co.uk/_/assets/${r[4]}?key=directus-large-contain`})) } }
+    return keys })());
+
   /* ---- Hearthstone: the card pictures are renders from HearthstoneJSON (data/hearthstone.json lists them) ---- */
   SRC.hearthstone = {label:'Hearthstone (card renders)', per:() => 60e3,
     sets:async () => { const d = await dgData('hearthstone'), n = new Map(); for(const r of d.cards) n.set(r[0], (n.get(r[0]) || 0) + 1);
@@ -153,7 +168,7 @@
   /* ---- the files of one set: [{dir, name, url}] named like the PC ---- */
   const FMT_WEBP_Q = 90, fmtOf = () => lsGet('nvCards.fmt', 'orig');   // 'webp': the phone converts each picture while saving (smaller, nearly the same)
   function itemsOf(game, st, cards, quality, fmt){
-    const ext0 = fmt === 'webp' ? 'webp' : game === 'mtg' && quality === 'png' ? 'png' : 'jpg', base = `${game}/${safe(st.code, 20)} - ${safe(st.name, 60)}`, out = [];
+    const ext0 = fmt === 'webp' ? 'webp' : game === 'mtg' && quality === 'png' ? 'png' : 'jpg', base = `${SRC[game].folder || game}/${safe(st.code, 20)} - ${safe(st.name, 60)}`, out = [];
     for(const c of cards){ const stem = `${encNum(c.num)}_${safe(c.name)}`, ext = fmt === 'webp' ? 'webp' : (c.ext || ext0), dir = c.sub ? `${base}/${safe(c.sub, 40)}` : base;   // c.sub: one folder per version (Star Wars: Unlimited)
       out.push({dir, name:`${stem}.${ext}`, url:c.url}); if(c.back) out.push({dir, name:`${stem}_back.${ext}`, url:c.back}) }
     return out;
@@ -201,7 +216,8 @@
 #nvc .nt{font-size:12.5px;color:var(--dim,#9aa7b5);background:var(--pan2,#10141b);border:1px solid var(--line,#232b36);border-radius:12px;padding:9px 12px;margin:8px 0}
 #nvc .bad{color:var(--red,#ef8a8f)}#nvc .ok{color:var(--green,#8fe0a0)}`;
   const fmtMB = b => b >= 1073741824 ? (b / 1073741824).toFixed(1) + ' GB' : Math.max(1, Math.round(b / 1048576)) + ' MB';
-  const gamesList = () => Object.keys(SRC).map(g => [g, SRC[g].label]);
+  const gamesList = () => Object.keys(SRC).filter(g => !SRC[g].group).map(g => [g, SRC[g].label]);
+  const moreOptions = () => { const ks = Object.keys(SRC).filter(g => SRC[g].group).sort((a, b) => SRC[a].label.localeCompare(SRC[b].label)); return ks.length ? `<optgroup label="${esc(SRC[ks[0]].group)}">${ks.map(g => `<option value="${g}">${esc(SRC[g].label)}</option>`).join('')}</optgroup>` : '' };
   let UI = null;
   function open(){
     close(); if(!document.getElementById('nvccss')){ const s = document.createElement('style'); s.id = 'nvccss'; s.textContent = CSS; document.head.appendChild(s) }
@@ -212,7 +228,7 @@
       <div class="mu">Save card pictures on this phone, in the same folders as the PC downloaders use (<b>game / set / number_name.jpg</b>). A download you stop continues where it was.</div>
       ${NATIVE && F ? '' : '<div class="nt bad">This needs the Android app. The website cannot save thousands of pictures into a folder.</div>'}
       <div class="rw"><div style="flex:1;min-width:0"><div class="mu">Folder</div><b id="nvcf" style="word-break:break-all"></b></div><button id="nvcpick" class="s">Choose</button></div>
-      <label class="lb" for="nvcg">Game</label><select id="nvcg">${gamesList().map(([g, l]) => `<option value="${g}">${esc(l)}</option>`).join('')}</select>
+      <label class="lb" for="nvcg">Game</label><select id="nvcg">${gamesList().map(([g, l]) => `<option value="${g}">${esc(l)}</option>`).join('')}${moreOptions()}</select>
       <label class="lb" for="nvcfmt">Save pictures as</label><select id="nvcfmt"><option value="orig">As the site has them (JPG / PNG)</option><option value="webp">WebP - about 3-5x smaller, looks the same</option></select>
       <div id="nvcqrow"><label class="lb" for="nvcq">Picture quality</label><select id="nvcq"></select></div>
       <div class="rw"><input type="text" id="nvcfind" placeholder="Search sets" style="flex:1;min-width:120px" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button id="nvcall" class="s">All shown</button><button id="nvcnone" class="s">None</button></div>
@@ -236,6 +252,7 @@
       try{ const l = await SRCG().sets(); st.sets = l.sort((a, b) => String(b.released).localeCompare(String(a.released)) || a.name.localeCompare(b.name)) }catch(e){ $('#nvcst').innerHTML = `<span class="bad">Could not load the sets: ${esc(e.message)}</span>`; L('sets failed', {game:st.game, err:e.message}) }
       st.loading = false; draw() };
     $('#nvcg').value = st.game; fo(); quals(); load();
+    ccgtMore().then(() => { if(UI !== el) return; const g = lsGet('nvCards.game', 'mtg'); if(!$('#nvcg optgroup')) $('#nvcg').insertAdjacentHTML('beforeend', moreOptions()); if(SRC[g] && g !== st.game && !RUN.on){ st.game = g; $('#nvcg').value = g; quals(); load() } }).catch(e => L('ccgt games list failed', {err:e.message}));
     $('#nvcg').onchange = e => { st.game = e.target.value; lsSet('nvCards.game', st.game); quals(); load() };
     $('#nvcfmt').value = fmtOf(); $('#nvcfmt').onchange = e => { lsSet('nvCards.fmt', e.target.value); estimate() };
     $('#nvcq').onchange = e => { st.q = e.target.value; lsSet('nvCards.q', st.q); estimate() };

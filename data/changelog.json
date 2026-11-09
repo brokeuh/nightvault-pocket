@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 163,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "Card pictures: all the other CCG Trader games",
+   "items": [
+    "The Game list in Card pictures (Proxies menu) now ends with More games from CCG Trader: about 290 older and smaller card games, each saved in its own folder (ccgtrader - game name / set / card).",
+    "The pictures are the best size CCG Trader has. Some games have no pictures there, so their set list is empty.",
+    "Magic, Yu-Gi-Oh! and Pokémon are not in that group because they have better sources above. Not tried on a real phone yet."
+   ]
+  },
+  {
    "id": 162,
    "date": "2026-11-09",
    "where": [
