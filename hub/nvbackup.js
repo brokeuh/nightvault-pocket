@@ -37,6 +37,7 @@
     cinema:{title:'Cinema', ls:['nvCinema.'], skip:['nvCinema.tmdb'], db:'nvCinema', stores:['titles', 'files', 'watch', 'kv'], main:'titles', word:['title', 'titles']},
     print3d:{title:'3D Print', ls:['nvPrint.'], db:'nvPrint', stores:['models', 'extras', 'prints', 'kv'], main:'models', word:['model', 'models']},
     collectables:{title:'Collectables', ls:['nvCollect.'], db:'nvCollect', stores:['colls', 'items', 'kv'], main:'items', word:['item', 'items']},
+    proxies:{title:'Proxies', ls:['nvProxies.'], word:['deck', 'decks']},
     hub:{title:'The Nightvault', ls:['nvHub.', 'nvOffline'], word:['setting', 'settings']}
   };
   const plural = (n, w) => `${(+n).toLocaleString()} ${n === 1 ? w[0] : w[1]}`;
@@ -189,7 +190,7 @@
   /* the app this page is (from its address): Music and Audiobooks share audio/ */
   function here(){ const p = location.pathname, q = location.search;
     if(/\/audio\//.test(p)) return /mode=music/.test(q) ? 'music' : 'audiobooks';
-    const m = p.match(/\/(books|games|boardgames|cinema|print3d|collectables)\//); return m ? (m[1] === 'books' ? 'bookcase' : m[1]) : null }
+    const m = p.match(/\/(books|games|boardgames|cinema|print3d|collectables|proxies)\//); return m ? (m[1] === 'books' ? 'bookcase' : m[1]) : null }
 
   const NVBACKUP = {
     native:!!F, apps:APPS, here, collect, save, auto, list, load, restore, check, describe, count, offer, plural,

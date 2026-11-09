@@ -10,7 +10,7 @@
    "files": [
     {
      "path": "hub/index.html",
-     "size": 94527
+     "size": 95699
     },
     {
      "path": "hub/core.js",
@@ -30,15 +30,15 @@
     },
     {
      "path": "hub/nvbackup.js",
-     "size": 21203
+     "size": 21285
     },
     {
      "path": "hub/nvsetup.js",
-     "size": 30708
+     "size": 31670
     },
     {
      "path": "hub/nvtheme.js",
-     "size": 10337
+     "size": 10375
     },
     {
      "path": "hub/nvmenu.js",
@@ -50,7 +50,7 @@
     },
     {
      "path": "hub/nvsplash.js",
-     "size": 8867
+     "size": 9324
     },
     {
      "path": "hub/nvvoice.js",
@@ -59,10 +59,10 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 237988,
-   "hash": "511128d44c12",
-   "version": "2026.11.02.1524",
-   "updated": "2026-11-02"
+   "size": 240699,
+   "hash": "ed88f49758c7",
+   "version": "2026.11.09.0913",
+   "updated": "2026-11-09"
   },
   {
    "id": "scanner",
@@ -552,6 +552,40 @@
    "hash": "e96bfa11f3f0",
    "version": "2026.10.29.0917",
    "updated": "2026-10-29"
+  },
+  {
+   "id": "proxies",
+   "name": "Proxies",
+   "desc": "Print a deck as proxy cards: pick the art, get a PDF sheet with cut lines",
+   "color": "#2a2440",
+   "files": [
+    {
+     "path": "proxies/index.html",
+     "size": 13390
+    },
+    {
+     "path": "proxies/app.js",
+     "size": 35069
+    },
+    {
+     "path": "proxies/cards.js",
+     "size": 17982
+    },
+    {
+     "path": "proxies/manifest.webmanifest",
+     "size": 559
+    }
+   ],
+   "provides": [
+    "proxies"
+   ],
+   "uses": [],
+   "entry": "proxies/?nv=hub",
+   "keepsData": "Your deck, saved decks, own pictures and sheet settings stay on this device. The PDFs you make are yours to keep.",
+   "size": 67000,
+   "hash": "85c352e71149",
+   "version": "2026.11.09.0913",
+   "updated": "2026-11-09"
   }
  ]
 }

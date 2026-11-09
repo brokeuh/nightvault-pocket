@@ -1,0 +1,15 @@
+{
+  "name": "Nightvault Proxies",
+  "short_name": "NV Proxies",
+  "description": "Print a deck as proxy cards: pick the art, get a PDF sheet with cut lines.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0e13",
+  "theme_color": "#0b0e13",
+  "icons": [
+    {"src": "../icon-192-v2.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "../icon-512-v2.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "../icon-maskable-v2.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

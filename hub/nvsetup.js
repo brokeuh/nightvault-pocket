@@ -91,6 +91,10 @@
       {id:'welcome', added:'2026-10-23', icon:'🧊', title:'Welcome to Nightvault 3D Print', body:'Your 3D models (STL, OBJ, 3MF) with a 3D viewer, projects with their pictures and print files, and a log of what you printed.'},
       {id:'add', added:'2026-10-23', icon:'➕', title:'Add models', body:'Tap <b>Add</b> and pick a folder or files. One folder or ZIP = one project tile.'},
       MYPC]},
+    proxies:{name:'Proxies', prefix:'nvProxies.', steps:[
+      {id:'welcome', added:'2026-11-05', icon:'🃏', title:'Welcome to Nightvault Proxies', body:'Print a deck as proxy cards. Paste a deck list, pick the art of every card, and get a PDF sheet with cut lines. The PDF is made on this device - nothing is uploaded.'},
+      {id:'deck', added:'2026-11-05', icon:'📋', title:'Paste a deck list', body:'Pick the game, paste lines like <b>4 Lightning Bolt</b> (or <b>1 Sol Ring (CMD) 123</b> to pick the printing) and tap <b>Import deck</b>. Tap a card to choose another art or edition, or to use your own picture.'},
+      {id:'sheet', added:'2026-11-05', icon:'✂️', title:'Size, bleed and cut marks', body:'The card size is in the list for every game (or type your own). Under <b>Sheet</b> you choose the paper, the quality, a bleed edge and cut marks. Print a first test page at 100% size (no "fit to page") and hold a real card on it.'}]},
     collectables:{name:'Collectables', prefix:'nvCollect.', steps:[
       {id:'welcome', added:'2026-10-29', icon:'⭐', title:'Welcome to Nightvault Collectables', body:'Anything you collect – coins, figures, stamps, cars, watches … Each collection gets its own tile, and its items show with your photos, notes and what they are worth. Everything stays on this phone.'},
       {id:'template', added:'2026-10-29', icon:'🧩', title:'Your own template', body:'Tap <b>New collection</b> and pick a starting point (or start empty). The <b>template</b> is the list of fields every item gets – like Country, Year, Condition. Add, rename, sort or remove fields whenever you like (⚙ › <b>Change the template</b>); a removed field keeps what your items had in it.'},
@@ -110,7 +114,7 @@
     if(/\/audio\//.test(p)) return /mode=music/.test(q) ? 'music' : 'audiobooks';
     if(/\/tools\/convert\//.test(p)) return 'convert';
     if(/\/calendar\//.test(p)) return 'calendar';
-    const m = p.match(/\/(books|games|boardgames|cinema|print3d|collectables)\//); return m ? (m[1] === 'books' ? 'bookcase' : m[1]) : null }
+    const m = p.match(/\/(books|games|boardgames|cinema|print3d|collectables|proxies)\//); return m ? (m[1] === 'books' ? 'bookcase' : m[1]) : null }
   const usable = s => !(s.android && !NATIVE);
   const seen = app => (get('nvSetup', {})[app] || {}).seen || [];
   function markSeen(app, ids){ const all = get('nvSetup', {}), a = all[app] || {seen:[]}; a.seen = [...new Set(a.seen.concat(ids))]; a.at = Date.now(); all[app] = a; set('nvSetup', all) }

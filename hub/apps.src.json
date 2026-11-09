@@ -281,6 +281,24 @@
       "uses": [],
       "entry": "games/?nv=hub",
       "keepsData": "Your games, copies, wishlist, groups and keys stay on this device."
+    },
+    {
+      "id": "proxies",
+      "name": "Proxies",
+      "desc": "Print a deck as proxy cards: pick the art, get a PDF sheet with cut lines",
+      "color": "#2a2440",
+      "files": [
+        "proxies/index.html",
+        "proxies/app.js",
+        "proxies/cards.js",
+        "proxies/manifest.webmanifest"
+      ],
+      "provides": [
+        "proxies"
+      ],
+      "uses": [],
+      "entry": "proxies/?nv=hub",
+      "keepsData": "Your deck, saved decks, own pictures and sheet settings stay on this device. The PDFs you make are yours to keep."
     }
   ]
 }

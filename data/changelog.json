@@ -3,6 +3,25 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 148,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "New app: Proxies – print a deck as proxy cards",
+   "items": [
+    "A new tile in The Nightvault: paste a deck list, pick the art of every card, and get a PDF sheet with cut marks. It works on the phone and in the browser, the PDF is made on your device and nothing is uploaded.",
+    "Every game Pocket knows has its card size ready (63×88, Yu-Gi-Oh 59×86 …), plus common sizes and your own size.",
+    "Tap a card to choose another printing or use your own picture. Bleed, gap, cut marks, 150–600 dpi, double-faced cards and mirrored card-back pages for double-sided printing.",
+    "Saved decks stay on this device. Decks from Pocket, your binder and deck-site links, and our own card design come in the next updates."
+   ]
+  },
+  {
    "id": 147,
    "date": "2026-11-02",
    "where": [

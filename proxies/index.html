@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e13">
+<title>Nightvault Proxies</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<script src="../hub/nvtheme.js"></script>
+<script>NVTHEME.apply('proxies')</script>
+<script src="../hub/nvlog.js"></script>
+<script src="../hub/nvbackup.js"></script>
+<script src="../hub/nvsetup.js"></script>
+<script src="../hub/nvmenu.js"></script>
+<!-- Nightvault Proxies (test): print a deck as proxy cards – paste a list, pick the art, get a PDF sheet with cut lines. Works on phone and website,
+     the PDF is made on this device, nothing is uploaded. Card lookup: cards.js (copies of Pocket's find functions). Plan: plans/proxy.md (nightvault-src).
+     The first version of this printer is in the PC app (Cards > Print proxies); the sheet code here is the same code. -->
+<style>
+:root{--bg:#0b0e13;--pan:#151a22;--pan2:#10141b;--line:#232b36;--text:#e9edf2;--dim:#9aa7b5;--dim2:#8fa0b2;--accent:#a9b4ff;--accentd:#4651a8;--accentb:#6f7be0;--accentbg:#1c1f3e;--blue:#7fb2ff;--amber:#f1dc6b;--red:#ef8a8f;--green:#8fe0a0}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 'DM Sans',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{max-width:760px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(96px + env(safe-area-inset-bottom,0px))}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+.muted{color:var(--dim)}.small{font-size:12.5px}
+.top{display:flex;align-items:center;gap:10px;padding:4px 0 8px}
+.top h1{font-size:21px;margin:0;flex:1;min-width:0;letter-spacing:.2px}
+.ib{width:42px;height:42px;border-radius:13px;border:1px solid var(--line);background:var(--pan);display:inline-flex;align-items:center;justify-content:center;padding:0;color:var(--text);cursor:pointer;flex:none}
+.ib svg{width:20px;height:20px}
+.btn{height:44px;border-radius:13px;border:1px solid var(--line);background:var(--pan);color:var(--text);font-size:14.5px;cursor:pointer;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn.primary{background:var(--accentd);border-color:var(--accentb);color:#fff;font-weight:700}
+.btn.sm{height:34px;font-size:13px;padding:0 12px;border-radius:11px}
+.btn.danger{color:var(--red)}
+.btn:disabled{opacity:.5;cursor:default}
+.panel{background:var(--pan);border:1px solid var(--line);border-radius:18px;padding:14px;margin:0 0 12px}
+.panel>h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+details.panel>summary{cursor:pointer;font-size:15px;font-weight:700;list-style:none;display:flex;align-items:center;gap:8px}
+details.panel>summary::-webkit-details-marker{display:none}
+details.panel>summary::after{content:'›';margin-left:auto;color:var(--dim);transition:transform .15s;font-size:20px}
+details.panel[open]>summary::after{transform:rotate(90deg)}
+details.panel[open]>summary{margin-bottom:10px}
+input[type=text],input[type=number],textarea,select{width:100%;min-height:42px;border-radius:12px;border:1px solid var(--line);background:var(--pan2);color:var(--text);padding:8px 12px;font:inherit;font-size:14.5px}
+textarea{resize:vertical;min-height:110px}
+select{padding:0 10px}
+.field{margin-bottom:10px}.field label,.g2 label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:4px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px}
+.chip{height:32px;border-radius:99px;border:1px solid var(--line);background:var(--pan2);color:var(--dim);padding:0 12px;font-size:13px;cursor:pointer}
+.chip.on{background:var(--accentbg);border-color:var(--accentb);color:var(--accent)}
+.chk{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:14px}.chk input{width:22px;height:22px;accent-color:var(--accentd);flex:none}
+.note{font-size:12.5px;color:var(--dim);background:var(--pan2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
+.warn{color:var(--amber)}
+/* the cards of the deck */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.tile{position:relative;min-width:0}
+.pv{display:block;width:100%;aspect-ratio:var(--cr,63/88);border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--pan2);padding:0;cursor:pointer;position:relative}
+.pv img{width:100%;height:100%;object-fit:cover;display:block}
+.pnone{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:6px;text-align:center;font-size:11.5px;color:var(--dim);gap:4px}
+.tile.miss .pv{border-style:dashed;border-color:var(--amber)}
+.q{position:absolute;top:5px;right:5px;background:#000c;color:#fff;border-radius:99px;padding:1px 8px;font-size:12px;font-weight:700}
+.tn{font-size:12.5px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ts{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qb{display:flex;gap:4px;margin-top:5px}
+.qb button{flex:1;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--pan2);cursor:pointer;font-size:15px;padding:0}
+.pill{display:inline-block;border-radius:99px;padding:0 7px;font-size:10.5px;line-height:17px;margin-right:3px}
+.p-blue{background:#1d2c4a;color:var(--blue)}.p-amber{background:#3b3416;color:var(--amber)}
+/* the sheet preview */
+.sheetp{position:relative;width:100%;background:#fff;border:1px solid #889;box-shadow:0 2px 10px #0006}
+.sheetp .shc{position:absolute;overflow:hidden;background:#222}.sheetp .shc img{width:100%;height:100%;object-fit:cover;display:block}
+.sheetp .bl{position:absolute;background:#e8c8c8;outline:1px solid #d9a0a0}
+/* the bar at the bottom */
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--pan);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:12px;align-items:center;justify-content:center}
+#bar .in{width:100%;max-width:728px;display:flex;gap:12px;align-items:center}
+#sum{flex:1;min-width:0;font-size:13px;color:var(--dim)}#sum b{color:var(--text);display:block;font-size:14px}
+/* sheets */
+.scrim{position:fixed;inset:0;background:#000a;z-index:300;display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:560px;max-height:88vh;overflow:auto;background:var(--pan);border:1px solid var(--line);border-bottom:0;border-radius:22px 22px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px));color:var(--text)}
+.sheet h3{margin:0 0 10px;font-size:17px}
+.sheet .grab{width:40px;height:4px;border-radius:9px;background:#3a4553;margin:-6px auto 12px}
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;margin:8px 0 12px}
+.opt{border:2px solid transparent;border-radius:11px;padding:4px;cursor:pointer;min-width:0}
+.opt.on{border-color:var(--accentb);background:var(--accentbg)}
+.opt .pv{cursor:pointer}.opt .oc{font-size:11.5px;margin-top:4px;line-height:1.3}
+.dl{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}.dl:last-child{border-bottom:0}.dl .grow{flex:1;min-width:0}
+#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#222a33;border:1px solid var(--line);padding:10px 14px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:400;max-width:90vw;text-align:center;color:var(--text)}
+#toast.on{opacity:1}
+.empty{text-align:center;color:var(--dim);padding:22px 10px;grid-column:1/-1}
+</style>
+</head>
+<body>
+<script src="../hub/nvsplash.js" data-app="proxies"></script>
+<div id="app">
+  <div class="top"><h1>Proxies</h1>
+    <button class="ib" id="setbtn" aria-label="Sheet settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button></div>
+
+  <div class="panel"><h2>Game and card size</h2>
+    <div class="field"><label for="game">Game</label><select id="game"></select></div>
+    <div class="chips" id="sizes"></div>
+    <div class="g2" style="margin-top:8px"><div><label for="cw">Card width (mm)</label><input type="number" id="cw" step="0.5" min="20" max="200" inputmode="decimal"></div>
+      <div><label for="ch">Card height (mm)</label><input type="number" id="ch" step="0.5" min="20" max="280" inputmode="decimal"></div></div>
+  </div>
+
+  <div class="panel"><h2>Deck</h2>
+    <div class="field"><label for="text">Paste a deck list (4 Lightning Bolt, 2x Name, 1 Sol Ring (CMD) 123 …)</label>
+      <textarea id="text" placeholder="4 Card name&#10;2x Another card&#10;1 Third card (SET) 123"></textarea></div>
+    <div class="row"><button class="btn primary" id="imp">Import deck</button><button class="btn" id="add" title="Keep the cards that are already there">Add to deck</button>
+      <label class="btn" style="margin:0">From file<input type="file" id="file" accept=".txt,.dec,.dek,.csv,text/plain" hidden></label></div>
+    <div class="row" style="margin-top:12px"><input type="text" id="one" list="names" placeholder="Add one card by name" style="flex:1;min-width:0" autocomplete="off"><datalist id="names"></datalist><button class="btn" id="onego">Add</button></div>
+    <div class="field" style="margin-top:12px"><label for="prefer">When a card has several printings, start with</label>
+      <select id="prefer"><option value="new">The newest printing</option><option value="old">The oldest printing</option><option value="cheap">The cheapest</option></select></div>
+    <div id="status" class="muted small" style="min-height:18px"></div>
+  </div>
+
+  <div class="panel" id="deckpanel"><h2>Your cards <span class="muted small" id="deckn"></span></h2><div class="tiles" id="tiles"></div></div>
+
+  <details class="panel" id="sheetset"><summary>Sheet</summary>
+    <div class="g2">
+      <div><label for="paper">Paper</label><select id="paper"></select></div>
+      <div><label for="dpi">Resolution</label><select id="dpi"><option value="150">150 dpi (draft)</option><option value="300">300 dpi</option><option value="450">450 dpi</option><option value="600">600 dpi (big file)</option></select></div>
+      <div><label for="scale">Scale (%)</label><input type="number" id="scale" step="1" min="80" max="120" inputmode="decimal"></div>
+      <div><label for="gap">Gap between cards (mm)</label><input type="number" id="gap" step="0.5" min="0" max="20" inputmode="decimal"></div>
+      <div><label for="bleed">Bleed (mm)</label><input type="number" id="bleed" step="0.5" min="0" max="6" inputmode="decimal"></div>
+      <div><label for="fill">Bleed fill</label><select id="fill"><option value="extend">Stretch the edges</option><option value="black">Black</option><option value="white">White</option></select></div>
+      <div><label for="margin">Page margin (mm)</label><input type="number" id="margin" step="1" min="0" max="30" inputmode="decimal"></div>
+      <div><label for="guides">Cut guides</label><select id="guides"><option value="ticks">Marks in the margin</option><option value="lines">Lines between cards</option><option value="both">Both</option><option value="none">None</option></select></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="dfc"> Print the back face of double-faced cards too</label>
+    <label class="chk"><input type="checkbox" id="backs"> Add card-back pages for double-sided printing</label>
+    <div id="backrow" style="margin:0 0 0 32px"><label class="btn sm" style="margin:0">Use my own back<input type="file" id="back" accept="image/*" hidden></label> <button class="btn sm" id="backx" hidden>Plain pattern</button> <span class="muted small" id="backname">a plain pattern is used</span></div>
+    <div class="note warn" id="warn" hidden></div>
+  </details>
+
+  <div class="panel"><h2>Sheet preview</h2>
+    <div class="row" style="justify-content:space-between;margin-bottom:8px"><button class="btn sm" id="pp">‹</button><span id="pn" class="muted small"></span><button class="btn sm" id="pnx">›</button></div>
+    <div id="prev"></div></div>
+
+  <details class="panel"><summary>Saved decks</summary>
+    <div class="row" style="margin-bottom:8px"><input type="text" id="dname" value="My deck" style="flex:1;min-width:0"><button class="btn" id="dsave">Save</button></div>
+    <div id="decks"></div></details>
+</div>
+
+<div id="bar"><div class="in"><div id="sum"><b>No cards yet</b>Paste a deck list to start</div><button class="btn primary" id="pdf" disabled>Make PDF</button></div></div>
+<div id="sheets"></div>
+<input type="file" id="pickart" accept="image/png,image/jpeg,image/webp" hidden>
+<div id="toast"></div>
+
+<script src="cards.js"></script>
+<script src="app.js"></script>
+<script>try{NVMENU.make({app:'proxies', btn:'#setbtn', hub:'../hub/index.html', backup:'proxies', items:() => NVPX.menu()})}catch(e){console.error(e)}</script>
+</body>
+</html>
