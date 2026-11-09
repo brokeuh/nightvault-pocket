@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 151,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies"
+   ],
+   "title": "Proxies: \"Wellwisher x5\" now works",
+   "items": [
+    "Typing a number after the name (Wellwisher x5) is now read as 5 copies, not as part of the name. Before, the app searched for a card called \"Wellwisher x5\" and found nothing.",
+    "Adding one card by name also accepts 4 Lightning Bolt or 2x Sol Ring."
+   ]
+  },
+  {
    "id": 150,
    "date": "2026-11-09",
    "where": [

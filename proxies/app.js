@@ -43,7 +43,8 @@ function parseDeck(text){
     if(skip) continue;
     l = l.replace(/^(SB|MB|CMDR|COMPANION):\s*/i, '').replace(/\*[A-Za-z]+\*/g, '').replace(/\^[^^]*\^/g, '').replace(/\s+#\S+/g, '').trim();
     const m = /^(?:(\d+)\s*[xX]?\s+)?(.+?)$/.exec(l); if(!m) continue;
-    const qty = m[1] ? +m[1] : 1; let rest = m[2].trim(), set = '', number = '';
+    let qty = m[1] ? +m[1] : 1, rest = m[2].trim(), set = '', number = '';
+    if(!m[1]){ const tq = /^(.+?)\s+[xX]\s*(\d+)$/.exec(rest); if(tq){ rest = tq[1].trim(); qty = +tq[2] } }   // "Wellwisher x5"
     const sm = /^(.*?)\s*\(([A-Za-z0-9]{2,6})\)\s*([A-Za-z0-9★-]+)?\s*$/.exec(rest); if(sm){ rest = sm[1].trim(); set = sm[2].toLowerCase(); number = sm[3] || '' }
     if(!rest) continue;
     const key = rest.toLowerCase() + '|' + set + '|' + number, e = map.get(key); if(e) e.qty += qty; else map.set(key, {name:rest, qty, set, number});
@@ -341,7 +342,7 @@ function wire(){
   $('#imp').onclick = () => doImport(true); $('#add').onclick = () => doImport(false);
   $('#file').onchange = async e => { if(e.target.files[0]){ $('#text').value = await e.target.files[0].text(); e.target.value = ''; doImport(true) } };
   let nt; $('#one').oninput = e => { clearTimeout(nt); nt = setTimeout(async () => { const q = e.target.value.trim(); $('#names').innerHTML = (await PXC.suggest(S.game, q)).map(n => `<option value="${esc(n)}">`).join('') }, 200) };
-  const addOne = () => { const n = $('#one').value.trim(); if(!n) return; $('#text').value = '1 ' + n; $('#one').value = ''; doImport(false) };
+  const addOne = () => { const n = $('#one').value.trim(); if(!n) return; $('#text').value = n; $('#one').value = ''; doImport(false) };
   $('#onego').onclick = addOne; $('#one').onkeydown = e => { if(e.key === 'Enter') addOne() };
   $('#back').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if(!f) return; S.back = f; try{ await tx('kv', 'readwrite', s => s.put(f, 'back')) }catch(x){} draw() };
   $('#backx').onclick = async () => { S.back = null; try{ await tx('kv', 'readwrite', s => s.delete('back')) }catch(x){} draw() };
