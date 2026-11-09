@@ -53,7 +53,7 @@ function parseDeck(text){
 }
 
 /* ---------------------------------------------------------------- finding the cards */
-const same = (a, b) => a && b && a.kind === b.kind && (a.kind === 'custom' ? a.id === b.id : a.set === b.set && normNum(a.number) === normNum(b.number));
+const same = (a, b) => a && b && a.kind === b.kind && (a.kind === 'custom' || a.kind === 'mpc' ? a.id === b.id : a.set === b.set && normNum(a.number) === normNum(b.number));
 function pickIndex(cands, want){
   if(!cands.length) return -1;
   if(want && want.pick){ const i = cands.findIndex(c => same(c, want.pick)); if(i >= 0) return i }
@@ -114,7 +114,7 @@ function layout(){
   const gw = cols * cellW + (cols - 1) * gap, gh = rows * cellH + (rows - 1) * gap;
   return {pw, ph, cw, ch, b, gap, m, cols, rows, per:cols * rows, cellW, cellH, gw, gh, ox:(pw - gw) / 2, oy:(ph - gh) / 2, fits:gw <= pw + 0.01 && gh <= ph + 0.01};
 }
-const keyFor = (c, face) => c.kind === 'custom' ? 'c' + c.id : `o:${c.set}:${c.number}:${face}`;
+const keyFor = (c, face) => c.kind === 'custom' ? 'c' + c.id : c.kind === 'mpc' ? 'm:' + c.id : `o:${c.set}:${c.number}:${face}`;
 function prints(){                    // every card that goes on the sheet, in order; double-faced cards add their back face
   const out = [];
   S.entries.forEach((e, i) => { const c = cur(e); if(!c) return;
@@ -253,7 +253,7 @@ function draw(){
   $('#tiles').style.setProperty('--cr', `${cw} / ${ch}`);
   $('#tiles').innerHTML = S.entries.length ? S.entries.map((e, i) => { const c = cur(e);
     return `<div class="tile ${c ? '' : 'miss'}"><button class="pv" data-pick="${i}" aria-label="Choose the art for ${esc(e.name)}">${c ? tileVisual(c) : `<div class="pnone"><div>${e.err ? 'Could not load' : 'No match'}</div><span>${e.err ? 'Tap to try again' : 'Tap to search'}</span></div>`}</button><span class="q">× ${e.qty}</span>
-      <div class="tn" title="${esc(e.name)}">${esc(e.name)}</div><div class="ts">${c ? (c.kind === 'custom' ? `<span class="pill p-amber">Proxy</span>${esc(c.label)}` : `<span class="pill p-blue">${esc(c.showSet || c.set)}</span>#${esc(c.showNum || c.number)}${c.back ? ' · 2-faced' : ''}`) : ''}</div>
+      <div class="tn" title="${esc(e.name)}">${esc(e.name)}</div><div class="ts">${c ? (c.kind === 'custom' ? `<span class="pill p-amber">Proxy</span>${esc(c.label)}` : c.kind === 'mpc' ? `<span class="pill p-amber">Community</span>${esc(c.artist)}` : `<span class="pill p-blue">${esc(c.showSet || c.set)}</span>#${esc(c.showNum || c.number)}${c.back ? ' · 2-faced' : ''}`) : ''}</div>
       <div class="qb"><button data-q="${i}" data-d="-1" aria-label="One less">−</button><button data-q="${i}" data-d="1" aria-label="One more">+</button><button data-rm="${i}" aria-label="Remove">✕</button></div></div>` }).join('')
     : `<div class="empty">Paste a deck list above and tap <b>Import deck</b>.<br>Every card gets its picture; tap one to choose another art or edition.</div>`;
   $$('#tiles [data-pick]').forEach(b => b.onclick = () => openChooser(+b.dataset.pick));
@@ -284,6 +284,8 @@ function closeSheet(){ const had = $('#sheets').children.length; $('#sheets').in
 async function openChooser(i){
   const e = S.entries[i]; if(!e) return;
   const sh = openSheet(`<h3>${esc(e.name)}</h3><div class="muted small">Choose the art or edition to print</div><div id="chbody"><div class="muted" style="margin:14px 0">Loading the printings ...</div></div>
+    <div class="note"><b>Community art</b> <span class="muted">(proxy art made by the MPC Autofill artists - Android app; the artist is shown, use it for your own printing)</span>
+      <div class="row" style="margin-top:8px"><button class="btn" id="mpcgo">Search community art</button></div><div id="mpcres"></div></div>
     <div class="note"><b>Use my own picture</b> <span class="muted">(a proxy you made, or any scan - JPG, PNG or WEBP)</span>
       <div class="row" style="margin-top:8px"><input type="text" id="artlabel" placeholder="Label, e.g. Hand-painted" style="flex:1;min-width:120px"><button class="btn" id="artpick">Choose picture</button></div></div>
     <div class="row" style="justify-content:flex-end"><button class="btn" id="chx">Done</button></div>`);
@@ -291,7 +293,7 @@ async function openChooser(i){
   const draw2 = () => {
     const body = $('#chbody', sh); if(!body) return;
     body.innerHTML = e.cands.length ? `<div class="opts">` + e.cands.map((c, k) => `<div class="opt ${k === e.sel ? 'on' : ''}" data-k="${k}"><div class="pv">${tileVisual(c)}</div>
-        <div class="oc">${c.kind === 'custom' ? `<span class="pill p-amber">Proxy</span>${esc(c.label)} <button class="btn sm danger" data-del="${c.id}" style="height:24px;padding:0 8px">Delete</button>` : `<span class="pill p-blue">${esc(c.showSet || c.set)}</span><b>#${esc(c.showNum || c.number)}</b><div class="muted">${esc(c.setName || '')}${c.released ? ' · ' + esc(c.released.slice(0, 4)) : ''}${c.price != null ? ' · ' + (c.currency === 'EUR' ? '€' : '$') + Number(c.price).toFixed(2) : ''}${c.back ? ' · 2-faced' : ''}</div>`}</div></div>`).join('') + `</div>`
+        <div class="oc">${c.kind === 'mpc' ? `<span class="pill p-amber">Community</span><b>${esc(c.artist)}</b><div class="muted">${c.dpi} dpi${c.language && c.language !== 'EN' ? ' · ' + esc(c.language) : ''} · ${c.sizeMB} MB</div>` : c.kind === 'custom' ? `<span class="pill p-amber">Proxy</span>${esc(c.label)} <button class="btn sm danger" data-del="${c.id}" style="height:24px;padding:0 8px">Delete</button>` : `<span class="pill p-blue">${esc(c.showSet || c.set)}</span><b>#${esc(c.showNum || c.number)}</b><div class="muted">${esc(c.setName || '')}${c.released ? ' · ' + esc(c.released.slice(0, 4)) : ''}${c.price != null ? ' · ' + (c.currency === 'EUR' ? '€' : '$') + Number(c.price).toFixed(2) : ''}${c.back ? ' · 2-faced' : ''}</div>`}</div></div>`).join('') + `</div>`
       : `<div class="muted" style="margin:10px 0">No card called “${esc(e.name)}” was found. Search for the right name, or add your own picture below.</div>
          <div class="row"><input type="text" id="findname" list="names" placeholder="Search card names" style="flex:1;min-width:0" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false"><button class="btn" id="findgo">Use this name</button></div>`;
     $$('.opt', body).forEach(o => o.onclick = ev => { if(ev.target.closest('[data-del]')) return; e.sel = +o.dataset.k; closeSheet() });
@@ -299,6 +301,12 @@ async function openChooser(i){
     const fg = $('#findgo', body); if(fg) fg.onclick = async () => { const n = $('#findname', body).value.trim(); if(!n) return; fg.disabled = true; const r = await resolveOne({name:n, qty:e.qty, set:'', number:''}); if(r.sel < 0){ toast(r.err ? 'Could not look it up: ' + r.err : 'Still no match for that name'); fg.disabled = false; return } delete e.err; Object.assign(e, r); closeSheet() };
   };
   draw2();
+  $('#mpcgo', sh).onclick = async () => { const b = $('#mpcgo', sh), out = $('#mpcres', sh); b.disabled = true; out.innerHTML = '<div class="muted" style="margin:8px 0">Searching ...</div>';
+    try{ const list = await PXC.mpcSearch(e.name, 40); if(!$('#mpcres', sh)) return;
+      out.innerHTML = list.length ? `<div class="opts" style="margin-top:8px">` + list.map((c, k) => `<div class="opt" data-m="${k}"><div class="pv">${tileVisual(c)}</div><div class="oc"><span class="pill p-amber">Community</span><b>${esc(c.artist)}</b><div class="muted">${c.dpi} dpi${c.language && c.language !== 'EN' ? ' · ' + esc(c.language) : ''} · ${c.sizeMB} MB</div></div></div>`).join('') + `</div>` : '<div class="muted" style="margin:8px 0">No community art found for this name.</div>';
+      $$('[data-m]', out).forEach(o => o.onclick = () => { const c = list[+o.dataset.m]; const have = e.cands.findIndex(x => same(x, c)); if(have < 0) e.cands.push(c); e.sel = have < 0 ? e.cands.length - 1 : have; toast('Community art by ' + c.artist + ' selected'); closeSheet() });
+    }catch(x){ L('mpc search failed', {name:e.name, err:x.message}); if($('#mpcres', sh)) out.innerHTML = `<div class="note warn" style="margin:8px 0">${esc(x.message)}</div>` }
+    b.disabled = false };
   $('#artpick', sh).onclick = () => { const p = $('#pickart'); p.onchange = async ev => { const f = ev.target.files[0]; ev.target.value = ''; if(!f) return;
     try{ const id = await artAdd(f, e.name, $('#artlabel', sh).value.trim() || 'My art'); e.cands.push({kind:'custom', id, label:$('#artlabel', sh).value.trim() || 'My art', name:e.name}); e.sel = e.cands.length - 1; toast('Your picture was added and selected'); closeSheet() }catch(x){ toast(x.message) } }; p.click() };
   if(e.err && !e.cands.some(c => c.kind === 'official')){ const r = await resolveOne({name:e.name, qty:e.qty, set:'', number:''}); if(!r.err || r.sel >= 0){ delete e.err; Object.assign(e, r); draw() } else e.err = r.err; if($('#chbody', sh)) draw2() }

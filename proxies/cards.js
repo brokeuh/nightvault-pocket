@@ -159,5 +159,30 @@ const PXC = (() => {
   async function suggest(game, q){ if(game !== 'mtg' || q.length < 2) return []; try{ return (await getJSON('https://api.scryfall.com/cards/autocomplete?q=' + enc(q))).data || [] }catch(e){ return [] } }
   const front = n => String(n || '').split(' // ')[0];
   const sameName = (a, b) => { const x = lwr(front(a)), y = lwr(front(b)); return x === y || lwr(a) === lwr(b) || lwr(String(a).replace(/ - .*$/, '')) === y };
-  return {GAMES, SIZES, find, one, suggest, sameName, sim, lwr, NATIVE, getJSON};
+
+  /* ---- Community art: MPC Autofill (mpcfill.com). Its server only answers its own website in a browser, so this works in the Android app only.
+     card id = Google Drive file id; lh4.googleusercontent.com/d/<id>=h<px> gives any height. ---- */
+  const MPC = 'https://mpcfill.com/', lh4 = (id, h) => `https://lh4.googleusercontent.com/d/${id}=h${h}`;
+  let _mpcSrc = null;
+  async function mpcCall(path, body){
+    const url = MPC + path, H = NATIVE && window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.CapacitorHttp;
+    try{
+      if(H){ const r = await H.request({url, method:body ? 'POST' : 'GET', headers:body ? {'Content-Type':'application/json', Accept:'application/json'} : {Accept:'application/json'}, data:body || undefined, responseType:'json'});
+        if(r.status >= 400) throw Object.assign(new Error('MPC Autofill answered HTTP ' + r.status + (r.status === 403 ? ' (its security check may have refused the app)' : '')), {status:r.status});
+        return typeof r.data === 'string' ? JSON.parse(r.data) : r.data }
+      const r = await fetch(url, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {}); if(!r.ok) throw Object.assign(new Error('MPC Autofill answered HTTP ' + r.status), {status:r.status}); return r.json();
+    }catch(e){ if(e.status) throw e; throw new Error(H ? 'No connection to MPC Autofill' : 'MPC Autofill can only be reached from the Android app') }
+  }
+  async function mpcSources(){ if(_mpcSrc) return _mpcSrc; const j = await mpcCall('2/sources/'); _mpcSrc = Object.values(j.results || {}).map(x => x.pk); return _mpcSrc }
+  async function mpcSearch(name, max){
+    const q = String(name || '').trim(); if(!q) return []; const srcs = await mpcSources();
+    const ask = fuzzy => mpcCall('3/editorSearch/', {queries:{q:{query:q, cardType:'CARD'}}, searchSettings:{filterSettings:{excludesTags:[], includesTags:[], languages:[], maximumDPI:1500, minimumDPI:0, maximumSize:30},
+      searchTypeSettings:{fuzzySearch:fuzzy, filterCardbacks:false}, sourceSettings:{sources:srcs.map(pk => [pk, true])}}});
+    let ids = ((await ask(false)).results || {}).q || []; if(!ids.length) ids = ((await ask(true)).results || {}).q || [];
+    ids = ids.slice(0, max || 40); if(!ids.length) return [];
+    const det = (await mpcCall('2/cards/', {cardIdentifiers:ids})).results || {};
+    return ids.filter(id => det[id]).map(id => { const c = det[id];
+      return {kind:'mpc', id, name:c.name, artist:c.sourceName, dpi:c.dpi, language:c.language, sizeMB:Math.round(c.size / 1048576 * 10) / 10, tags:c.tags || [], image:c.mediumThumbnailUrl || c.smallThumbnailUrl || '', print:lh4(id, 1500), hq:lh4(id, 2200), link:c.sourceExternalLink || ''} });
+  }
+  return {GAMES, SIZES, find, one, suggest, sameName, sim, lwr, NATIVE, getJSON, mpcSearch};
 })();

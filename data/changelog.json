@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 155,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "Proxies: Community art (MPC Autofill)",
+   "items": [
+    "Tap a card in Proxies, then \"Search community art\": proxy art made by the MPC Autofill artists, shown with the artist, the DPI and the file size. Pick one and it goes on your sheet and is saved with the deck.",
+    "Android app only (the MPC server only talks to its own website in a browser).",
+    "First version, not tried on the real server yet: if it says it could not reach MPC Autofill, send the debug log. Downloading a whole artist and \"check for new cards\" come later."
+   ]
+  },
+  {
    "id": 154,
    "date": "2026-11-09",
    "where": [

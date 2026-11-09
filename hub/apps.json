@@ -34,7 +34,7 @@
     },
     {
      "path": "hub/nvsetup.js",
-     "size": 32145
+     "size": 32483
     },
     {
      "path": "hub/nvtheme.js",
@@ -63,9 +63,9 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 268733,
-   "hash": "35dea4872ad8",
-   "version": "2026.11.09.1126",
+   "size": 269071,
+   "hash": "43b08e9bc8a2",
+   "version": "2026.11.09.1217",
    "updated": "2026-11-09"
   },
   {
@@ -569,11 +569,11 @@
     },
     {
      "path": "proxies/app.js",
-     "size": 35869
+     "size": 37804
     },
     {
      "path": "proxies/cards.js",
-     "size": 18739
+     "size": 21485
     },
     {
      "path": "proxies/manifest.webmanifest",
@@ -586,9 +586,9 @@
    "uses": [],
    "entry": "proxies/?nv=hub",
    "keepsData": "Your deck, saved decks, own pictures and sheet settings stay on this device. The PDFs you make are yours to keep.",
-   "size": 68755,
-   "hash": "1ae61125f0f9",
-   "version": "2026.11.09.1037",
+   "size": 73436,
+   "hash": "db53c3fe0686",
+   "version": "2026.11.09.1217",
    "updated": "2026-11-09"
   }
  ]
