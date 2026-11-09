@@ -537,8 +537,119 @@ public class NvFilesPlugin extends Plugin {
         MIME.put("pdf", "application/pdf"); MIME.put("epub", "application/epub+zip"); MIME.put("cbz", "application/zip");
     }
 
+
+    /* ---------- a folder of web files (an offline copy of a web app the owner put on the phone himself), served as https://cardmaker.nightvault.local/<path>
+       - its own origin, so the pages cannot read Nightvault's data. Nothing of it is shipped with Nightvault. ---------- */
+    static final String SITE_HOST = "cardmaker.nightvault.local";
+    static volatile String siteTree = null;
+    private static final HashMap<String, String[]> siteIds = new HashMap<>();   // path -> {document id, "d" folder | "f" file}
+    private static final Map<String, String> SITE_MIME = new HashMap<>();
+    static {
+        SITE_MIME.put("html", "text/html"); SITE_MIME.put("htm", "text/html"); SITE_MIME.put("js", "application/javascript"); SITE_MIME.put("mjs", "application/javascript");
+        SITE_MIME.put("css", "text/css"); SITE_MIME.put("json", "application/json"); SITE_MIME.put("svg", "image/svg+xml"); SITE_MIME.put("gif", "image/gif");
+        SITE_MIME.put("ico", "image/x-icon"); SITE_MIME.put("woff", "font/woff"); SITE_MIME.put("woff2", "font/woff2"); SITE_MIME.put("ttf", "font/ttf"); SITE_MIME.put("otf", "font/otf");
+        SITE_MIME.put("txt", "text/plain"); SITE_MIME.put("xml", "application/xml"); SITE_MIME.put("map", "application/json"); SITE_MIME.put("wasm", "application/wasm");
+        SITE_MIME.put("webmanifest", "application/manifest+json"); SITE_MIME.put("md", "text/plain");
+    }
+    /** what the web app's pages get added: downloads (blob / data links) are handed to the parent page instead of being lost */
+    private static final String SITE_HOOK =
+        "<script>(function(){if(window.__nvcm)return;window.__nvcm=1;"
+        + "function h(a){var name=a.getAttribute('download')||'file';fetch(a.href).then(function(r){return r.blob()}).then(function(b){var f=new FileReader();"
+        + "f.onloadend=function(){parent.postMessage({nvcm:'save',name:name,type:b.type||'application/octet-stream',b64:String(f.result).split(',')[1]||''},'*')};f.readAsDataURL(b)})}"
+        + "var oc=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){if(this.hasAttribute('download')&&this.href){h(this);return}oc.call(this)};"
+        + "document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[download]'):null;if(!a||!a.href)return;e.preventDefault();e.stopPropagation();h(a)},true);"
+        + "})();</script>";
+
+    private static String[] siteFind(ContentResolver cr, Uri tree, String path) {
+        synchronized (siteIds) {
+            String[] known = siteIds.get(path);
+            if (known != null) return known;
+            String docId = DocumentsContract.getTreeDocumentId(tree), kind = "d", cur = "";
+            for (String seg : path.split("/")) {
+                if (seg.isEmpty()) continue;
+                cur = cur + "/" + seg;
+                String[] k = siteIds.get(cur);
+                if (k == null) {
+                    String id = null, mime = null;
+                    try (Cursor q = cr.query(DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId),
+                            new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
+                        if (q != null) while (q.moveToNext()) if (seg.equals(q.getString(1))) { id = q.getString(0); mime = q.getString(2); break; }
+                    }
+                    if (id == null) return null;
+                    k = new String[]{id, DocumentsContract.Document.MIME_TYPE_DIR.equals(mime) ? "d" : "f"};
+                    siteIds.put(cur, k);
+                }
+                docId = k[0]; kind = k[1];
+            }
+            String[] r = new String[]{docId, kind};
+            siteIds.put(path, r);
+            return r;
+        }
+    }
+
+    @PluginMethod
+    public void siteOpen(PluginCall call) {
+        String t = call.getString("tree");
+        if (t == null) { call.reject("No folder"); return; }
+        new Thread(() -> {
+            try {
+                Uri tree = Uri.parse(t);
+                synchronized (siteIds) { siteIds.clear(); }
+                siteTree = t;
+                String[] idx = siteFind(getContext().getContentResolver(), tree, "index.html");
+                JSObject o = new JSObject();
+                o.put("hasIndex", idx != null && "f".equals(idx[1]));
+                o.put("host", SITE_HOST);
+                call.resolve(o);
+            } catch (SecurityException e) {
+                call.reject("Nightvault may no longer read this folder - pick it again", "permission");
+            } catch (Exception e) {
+                call.reject("Could not read the folder: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    static WebResourceResponse serveSite(Context ctx, Uri url) {
+        Map<String, String> h = new HashMap<>();
+        h.put("Access-Control-Allow-Origin", "*");
+        h.put("Cache-Control", "no-cache");
+        try {
+            String t = siteTree;
+            if (t == null) throw new IOException("no folder chosen");
+            String path = Uri.decode(url.getEncodedPath() == null ? "" : url.getEncodedPath());
+            while (path.startsWith("/")) path = path.substring(1);
+            if (path.contains("..")) throw new IOException("bad path");
+            if (path.isEmpty() || path.endsWith("/")) path = path + "index.html";
+            ContentResolver cr = ctx.getContentResolver();
+            Uri tree = Uri.parse(t);
+            String[] f = siteFind(cr, tree, path);
+            if (f != null && "d".equals(f[1])) { path = path + "/index.html"; f = siteFind(cr, tree, path); }
+            if (f == null || !"f".equals(f[1])) return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", h, new java.io.ByteArrayInputStream("not found".getBytes()));
+            Uri doc = DocumentsContract.buildDocumentUriUsingTree(tree, f[0]);
+            String ext = path.contains(".") ? path.substring(path.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT) : "";
+            String mime = SITE_MIME.containsKey(ext) ? SITE_MIME.get(ext) : MIME.containsKey(ext) ? MIME.get(ext) : "application/octet-stream";
+            boolean text = mime.startsWith("text/") || mime.equals("application/javascript") || mime.equals("application/json") || mime.equals("image/svg+xml");
+            if (mime.equals("text/html")) {
+                ByteArrayOutputStream bo = new ByteArrayOutputStream();
+                try (InputStream in = open(ctx, doc, 0)) { byte[] buf = new byte[16384]; int n; while ((n = in.read(buf)) > 0) bo.write(buf, 0, n); }
+                String html = bo.toString("UTF-8");
+                int at = html.toLowerCase(Locale.ROOT).indexOf("<head");
+                if (at >= 0) { int close = html.indexOf('>', at); html = html.substring(0, close + 1) + SITE_HOOK + html.substring(close + 1); }
+                else html = SITE_HOOK + html;
+                return new WebResourceResponse(mime, "utf-8", 200, "OK", h, new java.io.ByteArrayInputStream(html.getBytes("UTF-8")));
+            }
+            return new WebResourceResponse(mime, text ? "utf-8" : null, 200, "OK", h, open(ctx, doc, 0));
+        } catch (SecurityException e) {
+            return new WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", h, new java.io.ByteArrayInputStream("no permission".getBytes()));
+        } catch (Exception e) {
+            Log.w("NvFiles", "site serve failed for " + url, e);
+            return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", h, new java.io.ByteArrayInputStream(("not found: " + e.getMessage()).getBytes()));
+        }
+    }
+
     static WebResourceResponse serve(Context ctx, WebResourceRequest req) {
         Uri url = req.getUrl();
+        if (SITE_HOST.equals(url.getHost())) return serveSite(ctx, url);
         String path = url.getPath();
         if (path == null || !path.startsWith(PREFIX)) return null;
         Map<String, String> h = new HashMap<>();

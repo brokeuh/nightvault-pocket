@@ -89,6 +89,7 @@ select{padding:0 10px}
 #toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#222a33;border:1px solid var(--line);padding:10px 14px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:400;max-width:90vw;text-align:center;color:var(--text)}
 #toast.on{opacity:1}
 .empty{text-align:center;color:var(--dim);padding:22px 10px;grid-column:1/-1}
+#cmov{position:fixed;inset:0;z-index:2147480000;background:var(--bg,#0e1218);display:flex;flex-direction:column}#cmov .cmbar{display:flex;gap:10px;align-items:center;padding:8px 12px calc(8px) 12px;border-bottom:1px solid var(--line,#232b36)}#cmov iframe{flex:1;border:0;width:100%;background:#fff}#cmov .cmint{padding:18px 16px;overflow:auto;max-width:560px;margin:0 auto}#cmov .cmint p{line-height:1.5}
 </style>
 </head>
 <body>

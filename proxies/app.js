@@ -206,6 +206,49 @@ const SAVED = (() => {
   }
   return {on, url, stat, reset:() => { stat.hit = stat.miss = 0 }};
 })();
+
+/* ---------------------------------------------------------------- Card maker: the owner's own offline copy of a web card maker (Card Conjurer), opened from a folder on the phone.
+   Nightvault ships none of it: the owner downloads it himself, puts the folder on the phone and chooses it here. It runs on its own address
+   (cardmaker.nightvault.local, served by the Android app from that folder) so it cannot read Nightvault's data. Android only. */
+const CM = (() => {
+  let NV = null; if(NATIVE) try{ NV = Capacitor.registerPlugin('NvFiles') }catch(e){ NV = null }
+  const KEY = 'nvProxies.cmFolder', HOST = 'https://cardmaker.nightvault.local/index.html';
+  let ov = null;
+  const folder = () => lsGet(KEY, null);
+  const isOpen = () => !!ov;
+  function close(){ if(!ov) return false; ov.remove(); ov = null; return true }
+  async function use(tree){ const r = await NV.siteOpen({tree}); return r && r.hasIndex }
+  async function choose(){
+    const r = await NV.pickFolder(); const ok = await use(r.tree);
+    if(!ok){ toast('index.html was not found in that folder - choose the folder that contains index.html'); return false }
+    lsSet(KEY, {tree:r.tree, name:r.name}); return true }
+  function frame(){
+    ov.innerHTML = `<div class="cmbar"><b>Card maker</b><span class="muted small" style="flex:1">saved cards are added to your deck</span><button class="btn sm" id="cmx">Close</button></div><iframe id="cmf" src="${HOST}" allow="clipboard-read; clipboard-write"></iframe>`;
+    $('#cmx', ov).onclick = close }
+  async function screen(){
+    if(!NV){ toast('The card maker works in the Android app only'); return }
+    close(); ov = document.createElement('div'); ov.id = 'cmov'; document.body.appendChild(ov);
+    const fo = folder(); let ok = false;
+    if(fo){ try{ ok = await use(fo.tree) }catch(e){ ok = false } }
+    if(ok){ frame(); return }
+    ov.innerHTML = `<div class="cmbar"><b>Card maker</b><span style="flex:1"></span><button class="btn sm" id="cmx">Close</button></div>
+      <div class="cmint"><h3>Your own copy of a card maker</h3>
+      <p>Nightvault does not include a card maker, or any card frames. If you want one, download an offline copy yourself (for example the Card Conjurer files from its GitHub page: Code, then Download ZIP), unzip it, and copy the folder to this phone.</p>
+      <p>Then choose the folder that contains <b>index.html</b>. It opens inside Proxies, works without internet, and the cards you save are added to your deck as your own pictures.</p>
+      <p class="muted small">${fo ? 'The folder you chose before could not be read: ' + esc(fo.name) + '.' : 'No folder chosen yet.'} You make the cards for your own printing; check the licence of whatever you download.</p>
+      <div class="row"><button class="btn primary" id="cmpick">Choose the folder</button></div></div>`;
+    $('#cmx', ov).onclick = close;
+    $('#cmpick', ov).onclick = async () => { try{ if(await choose()) frame() }catch(e){ toast(e.message || 'Could not use that folder') } } }
+  window.addEventListener('message', async ev => {
+    const d = ev.data; if(!ov || !d || d.nvcm !== 'save') return;
+    try{ const bin = atob(d.b64 || ''), u = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      const blob = new Blob([u], {type:d.type}), name = String(d.name || 'card').replace(/\.[A-Za-z0-9]+$/, '').trim() || 'Card';
+      if(/^image\//.test(d.type)){ const f = new File([blob], d.name || 'card.png', {type:d.type}), id = await artAdd(f, name, 'Card maker');
+        S.entries.push({name, qty:1, cands:[{kind:'custom', id, label:'Card maker', name}], sel:0, full:true}); save(); draw(); toast(`“${name}” was added to your deck as your own picture`) }
+      else { await deliver(blob, d.name || 'card-maker-file'); toast('Saved: ' + (d.name || 'file')) }
+    }catch(e){ toast('Could not save that: ' + e.message); L('card maker save failed', e.message) } });
+  return {screen, close, isOpen};
+})();
 async function bitmapFor(p, dpi){
   const c = p.c, hq = dpi >= 450;
   if(c.kind === 'custom'){ const a = ART.find(x => x.id === c.id); return a ? createImageBitmap(a.blob) : null }
@@ -387,10 +430,11 @@ function wire(){
 }
 const fromHub = () => { try{ return sessionStorage.getItem('nvHub') === '1' }catch(e){ return false } };
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(window.NVMENU && NVMENU.close()) return; if(window.NVCARDS && NVCARDS.close()) return; if(closeSheet()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
+  A.addListener('backButton', () => { if(window.NVMENU && NVMENU.close()) return; if(window.NVCARDS && NVCARDS.close()) return; if(CM.close()) return; if(closeSheet()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
 
 window.NVPX = {S, parseDeck, resolveOne, resolveList, layout, prints, buildPdf, draw, pickIndex, ART:() => ART, artAdd,
   menu:() => [{label:'Card pictures (save on this phone)', run:() => NVCARDS.open()},
+              {label:'Card maker (your own offline copy)', run:() => CM.screen()},
               {label:'Clear the deck', run:() => { if(!S.entries.length || confirm('Remove every card from the deck?')) clearDeck() }},
               {label:'Saved decks', run:() => { const d = $('#decks').closest('details'); d.open = true; d.scrollIntoView({behavior:'smooth'}) }}]};
 (async () => {

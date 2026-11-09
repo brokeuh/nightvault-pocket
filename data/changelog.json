@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 157,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "Proxies: Card maker (open your own offline card maker)",
+   "items": [
+    "New in the Proxies menu: Card maker. It opens an offline card maker (for example Card Conjurer) from a folder on your phone. Nightvault does not include one - you download the files yourself, copy the folder to the phone and choose the folder that contains index.html.",
+    "It runs on its own address, so it cannot read Nightvault's data. Cards you save in it (picture downloads) are added to your deck as your own pictures; other files (save files) go to Save / Share.",
+    "Android app only. First version, never tried with the real files yet: if something does not load, send the debug log."
+   ]
+  },
+  {
    "id": 156,
    "date": "2026-11-09",
    "where": [
