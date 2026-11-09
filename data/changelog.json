@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 162,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "Card pictures: Pokémon, Yu-Gi-Oh!, Hearthstone, WoW, Dragon Ball Z CCG and GT",
+   "items": [
+    "Card pictures (Proxies menu) can now download Pokémon (JPG or PNG), Yu-Gi-Oh!, Hearthstone, World of Warcraft TCG, Dragon Ball Z CCG and Dragon Ball GT, into the same game / set / card folders as the other games.",
+    "Works with the WebP option and with an SD card folder. Never tried on a real phone yet: if a game fails, send the debug log.",
+    "PC app: new button Convert to WebP on a game page (any folder, also your SD card): makes the pictures much smaller, keeps or removes the originals, and continues where it stopped. Copy vault.py and vault_ui.html to your PC."
+   ]
+  },
+  {
    "id": 161,
    "date": "2026-11-09",
    "where": [

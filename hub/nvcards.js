@@ -9,7 +9,7 @@
    Any app page: <script src="../hub/nvcards.js"></script>, then NVCARDS.open() (a menu item "Card pictures"); NVCARDS.close() returns true if it closed
    the screen (for the Android back button). NVCARDS.folder() = {tree, name} of the picked folder or null.
    Games in this first slice: Magic (small/normal/large/png), Lorcana and the daily-file games (Gundam, Digimon, Flesh and Blood, Sorcery, Weiss Schwarz,
-   Dragon Ball). One Piece, Star Wars: Unlimited (sub-folder per version), Riftbound and Star Wars CCG added; CCG Trader games follow – add them to SRC below.
+   Dragon Ball). One Piece, Star Wars: Unlimited (sub-folder per version), Riftbound and Star Wars CCG added; CCG Trader games (WoW, DBZ CCG, DB GT), Hearthstone (card renders), Pokémon (TCGdex) and Yu-Gi-Oh! (YGOPRODeck) added 9 Nov.
    The set / card lists are cut-down copies of Pocket's (pocket/test_src.html SETSRC): if a source changes there, change it here too. */
 (function(){
   'use strict';
@@ -108,6 +108,43 @@
         for(const c of j.items || []){ const sid = String((c.set || {}).set_id || '').toUpperCase(), cn = String(c.collector_number ?? '');
           out.push({num:normNum(c.riftbound_id || `${sid}-${cn.padStart(3, '0')}`), name:c.name, url:`https://static.dotgg.gg/riftbound/cards/${sid}-${cn.padStart(3, '0')}.webp`, ext:'webp'}) }
         if(!j.pages || page >= j.pages) break; page++; await sleep(120) } return out } };
+
+  /* ---- CCG Trader games (WoW TCG, Dragon Ball Z CCG, Dragon Ball GT): the weekly copy on GitHub (data/ccgt/<id>.json) lists sets and
+     cards [set, number, name, rarity, picture hash]; the pictures come from ccgtrader.co.uk in the large size ---- */
+  const CCGT_G = {wow:[22, 'World of Warcraft TCG'], dbzccg:[128, 'Dragon Ball Z CCG (Score)'], dbgt:[127, 'Dragon Ball GT TCG (Score)']};
+  const _cc = {};
+  const ccData = id => _cc[id] || (_cc[id] = (async () => {
+    for(const u of [`${BASE}data/ccgt/${id}.json`, `https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/ccgt/${id}.json`]) try{ const d = await getJSON(u); if(d && d.cards) return d }catch(e){}
+    delete _cc[id]; throw new Error('The card list of this game is not available right now') })());
+  for(const [g, [id, label]] of Object.entries(CCGT_G)) SRC[g] = {label, per:() => 110e3,
+    sets:async () => { const d = await ccData(id), n = new Map(); for(const r of d.cards) n.set(r[0], (n.get(r[0]) || 0) + 1);
+      return d.sets.map(x => ({code:String(x.code), id:x.id, name:x.name || 'Set ' + x.code, released:x.released || '', total:n.get(x.id) || 0})).filter(x => x.total) },
+    cards:async st => (await ccData(id)).cards.filter(r => r[0] === st.id && r[4]).map(r => ({num:r[1] != null && r[1] !== '' ? normNum(r[1]) : slugOf(r[2]), name:r[2], url:`https://api.ccgtrader.co.uk/_/assets/${r[4]}?key=directus-large-contain`})) };
+
+  /* ---- Hearthstone: the card pictures are renders from HearthstoneJSON (data/hearthstone.json lists them) ---- */
+  SRC.hearthstone = {label:'Hearthstone (card renders)', per:() => 60e3,
+    sets:async () => { const d = await dgData('hearthstone'), n = new Map(); for(const r of d.cards) n.set(r[0], (n.get(r[0]) || 0) + 1);
+      return d.sets.map((x, i) => ({code:x.code || String(i), name:x.name || String(x.code || i).toUpperCase(), released:x.released || '', total:n.get(i) || 0, idx:i})).filter(x => x.total) },
+    cards:async st => { const d = await dgData('hearthstone'), base = (d.imgBase || 'https://art.hearthstonejson.com/v1/render/latest/enUS/256x/{}.png').replace('/256x/', '/512x/');
+      return d.cards.filter(r => r[0] === st.idx && r[5]).map(r => ({num:r[5], name:r[2], url:base.replace('{}', r[5]), ext:'png'})) } };
+
+  /* ---- Pokémon (TCGdex): every set, every card, the large picture ---- */
+  const TCGDEX = 'https://api.tcgdex.net/v2/en/';
+  SRC.pokemon = {label:'Pokémon TCG', qualities:['jpg', 'png'], defQ:'jpg', per:q => q === 'png' ? 450e3 : 120e3,
+    sets:async () => (await getJSON(TCGDEX + 'sets')).map(x => ({code:String(x.id), name:x.name, released:'', total:(x.cardCount || {}).total || 0})),
+    cards:async (st, q) => { const d = await getJSON(TCGDEX + 'sets/' + enc(st.code)), ext = q === 'png' ? 'png' : 'jpg';
+      return (d.cards || []).filter(c => c.image).map(c => ({num:normNum(c.localId), name:c.name, url:`${c.image}/high.${ext}`, ext})) } };
+
+  /* ---- Yu-Gi-Oh! (YGOPRODeck): the card picture is the same for every printing, so each set gets a copy of the cards it contains ---- */
+  const YGO = 'https://db.ygoprodeck.com/api/v7/';
+  SRC.ygo = {label:'Yu-Gi-Oh!', per:() => 60e3,
+    sets:async () => (await getJSON(YGO + 'cardsets.php')).map(x => ({code:String(x.set_code), name:x.set_name, released:x.tcg_date || '', total:x.num_of_cards || 0})),
+    cards:async st => { const sets = await getJSON(YGO + 'cardsets.php'), nm = (sets.find(x => String(x.set_code) === st.code) || {}).set_name || st.name, out = [];
+      const j = await getJSON(YGO + 'cardinfo.php?cardset=' + enc(nm)), pre = st.code.toLowerCase() + '-';
+      for(const c of j.data || []){ const img = ((c.card_images || [])[0] || {}).image_url; if(!img) continue;
+        for(const p of c.card_sets || []){ if(p.set_name !== nm) continue; const code = String(p.set_code || ''), n = code.toLowerCase().startsWith(pre) ? code.slice(pre.length) : code;
+          out.push({num:n || slugOf(c.name), name:c.name + (p.set_rarity_code ? ' ' + p.set_rarity_code : ''), url:img}) } }
+      const seen = new Set(); return out.filter(c => { const k = c.num + '|' + c.name; return seen.has(k) ? false : (seen.add(k), true) }) } };
 
   /* ---- the folder ---- */
   const folder = () => lsGet('nvCards.folder', null);
