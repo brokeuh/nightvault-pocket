@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 165,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "Card pictures: download many games at once",
+   "items": [
+    "New button in Card pictures: Download many games at once. Tick the games and it goes through all their sets by itself, one game after the other.",
+    "Untick the games you already have - the app remembers it. Pictures already in your folder are never downloaded twice, so Stop and start again is safe. Games that already have a folder in your chosen folder are marked.",
+    "Magic and Pokémon can be saved at the largest size (PNG) or the normal size. Not tried on a real device yet; plan for a lot of space."
+   ]
+  },
+  {
    "id": 164,
    "date": "2026-11-09",
    "where": [
