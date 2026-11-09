@@ -540,8 +540,8 @@ public class NvFilesPlugin extends Plugin {
 
     /* ---------- a folder of web files (an offline copy of a web app the owner put on the phone himself), served as https://cardmaker.nightvault.local/<path>
        - its own origin, so the pages cannot read Nightvault's data. Nothing of it is shipped with Nightvault. ---------- */
-    static final String SITE_HOST = "cardmaker.nightvault.local";
-    static volatile String siteTree = null;
+    static final String SITE_SUFFIX = ".nightvault.local";   // one address per tool: cm1.nightvault.local, cm2.nightvault.local ...
+    static final java.util.concurrent.ConcurrentHashMap<String, String> siteTrees = new java.util.concurrent.ConcurrentHashMap<>();
     private static final HashMap<String, String[]> siteIds = new HashMap<>();   // path -> {document id, "d" folder | "f" file}
     private static final Map<String, String> SITE_MIME = new HashMap<>();
     static {
@@ -560,15 +560,15 @@ public class NvFilesPlugin extends Plugin {
         + "document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[download]'):null;if(!a||!a.href)return;e.preventDefault();e.stopPropagation();h(a)},true);"
         + "})();</script>";
 
-    private static String[] siteFind(ContentResolver cr, Uri tree, String path) {
+    private static String[] siteFind(ContentResolver cr, Uri tree, String host, String path) {
         synchronized (siteIds) {
-            String[] known = siteIds.get(path);
+            String[] known = siteIds.get(host + "|" + path);
             if (known != null) return known;
             String docId = DocumentsContract.getTreeDocumentId(tree), kind = "d", cur = "";
             for (String seg : path.split("/")) {
                 if (seg.isEmpty()) continue;
                 cur = cur + "/" + seg;
-                String[] k = siteIds.get(cur);
+                String[] k = siteIds.get(host + "|" + cur);
                 if (k == null) {
                     String id = null, mime = null;
                     try (Cursor q = cr.query(DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId),
@@ -577,29 +577,31 @@ public class NvFilesPlugin extends Plugin {
                     }
                     if (id == null) return null;
                     k = new String[]{id, DocumentsContract.Document.MIME_TYPE_DIR.equals(mime) ? "d" : "f"};
-                    siteIds.put(cur, k);
+                    siteIds.put(host + "|" + cur, k);
                 }
                 docId = k[0]; kind = k[1];
             }
             String[] r = new String[]{docId, kind};
-            siteIds.put(path, r);
+            siteIds.put(host + "|" + path, r);
             return r;
         }
     }
 
     @PluginMethod
     public void siteOpen(PluginCall call) {
-        String t = call.getString("tree");
+        String t = call.getString("tree"), slot = call.getString("slot", "1").replaceAll("[^a-z0-9]", "");
         if (t == null) { call.reject("No folder"); return; }
+        if (slot.isEmpty()) slot = "1";
+        final String host = "cm" + slot + SITE_SUFFIX;
         new Thread(() -> {
             try {
                 Uri tree = Uri.parse(t);
-                synchronized (siteIds) { siteIds.clear(); }
-                siteTree = t;
-                String[] idx = siteFind(getContext().getContentResolver(), tree, "index.html");
+                synchronized (siteIds) { java.util.Iterator<String> it = siteIds.keySet().iterator(); while (it.hasNext()) if (it.next().startsWith(host + "|")) it.remove(); }
+                siteTrees.put(host, t);
+                String[] idx = siteFind(getContext().getContentResolver(), tree, host, "index.html");
                 JSObject o = new JSObject();
                 o.put("hasIndex", idx != null && "f".equals(idx[1]));
-                o.put("host", SITE_HOST);
+                o.put("host", host);
                 call.resolve(o);
             } catch (SecurityException e) {
                 call.reject("Nightvault may no longer read this folder - pick it again", "permission");
@@ -610,11 +612,12 @@ public class NvFilesPlugin extends Plugin {
     }
 
     static WebResourceResponse serveSite(Context ctx, Uri url) {
+        final String host = url.getHost();
         Map<String, String> h = new HashMap<>();
         h.put("Access-Control-Allow-Origin", "*");
         h.put("Cache-Control", "no-cache");
         try {
-            String t = siteTree;
+            String t = siteTrees.get(host);
             if (t == null) throw new IOException("no folder chosen");
             String path = Uri.decode(url.getEncodedPath() == null ? "" : url.getEncodedPath());
             while (path.startsWith("/")) path = path.substring(1);
@@ -622,8 +625,8 @@ public class NvFilesPlugin extends Plugin {
             if (path.isEmpty() || path.endsWith("/")) path = path + "index.html";
             ContentResolver cr = ctx.getContentResolver();
             Uri tree = Uri.parse(t);
-            String[] f = siteFind(cr, tree, path);
-            if (f != null && "d".equals(f[1])) { path = path + "/index.html"; f = siteFind(cr, tree, path); }
+            String[] f = siteFind(cr, tree, host, path);
+            if (f != null && "d".equals(f[1])) { path = path + "/index.html"; f = siteFind(cr, tree, host, path); }
             if (f == null || !"f".equals(f[1])) return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", h, new java.io.ByteArrayInputStream("not found".getBytes()));
             Uri doc = DocumentsContract.buildDocumentUriUsingTree(tree, f[0]);
             String ext = path.contains(".") ? path.substring(path.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT) : "";
@@ -649,7 +652,7 @@ public class NvFilesPlugin extends Plugin {
 
     static WebResourceResponse serve(Context ctx, WebResourceRequest req) {
         Uri url = req.getUrl();
-        if (SITE_HOST.equals(url.getHost())) return serveSite(ctx, url);
+        if (url.getHost() != null && url.getHost().endsWith(SITE_SUFFIX)) return serveSite(ctx, url);
         String path = url.getPath();
         if (path == null || !path.startsWith(PREFIX)) return null;
         Map<String, String> h = new HashMap<>();

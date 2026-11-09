@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 158,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "Proxies: several card makers (Card Conjurer, Yugilife ...)",
+   "items": [
+    "The Card maker screen can now hold several tools. Add each one under a name (for example Card Conjurer, Yugilife) and choose its folder - the one with index.html. Each opens inside Proxies on its own address, and cards you save in any of them are added to your deck as your own pictures.",
+    "Nightvault still includes none of these tools or their frames: you download or build them yourself. A tool that has to be built first (Yugilife) must be built on a PC; add the built website folder.",
+    "Menu name is now \"Card makers (your own offline copies)\". Android app only, not tried with real tools yet."
+   ]
+  },
+  {
    "id": 157,
    "date": "2026-11-09",
    "where": [

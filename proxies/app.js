@@ -207,38 +207,43 @@ const SAVED = (() => {
   return {on, url, stat, reset:() => { stat.hit = stat.miss = 0 }};
 })();
 
-/* ---------------------------------------------------------------- Card maker: the owner's own offline copy of a web card maker (Card Conjurer), opened from a folder on the phone.
-   Nightvault ships none of it: the owner downloads it himself, puts the folder on the phone and chooses it here. It runs on its own address
-   (cardmaker.nightvault.local, served by the Android app from that folder) so it cannot read Nightvault's data. Android only. */
+/* ---------------------------------------------------------------- Card makers: the owner's own offline copies of web card makers (Card Conjurer, Yugilife ...), each opened from a folder on the phone.
+   Nightvault ships none of them: the owner downloads / builds them himself, puts the folder (the one with index.html) on the phone and adds it here under a name.
+   Each runs on its own address (cm1.nightvault.local ..., served by the Android app from that folder) so it cannot read Nightvault's data or the other tools. Android only. */
 const CM = (() => {
   let NV = null; if(NATIVE) try{ NV = Capacitor.registerPlugin('NvFiles') }catch(e){ NV = null }
-  const KEY = 'nvProxies.cmFolder', HOST = 'https://cardmaker.nightvault.local/index.html';
+  const KEY = 'nvProxies.cmTools';
   let ov = null;
-  const folder = () => lsGet(KEY, null);
+  const tools = () => { let t = lsGet(KEY, null); if(!t){ t = []; const old = lsGet('nvProxies.cmFolder', null); if(old) t.push({id:'1', name:'Card maker', tree:old.tree, folder:old.name}); lsSet(KEY, t) } return t };
+  const saveTools = t => lsSet(KEY, t);
   const isOpen = () => !!ov;
   function close(){ if(!ov) return false; ov.remove(); ov = null; return true }
-  async function use(tree){ const r = await NV.siteOpen({tree}); return r && r.hasIndex }
-  async function choose(){
-    const r = await NV.pickFolder(); const ok = await use(r.tree);
-    if(!ok){ toast('index.html was not found in that folder - choose the folder that contains index.html'); return false }
-    lsSet(KEY, {tree:r.tree, name:r.name}); return true }
-  function frame(){
-    ov.innerHTML = `<div class="cmbar"><b>Card maker</b><span class="muted small" style="flex:1">saved cards are added to your deck</span><button class="btn sm" id="cmx">Close</button></div><iframe id="cmf" src="${HOST}" allow="clipboard-read; clipboard-write"></iframe>`;
-    $('#cmx', ov).onclick = close }
-  async function screen(){
-    if(!NV){ toast('The card maker works in the Android app only'); return }
-    close(); ov = document.createElement('div'); ov.id = 'cmov'; document.body.appendChild(ov);
-    const fo = folder(); let ok = false;
-    if(fo){ try{ ok = await use(fo.tree) }catch(e){ ok = false } }
-    if(ok){ frame(); return }
-    ov.innerHTML = `<div class="cmbar"><b>Card maker</b><span style="flex:1"></span><button class="btn sm" id="cmx">Close</button></div>
-      <div class="cmint"><h3>Your own copy of a card maker</h3>
-      <p>Nightvault does not include a card maker, or any card frames. If you want one, download an offline copy yourself (for example the Card Conjurer files from its GitHub page: Code, then Download ZIP), unzip it, and copy the folder to this phone.</p>
-      <p>Then choose the folder that contains <b>index.html</b>. It opens inside Proxies, works without internet, and the cards you save are added to your deck as your own pictures.</p>
-      <p class="muted small">${fo ? 'The folder you chose before could not be read: ' + esc(fo.name) + '.' : 'No folder chosen yet.'} You make the cards for your own printing; check the licence of whatever you download.</p>
-      <div class="row"><button class="btn primary" id="cmpick">Choose the folder</button></div></div>`;
+  const bar = (title, back) => `<div class="cmbar">${back ? '<button class="btn sm" id="cmb">‹ Tools</button>' : ''}<b style="flex:1">${esc(title)}</b><button class="btn sm" id="cmx">Close</button></div>`;
+  async function open(t){
+    ov.innerHTML = bar(t.name, true) + '<div class="cmint"><p class="muted">Opening ...</p></div>'; $('#cmx', ov).onclick = close; $('#cmb', ov).onclick = list;
+    let ok = false; try{ const r = await NV.siteOpen({tree:t.tree, slot:t.id}); ok = r && r.hasIndex }catch(e){ ok = false }
+    if(!ov) return;
+    if(!ok){ ov.querySelector('.cmint').innerHTML = `<p class="note warn">Could not read <b>${esc(t.folder)}</b> or it has no index.html. Is the folder still there? You can remove this tool and add it again.</p>`; return }
+    ov.innerHTML = bar(t.name, true) + `<iframe id="cmf" src="https://cm${t.id}.nightvault.local/index.html" allow="clipboard-read; clipboard-write"></iframe>`; $('#cmx', ov).onclick = close; $('#cmb', ov).onclick = list }
+  async function add(){
+    const nm = $('#cmname', ov).value.trim(); if(!nm){ toast('Give the tool a name first, e.g. Card Conjurer'); return }
+    const r = await NV.pickFolder(), all = tools(), id = String(1 + all.reduce((m, x) => Math.max(m, +x.id || 0), 0));
+    const ok = await NV.siteOpen({tree:r.tree, slot:id}).then(x => x && x.hasIndex).catch(() => false);
+    if(!ok){ toast('index.html was not found in that folder - choose the folder that contains index.html'); return }
+    all.push({id, name:nm, tree:r.tree, folder:r.name}); saveTools(all); list() }
+  function list(){
+    const all = tools();
+    ov.innerHTML = bar('Card makers', false) + `<div class="cmint"><p>Nightvault does not include a card maker or any card frames. If you want one, download or build an offline copy yourself (for example Card Conjurer, or Yugilife - a web card maker for Yu-Gi-Oh!), copy the folder to this phone, and add it here: the folder that contains <b>index.html</b>. It then opens inside Proxies and works without internet. Cards you save in it are added to your deck as your own pictures.</p>
+      <div id="cmlist">${all.length ? all.map(t => `<div class="dl"><div class="grow"><b>${esc(t.name)}</b><div class="muted small">${esc(t.folder)}</div></div><button class="btn sm primary" data-o="${t.id}">Open</button><button class="btn sm danger" data-r="${t.id}" aria-label="Remove">✕</button></div>`).join('') : '<div class="muted small">No tools added yet.</div>'}</div>
+      <div class="note" style="margin-top:12px"><b>Add a card maker</b><div class="row" style="margin-top:8px"><input type="text" id="cmname" placeholder="Name, e.g. Card Conjurer" style="flex:1;min-width:120px" autocomplete="off" autocorrect="off" spellcheck="false"><button class="btn" id="cmadd">Choose the folder</button></div></div>
+      <p class="muted small">Check the licence of whatever you download. A tool that needs building first (Yugilife) has to be built on a PC; add the built website folder.</p></div>`;
     $('#cmx', ov).onclick = close;
-    $('#cmpick', ov).onclick = async () => { try{ if(await choose()) frame() }catch(e){ toast(e.message || 'Could not use that folder') } } }
+    $$('[data-o]', ov).forEach(b => b.onclick = () => open(tools().find(t => t.id === b.dataset.o)));
+    $$('[data-r]', ov).forEach(b => b.onclick = () => { saveTools(tools().filter(t => t.id !== b.dataset.r)); list() });
+    $('#cmadd', ov).onclick = () => add().catch(e => toast(e.message || 'Could not use that folder')) }
+  function screen(){
+    if(!NV){ toast('The card makers work in the Android app only'); return }
+    close(); ov = document.createElement('div'); ov.id = 'cmov'; document.body.appendChild(ov); list() }
   window.addEventListener('message', async ev => {
     const d = ev.data; if(!ov || !d || d.nvcm !== 'save') return;
     try{ const bin = atob(d.b64 || ''), u = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
@@ -434,7 +439,7 @@ if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App)
 
 window.NVPX = {S, parseDeck, resolveOne, resolveList, layout, prints, buildPdf, draw, pickIndex, ART:() => ART, artAdd,
   menu:() => [{label:'Card pictures (save on this phone)', run:() => NVCARDS.open()},
-              {label:'Card maker (your own offline copy)', run:() => CM.screen()},
+              {label:'Card makers (your own offline copies)', run:() => CM.screen()},
               {label:'Clear the deck', run:() => { if(!S.entries.length || confirm('Remove every card from the deck?')) clearDeck() }},
               {label:'Saved decks', run:() => { const d = $('#decks').closest('details'); d.open = true; d.scrollIntoView({behavior:'smooth'}) }}]};
 (async () => {
