@@ -1,0 +1,50 @@
+{
+ "version": "2026-11-09 16:12",
+ "notes": [
+  "Download many games at once, converted to WebP",
+  "Check for new cards (ongoing games only)",
+  "Updater"
+ ],
+ "files": [
+  {
+   "name": "nv_sorter.py",
+   "sha256": "fb1c31da4d8cf58f6ae28e4943fcf3bcc2b73800fff1326ff85805bcbbeb73ab"
+  },
+  {
+   "name": "vault.py",
+   "sha256": "f981c645ea242fffd42cbdad1911ca87a7fbbccfd3627d34ce851c68ecd6137a"
+  },
+  {
+   "name": "vault_ccgtrader.py",
+   "sha256": "3683520068bbc07e0d1eaccad0ada14265ed2eea1bd46e3e0b837f79bd25f3c1"
+  },
+  {
+   "name": "vault_cinema.py",
+   "sha256": "7f170930f7586321cf6c567927333c048db756c54e84f1cf1d08742a69649508"
+  },
+  {
+   "name": "vault_games.py",
+   "sha256": "ab2e3c49af8577a1ab1381a732a6f5a3af09db28da6aadc1c1d69e2a9fca858e"
+  },
+  {
+   "name": "vault_news.py",
+   "sha256": "09b7e0d5c9b7017396d922f30543633b9e1933ff45bae898abdeb619302df7f7"
+  },
+  {
+   "name": "vault_phone.py",
+   "sha256": "42630daa4447cc219f16c8a98abcff082142d9c3fa88694613efbcf3cdc32f3e"
+  },
+  {
+   "name": "vault_proxyshop.py",
+   "sha256": "1e5c55c582681e025e8057f63ee5fe1c8381624e5f937087e093710fd02cc7f4"
+  },
+  {
+   "name": "vault_tcgdata.py",
+   "sha256": "85e4d6b9589f25f72c3769310eef50cf55216f275d3bd28295e302f2b449b47d"
+  },
+  {
+   "name": "vault_ui.html",
+   "sha256": "343ee0d526c5ec9812ff996d96f74ae56235a021e00ab7850f4057ed829dfc32"
+  }
+ ]
+}

@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 168,
+   "date": "2026-11-09",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: updates itself",
+   "items": [
+    "The PC app now checks once a day if a newer version is available and shows a bar with Update now. Settings has a Check for updates button.",
+    "Updating replaces only Nightvault's own program files, keeps the old ones in the update_backup folder and restarts by itself. Your data is never touched.",
+    "Install this version by hand once (copy the new files); after that it updates itself."
+   ]
+  },
+  {
    "id": 167,
    "date": "2026-11-09",
    "where": [
