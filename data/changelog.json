@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 160,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies"
+   ],
+   "title": "Proxies: the sheet preview shows the bleed as it will print",
+   "items": [
+    "With bleed on, the preview used to show a pink box around every card (a marker, not the real fill). It now shows the card picture extending into the bleed (or black / white, as you chose). The PDF itself was already right; only the preview changed. The preview stretches the whole picture a little, the PDF stretches the edges."
+   ]
+  },
+  {
    "id": 159,
    "date": "2026-11-09",
    "where": [

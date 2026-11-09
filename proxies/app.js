@@ -349,7 +349,8 @@ function preview(){
   const sl = list.slice(S.page * Lt.per, S.page * Lt.per + Lt.per), pc = (x, w) => `${(x / w * 100).toFixed(3)}%`;
   const box = (x, y, w, h, cls, inner) => `<div class="${cls}" style="left:${pc(x, Lt.pw)};top:${pc(y, Lt.ph)};width:${pc(w, Lt.pw)};height:${pc(h, Lt.ph)}">${inner || ''}</div>`;
   el.innerHTML = `<div class="sheetp" style="aspect-ratio:${Lt.pw} / ${Lt.ph}">` + sl.map((p, i) => { const col = i % Lt.cols, row = Math.floor(i / Lt.cols), x = Lt.ox + col * (Lt.cellW + Lt.gap), y = Lt.oy + row * (Lt.cellH + Lt.gap);
-    return (Lt.b > 0 ? box(x, y, Lt.cellW, Lt.cellH, 'bl') : '') + box(x + Lt.b, y + Lt.b, Lt.cw, Lt.ch, 'shc', p.face === 'back' ? '<div class="pnone" style="height:100%;color:#aaa">back face</div>' : tileVisual(p.c)) }).join('') + '</div>';
+    const bv = p.face === 'back' ? '' : visual(p.c), fill = S.cfg.fill === 'black' ? 'background:#000' : S.cfg.fill === 'white' ? 'background:#fff' : bv ? `background:url('${bv.replace(/'/g, '%27')}') center/100% 100% no-repeat` : 'background:#e8c8c8';   // the bleed as it will print (the preview stretches the picture a little; the PDF stretches the edges)
+    return (Lt.b > 0 ? `<div class="bl" style="left:${pc(x, Lt.pw)};top:${pc(y, Lt.ph)};width:${pc(Lt.cellW, Lt.pw)};height:${pc(Lt.cellH, Lt.ph)};${fill}"></div>` : '') + box(x + Lt.b, y + Lt.b, Lt.cw, Lt.ch, 'shc', p.face === 'back' ? '<div class="pnone" style="height:100%;color:#aaa">back face</div>' : tileVisual(p.c)) }).join('') + '</div>';
 }
 
 /* ---------------------------------------------------------------- sheets (pop-ups from the bottom) */

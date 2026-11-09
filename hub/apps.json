@@ -565,11 +565,11 @@
    "files": [
     {
      "path": "proxies/index.html",
-     "size": 14175
+     "size": 14149
     },
     {
      "path": "proxies/app.js",
-     "size": 46444
+     "size": 46908
     },
     {
      "path": "proxies/cards.js",
@@ -586,9 +586,9 @@
    "uses": [],
    "entry": "proxies/?nv=hub",
    "keepsData": "Your deck, saved decks, own pictures and sheet settings stay on this device. The PDFs you make are yours to keep.",
-   "size": 82663,
-   "hash": "c5e83ad09d6e",
-   "version": "2026.11.09.1443",
+   "size": 83101,
+   "hash": "15ba77f7635d",
+   "version": "2026.11.09.1454",
    "updated": "2026-11-09"
   }
  ]
