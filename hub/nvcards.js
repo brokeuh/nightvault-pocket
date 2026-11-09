@@ -283,13 +283,16 @@
   /* ---------------------------------------------------------------- many games at once
      Walks through every ticked game, all its sets, one after the other. Games you already have are unticked (remembered in nvCards.skip);
      pictures already in the folder are skipped anyway, so a game you only half have can stay ticked and just continues. */
+  const LEGACY_DEF = new Set(['wow', 'dbzccg', 'dbgt', 'swccg', 'dbz']);          // no longer printed (all other CCG Trader games too); your marks win
+  const legacyOf = g => { const m = lsGet('nvCards.legacy', {}); return g in m ? !!m[g] : LEGACY_DEF.has(g) || g.startsWith('ccgt') };
+  const setLegacy = (g, v) => { const m = lsGet('nvCards.legacy', {}); m[g] = !!v; lsSet('nvCards.legacy', m) };
   let UI2 = null;
   function openMany(){
     close(); if(!document.getElementById('nvccss')){ const s = document.createElement('style'); s.id = 'nvccss'; s.textContent = CSS; document.head.appendChild(s) }
     const el = document.createElement('div'); el.id = 'nvc'; UI2 = el; UI = el;
     const skip = new Set(lsGet('nvCards.skip', [])), found = new Set(), cfg = {big:lsGet('nvCards.big', true), find:''};
     el.innerHTML = `<div class="sh"><h3>Download many games</h3>
-      <div class="mu">Tick the games to download. It goes through every set of each ticked game, one after the other. <b>Untick the games you already have</b> - they are remembered and left alone. Pictures already in the folder are never downloaded twice.</div>
+      <div class="mu"><b>Check for new cards</b> only looks at ongoing games (tap the tag to switch a game between <i>ongoing</i> and <i>legacy</i>): it downloads sets that are not in the folder yet plus the two newest sets, and leaves legacy games alone.<br>Tick the games to download. It goes through every set of each ticked game, one after the other. <b>Untick the games you already have</b> - they are remembered and left alone. Pictures already in the folder are never downloaded twice.</div>
       ${NATIVE && F ? '' : '<div class="nt bad">This needs the Android app.</div>'}
       <div class="rw"><div style="flex:1;min-width:0"><div class="mu">Folder</div><b id="nvcf" style="word-break:break-all"></b></div><button id="nvcpick" class="s">Choose</button></div>
       <label class="lb" for="nvcfmt">Save pictures as</label><select id="nvcfmt"><option value="orig">As the site has them (JPG / PNG)</option><option value="webp">WebP - about 3-5x smaller, looks the same</option></select>
@@ -297,7 +300,7 @@
       <div class="rw"><input type="text" id="nvcfind" placeholder="Search games" style="flex:1;min-width:120px" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="nvcall" class="s">All shown</button><button id="nvcnone" class="s">None</button></div>
       <div class="ls" id="nvcl"></div><div class="nt" id="nvcest"></div>
       <div class="pr"><i id="nvcbar"></i></div><div class="mu" id="nvcst" style="min-height:18px"></div>
-      <div class="rw"><button id="nvcgo" class="p">Download the ticked games</button><button id="nvcstop" disabled>Stop</button><span style="flex:1"></span><button id="nvcx">Close</button></div></div>`;
+      <div class="rw"><button id="nvcgo" class="p">Download the ticked games</button><button id="nvcchk">Check for new cards</button><button id="nvcstop" disabled>Stop</button><span style="flex:1"></span><button id="nvcx">Close</button></div></div>`;
     el.onclick = e => { if(e.target === el && !ALL.on) close() };
     document.body.appendChild(el); const $ = s => el.querySelector(s);
     const keys = () => [...Object.keys(SRC).filter(g => !SRC[g].group), ...Object.keys(SRC).filter(g => SRC[g].group).sort((a, b) => SRC[a].label.localeCompare(SRC[b].label))];
@@ -305,7 +308,8 @@
     const ticked = () => keys().filter(g => !skip.has(g));
     const fo = () => { const f = folder(); $('#nvcf').textContent = f ? f.name : 'not chosen yet'; $('#nvcf').className = f ? '' : 'bad' };
     const est = () => { const n = ticked().length; $('#nvcest').innerHTML = n ? `${n} game${n === 1 ? '' : 's'} ticked. Sizes show once a game's sets are read; plan for a lot of space (hundreds of GB with Magic and Pokémon at the largest size).` : 'Tick at least one game.'; $('#nvcgo').disabled = ALL.on || !n || !NATIVE || !F };
-    const draw = () => { $('#nvcl').innerHTML = shown().map(g => `<label class="it"><input type="checkbox" data-g="${g}" ${skip.has(g) ? '' : 'checked'}><span class="nm"><b>${esc(SRC[g].label)}</b><span class="mu">${found.has(SRC[g].folder || g) ? 'folder found - continues where it was' : SRC[g].group ? 'CCG Trader' : ''}</span></span></label>`).join('');
+    const draw = () => { $('#nvcl').innerHTML = shown().map(g => `<label class="it"><input type="checkbox" data-g="${g}" ${skip.has(g) ? '' : 'checked'}><span class="nm"><b>${esc(SRC[g].label)}</b><span class="mu">${found.has(SRC[g].folder || g) ? 'folder found' : ''}</span></span><span class="mu" data-leg="${g}" style="border:1px solid var(--line,#232b36);border-radius:99px;padding:3px 9px;cursor:pointer">${legacyOf(g) ? 'legacy' : 'ongoing'}</span></label>`).join('');
+      el.querySelectorAll('#nvcl [data-leg]').forEach(b => b.onclick = e => { e.preventDefault(); setLegacy(b.dataset.leg, !legacyOf(b.dataset.leg)); draw() });
       el.querySelectorAll('#nvcl [data-g]').forEach(c => c.onchange = () => { c.checked ? skip.delete(c.dataset.g) : skip.add(c.dataset.g); lsSet('nvCards.skip', [...skip]); est() }); est() };
     fo(); draw(); $('#nvcfmt').value = fmtOf(); $('#nvcbig').value = cfg.big ? '1' : '0';
     ccgtMore().then(() => { if(UI2 === el) draw() }).catch(() => {});
@@ -316,10 +320,17 @@
     $('#nvcnone').onclick = () => { shown().forEach(g => skip.add(g)); lsSet('nvCards.skip', [...skip]); draw() };
     $('#nvcpick').onclick = async () => { try{ await pickFolder(); fo() }catch(e){ if(e && e.code !== 'cancel') $('#nvcst').innerHTML = `<span class="bad">${esc(e.message || e)}</span>` } };
     $('#nvcx').onclick = close; $('#nvcstop').onclick = () => { stop(); $('#nvcst').textContent = 'Stopping ...' };
-    $('#nvcgo').onclick = async () => {
+    $('#nvcgo').onclick = () => runMany('all'); $('#nvcchk').onclick = () => runMany('check');
+    const newSets = async (g, sets) => {                       // sets whose folder is not in the game folder yet + the two newest ones
+      const src = SRC[g], fo = folder(), base = src.folder || g; let have = null;
+      try{ const r = await F.listDir({tree:fo.tree, sub:base}); have = r.found ? new Set((r.entries || []).filter(e => e.dir).map(e => e.name)) : new Set() }catch(e){ have = null }
+      if(!have) return sets;
+      const byDate = [...sets].sort((a, b) => String(b.released).localeCompare(String(a.released))).slice(0, 2).map(x => x.code);
+      return sets.filter(x => !have.has(`${safe(x.code, 20)} - ${safe(x.name, 60)}`) || byDate.includes(x.code)) };
+    const runMany = async mode => {
       if(!folder()){ $('#nvcst').innerHTML = '<span class="bad">Choose a folder first.</span>'; return }
-      const list = ticked(); if(!list.length) return; ALL.on = true; ALL.stop = false;
-      const dis = v => ['#nvcgo', '#nvcpick', '#nvcfmt', '#nvcbig', '#nvcfind', '#nvcall', '#nvcnone'].forEach(q => $(q).disabled = v); dis(true); $('#nvcstop').disabled = false; el.querySelectorAll('#nvcl input').forEach(c => c.disabled = true);
+      const list = ticked().filter(g => mode === 'all' || !legacyOf(g)); if(!list.length){ $('#nvcst').innerHTML = '<span class="bad">Nothing to do: tick at least one ongoing game.</span>'; return } ALL.on = true; ALL.stop = false;
+      const dis = v => ['#nvcgo', '#nvcchk', '#nvcpick', '#nvcfmt', '#nvcbig', '#nvcfind', '#nvcall', '#nvcnone'].forEach(q => $(q).disabled = v); dis(true); $('#nvcstop').disabled = false; el.querySelectorAll('#nvcl input').forEach(c => c.disabled = true);
       const tot = {got:0, skipped:0, missed:0, bytes:0}, warns = []; let gi = 0, refused = false;
       try{
         for(const g of list){
@@ -327,6 +338,7 @@
           $('#nvcst').innerHTML = `Game ${gi} of ${list.length}: ${esc(src.label)} - reading the sets ...<br>${tot.got.toLocaleString()} saved · ${tot.skipped.toLocaleString()} already there · ${fmtMB(tot.bytes)}`;
           try{ sets = await src.sets() }catch(e){ warns.push(`${src.label}: sets not loaded (${e.message})`); L('many: sets failed', {game:g, err:e.message}); continue }
           if(!sets.length) continue; sets.sort((a, b) => String(a.released).localeCompare(String(b.released)));
+          if(mode === 'check'){ sets = await newSets(g, sets); if(!sets.length) continue }
           const q = src.qualities ? (cfg.big ? src.qualities[src.qualities.length - 1] : src.defQ) : undefined;
           const r = await download(g, sets, q, p => {
             if(p.kind === 'warn'){ warns.push(`${src.label}: ${p.text}`); return }
@@ -336,7 +348,7 @@
           if(r.refused){ refused = true; break } if(r.stopped) break;
         }
         const stopped = ALL.stop;
-        $('#nvcst').innerHTML = `<span class="${refused ? 'bad' : 'ok'}">${refused ? 'A picture site keeps refusing - stopped. Start again later: it continues where it was.' : stopped ? 'Stopped - start again to continue where it was.' : 'All ticked games are done.'}</span><br>${tot.got.toLocaleString()} saved · ${tot.skipped.toLocaleString()} already there${tot.missed ? ` · ${tot.missed} without a picture` : ''} · ${fmtMB(tot.bytes)}${warns.length ? '<br><span class="bad">' + warns.slice(0, 12).map(esc).join('<br>') + (warns.length > 12 ? `<br>... and ${warns.length - 12} more` : '') + '</span>' : ''}`;
+        $('#nvcst').innerHTML = `<span class="${refused ? 'bad' : 'ok'}">${refused ? 'A picture site keeps refusing - stopped. Start again later: it continues where it was.' : stopped ? 'Stopped - start again to continue where it was.' : (mode === 'check' ? 'Check finished.' : 'All ticked games are done.')}</span><br>${tot.got.toLocaleString()} saved · ${tot.skipped.toLocaleString()} already there${tot.missed ? ` · ${tot.missed} without a picture` : ''} · ${fmtMB(tot.bytes)}${warns.length ? '<br><span class="bad">' + warns.slice(0, 12).map(esc).join('<br>') + (warns.length > 12 ? `<br>... and ${warns.length - 12} more` : '') + '</span>' : ''}`;
         if(!stopped && !refused) $('#nvcbar').style.width = '100%';
       }catch(e){ const msg = e && e.code === 'permission' ? 'The app may no longer write in this folder - choose it again.' : (e.message || String(e)); $('#nvcst').innerHTML = `<span class="bad">${esc(msg)}</span>`; L('many failed', {err:msg}) }
       ALL.on = false; dis(false); $('#nvcstop').disabled = true; el.querySelectorAll('#nvcl input').forEach(c => c.disabled = false); est();

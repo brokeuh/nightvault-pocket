@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 167,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "Check for new cards (ongoing games only)",
+   "items": [
+    "Download many games has a new button, Check for new cards. It only looks at games that are still being printed and downloads the sets that are not in your folder yet, plus the two newest sets (they often get cards added).",
+    "Every game has a tag: ongoing or legacy (no longer in print). Tap it to switch. Legacy games are skipped. Starting legacy list: WoW, Dragon Ball Z CCG and GT, Star Wars CCG, Dragon Ball Z TCG and all the old CCG Trader games.",
+    "The PC app has the same tags and button (copy vault.py and vault_ui.html again). Not tried on a real device yet."
+   ]
+  },
+  {
    "id": 166,
    "date": "2026-11-09",
    "where": [
