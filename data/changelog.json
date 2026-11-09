@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 153,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "Card pictures: Star Wars Unlimited, One Piece, Star Wars CCG, Riftbound",
+   "items": [
+    "Card pictures (Proxies ☰ › Card pictures) now also saves Star Wars: Unlimited, One Piece, Star Wars CCG and Riftbound.",
+    "Star Wars: Unlimited gets one folder per version inside every set: Normal, Hyperspace, Showcase, Prestige, Serialized and so on (whatever the official list has). Foil and Hyperspace Foil are the same picture as Normal and Hyperspace, so they are not saved twice.",
+    "Not tested on the real sites yet (my test only used pretend answers). If a set stays empty, send the debug log."
+   ]
+  },
+  {
    "id": 152,
    "date": "2026-11-09",
    "where": [

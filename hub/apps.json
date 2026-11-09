@@ -58,14 +58,14 @@
     },
     {
      "path": "hub/nvcards.js",
-     "size": 19673
+     "size": 26887
     }
    ],
    "provides": [],
    "uses": [],
-   "size": 260847,
-   "hash": "3b04c7b7d895",
-   "version": "2026.11.09.1033",
+   "size": 268061,
+   "hash": "defeb5644254",
+   "version": "2026.11.09.1121",
    "updated": "2026-11-09"
   },
   {

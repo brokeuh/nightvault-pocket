@@ -9,7 +9,7 @@
    Any app page: <script src="../hub/nvcards.js"></script>, then NVCARDS.open() (a menu item "Card pictures"); NVCARDS.close() returns true if it closed
    the screen (for the Android back button). NVCARDS.folder() = {tree, name} of the picked folder or null.
    Games in this first slice: Magic (small/normal/large/png), Lorcana and the daily-file games (Gundam, Digimon, Flesh and Blood, Sorcery, Weiss Schwarz,
-   Dragon Ball). Others (One Piece, Star Wars: Unlimited, Riftbound, Star Wars CCG, CCG Trader games) follow – add them to SRC below.
+   Dragon Ball). One Piece, Star Wars: Unlimited (sub-folder per version), Riftbound and Star Wars CCG added; CCG Trader games follow – add them to SRC below.
    The set / card lists are cut-down copies of Pocket's (pocket/test_src.html SETSRC): if a source changes there, change it here too. */
 (function(){
   'use strict';
@@ -60,14 +60,63 @@
         if(url) out.push({num:r[1] ? normNum(r[1]) : slugOf(r[2]), name:r[2], url}) }
       return out } };
 
+
+  /* ---- Star Wars: Unlimited: official list; every version of a card goes in its own sub-folder of the set (Normal, Hyperspace, Showcase ...).
+     Foil and Hyperspace Foil are the same picture as Normal / Hyperspace, so they are not downloaded twice. ---- */
+  const SWUO = 'https://admin.starwarsunlimited.com/api/', _at = x => (x && x.data && (x.data.attributes || x.data)) || {};
+  const swuVar = a => ((((a.variantTypes || {}).data || [])[0] || {}).attributes || {}).name || 'Normal';
+  const swuSub = v => /^(standard|normal)$/i.test(v) ? 'Normal' : v;
+  const SWU_SETS = [['sor', 'Spark of Rebellion', '2024-03-08'], ['shd', 'Shadows of the Galaxy', '2024-07-12'], ['twi', 'Twilight of the Republic', '2024-11-08'], ['jtl', 'Jump to Lightspeed', '2025-03-14'], ['lof', 'Legends of the Force', '2025-07-11'], ['sec', 'Secrets of Power', '']];
+  const swuDate = d => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(d); return m ? `${m[3].length === 2 ? '20' + m[3] : m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}` : d };
+  const swuName = (t, sub) => String(t || '') + (sub ? ' - ' + sub : '');
+  SRC.swu = {label:'Star Wars: Unlimited (a folder per version)', per:() => 150e3,
+    sets:async () => {
+      try{ const j = await getJSON(SWUO + 'card-expansions?locale=en&pagination[pageSize]=100'); const l = (j.data || []).map(x => { const a = x.attributes || x; return {code:String(a.code || '').toLowerCase(), name:a.name, released:String(a.releaseDate || a.publishedAt || '').slice(0, 10), total:0} }).filter(x => x.code); if(l.length) return l }catch(e){ L('swu official sets', {err:e.message}) }
+      try{ const j = await getJSON('https://api.swu-db.com/sets'); const l = (Array.isArray(j) ? j : j.data || []).map(x => ({code:String(x.setId || x.code || '').toLowerCase(), name:x.fullName || x.name, released:swuDate(x.releaseDate || x.released || ''), total:x.numberCards || 0})).filter(x => x.code); if(l.length) return l }catch(e){ L('swu-db sets', {err:e.message}) }
+      return SWU_SETS.map(([code, name, released]) => ({code, name, released, total:0})) },
+    cards:async st => {
+      try{ const out = []; let page = 1;
+        while(page < 14){ const j = await getJSON(`${SWUO}card-list?locale=en&pagination[pageSize]=250&pagination[page]=${page}&sort=cardNumber&filters[variantTypes][name][$notContainsi]=foil&filters[expansion][code][$eqi]=${enc(st.code)}`);
+          for(const c of j.data || []){ const a = c.attributes || c, art = _at(a.artFront), url = ((art.formats || {}).card || {}).url || art.url || '', v = swuVar(a); if(!url) continue;
+            out.push({num:normNum(String(a.cardNumber ?? '').padStart(3, '0')), name:swuName(a.title, a.subtitle), url, sub:swuSub(v)}) }
+          if(page >= ((j.meta || {}).pagination || {}).pageCount || !(j.data || []).length) break; page++; await sleep(120) }
+        if(out.length) return out }catch(e){ L('swu official cards', {err:e.message}) }
+      const j = await getJSON('https://api.swu-db.com/cards/' + enc(st.code)), l = (j.data || j || []).filter(c => c.FrontArt && !/foil/i.test(c.VariantType || ''));
+      return l.map(c => ({num:normNum(c.Number), name:swuName(c.Name, c.Subtitle), url:c.FrontArt, sub:swuSub(c.VariantType || 'Normal')})) } };
+
+  /* ---- One Piece (optcgapi.com) and Star Wars CCG (Players Committee): one big list each, cut by set - same names as the PC ---- */
+  const bigList = {};
+  const once = (k, f) => bigList[k] || (bigList[k] = f().catch(e => { delete bigList[k]; throw e }));
+  const opAll = () => once('op', async () => { const a = await Promise.all(['allSetCards', 'allSTCards'].map(p => getJSON(`https://optcgapi.com/api/${p}/`).catch(() => []))), l = a.flat(); if(!l.length) throw new Error('The One Piece card list did not answer'); return l });
+  const opBase = n => String(n || '').replace(/\s*\((\d{3}|parallel|alternate art|sp|manga|[A-Z]{2,3}\d{2}-\d{3})\)/gi, '').trim();
+  SRC.onepiece = {label:'One Piece Card Game', per:() => 120e3,
+    sets:async () => { const m = new Map(); for(const c of await opAll()){ const s = String(c.card_set_id || '').split('-')[0]; if(!s) continue; const e = m.get(s) || {code:s.toLowerCase(), name:c.set_name || s, released:'', total:0}; e.total++; m.set(s, e) } return [...m.values()].sort((a, b) => b.code.localeCompare(a.code)) },
+    cards:async st => (await opAll()).filter(c => String(c.card_set_id || '').split('-')[0].toLowerCase() === st.code && c.card_image).map(c => { const [, n] = String(c.card_set_id).split('-'), v = String(c.card_image_id || '').split('_')[1];
+      return {num:normNum(n) + (v ? '-' + v : ''), name:opBase(c.card_name) + (/parallel/i.test(c.card_name) ? ' (Parallel)' : ''), url:c.card_image} }) };
+  const swAll = () => once('swccg', async () => (await Promise.all(['Light', 'Dark'].map(x => getJSON(`https://raw.githubusercontent.com/swccgpc/swccg-card-json/main/${x}.json`).then(j => j.cards || [])))).flat());
+  SRC.swccg = {label:'Star Wars CCG (Decipher)', per:() => 120e3,
+    sets:async () => { const meta = await getJSON('https://raw.githubusercontent.com/swccgpc/swccg-card-json/main/sets.json').catch(() => []), mm = new Map((Array.isArray(meta) ? meta : []).map(x => [String(x.id).toLowerCase(), x])), seen = new Map();
+      for(const c of await swAll()){ const k = String(c.set || '').toLowerCase(); if(!k || !(c.front || {}).imageUrl) continue; const e = seen.get(k) || {code:k, name:(mm.get(k) || {}).name || 'Set ' + k, released:/^0000/.test((mm.get(k) || {}).date_release || '') ? '' : String((mm.get(k) || {}).date_release || '').slice(0, 10), total:0}; e.total++; seen.set(k, e) }
+      return [...seen.values()].sort((a, b) => (a.released || '9999').localeCompare(b.released || '9999')) },
+    cards:async st => (await swAll()).filter(c => String(c.set || '').toLowerCase() === st.code && (c.front || {}).imageUrl).map(c => ({num:String(c.gempId || c.id), name:String(c.front.title || '').replace(/[•<>]/g, '').trim(), url:c.front.imageUrl})) };
+
+  /* ---- Riftbound (riftcodex; pictures from riftbound.gg because Riot's server refuses other sites) ---- */
+  SRC.riftbound = {label:'Riftbound', per:() => 150e3,
+    sets:async () => { const j = await getJSON('https://api.riftcodex.com/sets?size=100'); return (j.items || j || []).map(x => ({code:String(x.set_id).toLowerCase(), name:x.name || x.label || x.set_id, released:x.published_on || x.publish_date || '', total:x.card_count || 0})) },
+    cards:async st => { const out = []; let page = 1;
+      while(page < 8){ const j = await getJSON(`https://api.riftcodex.com/cards?set_id=${enc(st.code)}&sort=collector_number&size=100&page=${page}`);
+        for(const c of j.items || []){ const sid = String((c.set || {}).set_id || '').toUpperCase(), cn = String(c.collector_number ?? '');
+          out.push({num:normNum(c.riftbound_id || `${sid}-${cn.padStart(3, '0')}`), name:c.name, url:`https://static.dotgg.gg/riftbound/cards/${sid}-${cn.padStart(3, '0')}.webp`, ext:'webp'}) }
+        if(!j.pages || page >= j.pages) break; page++; await sleep(120) } return out } };
+
   /* ---- the folder ---- */
   const folder = () => lsGet('nvCards.folder', null);
   async function pickFolder(){ if(!F) throw new Error('This needs the Android app'); const r = await F.pickFolder(); lsSet('nvCards.folder', {tree:r.tree, name:r.name}); return r }
 
   /* ---- the files of one set: [{dir, name, url}] named like the PC ---- */
   function itemsOf(game, st, cards, quality){
-    const ext = game === 'mtg' && quality === 'png' ? 'png' : 'jpg', dir = `${game}/${safe(st.code, 20)} - ${safe(st.name, 60)}`, out = [];
-    for(const c of cards){ const stem = `${encNum(c.num)}_${safe(c.name)}`;
+    const ext0 = game === 'mtg' && quality === 'png' ? 'png' : 'jpg', base = `${game}/${safe(st.code, 20)} - ${safe(st.name, 60)}`, out = [];
+    for(const c of cards){ const stem = `${encNum(c.num)}_${safe(c.name)}`, ext = c.ext || ext0, dir = c.sub ? `${base}/${safe(c.sub, 40)}` : base;   // c.sub: one folder per version (Star Wars: Unlimited)
       out.push({dir, name:`${stem}.${ext}`, url:c.url}); if(c.back) out.push({dir, name:`${stem}_back.${ext}`, url:c.back}) }
     return out;
   }
