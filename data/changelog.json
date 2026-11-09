@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 169,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "Card pictures: One Piece from OPPP (mostly without watermark)",
+   "items": [
+    "Card pictures has a second One Piece source, One Piece (OPPP - mostly without watermark), from a fan proxy site. The pictures are 417 x 582 pixels: readable and fine for casual proxies, but smaller than a high-resolution scan.",
+    "It saves into its own folder (onepiece-oppp), only the normal art of each card, and goes slowly to be kind to the small site.",
+    "Not tried on a real device yet."
+   ]
+  },
+  {
    "id": 168,
    "date": "2026-11-09",
    "where": [

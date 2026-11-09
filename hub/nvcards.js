@@ -93,6 +93,12 @@
     sets:async () => { const m = new Map(); for(const c of await opAll()){ const s = String(c.card_set_id || '').split('-')[0]; if(!s) continue; const e = m.get(s) || {code:s.toLowerCase(), name:c.set_name || s, released:'', total:0}; e.total++; m.set(s, e) } return [...m.values()].sort((a, b) => b.code.localeCompare(a.code)) },
     cards:async st => (await opAll()).filter(c => String(c.card_set_id || '').split('-')[0].toLowerCase() === st.code && c.card_image).map(c => { const [, n] = String(c.card_set_id).split('-'), v = String(c.card_image_id || '').split('_')[1];
       return {num:normNum(n) + (v ? '-' + v : ''), name:opBase(c.card_name) + (/parallel/i.test(c.card_name) ? ' (Parallel)' : ''), url:c.card_image} }) };
+  /* One Piece from OPPP (oppp.online, a fan proxy site): many cards without the Bandai watermark. 417 x 582 pixels (owner checked, 9 Nov). The card ids come
+     from the same list as the normal One Piece source; only the normal art of each card (parallels are not asked for). Slow pace, it is a small site. */
+  SRC.onepiece_oppp = {label:'One Piece (OPPP - mostly without watermark)', folder:'onepiece-oppp', pause:600, per:() => 90e3,
+    sets:SRC.onepiece.sets,
+    cards:async st => (await opAll()).filter(c => String(c.card_set_id || '').split('-')[0].toLowerCase() === st.code && !String(c.card_image_id || '').includes('_') && !/parallel/i.test(c.card_name)).map(c => { const id = String(c.card_set_id), n = id.split('-')[1] || '';
+      return {num:normNum(n), name:opBase(c.card_name), url:'https://oppp.online/api/card-optimized/' + enc(id), ext:'png'} }) };
   const swAll = () => once('swccg', async () => (await Promise.all(['Light', 'Dark'].map(x => getJSON(`https://raw.githubusercontent.com/swccgpc/swccg-card-json/main/${x}.json`).then(j => j.cards || [])))).flat());
   SRC.swccg = {label:'Star Wars CCG (Decipher)', per:() => 120e3,
     sets:async () => { const meta = await getJSON('https://raw.githubusercontent.com/swccgpc/swccg-card-json/main/sets.json').catch(() => []), mm = new Map((Array.isArray(meta) ? meta : []).map(x => [String(x.id).toLowerCase(), x])), seen = new Map();
@@ -189,7 +195,7 @@
         say({kind:'list', set:st, setN:i + 1, setOf:sets.length, got:T.got, skipped:T.skipped, missed:T.missed, bytes:T.bytes});
         let cards; try{ cards = await src.cards(st, quality) }catch(e){ L('card list failed', {game, set:st.code, err:e.message}); T.missed++; say({kind:'warn', text:`${st.name}: the card list could not be loaded (${e.message})`}); continue }
         const fmt = fmtOf(), items = itemsOf(game, st, cards, quality, fmt); if(!items.length) continue;
-        const r = await F.download({tree:fo.tree, items, pauseMs:250, webpQ:FMT_WEBP_Q});
+        const r = await F.download({tree:fo.tree, items, pauseMs:src.pause || 250, webpQ:FMT_WEBP_Q});
         T.got += r.got; T.skipped += r.skipped; T.missed += r.missed; T.bytes += r.bytes; T.sets++;
         L('set done', {game, set:st.code, got:r.got, skipped:r.skipped, missed:r.missed});
         if(r.refused){ T.refused = true; break } if(r.stopped || RUN.stop){ T.stopped = true; break }
