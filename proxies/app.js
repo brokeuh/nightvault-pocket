@@ -183,9 +183,34 @@ async function getBlob(url){
   if(!b || !b.size) throw new Error('blocked');
   if(BLOBS.size > 30) BLOBS.delete(BLOBS.keys().next().value); BLOBS.set(url, b); return b;
 }
+
+/* ---------------------------------------------------------------- pictures saved on this phone (Card pictures: <game>/<set code> - <set name>/<number>_<name>.jpg|webp) */
+const SAVED = (() => {
+  let NV = null; if(NATIVE) try{ NV = Capacitor.registerPlugin('NvFiles') }catch(e){ NV = null }
+  const cache = new Map(), stat = {hit:0, miss:0}, b64url = t => btoa(unescape(encodeURIComponent(t))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const safe = t => window.NVCARDS ? NVCARDS.safe(t, 20) : String(t);
+  const dec = t => t.replace(/~u/g, '_').replace(/~s/g, '/').replace(/~w/g, ' ');
+  const folder = () => (window.NVCARDS && NVCARDS.folder && NVCARDS.folder()) || null;
+  const on = () => !!(NV && folder() && S.cfg.saved !== false);
+  async function ls(sub){ const fo = folder(), k = fo.tree + '|' + sub; if(!cache.has(k)) cache.set(k, NV.listDir({tree:fo.tree, sub}).then(r => r.found ? r.entries : null).catch(e => { cache.delete(k); L('saved list failed', {sub, err:e.message}); return null }));
+    return cache.get(k) }
+  async function url(game, c, face){
+    if(!on() || !c || c.kind !== 'official' || !c.set) return null;
+    const games = await ls(game); if(!games) return null;
+    const pre = safe(c.set) + ' - ', set = games.find(x => x.dir && x.name.startsWith(pre)); if(!set) return null;
+    let sub = game + '/' + set.name, files = await ls(sub); if(!files) return null;
+    const nd = files.find(x => x.dir && x.name === 'Normal'); if(nd){ sub += '/Normal'; files = await ls(sub); if(!files) return null }      // Star Wars: Unlimited keeps a folder per version
+    const want = normNum(c.number), back = face === 'back';
+    const f = files.find(x => { if(x.dir) return false; const m = /^([^_]+)_.*?(_back)?\.(jpe?g|png|webp)$/i.exec(x.name); return m && normNum(dec(m[1])) === want && !!m[2] === back });
+    return f ? '/_nvfile_/' + b64url(f.uri) + '/' + encodeURIComponent(f.name) : null;
+  }
+  return {on, url, stat, reset:() => { stat.hit = stat.miss = 0 }};
+})();
 async function bitmapFor(p, dpi){
   const c = p.c, hq = dpi >= 450;
   if(c.kind === 'custom'){ const a = ART.find(x => x.id === c.id); return a ? createImageBitmap(a.blob) : null }
+  if(SAVED.on() && c.kind === 'official'){ const su = await SAVED.url(S.game, c, p.face).catch(() => null);
+    if(su){ try{ const bm = await createImageBitmap(await getBlob(su)); SAVED.stat.hit++; return bm }catch(e){ L('saved picture failed', {url:su, err:e.message}) } } SAVED.stat.miss++ }
   const urls = (p.face === 'back' ? [hq && c.backHq, c.back] : [hq && c.hq, c.print, c.image, ...(c.alts || [])]).filter(Boolean);
   for(const u of urls){ try{ return await createImageBitmap(await getBlob(u)) }catch(e){ L('picture failed', {url:u, err:e.message}) } }
   return null;
@@ -202,7 +227,7 @@ function placeholder(p){          // a plain card with the name, for a picture t
 }
 async function buildPdf(onStatus){
   const list = prints(); if(!list.length) throw new Error('The deck is empty - import a deck list first');
-  const Lt = layout(), dpi = +S.cfg.dpi, say = onStatus || (() => {}), index = new Map(), imgs = [], failed = [];
+  SAVED.reset(); const Lt = layout(), dpi = +S.cfg.dpi, say = onStatus || (() => {}), index = new Map(), imgs = [], failed = [];
   const uniq = [...new Map(list.map(p => [p.key, p])).values()], need = uniq.length + (S.cfg.backs ? 1 : 0); let done = 0;
   for(const p of uniq){
     say(`Preparing card pictures ${++done} / ${need} ...`);
@@ -223,7 +248,7 @@ async function buildPdf(onStatus){
     pages.push({ops:pageOps(Lt, slice.length, idx, false), used:[...new Set(idx)]});
     if(S.cfg.backs) pages.push({ops:pageOps(Lt, slice.length, slice.map(() => backIdx), true), used:[backIdx]});
   }
-  return {blob:pdfBuild(pages, imgs, Lt.pw, Lt.ph), cards:list.length, pages:pages.length, failed};
+  return {blob:pdfBuild(pages, imgs, Lt.pw, Lt.ph), cards:list.length, pages:pages.length, failed, saved:{...SAVED.stat}};
 }
 const blobB64 = b => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => no(r.error); r.readAsDataURL(b) });
 async function deliver(blob, name){
@@ -237,7 +262,8 @@ async function makePdf(){
   try{ const r = await buildPdf(t => st.textContent = t), name = ($('#dname').value.trim() || 'proxies').replace(/[^\w\- ]+/g, '') + '.pdf';
     await deliver(r.blob, name);
     st.textContent = `Done - ${r.cards} cards on ${r.pages} page${r.pages === 1 ? '' : 's'} (${(r.blob.size / 1048576).toFixed(1)} MB).` + (r.failed.length ? ` ${r.failed.length} picture${r.failed.length === 1 ? '' : 's'} could not be loaded and got a plain card with the name: ${[...new Set(r.failed)].slice(0, 5).join(', ')}${r.failed.length > 5 ? ' …' : ''}. Tap the card to pick another picture or use your own.` : '');
-    L('pdf made', {cards:r.cards, pages:r.pages, failed:r.failed.length});
+    if(SAVED.on()) st.textContent += ` ${r.saved.hit} picture${r.saved.hit === 1 ? '' : 's'} came from this phone, ${r.saved.miss} from the internet.`;
+    L('pdf made', {cards:r.cards, pages:r.pages, failed:r.failed.length, saved:r.saved});
   }catch(e){ st.textContent = ''; toast(e.message); L('pdf failed', e.message) }
   finally{ S.busy = false; $('#pdf').disabled = !prints().length }
 }
@@ -329,7 +355,7 @@ function saveDeck(){
 
 /* ---------------------------------------------------------------- wiring */
 const CFGIN = ['paper', 'dpi', 'scale', 'gap', 'bleed', 'fill', 'margin', 'guides'];
-function syncInputs(){ CFGIN.forEach(k => { $('#' + k).value = S.cfg[k] }); $('#dfc').checked = !!S.cfg.dfc; $('#backs').checked = !!S.cfg.backs; $('#prefer').value = S.cfg.prefer; $('#game').value = S.game }
+function syncInputs(){ CFGIN.forEach(k => { $('#' + k).value = S.cfg[k] }); $('#dfc').checked = !!S.cfg.dfc; $('#saved').checked = S.cfg.saved !== false; $('#savedrow').hidden = !NATIVE; $('#backs').checked = !!S.cfg.backs; $('#prefer').value = S.cfg.prefer; $('#game').value = S.game }
 function clearDeck(){ S.entries = []; save(); draw() }
 async function doImport(replace){
   const list = parseDeck($('#text').value); if(!list.length){ toast('No cards found in that list'); return }
@@ -345,6 +371,7 @@ function wire(){
   const setSize = () => { const w = +$('#cw').value, h = +$('#ch').value; if(w >= 20 && h >= 20){ S.cfg.sizes[S.game] = [w, h]; save(); draw() } };
   $('#cw').onchange = $('#ch').onchange = setSize;
   CFGIN.forEach(k => { const el = $('#' + k); el.onchange = () => { S.cfg[k] = el.type === 'number' ? (+el.value || 0) : (k === 'dpi' ? +el.value : el.value); save(); draw() } });
+  $('#saved').onchange = e => { S.cfg.saved = e.target.checked; save() };
   $('#dfc').onchange = e => { S.cfg.dfc = e.target.checked; save(); draw() }; $('#backs').onchange = e => { S.cfg.backs = e.target.checked; save(); draw() };
   $('#prefer').onchange = e => { S.cfg.prefer = e.target.value; save() };
   $('#imp').onclick = () => doImport(true); $('#add').onclick = () => doImport(false);

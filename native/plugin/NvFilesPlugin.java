@@ -120,6 +120,53 @@ public class NvFilesPlugin extends Plugin {
         notifyListeners("listProgress", e);
     }
 
+    /** the entries of ONE folder (no walking down): listDir({tree, sub:"mtg/neo - Kamigawa"}) -> {found, entries:[{name, dir, uri, size}]} - used to find saved card pictures */
+    @PluginMethod
+    public void listDir(PluginCall call) {
+        String t = call.getString("tree"), sub = call.getString("sub", "");
+        if (t == null) { call.reject("No folder"); return; }
+        new Thread(() -> {
+            try {
+                ContentResolver cr = getContext().getContentResolver();
+                Uri tree = Uri.parse(t);
+                String docId = DocumentsContract.getTreeDocumentId(tree);
+                boolean found = true;
+                for (String seg : sub.split("/")) {
+                    if (seg.isEmpty()) continue;
+                    String next = null;
+                    try (Cursor q = cr.query(DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId),
+                            new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
+                        if (q != null) while (q.moveToNext()) if (seg.equals(q.getString(1)) && DocumentsContract.Document.MIME_TYPE_DIR.equals(q.getString(2))) { next = q.getString(0); break; }
+                    }
+                    if (next == null) { found = false; break; }
+                    docId = next;
+                }
+                JSArray out = new JSArray();
+                if (found) try (Cursor c = cr.query(DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId),
+                        new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE, DocumentsContract.Document.COLUMN_SIZE}, null, null, null)) {
+                    while (c != null && c.moveToNext()) {
+                        String name = c.getString(1);
+                        if (name == null || name.startsWith(".")) continue;
+                        JSObject f = new JSObject();
+                        f.put("name", name);
+                        f.put("dir", DocumentsContract.Document.MIME_TYPE_DIR.equals(c.getString(2)));
+                        f.put("uri", DocumentsContract.buildDocumentUriUsingTree(tree, c.getString(0)).toString());
+                        f.put("size", c.isNull(3) ? 0 : c.getLong(3));
+                        out.put(f);
+                    }
+                }
+                JSObject o = new JSObject();
+                o.put("found", found);
+                o.put("entries", out);
+                call.resolve(o);
+            } catch (SecurityException e) {
+                call.reject("Nightvault may no longer read this folder - pick it again", "permission");
+            } catch (Exception e) {
+                call.reject("Could not read the folder: " + e.getMessage());
+            }
+        }).start();
+    }
+
     /** keeps the screen on while true (used while adding a big music folder, so the phone does not go to sleep and stop it) */
     @PluginMethod
     public void keepAwake(PluginCall call) {

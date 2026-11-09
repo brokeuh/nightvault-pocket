@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 156,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies"
+   ],
+   "title": "Proxies: print from the pictures saved on your phone",
+   "items": [
+    "New switch in Sheet details: \"Use pictures saved on this phone first\". When you saved card pictures with Card pictures, Proxies takes them from the folder instead of downloading them again, and only asks the internet for cards you did not save.",
+    "After the PDF is made it says how many pictures came from the phone and how many from the internet.",
+    "Works for the games in Card pictures (Magic, Lorcana, Star Wars: Unlimited, One Piece ...). JPG and WebP files both work. Finding a card by name still needs the internet for now.",
+    "Not tried on a real phone yet."
+   ]
+  },
+  {
    "id": 155,
    "date": "2026-11-09",
    "where": [
