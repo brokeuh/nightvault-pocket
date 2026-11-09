@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 149,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies"
+   ],
+   "title": "Proxies: finding cards by name is more reliable",
+   "items": [
+    "Adding a card by name now also finds it when you type only part of the name ('deathr' finds Deathrite Shaman) or make a small typo.",
+    "The name boxes no longer let the phone keyboard 'correct' card names like Deathrite or Wellwisher.",
+    "When the card site can't be reached, or says to wait a moment, the app now says so (and the card shows 'Could not load - tap to try again') instead of saying the card was not found."
+   ]
+  },
+  {
    "id": 148,
    "date": "2026-11-09",
    "where": [
