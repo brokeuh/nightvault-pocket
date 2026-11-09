@@ -84,7 +84,7 @@ async function resolveList(list, replace){
   out.forEach(n => { const ex = S.entries.find(e => e.name.toLowerCase() === n.name.toLowerCase() && cur(e) && cur(n) && same(cur(e), cur(n))); if(ex) ex.qty += n.qty; else S.entries.push(n) });
   st.textContent = ''; save(); draw();
   const miss = out.filter(e => e.sel < 0), fail = out.filter(e => e.err);
-  if(fail.length && fail.length === out.length) toast(`Could not reach the card list: ${fail[0].err}`);
+  if(fail.length) toast(`${fail.length === out.length ? 'No card could be looked up' : fail.length + ' of ' + out.length + ' cards could not be looked up'}: ${fail[0].err}. Tap a card to try again.`);
   else if(miss.length) toast(`${miss.length} card${miss.length === 1 ? '' : 's'} not found - tap them to search`);
   return out;
 }
@@ -251,7 +251,7 @@ function draw(){
   $$('#sizes .chip').forEach(b => b.onclick = () => { S.cfg.sizes[S.game] = [+b.dataset.w, +b.dataset.h]; save(); draw() });
   $('#tiles').style.setProperty('--cr', `${cw} / ${ch}`);
   $('#tiles').innerHTML = S.entries.length ? S.entries.map((e, i) => { const c = cur(e);
-    return `<div class="tile ${c ? '' : 'miss'}"><button class="pv" data-pick="${i}" aria-label="Choose the art for ${esc(e.name)}">${c ? tileVisual(c) : '<div class="pnone"><div>No match</div><span>Tap to search</span></div>'}</button><span class="q">× ${e.qty}</span>
+    return `<div class="tile ${c ? '' : 'miss'}"><button class="pv" data-pick="${i}" aria-label="Choose the art for ${esc(e.name)}">${c ? tileVisual(c) : `<div class="pnone"><div>${e.err ? 'Could not load' : 'No match'}</div><span>${e.err ? 'Tap to try again' : 'Tap to search'}</span></div>`}</button><span class="q">× ${e.qty}</span>
       <div class="tn" title="${esc(e.name)}">${esc(e.name)}</div><div class="ts">${c ? (c.kind === 'custom' ? `<span class="pill p-amber">Proxy</span>${esc(c.label)}` : `<span class="pill p-blue">${esc(c.showSet || c.set)}</span>#${esc(c.showNum || c.number)}${c.back ? ' · 2-faced' : ''}`) : ''}</div>
       <div class="qb"><button data-q="${i}" data-d="-1" aria-label="One less">−</button><button data-q="${i}" data-d="1" aria-label="One more">+</button><button data-rm="${i}" aria-label="Remove">✕</button></div></div>` }).join('')
     : `<div class="empty">Paste a deck list above and tap <b>Import deck</b>.<br>Every card gets its picture; tap one to choose another art or edition.</div>`;
@@ -292,14 +292,15 @@ async function openChooser(i){
     body.innerHTML = e.cands.length ? `<div class="opts">` + e.cands.map((c, k) => `<div class="opt ${k === e.sel ? 'on' : ''}" data-k="${k}"><div class="pv">${tileVisual(c)}</div>
         <div class="oc">${c.kind === 'custom' ? `<span class="pill p-amber">Proxy</span>${esc(c.label)} <button class="btn sm danger" data-del="${c.id}" style="height:24px;padding:0 8px">Delete</button>` : `<span class="pill p-blue">${esc(c.showSet || c.set)}</span><b>#${esc(c.showNum || c.number)}</b><div class="muted">${esc(c.setName || '')}${c.released ? ' · ' + esc(c.released.slice(0, 4)) : ''}${c.price != null ? ' · ' + (c.currency === 'EUR' ? '€' : '$') + Number(c.price).toFixed(2) : ''}${c.back ? ' · 2-faced' : ''}</div>`}</div></div>`).join('') + `</div>`
       : `<div class="muted" style="margin:10px 0">No card called “${esc(e.name)}” was found. Search for the right name, or add your own picture below.</div>
-         <div class="row"><input type="text" id="findname" list="names" placeholder="Search card names" style="flex:1;min-width:0"><button class="btn" id="findgo">Use this name</button></div>`;
+         <div class="row"><input type="text" id="findname" list="names" placeholder="Search card names" style="flex:1;min-width:0" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false"><button class="btn" id="findgo">Use this name</button></div>`;
     $$('.opt', body).forEach(o => o.onclick = ev => { if(ev.target.closest('[data-del]')) return; e.sel = +o.dataset.k; closeSheet() });
     $$('[data-del]', body).forEach(b => b.onclick = async () => { const id = +b.dataset.del; await artDelete(id); const was = cur(e); e.cands = e.cands.filter(c => !(c.kind === 'custom' && c.id === id)); e.sel = was && !(was.kind === 'custom' && was.id === id) ? e.cands.findIndex(c => same(c, was)) : pickIndex(e.cands, {}); draw2() });
-    const fg = $('#findgo', body); if(fg) fg.onclick = async () => { const n = $('#findname', body).value.trim(); if(!n) return; fg.disabled = true; const r = await resolveOne({name:n, qty:e.qty, set:'', number:''}); if(r.sel < 0){ toast('Still no match for that name'); fg.disabled = false; return } Object.assign(e, r); closeSheet() };
+    const fg = $('#findgo', body); if(fg) fg.onclick = async () => { const n = $('#findname', body).value.trim(); if(!n) return; fg.disabled = true; const r = await resolveOne({name:n, qty:e.qty, set:'', number:''}); if(r.sel < 0){ toast(r.err ? 'Could not look it up: ' + r.err : 'Still no match for that name'); fg.disabled = false; return } delete e.err; Object.assign(e, r); closeSheet() };
   };
   draw2();
   $('#artpick', sh).onclick = () => { const p = $('#pickart'); p.onchange = async ev => { const f = ev.target.files[0]; ev.target.value = ''; if(!f) return;
     try{ const id = await artAdd(f, e.name, $('#artlabel', sh).value.trim() || 'My art'); e.cands.push({kind:'custom', id, label:$('#artlabel', sh).value.trim() || 'My art', name:e.name}); e.sel = e.cands.length - 1; toast('Your picture was added and selected'); closeSheet() }catch(x){ toast(x.message) } }; p.click() };
+  if(e.err && !e.cands.some(c => c.kind === 'official')){ const r = await resolveOne({name:e.name, qty:e.qty, set:'', number:''}); if(!r.err || r.sel >= 0){ delete e.err; Object.assign(e, r); draw() } else e.err = r.err; if($('#chbody', sh)) draw2() }
   try{ await ensureAll(e); if($('#chbody', sh)) draw2() }catch(x){ const b = $('#chbody', sh); if(b) b.insertAdjacentHTML('afterbegin', `<div class="note warn">Could not load more printings: ${esc(x.message)}</div>`) }
 }
 

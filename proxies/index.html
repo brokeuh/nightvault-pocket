@@ -105,10 +105,10 @@ select{padding:0 10px}
 
   <div class="panel"><h2>Deck</h2>
     <div class="field"><label for="text">Paste a deck list (4 Lightning Bolt, 2x Name, 1 Sol Ring (CMD) 123 …)</label>
-      <textarea id="text" placeholder="4 Card name&#10;2x Another card&#10;1 Third card (SET) 123"></textarea></div>
+      <textarea id="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="4 Card name&#10;2x Another card&#10;1 Third card (SET) 123"></textarea></div>
     <div class="row"><button class="btn primary" id="imp">Import deck</button><button class="btn" id="add" title="Keep the cards that are already there">Add to deck</button>
       <label class="btn" style="margin:0">From file<input type="file" id="file" accept=".txt,.dec,.dek,.csv,text/plain" hidden></label></div>
-    <div class="row" style="margin-top:12px"><input type="text" id="one" list="names" placeholder="Add one card by name" style="flex:1;min-width:0" autocomplete="off"><datalist id="names"></datalist><button class="btn" id="onego">Add</button></div>
+    <div class="row" style="margin-top:12px"><input type="text" id="one" list="names" placeholder="Add one card by name" style="flex:1;min-width:0" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false"><datalist id="names"></datalist><button class="btn" id="onego">Add</button></div>
     <div class="field" style="margin-top:12px"><label for="prefer">When a card has several printings, start with</label>
       <select id="prefer"><option value="new">The newest printing</option><option value="old">The oldest printing</option><option value="cheap">The cheapest</option></select></div>
     <div id="status" class="muted small" style="min-height:18px"></div>

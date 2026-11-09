@@ -39,12 +39,18 @@ const PXC = (() => {
     return {game:'mtg', set:c.set.toLowerCase(), number:normNum(c.collector_number), showSet:c.set.toUpperCase(), showNum:c.collector_number, name:c.name, setName:c.set_name, rarity:c.rarity,
       released:c.released_at || '', image:iu.small || iu.normal || '', print:iu.large || iu.normal || '', hq:iu.png || '', back:bk ? (bk.large || bk.normal || '') : '', backHq:bk ? (bk.png || '') : '',
       price:num(c.prices && c.prices.eur) ?? num(c.prices && c.prices.usd), currency:(c.prices && c.prices.eur != null) ? 'EUR' : 'USD'} };
+  /* a 404 from Scryfall means "no such card"; anything else (no connection, 429 slow down, 5xx) is a problem to tell the owner about, never "not found" */
+  const nf = e => e && e.status === 404, net = e => new Error(e && e.status ? `The card site answered HTTP ${e.status}${e.status === 429 ? ' (too many requests - wait a moment)' : ''}` : 'No connection to the card site');
+  async function mtgNamed(q){          // exact name, then Scryfall's fuzzy match (typos), then its autocomplete (part of a name); null = really not found
+    for(const mode of ['exact', 'fuzzy']){ try{ return await getJSON(`https://api.scryfall.com/cards/named?${mode}=` + enc(q)) }catch(e){ if(!nf(e)) throw net(e) } }
+    let ac; try{ ac = await getJSON('https://api.scryfall.com/cards/autocomplete?q=' + enc(q)) }catch(e){ if(!nf(e)) throw net(e); return null }
+    if(!ac.data || !ac.data.length) return null;
+    try{ return await getJSON('https://api.scryfall.com/cards/named?exact=' + enc(ac.data[0])) }catch(e){ if(nf(e)) return null; throw net(e) } }
   async function mtgOne(q, want){            // one printing, fast (a whole deck at once): the exact set + number when the list gives them, else Scryfall's usual printing
-    if(want && want.set && want.number){ try{ return mtgMap(await getJSON(`https://api.scryfall.com/cards/${enc(want.set)}/${enc(want.number)}`)) }catch(e){} }
-    let card; try{ card = await getJSON('https://api.scryfall.com/cards/named?exact=' + enc(q)) }catch(e){ try{ card = await getJSON('https://api.scryfall.com/cards/named?fuzzy=' + enc(q)) }catch(x){ return null } }
-    return mtgMap(card) }
+    if(want && want.set && want.number){ try{ return mtgMap(await getJSON(`https://api.scryfall.com/cards/${enc(want.set)}/${enc(want.number)}`)) }catch(e){ if(!nf(e) && e.status !== 400) throw net(e) } }
+    const card = await mtgNamed(q); return card ? mtgMap(card) : null }
   async function mtgAll(q){
-    let card; try{ card = await getJSON('https://api.scryfall.com/cards/named?exact=' + enc(q)) }catch(e){ try{ card = await getJSON('https://api.scryfall.com/cards/named?fuzzy=' + enc(q)) }catch(x){ return [] } }
+    const card = await mtgNamed(q); if(!card) return [];
     let prints = [card]; try{ let u = card.prints_search_uri + '&unique=prints', got = []; while(u && got.length < 300){ const j = await getJSON(u); got.push(...j.data); u = j.has_more ? j.next_page : null; if(u) await sleep(100) } if(got.length) prints = got }catch(e){}
     return prints.map(mtgMap) }
 
