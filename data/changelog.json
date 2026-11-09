@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 159,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies"
+   ],
+   "title": "Proxies: Pokémon deck lists with numbers in brackets",
+   "items": [
+    "Deck lines like \"4 Dreepy (71)\" or \"3 Basic Psychic Energy (5)\" are now read as card number 71 / 5, not as a set code, so the card is found by its name.",
+    "For Pokémon, a trailing [name] such as \"Boss's Orders [Ghetsis]\" is ignored. \"Sol Ring (CMD) 123\" and \"Lightning Bolt (M11)\" still mean set (and number)."
+   ]
+  },
+  {
    "id": 158,
    "date": "2026-11-09",
    "where": [

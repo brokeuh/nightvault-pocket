@@ -45,7 +45,8 @@ function parseDeck(text){
     const m = /^(?:(\d+)\s*[xX]?\s+)?(.+?)$/.exec(l); if(!m) continue;
     let qty = m[1] ? +m[1] : 1, rest = m[2].trim(), set = '', number = '';
     if(!m[1]){ const tq = /^(.+?)\s+[xX]\s*(\d+)$/.exec(rest); if(tq){ rest = tq[1].trim(); qty = +tq[2] } }   // "Wellwisher x5"
-    const sm = /^(.*?)\s*\(([A-Za-z0-9]{2,6})\)\s*([A-Za-z0-9★-]+)?\s*$/.exec(rest); if(sm){ rest = sm[1].trim(); set = sm[2].toLowerCase(); number = sm[3] || '' }
+    const sm = /^(.*?)\s*\(([A-Za-z0-9]{1,6})\)\s*([A-Za-z0-9★-]+)?\s*$/.exec(rest); if(sm){ rest = sm[1].trim(); if(/^\d+$/.test(sm[2]) && !sm[3]) number = sm[2]; else { set = sm[2].toLowerCase(); number = sm[3] || '' } }   // "Dreepy (71)" = card number, "Sol Ring (CMD) 123" = set + number
+    if(typeof S !== 'undefined' && S.game === 'pokemon') rest = rest.replace(/\s*\[[^\]]*\]\s*$/, '').trim();   // "Boss's Orders [Ghetsis]"
     if(!rest) continue;
     const key = rest.toLowerCase() + '|' + set + '|' + number, e = map.get(key); if(e) e.qty += qty; else map.set(key, {name:rest, qty, set, number});
   }
