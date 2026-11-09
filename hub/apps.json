@@ -34,7 +34,7 @@
     },
     {
      "path": "hub/nvsetup.js",
-     "size": 34060
+     "size": 34425
     },
     {
      "path": "hub/nvtheme.js",
@@ -58,14 +58,14 @@
     },
     {
      "path": "hub/nvcards.js",
-     "size": 42906
+     "size": 44922
     }
    ],
    "provides": [],
    "uses": [],
-   "size": 285995,
-   "hash": "fa7012a9ee04",
-   "version": "2026.11.09.1455",
+   "size": 288376,
+   "hash": "fa7e6eea27d6",
+   "version": "2026.11.09.1501",
    "updated": "2026-11-09"
   },
   {
