@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 166,
+   "date": "2026-11-09",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: download many games at once, converted to WebP",
+   "items": [
+    "Cards page: new button Download many games. Tick the games (untick the ones you already have, it remembers), choose a folder such as your SD card or a big drive, and it downloads every set of each game and converts each game to WebP before starting the next, so the disk never fills with huge originals.",
+    "Settings › Card games: new button Add all games that have pictures (the CCG Trader games, except Magic, Pokémon and Yu-Gi-Oh!).",
+    "Install: copy vault.py, vault_ui.html, vault_tcgdata.py and vault_ccgtrader.py to your PC and restart Nightvault. Not tried on your PC yet."
+   ]
+  },
+  {
    "id": 165,
    "date": "2026-11-09",
    "where": [
