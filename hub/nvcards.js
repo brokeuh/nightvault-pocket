@@ -129,7 +129,7 @@
     let idx = null; for(const u of [`${BASE}data/ccgt/index.json`, `https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/ccgt/index.json`]) try{ idx = await getJSON(u); if(idx && idx.games) break }catch(e){}
     if(!idx || !idx.games){ _ccIdx = null; throw new Error('The CCG Trader game list is not available right now') }
     const keys = [];
-    for(const [id, name, count] of idx.games){ if(CCGT_SKIP.has(id)) continue; const k = 'ccgt' + id; keys.push(k);
+    for(const [id, name, count, pics] of idx.games){ if(CCGT_SKIP.has(id) || pics === 0) continue; const k = 'ccgt' + id; keys.push(k);
       SRC[k] = {label:String(name).trim(), group:'More games from CCG Trader (' + idx.games.length + ' games)', folder:'ccgtrader - ' + safe(name, 50), count, per:() => 110e3,
         sets:async () => { const d = await ccData(id), n = new Map(); for(const r of d.cards) if(r[4]) n.set(r[0], (n.get(r[0]) || 0) + 1);
           return d.sets.map(x => ({code:String(x.code), id:x.id, name:x.name || 'Set ' + x.code, released:x.released || '', total:n.get(x.id) || 0})).filter(x => x.total) },

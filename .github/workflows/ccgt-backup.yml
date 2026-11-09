@@ -64,7 +64,7 @@ jobs:
                                 (c.get("image") or {}).get("private_hash")] for c in cards]}
               with open(f"data/ccgt/{gid}.json", "w", encoding="utf-8") as f:
                   json.dump(out, f, separators=(",", ":"), ensure_ascii=False)
-              index.append([gid, name, len(cards)])
+              index.append([gid, name, len(cards), sum(1 for c in cards if (c.get("image") or {}).get("private_hash"))])
               print(f"{name}: {len(sets)} sets, {len(cards)} cards")
               time.sleep(0.5)
           if len(index) < 50:

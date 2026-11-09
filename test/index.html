@@ -3207,7 +3207,7 @@ const SPAGES = [
   ['sync', 'device-desktop-up', 'Nightvault sync', t => `${t.toLocaleString()} cards on this phone${store.lastExport ? ' · last sent ' + new Date(store.lastExport).toLocaleDateString() : ''}`],
   ['app', 'device-mobile', 'Use as an app', () => APPMODE() ? 'Installed - running without browser bars' : 'Full screen, without the browser bars'],
   ['scan', 'scan', 'Scanning', () => [O.auto && 'auto-scan', O.full && 'whole card', O.dailyPrices && 'daily prices'].filter(Boolean).join(' · ') || 'Options for reading cards'],
-  ['games', 'cards', 'Card games', () => store.games.length ? store.games.map(g => g.label).join(', ') : 'Add a game to the list'],
+  ['games', 'cards', 'Card games', () => store.games.length > 8 ? store.games.length + ' games' : store.games.length ? store.games.map(g => g.label).join(', ') : 'Add a game to the list'],
   ['templates', 'layout-board-split', 'Scan templates', () => store.templates.length ? `${store.templates.length} template${store.templates.length === 1 ? '' : 's'}` : 'For special and new card layouts'],
   ['backs', 'school', 'Card backs', () => store.backs.length ? [...new Set(store.backs.map(b => GAMES[b.game] ? GAMES[b.game].label : b.game))].join(', ') : 'Recognise a game by its back'],
   ['prices', 'tag', 'Price sources', () => porder().map(k => PSRC[k].label).join(' → ')],
@@ -3265,6 +3265,21 @@ function catalogKey(g){                                        // add a catalog 
   const id = 'ccgt' + g.id;
   if(!store.games.some(x => x.id === id)){ store.games.push({id, label:g.name, color:CAT_COLORS[store.games.length % CAT_COLORS.length], ccgt:g.id, added:Date.now()}); persist(); registerGames() }
   return id }
+/* Add every CCG Trader game that has card pictures to my games in one go (index.json of the weekly copy: [id, name, cards, cards with a picture]).
+   Magic, Pokémon and Yu-Gi-Oh! are skipped - they have their own, better lists. Marked bulk:true so they can be removed together (only the ones without cards). */
+async function addAllCatalogGames(){
+  let idx; try{ idx = await ccgtCopy('index') }catch(e){ toast('The game list could not be loaded: ' + e.message, true); return }
+  const have = new Set(store.games.filter(g => g.ccgt).map(g => g.ccgt).concat(Object.values(CCGT_BUILTIN), [21, 130, 158]));
+  const add = (idx.games || []).filter(([id, , , pics]) => pics > 0 && !have.has(id));
+  if(!add.length){ toast('All games with pictures are already in your list'); return }
+  for(const [id, name] of add) store.games.push({id:'ccgt' + id, label:String(name).trim(), color:CAT_COLORS[store.games.length % CAT_COLORS.length], ccgt:id, added:Date.now(), bulk:true});
+  persist(); registerGames(); toast(`${add.length} games added`); viewSettings() }
+function removeBulkGames(){
+  const used = new Set(store.cards.map(c => c.game)), gone = store.games.filter(g => g.bulk && !used.has(g.id)), keep = store.games.filter(g => g.bulk && used.has(g.id)).length;
+  const ids = new Set(gone.map(g => g.id));
+  store.games = store.games.filter(g => !ids.has(g.id)); store.templates = store.templates.filter(t => !ids.has(t.game)); store.backs = store.backs.filter(b => !ids.has(b.game));
+  store.games.forEach(g => { if(g.bulk && used.has(g.id)) delete g.bulk });      // games with cards stay as normal games
+  if(ids.has(O.game)) O.game = 'auto'; persist(); registerGames(); toast(`${gone.length} games removed${keep ? `, ${keep} kept because you have cards in them` : ''}`); viewSettings() }
 async function openCatalog(onPick){
   modal(`<h3>${onPick ? 'All card games' : 'Add a game from the catalog'}</h3><input id="catq" type="search" placeholder="Search 295 games, e.g. Lord of the Rings" autocomplete="off" style="width:100%">
     <div id="catl" class="menu" style="margin-top:10px"><div class="muted" style="padding:12px 4px">Loading the games ...</div></div>`);
@@ -3344,7 +3359,7 @@ async function whatsNew(force){
 /* ---------------------------------------------------------------- new version check
    An app kept open in the background never reloads by itself, so it looks every now and then whether a newer
    version is online, and offers to load it. */
-const BUILD = '202610231644';
+const BUILD = '202611091551';
 const UPD = {at:0, shown:false};
 const buildOf = t => (/const BUILD = '(\d{12})'/.exec(t) || [])[1] || '';
 async function appBuild(){ if(!NATIVE) return 0; if(UPD.mine == null){ try{ UPD.mine = +((await capCall('App', 'getInfo')) || {}).build || 0 }catch(e){ UPD.mine = 0 } } return UPD.mine }
@@ -3412,9 +3427,11 @@ function viewSettings(){
       <label class="row"><input type="checkbox" id="oprice" ${O.dailyPrices ? 'checked' : ''}><div class="grow">Update prices once a day when I open the app<div class="hint" style="margin:2px 0 0">Runs in the background. Cards you still need to price get a link to look them up.</div></div></label>
       <div class="row"><div class="grow">Start with game</div><select id="ogame"><option value="auto">All games</option>${Object.entries(GAMES).map(([k, g]) => `<option value="${k}" ${O.game === k ? 'selected' : ''}>${esc(g.label)}</option>`).join('')}</select></div></div>
     <div class="panel" data-p="games"><h3>Card games</h3><p class="hint" style="margin:0 0 6px">Add any card game to the list. It gets its own button on the scan screen and works with scan templates, card backs and price sources.</p>
-      ${store.games.length ? store.games.map(x => `<div class="row" style="padding:7px 0"><span class="dot" style="background:${esc(x.color)}"></span><div class="grow">${esc(x.label)} <span class="muted" style="font-size:12px">· ${x.ccgt ? 'CCG Trader' : x.lookup ? 'card lookup' : 'add by hand'}${store.templates.some(t => t.game === x.id) ? ' · template' : ''}</span></div>
-        <button class="btn sm" data-gtpl="${x.id}">Template</button><button class="btn sm" data-gedit="${x.id}">Edit</button></div>`).join('') : `<div class="muted" style="font-size:13px;padding:4px 0 8px">Built in: ${Object.keys(GAMES).filter(k => BUILTIN.has(k) && k !== 'other').map(k => esc(GAMES[k].label)).join(', ')}.</div>`}
-      <div class="btns" style="margin-top:8px"><button class="btn sm primary" id="gcat"><i class="ti ti-books"></i>Add from the catalog (295 games)</button><button class="btn sm" id="gnew"><i class="ti ti-plus"></i>Add your own</button></div>
+      ${(() => { const rowOf = x => `<div class="row" style="padding:7px 0"><span class="dot" style="background:${esc(x.color)}"></span><div class="grow">${esc(x.label)} <span class="muted" style="font-size:12px">· ${x.ccgt ? 'CCG Trader' : x.lookup ? 'card lookup' : 'add by hand'}${store.templates.some(t => t.game === x.id) ? ' · template' : ''}</span></div>
+        <button class="btn sm" data-gtpl="${x.id}">Template</button><button class="btn sm" data-gedit="${x.id}">Edit</button></div>`, mine = store.games.filter(x => !x.bulk), bulk = store.games.filter(x => x.bulk);
+        return (mine.length ? mine.map(rowOf).join('') : bulk.length ? '' : `<div class="muted" style="font-size:13px;padding:4px 0 8px">Built in: ${Object.keys(GAMES).filter(k => BUILTIN.has(k) && k !== 'other').map(k => esc(GAMES[k].label)).join(', ')}.</div>`)
+          + (bulk.length ? `<details style="margin:6px 0"><summary class="muted" style="font-size:13px;cursor:pointer">${bulk.length} CCG Trader games added together</summary>${bulk.map(rowOf).join('')}</details>` : '') })()}
+      <div class="btns" style="margin-top:8px"><button class="btn sm primary" id="gcat"><i class="ti ti-books"></i>Add from the catalog (295 games)</button><button class="btn sm" id="gall"><i class="ti ti-playlist-add"></i>Add all games that have pictures</button>${store.games.some(x => x.bulk) ? '<button class="btn sm" id="gunall"><i class="ti ti-playlist-x"></i>Remove the ones added together</button>' : ''}<button class="btn sm" id="gnew"><i class="ti ti-plus"></i>Add your own</button></div>
       <p class="hint" style="margin:8px 0 0">The catalog is CCG Trader's card database: old and new games with every set, card number and picture. No prices yet.</p></div>
     <div class="panel" data-p="prices"><h3>Order of price sources</h3><p class="hint" style="margin:0 0 6px">Your binder and totals use the first source in this list that has a price for a card. No price there? Then the next one, and so on.</p>
       <div id="porder">${porder().map((k, i, a) => `<div class="pxrow"><div class="pxn">${i + 1}</div><div class="grow"><b>${PSRC[k].label}</b><div class="muted" style="font-size:12px">${PSRC[k].desc}</div></div>
@@ -3495,6 +3512,8 @@ function viewSettings(){
   $$('#porder [data-pmv]').forEach(b => b.onclick = () => { const [i, d] = b.dataset.pmv.split(':').map(Number), o = porder(); [o[i], o[i + d]] = [o[i + d], o[i]]; store.porder = o; store.porderAt = Date.now(); repickAll(); viewSettings() });
   $('#gnew').onclick = () => openGame(null);
   $('#gcat').onclick = () => openCatalog();
+  $('#gall').onclick = addAllCatalogGames;
+  if($('#gunall')) $('#gunall').onclick = removeBulkGames;
   $$('[data-gedit]').forEach(b => b.onclick = () => { const g = store.games.find(x => x.id === b.dataset.gedit); g && g.ccgt ? editCatalogGame(g) : openGame(g) });
   $$('[data-gtpl]').forEach(b => b.onclick = () => openTemplate({game:b.dataset.gtpl}, true));
   $$('[data-sedit]').forEach(b => b.onclick = () => openSource(store.sources.find(x => x.id === b.dataset.sedit)));

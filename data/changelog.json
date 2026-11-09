@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 164,
+   "date": "2026-11-09",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "pocket",
+    "hub"
+   ],
+   "title": "Card scanner: add all CCG Trader games that have pictures",
+   "items": [
+    "Settings › Card games has a new button: Add all games that have pictures. It puts about 260 more card games in your game list in one go (Magic, Pokémon and Yu-Gi-Oh! are skipped, they have their own lists). They are tucked into one folded group so the list stays easy to read.",
+    "Changed your mind? Remove the ones added together takes them out again. Games you already have cards in stay.",
+    "Card pictures (Proxies menu): CCG Trader games without any pictures no longer show up in its list."
+   ]
+  },
+  {
    "id": 163,
    "date": "2026-11-09",
    "where": [
