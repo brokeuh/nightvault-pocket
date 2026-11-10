@@ -1,7 +1,7 @@
 {
- "version": "2026-11-10 09:21",
+ "version": "2026-11-10 09:31",
  "notes": [
-  "Update check retries after a failed attempt"
+  "Update button at the top of Settings, clear result window"
  ],
  "files": [
   {
@@ -42,7 +42,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "f694f43dec47cabe5653783af311bb6ad96a45a6619cc9002379baf8a20d8a14"
+   "sha256": "c3008a3fa058c93d35dad239a73aea4f503bfc77bf0d577a3986dd4caa5db16f"
   }
  ]
 }

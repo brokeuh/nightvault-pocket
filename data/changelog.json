@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 173,
+   "date": "2026-11-10",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: Updates panel at the top of Settings",
+   "items": [
+    "Check for updates now sits in its own Updates panel at the top of Settings and shows the result in a window instead of a short message."
+   ]
+  },
+  {
    "id": 172,
    "date": "2026-11-10",
    "where": [

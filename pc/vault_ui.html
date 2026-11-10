@@ -1831,10 +1831,10 @@ async function viewSettings(){
   await loadState(); const st = S.state;
   $('#main').innerHTML = `<div class="head"><h1>Settings</h1></div>
     <div class="cols2"><div>
+    <div class="panel"><h3>Updates</h3><p class="hint">Nightvault version <b>${esc(st.build || "")}</b>. Press the button to see if a newer version is published.</p><button class="btn" id="updnow"><i class="ti ti-cloud-download"></i>Check for updates</button></div>
     <div class="panel"><h3>Collections in the sidebar</h3><div id="colls"></div><div id="collform"></div>
       <p class="hint">Switch off what you don't collect. Hidden collections keep their data.</p>
-      <button class="btn" id="wizagain"><i class="ti ti-wand"></i>Open the welcome wizard again</button>
-      <button class="btn" id="updnow"><i class="ti ti-cloud-download"></i>Check for updates</button></div>
+      <button class="btn" id="wizagain"><i class="ti ti-wand"></i>Open the welcome wizard again</button></div>
     <div class="panel"><h3>Card games</h3><div id="cgames" class="muted">Loading ...</div>
       <p class="hint">Which card games you follow. Each switched-on game appears under Download cards.</p></div>
     <div class="panel"><h3>People</h3><div id="people"></div>
@@ -1894,6 +1894,7 @@ async function viewSettings(){
     $$('[data-pd]').forEach(b => b.onclick = async () => {if(!confirm('Remove this person? Items keep their other owners.'))return;
       await api('/api/people/delete',{id:+b.dataset.pd}); await loadState(); await loadLib(); drawPeople()});
   };
+  $('#updnow').onclick = () => checkUpdate(true);
   drawColls(); drawPeople(); drawCollForm(st);
   themePanel(); cardGamesPanel($('#cgames')); $('#wizagain').onclick = () => showWizard(true); $('#updnow').onclick = () => checkUpdate(true);
   renderComponents();
@@ -4092,12 +4093,13 @@ function render(){
 }
 window.addEventListener('hashchange', render);
 /* updates: look at the published files once a day (and on demand in Settings); one click replaces them and restarts */
+function updMsg(t, d){ modal(`<h3>${esc(t)}</h3><p class="muted" style="word-break:break-word">${esc(d)}</p><div style="text-align:right"><button class="btn primary" onclick="closeModal()">OK</button></div>`) }
 async function checkUpdate(manual){
   try{ if(!manual){ const last = +localStorage.getItem('nvUpdChecked') || 0; if(Date.now() - last < 864e5) return } }catch(e){}
-  let r; try{ r = await api('/api/update/check') }catch(e){ if(manual) toast(e.message, true); return }
-  if(r.error){ if(manual) toast('Could not check for updates: ' + r.error, true); return }
+  let r; try{ r = await api('/api/update/check') }catch(e){ if(manual) updMsg('Could not check for updates', e.message); return }
+  if(r.error){ if(manual) updMsg('Could not reach the update list', r.error + ' (this program is build ' + (r.build||'?') + ')'); return }
   try{ localStorage.setItem('nvUpdChecked', Date.now()) }catch(e){}
-  if(!r.available){ if(manual) toast('Nightvault is up to date'); return }
+  if(!r.available){ if(manual) updMsg('Nightvault is up to date', 'Build ' + (r.build||'') + ', published version ' + (r.version||'')); return }
   if($('#updbar')) $('#updbar').remove();
   document.body.insertAdjacentHTML('beforeend', `<div id="updbar" style="position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9000;background:var(--panel,#151a22);border:1px solid var(--accent,#7aa2f7);border-radius:14px;padding:10px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,.4)">
     <i class="ti ti-cloud-download" style="font-size:20px;color:var(--accent,#7aa2f7)"></i><div><b>A new version of Nightvault is available</b><div class="muted" style="font-size:12.5px">${r.files.length} file${r.files.length === 1 ? '' : 's'} to update. The old ones are kept in update_backup.</div></div>
