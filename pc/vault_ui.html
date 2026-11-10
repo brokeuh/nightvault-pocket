@@ -4095,8 +4095,8 @@ window.addEventListener('hashchange', render);
 async function checkUpdate(manual){
   try{ if(!manual){ const last = +localStorage.getItem('nvUpdChecked') || 0; if(Date.now() - last < 864e5) return } }catch(e){}
   let r; try{ r = await api('/api/update/check') }catch(e){ if(manual) toast(e.message, true); return }
-  try{ localStorage.setItem('nvUpdChecked', Date.now()) }catch(e){}
   if(r.error){ if(manual) toast('Could not check for updates: ' + r.error, true); return }
+  try{ localStorage.setItem('nvUpdChecked', Date.now()) }catch(e){}
   if(!r.available){ if(manual) toast('Nightvault is up to date'); return }
   if($('#updbar')) $('#updbar').remove();
   document.body.insertAdjacentHTML('beforeend', `<div id="updbar" style="position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9000;background:var(--panel,#151a22);border:1px solid var(--accent,#7aa2f7);border-radius:14px;padding:10px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,.4)">

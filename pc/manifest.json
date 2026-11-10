@@ -1,8 +1,7 @@
 {
- "version": "2026-11-10 09:16",
+ "version": "2026-11-10 09:21",
  "notes": [
-  "OPPP key and full-resolution One Piece (PC)",
-  "Alternate arts"
+  "Update check retries after a failed attempt"
  ],
  "files": [
   {
@@ -43,7 +42,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "b887a1f0d3813f84cc1e90a9ce66c16d7e40302dca5fc2ce204fabc894cc0fff"
+   "sha256": "f694f43dec47cabe5653783af311bb6ad96a45a6619cc9002379baf8a20d8a14"
   }
  ]
 }
