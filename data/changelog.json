@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 171,
+   "date": "2026-11-10",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "Translate One Piece cards (Dutch for the kids) + OPPP key on the PC",
+   "items": [
+    "Proxies menu › Translate One Piece cards: with your OPPP supporter key, the One Piece cards of your deck are redrawn in another language (Dutch first in the list, 28 languages in all). The name, type and ability text are machine-translated, so check them. Each card takes about half a minute because OPPP draws them one at a time. The result is added to your deck as your own picture. You can also type card codes like OP01-001.",
+    "The PC app can download One Piece in full resolution with your OPPP key (game One Piece (OPPP, full resolution); key in Settings › Card games › OPPP key), alternate arts included. The PC updates itself: tap Update now when the bar appears.",
+    "Your key stays on the device or PC only and is never shown in logs or messages. Not tried on a real device yet."
+   ]
+  },
+  {
    "id": 170,
    "date": "2026-11-10",
    "where": [

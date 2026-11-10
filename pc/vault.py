@@ -1816,6 +1816,8 @@ def parse_card_file(path):
     num, rest = m.group(1), re.sub(r"_(front)$", "", m.group(2), flags=re.I)
     rest = re.sub(r"_([a-z]{2,3})$", "", rest)
     parent = Path(path).parent.name
+    if parent.lower() == "alternate art":                 # <set>/Alternate art/<card>.png (OPPP alternate arts): the set is the folder above
+        parent = Path(path).parent.parent.name
     set_code = (parent.split(" - ")[0] if " - " in parent else parent).strip().lower()
     return card_id(set_code, num), set_code, norm_num(num), rest.strip()
 
@@ -3191,6 +3193,8 @@ def scan_card_folder(conn, game, say, progress):
     for dirpath, dirs, files in os.walk(folder):
         dirs[:] = [d for d in dirs if not d.startswith("_")]
         base = os.path.basename(dirpath)
+        if base.lower() == "alternate art":
+            base = os.path.basename(os.path.dirname(dirpath))
         for fn in files:
             if os.path.splitext(fn)[1].lower() not in CARD_IMG_EXT:
                 continue
@@ -3400,6 +3404,7 @@ def job_cards_download(game, sets, quality):
             os.makedirs(out, exist_ok=True)
             say(f"Downloading {spec['label']} cards to {out} ...")
             try:
+                tdata.OPPP_KEY = (get_setting(conn, "oppp_key") or "").strip()
                 tdata.download(spec["api"]["key"], out, sets, say, progress, STOP)
             except tdata.DataError as e:
                 say(f"{spec['label']}: {e}")
@@ -5658,6 +5663,17 @@ class Handler(BaseHTTPRequestHandler):
     def post_update_restart(self, conn, d):
         self._send(200, {"ok": True})
         update_restart()
+
+    def post_cardhub_opppstatus(self, conn, d):
+        self._send(200, {"has_key": bool(get_setting(conn, "oppp_key"))})
+
+    def post_cardhub_opppkey(self, conn, d):
+        """Save (or clear) the owner's oppp.online supporter key. It is only kept in this PC's own settings and is never sent back to the page."""
+        key = str(d.get("key") or "").strip()
+        if key and not re.fullmatch(r"[0-9a-fA-F-]{20,64}", key):
+            raise ValueError("That does not look like an OPPP key (letters, digits and dashes only).")
+        put_setting(conn, "oppp_key", key)
+        self._send(200, {"saved": bool(key)})
 
     def post_cardhub_check(self, conn, d):
         keys = [k for k in (d.get("games") or []) if isinstance(k, str)]

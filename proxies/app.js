@@ -444,11 +444,79 @@ function wire(){
 }
 const fromHub = () => { try{ return sessionStorage.getItem('nvHub') === '1' }catch(e){ return false } };
 if(window.Capacitor) try{ const A = (Capacitor.Plugins && Capacitor.Plugins.App) || Capacitor.registerPlugin('App');
-  A.addListener('backButton', () => { if(window.NVMENU && NVMENU.close()) return; if(window.NVCARDS && NVCARDS.close()) return; if(CM.close()) return; if(closeSheet()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
+  A.addListener('backButton', () => { if(window.NVMENU && NVMENU.close()) return; if(window.NVCARDS && NVCARDS.close()) return; if(CM.close()) return; if(TR.close()) return; if(closeSheet()) return; if(fromHub()){ location.href = '../hub/index.html'; return } A.minimizeApp && A.minimizeApp() }) }catch(e){}
+
+
+/* ---------------------------------------------------------------- Translate One Piece cards (OPPP supporter key): GET https://oppp.online/api/{key}/translate-card/{code}/{lang}
+   returns a rendered PNG of the official card with name / type / ability machine-translated. OPPP renders one card at a time, at least 30 s apart, so this runs
+   one card after the other (about 30-40 s each). Each result becomes one of your own pictures and replaces the card in the deck. The key lives only in this
+   device's localStorage (nvCards.opppKey, shared with Card pictures, not in any backup) and is never logged or shown again. */
+const TR = (() => {
+  const LANGS = [['nl', 'Nederlands'], ['en', 'English'], ['fr', 'Français'], ['de', 'Deutsch'], ['es', 'Español'], ['it', 'Italiano'], ['pt', 'Português'], ['pt-br', 'Português (Brasil)'], ['ja', '日本語'], ['zh', '中文'], ['ko', '한국어'], ['ru', 'Русский'], ['pl', 'Polski'], ['sv', 'Svenska'], ['da', 'Dansk'], ['no', 'Norsk'], ['fi', 'Suomi'], ['cs', 'Čeština'], ['tr', 'Türkçe'], ['ar', 'العربية'], ['el', 'Ελληνικά'], ['uk', 'Українська'], ['ro', 'Română'], ['hu', 'Magyar'], ['hi', 'हिन्दी'], ['vi', 'Tiếng Việt'], ['th', 'ไทย'], ['id', 'Bahasa Indonesia']];
+  let ov = null, run = {on:false, stop:false};
+  const key = () => String(lsGet('nvCards.opppKey', '') || '').trim();
+  const redact = t => String(t == null ? '' : t).replace(/\/api\/[0-9a-f]{8}-[0-9a-f-]{27}\//gi, '/api/<key>/');
+  const codeOf = c => { if(!c || c.kind === 'custom' || !c.set) return ''; const set = String(c.set).toUpperCase(), n = String(c.number || '').split('-')[0].replace(/\D/g, '');
+    return /^(OP|ST|EB|PRB)\d{1,2}$/.test(set) && n ? set + '-' + n.padStart(3, '0') : set === 'P' && n ? 'P-' + n.padStart(3, '0') : '' };
+  const deckCodes = () => { const m = new Map(); for(const e of S.entries){ const c = codeOf((e.cands || [])[e.sel || 0]) || codeOf((e.cands || []).find(x => codeOf(x))); if(c && !m.has(c)) m.set(c, e.name) } return m };
+  const close = () => { if(!ov) return false; if(run.on) run.stop = true; ov.remove(); ov = null; return true };
+  const isOpen = () => !!ov;
+  async function fetchPng(url){
+    const H = NATIVE && Capacitor.Plugins && Capacitor.Plugins.CapacitorHttp;
+    if(H){ const r = await H.get({url, responseType:'blob', readTimeout:180000, connectTimeout:30000}); if(r.status >= 400) throw Object.assign(new Error('HTTP ' + r.status), {status:r.status});
+      const bin = atob(r.data), u = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], {type:'image/png'}) }
+    const r = await fetch(url); if(!r.ok) throw Object.assign(new Error('HTTP ' + r.status), {status:r.status}); return r.blob() }
+  function screen(){
+    close(); ov = document.createElement('div'); ov.id = 'cmov'; document.body.appendChild(ov);
+    const found = deckCodes();
+    ov.innerHTML = `<div class="cmbar"><button class="btn sm" id="trx">‹ Back</button><b class="grow">Translate One Piece cards</b></div>
+      <div class="cmint"><p>Makes a <b>translated copy</b> of official One Piece cards - for example in Dutch to learn the game with kids. The name, type and ability text are machine-translated, so check them. You need your <b>OPPP supporter key</b> (oppp.online, API page). OPPP renders one card at a time, about 30-40 seconds each, and also keeps a copy in your OPPP card library.</p>
+      ${NATIVE ? '' : '<p class="note warn">This probably only works in the Android app (the website may be blocked by the browser).</p>'}
+      <label class="muted small" for="trkey">OPPP key</label><input id="trkey" type="password" autocomplete="off" placeholder="paste your key (kept on this device only)" style="width:100%">
+      <label class="muted small" for="trlang">Language</label><select id="trlang">${LANGS.map(([c, n]) => `<option value="${c}">${esc(n)}</option>`).join('')}</select>
+      <label class="muted small" for="trcodes">Cards (codes, one per line or separated by commas, e.g. OP01-001)</label>
+      <textarea id="trcodes" rows="6" style="width:100%" placeholder="OP01-001&#10;ST01-005" spellcheck="false" autocapitalize="characters">${esc([...found.keys()].join('\n'))}</textarea>
+      <div class="muted small" id="trhint">${found.size ? `${found.size} One Piece card${found.size === 1 ? '' : 's'} found in your deck and filled in above.` : 'No One Piece cards found in the deck - type or paste the codes.'}</div>
+      <div class="dl"><button class="btn primary" id="trgo">Translate</button><button class="btn" id="trstop" disabled>Stop</button></div>
+      <div class="note" id="trst" style="margin-top:10px"></div></div>`;
+    $('#trx', ov).onclick = close; $('#trkey', ov).value = key(); $('#trlang', ov).value = lsGet('nvProxies.trLang', 'nl');
+    $('#trkey', ov).oninput = e => lsSet('nvCards.opppKey', e.target.value.trim() || null); $('#trlang', ov).onchange = e => lsSet('nvProxies.trLang', e.target.value);
+    $('#trstop', ov).onclick = () => { run.stop = true; $('#trst', ov).textContent = 'Stopping after this card ...' };
+    $('#trgo', ov).onclick = go }
+  async function go(){
+    const st = $('#trst', ov), k = key(), lang = $('#trlang', ov).value;
+    if(!k){ st.innerHTML = '<span style="color:#e06c75">Paste your OPPP key first.</span>'; return }
+    const codes = [...new Set(($('#trcodes', ov).value.toUpperCase().match(/\b(?:OP|ST|EB|PRB)\d{1,2}-\d{3}(?:AA\d*)?\b|\bP-\d{3}\b/g) || []))];
+    if(!codes.length){ st.innerHTML = '<span style="color:#e06c75">No card codes found. Use codes like OP01-001.</span>'; return }
+    run = {on:true, stop:false}; ['#trgo', '#trkey', '#trlang', '#trcodes'].forEach(q => $(q, ov).disabled = true); $('#trstop', ov).disabled = false;
+    const label = 'Translated (' + lang + ')', names = deckCodes(); let done = 0, fail = 0; const t0 = Date.now();
+    try{
+      for(const code of codes){
+        if(run.stop) break;
+        const left = codes.length - done - fail, eta = Math.ceil(left * 35 / 60);
+        st.innerHTML = `Card ${done + fail + 1} of ${codes.length}: <b>${esc(code)}</b> - the site is drawing it (about 30-40 s). Roughly ${eta} min left.<br>${done} translated${fail ? `, ${fail} failed` : ''}`;
+        try{
+          const blob = await fetchPng(`https://oppp.online/api/${k}/translate-card/${code}/${encodeURIComponent(lang)}`);
+          if(!blob.size) throw new Error('empty answer');
+          const nm = names.get(code) || code, id = await artAdd(new File([blob], code + '_' + lang + '.png', {type:'image/png'}), nm, label);
+          let used = false; for(const e of S.entries){ if(codeOf((e.cands || [])[e.sel || 0]) === code || (e.cands || []).some(c => codeOf(c) === code)){ e.cands = [{kind:'custom', id, label, name:e.name}, ...e.cands.filter(c => !(c.kind === 'custom' && c.label === label))]; e.sel = 0; e.full = true; used = true } }
+          if(!used) S.entries.push({name:nm, qty:1, cands:[{kind:'custom', id, label, name:nm}], sel:0, full:true});
+          save(); draw(); done++;
+        }catch(e){
+          if(e && e.status === 401){ st.innerHTML = '<span style="color:#e06c75">OPPP did not accept your key (401). Check it - or your supporter period has ended.</span>'; L('translate: key refused'); break }
+          if(e && e.status === 503){ st.innerHTML = '<span style="color:#e06c75">OPPP says the translation queue is full or the API is off (503). Try again in a few minutes.</span>'; break }
+          fail++; L('translate failed', {code, err:redact(e && e.message)}); }
+      }
+      if(!/did not accept|queue is full/.test(st.textContent)) st.innerHTML = `<span style="color:${fail ? '#e06c75' : '#7ec98f'}">${run.stop ? 'Stopped. ' : 'Done. '}${done} translated card${done === 1 ? '' : 's'} added to your deck${fail ? `, ${fail} failed (wrong code, or no such card)` : ''}.</span> They are saved as your own pictures (label “${esc(label)}”).`;
+    }finally{ run.on = false; ['#trgo', '#trkey', '#trlang', '#trcodes'].forEach(q => { const el = $(q, ov); if(el) el.disabled = false }); const sp = $('#trstop', ov); if(sp) sp.disabled = true }
+  }
+  return {screen, close, isOpen};
+})();
 
 window.NVPX = {S, parseDeck, resolveOne, resolveList, layout, prints, buildPdf, draw, pickIndex, ART:() => ART, artAdd,
   menu:() => [{label:'Card pictures (save on this phone)', run:() => NVCARDS.open()},
               {label:'Card makers (your own offline copies)', run:() => CM.screen()},
+              {label:'Translate One Piece cards (OPPP key)', run:() => TR.screen()},
               {label:'Clear the deck', run:() => { if(!S.entries.length || confirm('Remove every card from the deck?')) clearDeck() }},
               {label:'Saved decks', run:() => { const d = $('#decks').closest('details'); d.open = true; d.scrollIntoView({behavior:'smooth'}) }}]};
 (async () => {

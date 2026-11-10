@@ -1,9 +1,8 @@
 {
- "version": "2026-11-09 16:12",
+ "version": "2026-11-10 09:16",
  "notes": [
-  "Download many games at once, converted to WebP",
-  "Check for new cards (ongoing games only)",
-  "Updater"
+  "OPPP key and full-resolution One Piece (PC)",
+  "Alternate arts"
  ],
  "files": [
   {
@@ -12,7 +11,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "f981c645ea242fffd42cbdad1911ca87a7fbbccfd3627d34ce851c68ecd6137a"
+   "sha256": "95ef69e71899b0a79a2b52e2e7a171a536dca82681ee2d2b24801d0186843105"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -40,11 +39,11 @@
   },
   {
    "name": "vault_tcgdata.py",
-   "sha256": "85e4d6b9589f25f72c3769310eef50cf55216f275d3bd28295e302f2b449b47d"
+   "sha256": "f02420cbc48fe9cf8db82ef125f4e7dfedbc8ac3fdd4258f0a3587bd701de62c"
   },
   {
    "name": "vault_ui.html",
-   "sha256": "343ee0d526c5ec9812ff996d96f74ae56235a021e00ab7850f4057ed829dfc32"
+   "sha256": "b887a1f0d3813f84cc1e90a9ce66c16d7e40302dca5fc2ce204fabc894cc0fff"
   }
  ]
 }

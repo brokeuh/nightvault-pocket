@@ -16,18 +16,22 @@ import re
 import time
 import unicodedata
 import urllib.error
+import urllib.parse
 import urllib.request
 
 AGENT = "Nightvault (personal card collection app)"
 DATA = "https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/data/"
 SWCCG = "https://raw.githubusercontent.com/swccgpc/swccg-card-json/main/"
 OPTCG = "https://optcgapi.com/api/"
+OPPP_KEY = ""                # the owner's oppp.online supporter key; vault.py fills it in from the settings (never logged, never sent anywhere else)
+OPPP = "https://oppp.online/api/"
 PAUSE = 0.25                 # seconds between pictures - gentle on the sites
 META = "_nightvault.json"
 
 TCG = lambda label, color, site="TCGplayer (daily copy)": dict(kind="tcg", label=label, color=color, site=site)
 SOURCES = {
     "onepiece": dict(kind="optcg", label="One Piece Card Game", color="#c8453b", site="optcgapi.com"),
+    "onepiece_oppp": dict(kind="optcg", oppp=True, label="One Piece (OPPP, full resolution with your key)", color="#a83a31", site="oppp.online (supporter key)"),
     "swccg": dict(kind="swccg", label="Star Wars CCG (Decipher)", color="#a08a52", site="SWCCG Players Committee"),
     "gundam": TCG("Gundam Card Game", "#3f7fd9"),
     "digimon": TCG("Digimon Card Game", "#f08a24"),
@@ -170,7 +174,7 @@ def _optcg_cards():
         v = (str(c.get("card_image_id") or "").split("_") + [""])[1]
         base = re.sub(r"\s*\((parallel|alternate art|manga|sp)\)\s*$", "", str(c.get("card_name") or ""), flags=re.I).strip()
         nul = lambda x: "" if x in (None, "NULL") else str(x)
-        out.append(dict(set=s0.lower(), setname=c.get("set_name") or s0, released="", num=norm_num(n) + ("-" + v if v else ""),
+        out.append(dict(set=s0.lower(), code=sid, v=v, setname=c.get("set_name") or s0, released="", num=norm_num(n) + ("-" + v if v else ""),
                         name=base + (" (Parallel)" if re.search("parallel", str(c.get("card_name") or ""), re.I) else ""),
                         img=c.get("card_image") or "", rarity=nul(c.get("rarity")), price=_eur(c.get("market_price")),
                         ctype=" · ".join(x for x in (nul(c.get("card_type")), nul(c.get("card_color")), nul(c.get("sub_types"))) if x),
@@ -253,6 +257,14 @@ def _fetch(url, path, say, stop, label):
 
 def download(key, out, wanted, say, progress, stop):
     """Save the pictures of game `key` into `out`. `wanted`: set codes or words of set names (empty = every set)."""
+    oppp = bool(SOURCES[key].get("oppp"))
+    if oppp:
+        if not OPPP_KEY:
+            raise DataError("Add your OPPP key first (Settings > Card games > OPPP key).")
+        try:
+            _get(f"{OPPP}{OPPP_KEY}/card-info/OP01-001", 30)
+        except DataError as e:
+            raise DataError("OPPP did not accept your key (or did not answer). Check the key - or your supporter period has ended.")
     allc = cards(key)
     sets = {}
     for c in allc:
@@ -285,11 +297,19 @@ def download(key, out, wanted, say, progress, stop):
                 break
             e = enc_num(c["num"])
             meta["cards"][f"{code}|{e}"] = {"n": c["num"], "r": c["rarity"], "p": c["price"], "t": c["ctype"], "x": c["rules"][:3000]}
-            path = os.path.join(folder, f"{e}_{_safe(c['name'])}.jpg")
-            if not c["img"] or os.path.exists(path) or os.path.exists(os.path.splitext(path)[0] + ".webp"):
+            img, sub, ext = c["img"], "", "jpg"
+            if oppp:                                      # HQ = full-resolution original; parallels = alternate arts (AA, AA1, ...: numbering is a guess, a miss is just skipped)
+                ac = c["code"] + (("AA" if int(c["v"][1:] or 0) <= 1 else "AA" + str(int(c["v"][1:]) - 1)) if re.fullmatch(r"p\d+", c.get("v") or "") else "")
+                img, sub, ext = f"{OPPP}{OPPP_KEY}/cards/HQ/{urllib.parse.quote(ac)}", ("Alternate art" if c.get("v") else ""), "png"
+                if c.get("v") and not re.fullmatch(r"p\d+", c["v"]):
+                    continue
+            if sub:
+                os.makedirs(os.path.join(folder, sub), exist_ok=True)
+            path = os.path.join(folder, sub, f"{e}_{_safe(c['name'])}.{ext}")
+            if not img or os.path.exists(path) or os.path.exists(os.path.splitext(path)[0] + ".webp"):
                 skipped += 1
                 continue
-            if _fetch(c["img"], path, say, stop, f"{s['setname']} #{c['num']}"):
+            if _fetch(img, path, say, stop, f"{s['setname']} #{c['num']}"):
                 got += 1
                 misses = 0
             else:
@@ -297,7 +317,7 @@ def download(key, out, wanted, say, progress, stop):
                 if misses >= 25:
                     say("The picture site keeps refusing - stopped. Start the download again later; it continues where it was.")
                     stop.set()
-            time.sleep(PAUSE)
+            time.sleep(0.6 if oppp else PAUSE)
         with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(meta, f, ensure_ascii=False)
     say(f"{got:,} pictures saved, {skipped:,} already there or without a picture.")

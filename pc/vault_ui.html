@@ -2997,6 +2997,16 @@ async function manyModal(){
     try{ const v = $('#mq').value, r = await api('/api/cardhub/many', {games, root:$('#mroot').value.trim(), webp:$('#mwebp').checked, lossless:v === 'L', big:$('#mbig').checked});
       closeModal(); if(!r.started) toast('Another task is running', true); else startPolling() }catch(e){ toast(e.message, true) } };
 }
+async function opppKeyModal(){
+  let has = false; try{ has = (await api('/api/cardhub/opppstatus', {})).has_key }catch(e){}
+  modal(`<h3>OPPP key</h3>
+    <p style="margin:0 0 10px;font-size:13.5px">If you are a supporter of oppp.online you have a personal key on its API page. With it, the game <b>One Piece (OPPP, full resolution)</b> downloads the cards at 1800 x 2516 pixels, plus the alternate arts (in an <i>Alternate art</i> folder). The key is kept only on this PC and is never shown again. ${has ? '<b>A key is saved.</b>' : 'No key saved yet.'}</p>
+    <div class="field"><label>Key</label><input id="opk" type="password" autocomplete="off" placeholder="${has ? 'paste a new key to replace it' : 'paste your key here'}"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">${has ? '<button class="btn" id="opkdel">Remove the key</button>' : ''}<button class="btn" onclick="closeModal()">Close</button><button class="btn primary" id="opksave">Save</button></div>`);
+  const save = async key => { try{ await api('/api/cardhub/opppkey', {key}); toast(key ? 'Key saved' : 'Key removed'); closeModal() }catch(e){ toast(e.message, true) } };
+  $('#opksave').onclick = () => { const v = $('#opk').value.trim(); if(!v) return toast('Paste the key first', true); save(v) };
+  if($('#opkdel')) $('#opkdel').onclick = () => save('');
+}
 function webpModal(g){
   modal(`<h3>Convert to WebP - ${esc(g.name)}</h3>
     <p style="margin:0 0 10px;font-size:13.5px">Saves every JPG / PNG card picture as a WebP next to it: about 3-5x smaller for PNG, and it looks the same. A stopped run continues where it was.</p>
@@ -3954,9 +3964,10 @@ async function cardGamesPanel(host){
     + mine.map(g => `<div class="row"><i class="ti ti-plus" style="width:17px"></i><span class="gmono" style="--gc:${esc(g.color)};margin:0;width:26px;height:26px;font-size:13px">${esc(g.label[0])}</span>
       <div class="grow">${esc(g.label)} <span class="pill p-blue">${g.kind === 'catalog' ? 'catalog' : 'yours'}</span> <span class="muted" style="font-size:12.5px">· ${esc(g.kind === 'catalog' ? 'CCG Trader - pictures and numbers, no prices' : g.sets_url)}</span></div>
       <button class="btn sm ghost danger" data-cgdel="${esc(g.id)}" title="Remove (downloaded cards stay on disk)"><i class="ti ti-trash"></i></button></div>`).join('')
-    + `<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="cgcat"><i class="ti ti-books"></i>Add from the catalog (295 games)</button><button class="btn" id="cgall"><i class="ti ti-playlist-add"></i>Add all games that have pictures</button><a class="btn" href="#/addgame"><i class="ti ti-plus"></i>Add your own card game</a></div>
+    + `<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="cgcat"><i class="ti ti-books"></i>Add from the catalog (295 games)</button><button class="btn" id="cgall"><i class="ti ti-playlist-add"></i>Add all games that have pictures</button><button class="btn" id="cgoppp"><i class="ti ti-key"></i>OPPP key</button><a class="btn" href="#/addgame"><i class="ti ti-plus"></i>Add your own card game</a></div>
       <p class="muted" style="font-size:12.5px;margin:8px 0 0">The catalog is CCG Trader's card database: old and new games with every set, card number and picture (no prices). After adding one, download its pictures under Card hub → Download.</p>`;
   $('#cgcat', host).onclick = () => openCardCatalog(() => cardGamesPanel(host));
+  $('#cgoppp', host).onclick = opppKeyModal;
   $('#cgall', host).onclick = async () => { try{ const r = await api('/api/ccgtrader/addall', {}); toast(r.added ? `${r.added} games added - download them under Card hub › Download many games` : 'All games with pictures are already added'); await loadState(); cardGamesPanel(host) }catch(e){ toast(e.message, true) } };
   $$('[data-cg]', host).forEach(c => c.onchange = async () => {
     try{ await api('/api/cardgames/enable', {ids:$$('[data-cg]', host).filter(x => x.checked).map(x => x.dataset.cg)}); toast('Saved') }catch(e){ toast(e.message, true) } });
