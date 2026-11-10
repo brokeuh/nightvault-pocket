@@ -20,7 +20,8 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
   const lsGet = (k, d) => { try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v) }catch(e){ return d } };
   const lsSet = (k, v) => { try{ v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)) }catch(e){} };
-  const L = (t, d) => { try{ window.NVLOG && NVLOG.log('cardpics', t, d) }catch(e){} };
+  const redact = t => String(t == null ? '' : t).replace(/\/api\/[0-9a-f]{8}-[0-9a-f-]{27}\//gi, '/api/<key>/');          // an OPPP key must never end up in a log or on screen
+  const L = (t, d) => { try{ window.NVLOG && NVLOG.log('cardpics', redact(t), d == null ? d : JSON.parse(redact(JSON.stringify(d)))) }catch(e){} };
   async function getJSON(url){ const r = await fetch(url, {headers:{Accept:'application/json'}}); if(!r.ok) throw Object.assign(new Error('HTTP ' + r.status), {status:r.status}); return r.json() }
 
   /* ---- file names, exactly like the PC (pc/vault_tcgdata.py _safe / enc_num) ---- */
@@ -93,12 +94,20 @@
     sets:async () => { const m = new Map(); for(const c of await opAll()){ const s = String(c.card_set_id || '').split('-')[0]; if(!s) continue; const e = m.get(s) || {code:s.toLowerCase(), name:c.set_name || s, released:'', total:0}; e.total++; m.set(s, e) } return [...m.values()].sort((a, b) => b.code.localeCompare(a.code)) },
     cards:async st => (await opAll()).filter(c => String(c.card_set_id || '').split('-')[0].toLowerCase() === st.code && c.card_image).map(c => { const [, n] = String(c.card_set_id).split('-'), v = String(c.card_image_id || '').split('_')[1];
       return {num:normNum(n) + (v ? '-' + v : ''), name:opBase(c.card_name) + (/parallel/i.test(c.card_name) ? ' (Parallel)' : ''), url:c.card_image} }) };
-  /* One Piece from OPPP (oppp.online, a fan proxy site): many cards without the Bandai watermark. 417 x 582 pixels (owner checked, 9 Nov). The card ids come
-     from the same list as the normal One Piece source; only the normal art of each card (parallels are not asked for). Slow pace, it is a small site. */
-  SRC.onepiece_oppp = {label:'One Piece (OPPP - mostly without watermark)', folder:'onepiece-oppp', pause:600, per:() => 90e3,
+  /* One Piece from OPPP (oppp.online, a fan proxy site). Without a key: the 417 x 582 "optimized" picture, normal art only.
+     With the owner's supporter key (typed into the sheet, stored only on this device in nvCards.opppKey, never in a backup): HQ = full resolution original
+     (1800 x 2516) + alternate arts (OP01-001AA, AA1, AA2 ... = the parallels of the list; the numbering is a guess - cards that do not exist answer 404 and are
+     counted as "without a picture"). Docs: GET https://oppp.online/api/{key}/cards/{HQ|LQ}/{code}; 401 = key refused / supporter period over. Slow pace. */
+  const opppKey = () => String(lsGet('nvCards.opppKey', '') || '').trim();
+  let _opppOk = '';
+  const opppCheck = async key => { if(_opppOk === key) return; try{ await getJSON(`https://oppp.online/api/${key}/card-info/OP01-001`) }catch(e){ throw new Error(e.status === 401 ? 'OPPP did not accept your key (401). Check it - or your supporter period has ended.' : 'OPPP did not answer (' + (e.message || e) + ')') } _opppOk = key };
+  SRC.onepiece_oppp = {label:'One Piece (OPPP - mostly without watermark)', folder:'onepiece-oppp', pause:600, needsKey:'oppp', per:() => opppKey() ? 3.5e6 : 90e3,
     sets:SRC.onepiece.sets,
-    cards:async st => (await opAll()).filter(c => String(c.card_set_id || '').split('-')[0].toLowerCase() === st.code && !String(c.card_image_id || '').includes('_') && !/parallel/i.test(c.card_name)).map(c => { const id = String(c.card_set_id), n = id.split('-')[1] || '';
-      return {num:normNum(n), name:opBase(c.card_name), url:'https://oppp.online/api/card-optimized/' + enc(id), ext:'png'} }) };
+    cards:async st => { const key = opppKey(); if(key) await opppCheck(key);
+      return (await opAll()).filter(c => String(c.card_set_id || '').split('-')[0].toLowerCase() === st.code).flatMap(c => { const id = String(c.card_set_id), n = id.split('-')[1] || '', v = (/_p(\d+)$/i.exec(String(c.card_image_id || '')) || [])[1];
+        if(!v) return [{num:normNum(n), name:opBase(c.card_name), url:key ? `https://oppp.online/api/${key}/cards/HQ/${enc(id)}` : 'https://oppp.online/api/card-optimized/' + enc(id), ext:'png'}];
+        if(!key) return [];
+        const code = id + (+v === 1 ? 'AA' : 'AA' + (+v - 1)); return [{num:normNum(n) + 'AA' + (+v === 1 ? '' : +v - 1), name:opBase(c.card_name) + ' (alternate art)', sub:'Alternate art', url:`https://oppp.online/api/${key}/cards/HQ/${enc(code)}`, ext:'png'}] }) } };
   const swAll = () => once('swccg', async () => (await Promise.all(['Light', 'Dark'].map(x => getJSON(`https://raw.githubusercontent.com/swccgpc/swccg-card-json/main/${x}.json`).then(j => j.cards || [])))).flat());
   SRC.swccg = {label:'Star Wars CCG (Decipher)', per:() => 120e3,
     sets:async () => { const meta = await getJSON('https://raw.githubusercontent.com/swccgpc/swccg-card-json/main/sets.json').catch(() => []), mm = new Map((Array.isArray(meta) ? meta : []).map(x => [String(x.id).toLowerCase(), x])), seen = new Map();
@@ -238,6 +247,7 @@
       <label class="lb" for="nvcg">Game</label><select id="nvcg">${gamesList().map(([g, l]) => `<option value="${g}">${esc(l)}</option>`).join('')}${moreOptions()}</select>
       <label class="lb" for="nvcfmt">Save pictures as</label><select id="nvcfmt"><option value="orig">As the site has them (JPG / PNG)</option><option value="webp">WebP - about 3-5x smaller, looks the same</option></select>
       <div id="nvcqrow"><label class="lb" for="nvcq">Picture quality</label><select id="nvcq"></select></div>
+      <div id="nvckrow" hidden><label class="lb" for="nvck">OPPP key (supporter, optional)</label><input type="password" id="nvck" placeholder="paste your key here" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%"><div class="mu">With a key you get the full-resolution cards (1800 x 2516) and the alternate arts, about 3-4 MB each. It stays on this device only and is not part of any backup.</div></div>
       <div class="rw"><input type="text" id="nvcfind" placeholder="Search sets" style="flex:1;min-width:120px" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button id="nvcall" class="s">All shown</button><button id="nvcnone" class="s">None</button></div>
       <div class="ls" id="nvcl"><div class="it mu">Loading the sets ...</div></div>
       <div class="nt" id="nvcest"></div>
@@ -248,7 +258,7 @@
     document.body.appendChild(el); UI = el; const $ = s => el.querySelector(s);
     const SRCG = () => SRC[st.game];
     const fo = () => { const f = folder(); $('#nvcf').textContent = f ? f.name : 'not chosen yet'; $('#nvcf').className = f ? '' : 'bad' };
-    const quals = () => { const g = SRCG(); $('#nvcqrow').hidden = !g.qualities; if(g.qualities){ if(!g.qualities.includes(st.q)) st.q = g.defQ; $('#nvcq').innerHTML = g.qualities.map(q => `<option value="${q}" ${q === st.q ? 'selected' : ''}>${q}${q === g.defQ ? ' (recommended)' : ''}</option>`).join('') } };
+    const quals = () => { const g = SRCG(); $('#nvcqrow').hidden = !g.qualities; $('#nvckrow').hidden = g.needsKey !== 'oppp'; $('#nvck').value = opppKey(); if(g.qualities){ if(!g.qualities.includes(st.q)) st.q = g.defQ; $('#nvcq').innerHTML = g.qualities.map(q => `<option value="${q}" ${q === st.q ? 'selected' : ''}>${q}${q === g.defQ ? ' (recommended)' : ''}</option>`).join('') } };
     const shown = () => { const f = st.find.trim().toLowerCase(); return f ? st.sets.filter(s => (s.name + ' ' + s.code).toLowerCase().includes(f)) : st.sets };
     const estimate = () => { const g = SRCG(), picked = st.sets.filter(s => st.picked.has(s.code)), known = picked.reduce((a, s) => a + s.total, 0), unk = picked.filter(s => !s.total).length;
       $('#nvcest').innerHTML = picked.length ? `${picked.length} set${picked.length === 1 ? '' : 's'} · ${known ? 'about <b>' + fmtMB(known * g.per(st.q) * (fmtOf() === 'webp' ? .3 : 1)) + '</b> for ' + known.toLocaleString() + ' pictures' : 'size shown while it runs'}${unk && known ? ` (+ ${unk} set${unk === 1 ? '' : 's'} of unknown size)` : ''}. Pictures already in the folder are skipped.` : 'Tick the sets you want.';
@@ -264,6 +274,7 @@
     $('#nvcg').onchange = e => { st.game = e.target.value; lsSet('nvCards.game', st.game); quals(); load() };
     $('#nvcfmt').value = fmtOf(); $('#nvcfmt').onchange = e => { lsSet('nvCards.fmt', e.target.value); estimate() };
     $('#nvcq').onchange = e => { st.q = e.target.value; lsSet('nvCards.q', st.q); estimate() };
+    $('#nvck').oninput = e => { lsSet('nvCards.opppKey', e.target.value.trim() || null); _opppOk = ''; estimate() };
     $('#nvcfind').oninput = e => { st.find = e.target.value; draw() };
     $('#nvcall').onclick = () => { shown().forEach(s => st.picked.add(s.code)); draw() }; $('#nvcnone').onclick = () => { st.picked.clear(); draw() };
     $('#nvcpick').onclick = async () => { try{ await pickFolder(); fo() }catch(e){ if(e && e.code !== 'cancel') $('#nvcst').innerHTML = `<span class="bad">${esc(e.message || e)}</span>` } };
@@ -276,12 +287,12 @@
       const warns = [];
       try{
         const T = await download(st.game, sets, st.q, p => {
-          if(p.kind === 'warn'){ warns.push(p.text); return }
+          if(p.kind === 'warn'){ warns.push(redact(p.text)); return }
           const pct = p.kind === 'files' && p.total ? p.done / p.total : 0; $('#nvcbar').style.width = Math.round(((p.setN - 1) + pct) / p.setOf * 100) + '%';
           $('#nvcst').innerHTML = `${esc(p.set.name)} (${p.setN}/${p.setOf})${p.kind === 'files' ? ` · ${p.done} / ${p.total}` : ' · reading the card list ...'}<br>${p.got.toLocaleString()} saved · ${p.skipped.toLocaleString()} already there${p.missed ? ` · ${p.missed} without a picture` : ''} · ${fmtMB(p.bytes)}` });
         $('#nvcbar').style.width = T.stopped || T.refused ? $('#nvcbar').style.width : '100%';
         $('#nvcst').innerHTML = `<span class="${T.refused ? 'bad' : 'ok'}">${T.refused ? 'The picture site keeps refusing - stopped. Start again later: it continues where it was.' : T.stopped ? 'Stopped - start again to continue where it was.' : 'Done.'}</span><br>${T.got.toLocaleString()} saved · ${T.skipped.toLocaleString()} already there${T.missed ? ` · ${T.missed} without a picture` : ''} · ${fmtMB(T.bytes)}${warns.length ? '<br><span class="bad">' + warns.map(esc).join('<br>') + '</span>' : ''}`;
-      }catch(e){ const msg = e && e.code === 'permission' ? 'The app may no longer write in this folder - choose it again.' : (e.message || String(e)); $('#nvcst').innerHTML = `<span class="bad">${esc(msg)}</span>`; L('download failed', {err:msg}) }
+      }catch(e){ const msg = e && e.code === 'permission' ? 'The app may no longer write in this folder - choose it again.' : (e.message || String(e)); $('#nvcst').innerHTML = `<span class="bad">${esc(redact(msg))}</span>`; L('download failed', {err:msg}) }
       $('#nvcstop').disabled = true; $('#nvcpick').disabled = $('#nvcg').disabled = $('#nvcq').disabled = $('#nvcfmt').disabled = false; estimate();
     };
   }
@@ -347,7 +358,7 @@
           if(mode === 'check'){ sets = await newSets(g, sets); if(!sets.length) continue }
           const q = src.qualities ? (cfg.big ? src.qualities[src.qualities.length - 1] : src.defQ) : undefined;
           const r = await download(g, sets, q, p => {
-            if(p.kind === 'warn'){ warns.push(`${src.label}: ${p.text}`); return }
+            if(p.kind === 'warn'){ warns.push(`${src.label}: ${redact(p.text)}`); return }
             const pct = p.kind === 'files' && p.total ? p.done / p.total : 0, inGame = ((p.setN - 1) + pct) / p.setOf; $('#nvcbar').style.width = Math.round(((gi - 1) + inGame) / list.length * 100) + '%';
             $('#nvcst').innerHTML = `Game ${gi} of ${list.length}: ${esc(src.label)}<br>${esc(p.set.name)} (${p.setN}/${p.setOf})${p.kind === 'files' ? ` · ${p.done} / ${p.total}` : ' · reading the card list ...'}<br>${(tot.got + p.got).toLocaleString()} saved · ${(tot.skipped + p.skipped).toLocaleString()} already there · ${fmtMB(tot.bytes + p.bytes)}` });
           tot.got += r.got; tot.skipped += r.skipped; tot.missed += r.missed; tot.bytes += r.bytes;
@@ -356,7 +367,7 @@
         const stopped = ALL.stop;
         $('#nvcst').innerHTML = `<span class="${refused ? 'bad' : 'ok'}">${refused ? 'A picture site keeps refusing - stopped. Start again later: it continues where it was.' : stopped ? 'Stopped - start again to continue where it was.' : (mode === 'check' ? 'Check finished.' : 'All ticked games are done.')}</span><br>${tot.got.toLocaleString()} saved · ${tot.skipped.toLocaleString()} already there${tot.missed ? ` · ${tot.missed} without a picture` : ''} · ${fmtMB(tot.bytes)}${warns.length ? '<br><span class="bad">' + warns.slice(0, 12).map(esc).join('<br>') + (warns.length > 12 ? `<br>... and ${warns.length - 12} more` : '') + '</span>' : ''}`;
         if(!stopped && !refused) $('#nvcbar').style.width = '100%';
-      }catch(e){ const msg = e && e.code === 'permission' ? 'The app may no longer write in this folder - choose it again.' : (e.message || String(e)); $('#nvcst').innerHTML = `<span class="bad">${esc(msg)}</span>`; L('many failed', {err:msg}) }
+      }catch(e){ const msg = e && e.code === 'permission' ? 'The app may no longer write in this folder - choose it again.' : (e.message || String(e)); $('#nvcst').innerHTML = `<span class="bad">${esc(redact(msg))}</span>`; L('many failed', {err:msg}) }
       ALL.on = false; dis(false); $('#nvcstop').disabled = true; el.querySelectorAll('#nvcl input').forEach(c => c.disabled = false); est();
     };
   }

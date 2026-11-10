@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 170,
+   "date": "2026-11-10",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "proxies",
+    "hub"
+   ],
+   "title": "One Piece: full-resolution cards with your OPPP key",
+   "items": [
+    "Card pictures › One Piece (OPPP) has a new field for your OPPP supporter key. With it you get the full-resolution cards (1800 x 2516 pixels) and the alternate arts (in an Alternate art folder). Without a key it works like before (417 x 582).",
+    "The key stays on your device only: it is not in backups, and it is hidden from the debug log and error messages. The app checks it with one small request before downloading and tells you if OPPP refuses it.",
+    "Full-size cards are about 3-4 MB each, so tick WebP to save space. Not tried on a real device yet."
+   ]
+  },
+  {
    "id": 169,
    "date": "2026-11-09",
    "where": [
