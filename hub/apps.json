@@ -34,7 +34,7 @@
     },
     {
      "path": "hub/nvsetup.js",
-     "size": 34824
+     "size": 35333
     },
     {
      "path": "hub/nvtheme.js",
@@ -58,15 +58,15 @@
     },
     {
      "path": "hub/nvcards.js",
-     "size": 45806
+     "size": 47876
     }
    ],
    "provides": [],
    "uses": [],
-   "size": 289659,
-   "hash": "32db4e54b40f",
-   "version": "2026.11.09.1526",
-   "updated": "2026-11-09"
+   "size": 292238,
+   "hash": "c34607ad3b76",
+   "version": "2026.11.10.0810",
+   "updated": "2026-11-10"
   },
   {
    "id": "scanner",
