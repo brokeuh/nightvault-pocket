@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 174,
+   "date": "2026-11-11",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: Card templates page",
+   "items": [
+    "New Tools > Card templates page: open a layered card PSD (for example the merged One Piece Character template), choose each layer version with dropdowns, see the card, and save a PNG or a PSD with exactly those layers switched on.",
+    "Text on the card stays as in the file for now; edit it in Photoshop or GIMP after saving. Needs 8-bit RGB PSD files. Update the PC app from Settings > Updates."
+   ]
+  },
+  {
    "id": 173,
    "date": "2026-11-10",
    "where": [

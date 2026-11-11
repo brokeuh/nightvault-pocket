@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261109-n5";
+const UI_BUILD = "20261111-n6";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -602,7 +602,7 @@ async function loadLib(){S.lib = await api('/api/library?from_one='+(S.fromOne?1
 /* sidebar: groups you can fold and drag; collections can be dragged into another group */
 const SIDE_FIXED = {
   Overview: v => [['all', '#/library', 'layout-grid', 'Everything', S.lib.length || ''], ['upcoming', '#/upcoming', 'calendar', 'Upcoming', ''], ['wishlist', '#/wishlist', 'heart', 'Wishlist', S.state.wish || '']],
-  Tools: v => [['scan', '#/scan', 'folder-search', 'Scan folders', ''], ['cardscan', '#/cardscan', 'camera', 'Scan cards', ''], ['carddl', '#/carddl', 'download', 'Download cards', ''], ['proxy', '#/proxy', 'printer', 'Print proxies', ''], ['tidy', '#/tidy', 'wand', 'Tidy up', ''], ['settings', '#/settings', 'settings', 'Settings', '']]
+  Tools: v => [['scan', '#/scan', 'folder-search', 'Scan folders', ''], ['cardscan', '#/cardscan', 'camera', 'Scan cards', ''], ['carddl', '#/carddl', 'download', 'Download cards', ''], ['proxy', '#/proxy', 'printer', 'Print proxies', ''], ['template', '#/template', 'stack-2', 'Card templates', ''], ['tidy', '#/tidy', 'wand', 'Tidy up', ''], ['settings', '#/settings', 'settings', 'Settings', '']]
 };
 function sideGroupOrder(){
   const ec = enabledColls(), saved = ((S.state.layout || {}).groups || []);
@@ -1677,6 +1677,107 @@ async function startOnline(scope){
 async function startCovers(scope){
   try{ const r = await api('/api/covers/fetch', scope || {}); if(!r.started) toast('Another task is running',true); else startPolling() }
   catch(e){ toast(e.message, true) }
+}
+
+/* ---------------------------------------------------------------- card templates (layered PSD) */
+const TP = {list:null, name:'', st:null, sel:{}, imgs:{}, token:0, busy:false};
+const tpURL = i => '/api/template/layer?name=' + enc(TP.name) + '&i=' + i + '&t=' + enc(TOKEN);
+function tpGroups(){ return TP.st ? TP.st.items.slice().reverse() : [] }      // top of the card first
+function tpDefaults(){
+  TP.sel = {};
+  (TP.st ? TP.st.items : []).forEach((it, n) => {
+    if(it.kind === 'group'){ const k = it.kids.findIndex(x => x.visible); TP.sel['g' + n] = k }      // -1 = off
+    else TP.sel['l' + n] = !!it.visible;
+  });
+}
+function tpVisible(){        // layer indexes that are on, bottom to top
+  const out = [];
+  (TP.st ? TP.st.items : []).forEach((it, n) => {
+    if(it.kind === 'group'){ const k = TP.sel['g' + n]; if(k >= 0 && it.kids[k]) out.push(it.kids[k]) }
+    else if(TP.sel['l' + n]) out.push(it);
+  });
+  return out;
+}
+function tpImg(i){
+  if(!TP.imgs[i]) TP.imgs[i] = new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('layer ' + i)); im.src = tpURL(i) });
+  return TP.imgs[i];
+}
+async function tpDraw(){
+  const my = ++TP.token, cv = $('#tpcv'); if(!cv || !TP.st) return;
+  const [W, H] = TP.st.size; cv.width = W; cv.height = H;
+  const vis = tpVisible().filter(l => !l.empty);
+  $('#tpbusy').textContent = 'Loading layers ...';
+  let ims;
+  try{ ims = await Promise.all(vis.map(l => tpImg(l.i))) }catch(e){ $('#tpbusy').textContent = 'Could not load a layer: ' + e.message; return }
+  if(my !== TP.token) return;
+  const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H);
+  const OPS = {'mul ':'multiply', 'scrn':'screen', 'over':'overlay', 'dark':'darken', 'lite':'lighten', 'diff':'difference', 'sLit':'soft-light', 'hLit':'hard-light', 'div ':'color-dodge', 'idiv':'color-burn', 'lddg':'lighter'};
+  vis.forEach((l, k) => { ctx.globalAlpha = (l.op == null ? 255 : l.op) / 255; ctx.globalCompositeOperation = OPS[l.blend] || 'source-over'; ctx.drawImage(ims[k], l.rect[0], l.rect[1]) });
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  $('#tpbusy').textContent = '';
+}
+async function tpOpen(name){
+  TP.name = name; TP.st = null; TP.imgs = {}; viewTemplate();
+  try{ TP.st = await api('/api/template/open?name=' + enc(name)); tpDefaults() }catch(e){ toast(e.message, true); TP.name = '' }
+  viewTemplate();
+}
+async function tpUpload(file){
+  if(!file) return;
+  toast('Opening ' + file.name + ' ...');
+  try{
+    const r = await fetch('/api/template/upload?name=' + enc(file.name), {method:'POST', headers:{'X-Vault-Token':TOKEN, 'Content-Type':'application/octet-stream'}, body:file});
+    const j = await r.json(); if(!r.ok) throw new Error(j.error || 'Could not open that file');
+    TP.list = null; await tpOpen(j.name);
+  }catch(e){ toast(e.message, true) }
+}
+async function viewTemplate(){
+  if(TP.list === null){
+    $('#main').innerHTML = '<div class="empty">Loading ...</div>';
+    try{ TP.list = (await api('/api/template/list')).templates }catch(e){ $('#main').innerHTML = `<div class="head"><h1>Card templates</h1></div><div class="panel">${esc(e.message)}</div>`; TP.list = null; return }
+    if(!TP.name && TP.list.length) { TP.name = TP.list[0].name; try{ TP.st = await api('/api/template/open?name=' + enc(TP.name)); tpDefaults() }catch(e){ toast(e.message, true) } }
+  }
+  const have = TP.list.length > 0;
+  let h = `<div class="head"><h1>Card templates</h1><span class="sub">Open a layered PSD, choose its layers with dropdowns, save a PNG or a PSD. Your file stays on this PC.</span></div>`;
+  h += `<div class="panel"><div class="bar">
+      ${have ? `<select id="tpsel">${TP.list.map(t => `<option value="${esc(t.name)}" ${t.name === TP.name ? 'selected' : ''}>${esc(t.name)} (${fmtSize(t.size)})</option>`).join('')}</select>` : ''}
+      <button class="btn ${have ? '' : 'primary'}" id="tpadd"><i class="ti ti-upload"></i>${have ? 'Open another PSD' : 'Open a PSD template'}</button>
+      ${have ? '<button class="btn sm ghost danger" id="tpdel">Remove this template</button>' : ''}
+      <input type="file" id="tpfile" accept=".psd" hidden>
+    </div>${have ? '' : '<p class="hint">Pick the merged template PSD (for example OnePiece_Character_template.psd). It is copied into Nightvault\'s own folder; the original is not touched. Only 8-bit RGB PSD files work.</p>'}</div>`;
+  if(TP.name && !TP.st){ $('#main').innerHTML = h + '<div class="panel"><i class="ti ti-loader-2"></i> Reading the layers ...</div>'; bindTp(); return }
+  if(TP.st){
+    h += `<div class="cols2" style="grid-template-columns:minmax(300px,520px) 1fr;align-items:start">
+      <div class="panel"><div id="tpbusy" class="muted" style="min-height:20px"></div>
+        <canvas id="tpcv" style="width:100%;height:auto;background:#444;border-radius:8px"></canvas></div>
+      <div class="panel"><h3>Layers</h3><p class="hint">Each dropdown is one part of the card. "- off -" hides it. The text on the card stays as it is in the file - edit that in Photoshop or GIMP after saving the PSD.</p>
+      <div id="tpctl" style="display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:8px 12px;align-items:center">${tpGroups().map(it => {
+        const n = TP.st.items.indexOf(it);
+        if(it.kind === 'group') return `<label>${esc(it.name)}</label><select data-g="${n}"><option value="-1" ${TP.sel['g' + n] < 0 ? 'selected' : ''}>- off -</option>${it.kids.slice().reverse().map(k => { const ki = it.kids.indexOf(k); return `<option value="${ki}" ${TP.sel['g' + n] === ki ? 'selected' : ''}>${esc(k.name)}</option>` }).join('')}</select>`;
+        return `<label>${esc(it.name)}</label><label><input type="checkbox" data-l="${n}" ${TP.sel['l' + n] ? 'checked' : ''}> on</label>`;
+      }).join('')}</div>
+      <div class="bar" style="margin-top:14px"><button class="btn primary" id="tppng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="tppsd"><i class="ti ti-file-download"></i>Save PSD with these layers</button><button class="btn sm ghost" id="tpreset">Back to the file's own layers</button></div>
+      <div id="tpmsg" class="hint"></div></div></div>`;
+  }
+  $('#main').innerHTML = h;
+  bindTp();
+  if(TP.st) tpDraw();
+}
+function bindTp(){
+  const c = id => $('#' + id);
+  if(c('tpadd')) c('tpadd').onclick = () => c('tpfile').click();
+  if(c('tpfile')) c('tpfile').onchange = e => tpUpload(e.target.files[0]);
+  if(c('tpsel')) c('tpsel').onchange = e => tpOpen(e.target.value);
+  if(c('tpdel')) c('tpdel').onclick = async () => { if(!confirm('Remove this template from Nightvault? Your original PSD is not touched.')) return;
+    try{ await api('/api/template/delete', {name:TP.name}); TP.list = null; TP.name = ''; TP.st = null; viewTemplate() }catch(e){ toast(e.message, true) } };
+  $$('#tpctl select').forEach(sel => sel.onchange = () => { TP.sel['g' + sel.dataset.g] = +sel.value; tpDraw() });
+  $$('#tpctl input[type=checkbox]').forEach(cb => cb.onchange = () => { TP.sel['l' + cb.dataset.l] = cb.checked; tpDraw() });
+  if(c('tpreset')) c('tpreset').onclick = () => { tpDefaults(); viewTemplate() };
+  if(c('tppng')) c('tppng').onclick = () => { const cv = c('tpcv'); cv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = TP.name.replace(/\.psd$/i, '') + '.png'; document.body.appendChild(a); a.click(); a.remove() }, 'image/png') };
+  if(c('tppsd')) c('tppsd').onclick = async () => {
+    try{ const r = await api('/api/template/save', {name:TP.name, visible:tpVisible().map(l => l.i)});
+      const a = document.createElement('a'); a.href = '/api/template/out?f=' + enc(r.file) + '&t=' + enc(TOKEN); a.download = r.file; document.body.appendChild(a); a.click(); a.remove();
+      c('tpmsg').textContent = 'Saved ' + r.file + ' (also kept in ' + r.folder + ')';
+    }catch(e){ toast(e.message, true) } };
 }
 
 /* ---------------------------------------------------------------- tidy up */
@@ -4088,7 +4189,7 @@ function render(){
   if(view === 'book'){ leaveReader(); leavePlayer(); renderSide(); viewBook(arg); return }
   leaveReader(); leavePlayer(); leaveBook();
   renderSide();
-  ({library:viewLibrary, item:viewItem, upcoming:viewUpcoming, scan:viewScan, tidy:viewTidy, settings:viewSettings, cards:viewCards, cardscan:viewCardScan, wishlist:viewWishlist, cardgame:viewCardGame, carddl:viewCardDownloads, addgame:viewAddGame, line:viewLine, cardset:viewCardSet, cardview:viewCardView, proxy:viewProxy, decks:viewDecks}[view] || viewLibrary)(arg);
+  ({library:viewLibrary, item:viewItem, upcoming:viewUpcoming, scan:viewScan, tidy:viewTidy, template:viewTemplate, settings:viewSettings, cards:viewCards, cardscan:viewCardScan, wishlist:viewWishlist, cardgame:viewCardGame, carddl:viewCardDownloads, addgame:viewAddGame, line:viewLine, cardset:viewCardSet, cardview:viewCardView, proxy:viewProxy, decks:viewDecks}[view] || viewLibrary)(arg);
   $('#main').scrollTop = 0;
 }
 window.addEventListener('hashchange', render);

@@ -170,6 +170,10 @@ try:
 except Exception:
     tdata = None
 try:
+    import vault_template as vtpl          # Card templates: pick the layers of a layered PSD with dropdowns, preview, save PNG/PSD
+except Exception:
+    vtpl = None
+try:
     import vault_proxyshop as pxs           # Proxyshop offline: card data for Photoshop templates without internet
 except Exception:
     pxs = None
@@ -178,11 +182,12 @@ if os.environ.get("VAULT_DB"):
     mc.DB_PATH = Path(os.environ["VAULT_DB"])
 COVER_DIR = mc.DB_PATH.parent / "vault_covers"
 PHOTO_DIR = mc.DB_PATH.parent / "vault_photos"
+TEMPLATE_DIR = mc.DB_PATH.parent / "vault_templates"            # layered PSD templates the owner opened (stay on this PC)
 TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault downloads for itself (ffmpeg)
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261109-n5"   # the page and the program must carry the same build id
+BUILD = "20261111-n6"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -5031,6 +5036,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.book_get(conn, path, q)
             if path.startswith("/api/music/"):
                 return self.music_get(conn, path, q)
+            if path.startswith("/api/template/"):
+                return self.template_get(path, q)
             if path.startswith("/api/cards/") or path == "/cardimg":
                 return self.cards_get(conn, path, q)
             if path == "/api/pics/pending":
@@ -5201,6 +5208,8 @@ class Handler(BaseHTTPRequestHandler):
             res = identify_card(conn, data, sets or None, prefer)
             res["ms"] = int((time.time() - t0) * 1000)
             return self._send(200, res)
+        if path == "/api/template/upload":
+            return self.template_upload(q)
         data = self._json()
         h = getattr(self, "post_" + path.strip("/").replace("api/", "", 1).replace("/", "_"), None)
         if not h:
@@ -6041,6 +6050,80 @@ class Handler(BaseHTTPRequestHandler):
                 raise KeyError("No such subtitle")
             return self._send(200, vtt, "text/vtt; charset=utf-8")
         return self._error(404, "Not found")
+
+    # ----- card templates (layered PSD): vault_template.py
+    def _tpl_path(self, name):
+        if not vtpl:
+            raise ValueError("vault_template.py is missing next to vault.py")
+        f = TEMPLATE_DIR / vtpl.safe_name(name)
+        if not f.exists():
+            raise KeyError("That template is not here any more")
+        return f
+
+    def template_get(self, path, q):
+        if not vtpl:
+            return self._error(404, "vault_template.py is missing next to vault.py - update Nightvault")
+        if path == "/api/template/list":
+            TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
+            return self._send(200, {"templates": [dict(name=f.name, size=f.stat().st_size) for f in sorted(TEMPLATE_DIR.glob("*.psd"))]})
+        if path == "/api/template/open":
+            return self._send(200, vtpl.structure(str(self._tpl_path(q.get("name", "")))))
+        if q.get("t") != TOKEN:
+            return self._error(403, "Missing token - reload the page.")
+        if path == "/api/template/layer":
+            f = self._tpl_path(q.get("name", ""))
+            i = int(q.get("i", "0"))
+            cdir = TEMPLATE_DIR / "cache" / f"{f.stem}_{int(f.stat().st_mtime)}_{f.stat().st_size}"
+            cf = cdir / f"{i}.png"
+            if not cf.exists():
+                png, left, top = vtpl.layer_png(str(f), i)
+                cdir.mkdir(parents=True, exist_ok=True)
+                cf.write_bytes(png)
+            return self._send(200, cf.read_bytes(), "image/png", {"Cache-Control": "private, max-age=86400"})
+        if path == "/api/template/out":
+            f = TEMPLATE_DIR / "out" / vtpl.safe_name(q.get("f", ""))
+            if not f.exists():
+                return self._error(404, "That file is not here")
+            return self._send(200, f.read_bytes(), "application/octet-stream",
+                              {"Content-Disposition": 'attachment; filename="%s"' % f.name})
+        return self._error(404, "Not found")
+
+    def template_upload(self, q):
+        if not vtpl:
+            return self._error(404, "vault_template.py is missing next to vault.py - update Nightvault")
+        n = int(self.headers.get("Content-Length") or 0)
+        if n < 100:
+            return self._error(400, "That file is empty")
+        name = vtpl.safe_name(q.get("name", "template.psd"))
+        TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
+        tmp = TEMPLATE_DIR / (name + ".part")
+        got = 0
+        with open(tmp, "wb") as f:
+            while got < n:
+                chunk = self.rfile.read(min(1 << 20, n - got))
+                if not chunk:
+                    break
+                f.write(chunk)
+                got += len(chunk)
+        try:
+            vtpl.scan(str(tmp))                     # refuses files that are not 8-bit RGB PSDs
+        except Exception as e:
+            tmp.unlink(missing_ok=True)
+            return self._error(400, str(e))
+        os.replace(tmp, TEMPLATE_DIR / name)
+        return self._send(200, {"name": name})
+
+    def post_template_save(self, conn, d):
+        f = self._tpl_path(d.get("name", ""))
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        out = TEMPLATE_DIR / "out" / f"{f.stem}_custom_{stamp}.psd"
+        vtpl.save_psd(str(f), str(out), d.get("visible") or [])
+        return self._send(200, {"file": out.name, "folder": str(out.parent)})
+
+    def post_template_delete(self, conn, d):
+        f = self._tpl_path(d.get("name", ""))
+        f.unlink()
+        return self._send(200, {"ok": True})
 
     def serve_file(self, path, ctype):
         """Send a file, answering HTTP Range requests so the video can be skipped through."""
