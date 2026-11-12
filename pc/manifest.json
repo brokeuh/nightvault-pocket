@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 13:37",
+ "version": "2026-11-12 13:40",
  "notes": [
-  "Card templates: Don card support"
+  "Easier updating: side-menu button, backup addresses, update from zip"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "d172c6ebe06bf4743161596dace2b153ea574984b0d5c68817fdd30a39d30bff"
+   "sha256": "83888e17d1b3370b3eeb29663ed76f35a20d653c7177c5b9c54dee008451946c"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "e62f0ed4efba3af7fb97a971319979dcf5d6173e66c5b0c9304e4401c0f79b0f"
+   "sha256": "dd3613634f322d9ddc1a41a64edc2cbe27443451dcc1ccc8fd0b1bf97c8cfa1b"
   },
   {
    "name": "fonts/OFL.txt",

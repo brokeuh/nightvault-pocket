@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 180,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: easier updating",
+   "items": [
+    "New \"Update Nightvault\" button at the bottom of the side menu.",
+    "The update check now tries three download addresses (GitHub, GitHub Pages, jsDelivr) and shows the reason when none answers.",
+    "New \"Update from a zip file\": pick Nightvault-PC-latest.zip and the program updates itself, for PCs that cannot reach GitHub."
+   ]
+  },
+  {
    "id": 179,
    "date": "2026-11-12",
    "where": [

@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261112-n9";
+const UI_BUILD = "20261112-n10";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -650,7 +650,9 @@ function renderSide(){
   }
   if(S.state.setup && S.state.setup.running) h += `<div class="demonote"><i class="ti ti-loader-2"></i> Setting up Nightvault ...<div class="sbar"><i style="width:${S.state.setup.pct}%"></i></div><span style="font-size:11.5px">${esc(S.state.setup.text)}</span></div>`;
   if(S.state.demo) h += '<div class="demonote">Demo data is loaded · <a href="#/settings">Remove</a></div>';
+  h += `<div class="grp" style="margin-top:10px"><a class="nav" href="#" id="sideupd" title="Look for a newer Nightvault, or update from a zip file"><i class="ti ti-cloud-download"></i>Update Nightvault<span class="n">${esc(((S.state.build || '').split('-')[1]) || '')}</span></a></div>`;
   $('#side').innerHTML = h;
+  if($('#sideupd')) $('#sideupd').onclick = e => { e.preventDefault(); updMenu() };
   wireSide();
   if($('#newcoll')) $('#newcoll').onclick = e => { e.preventDefault(); newCollectableModal() };
 }
@@ -4358,10 +4360,25 @@ function render(){
 window.addEventListener('hashchange', render);
 /* updates: look at the published files once a day (and on demand in Settings); one click replaces them and restarts */
 function updMsg(t, d){ modal(`<h3>${esc(t)}</h3><p class="muted" style="word-break:break-word">${esc(d)}</p><div style="text-align:right"><button class="btn primary" onclick="closeModal()">OK</button></div>`) }
+function updMenu(){
+  modal(`<h3>Update Nightvault</h3><p class="muted" style="font-size:13px">Now running build <b>${esc(S.state.build || '')}</b>. Your data is never touched; the old program files are kept in the update_backup folder.</p>
+    <div class="bar" style="margin:10px 0"><button class="btn primary" id="umcheck"><i class="ti ti-cloud-download"></i>Check online</button></div>
+    <p class="muted" style="font-size:13px;margin-top:14px">No internet route to GitHub (for example on a work network)? Download <b>Nightvault-PC-latest.zip</b> and pick it here:</p>
+    <div class="bar"><button class="btn" id="umzip"><i class="ti ti-file-zip"></i>Update from a zip file</button><input type="file" id="umfile" accept=".zip" hidden></div><div id="ummsg" class="hint" style="margin-top:8px"></div>
+    <div style="text-align:right;margin-top:10px"><button class="btn ghost" onclick="closeModal()">Close</button></div>`);
+  $('#umcheck').onclick = () => { closeModal(); checkUpdate(true) };
+  $('#umzip').onclick = () => $('#umfile').click();
+  $('#umfile').onchange = async e => { const f = e.target.files[0]; if(!f) return; $('#ummsg').textContent = 'Reading ' + f.name + ' ...';
+    try{ const r = await fetch('/api/update/zip', {method:'POST', headers:{'X-Vault-Token':TOKEN, 'Content-Type':'application/octet-stream'}, body:f}); const j = await r.json(); if(!r.ok) throw new Error(j.error || 'Could not use that zip');
+      if(!j.updated.length){ $('#ummsg').textContent = 'Already up to date - nothing in the zip is newer.'; return }
+      $('#ummsg').textContent = 'Updated ' + j.updated.length + ' files. Restarting ...'; await api('/api/update/restart', {}).catch(() => {});
+      const back = async () => { try{ await fetch('/api/state'); location.reload() }catch(e){ setTimeout(back, 1000) } }; setTimeout(back, 2500)
+    }catch(err){ $('#ummsg').textContent = err.message } };
+}
 async function checkUpdate(manual){
   try{ if(!manual){ const last = +localStorage.getItem('nvUpdChecked') || 0; if(Date.now() - last < 864e5) return } }catch(e){}
-  let r; try{ r = await api('/api/update/check') }catch(e){ if(manual) updMsg('Could not check for updates', e.message); return }
-  if(r.error){ if(manual) updMsg('Could not reach the update list', r.error + ' (this program is build ' + (r.build||'?') + ')'); return }
+  let r; try{ r = await api('/api/update/check') }catch(e){ if(manual){ updMsg('Could not check for updates', e.message); setTimeout(() => { const b = document.querySelector('.mbox .btn.primary'); if(b) b.insertAdjacentHTML('beforebegin', '<button class="btn" onclick="closeModal();updMenu()" style="margin-right:8px">Update from a zip file</button>') }, 0) } return }
+  if(r.error){ if(manual){ updMsg('Could not reach the update list', r.error + ' (this program is build ' + (r.build||'?') + ')'); setTimeout(() => { const b = document.querySelector('.mbox .btn.primary'); if(b) b.insertAdjacentHTML('beforebegin', '<button class="btn" onclick="closeModal();updMenu()" style="margin-right:8px">Update from a zip file</button>') }, 0) } return }
   try{ localStorage.setItem('nvUpdChecked', Date.now()) }catch(e){}
   if(!r.available){ if(manual) updMsg('Nightvault is up to date', 'Build ' + (r.build||'') + ', published version ' + (r.version||'')); return }
   if($('#updbar')) $('#updbar').remove();

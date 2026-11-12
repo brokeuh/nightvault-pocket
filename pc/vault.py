@@ -191,7 +191,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261112-n9"   # the page and the program must carry the same build id
+BUILD = "20261112-n10"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -3729,6 +3729,7 @@ def _fetch(url, timeout=25):
 # Only the files named in the manifest are touched, never your data and never the files listed in UPDATE_SKIP. Old files are saved first.
 # --------------------------------------------------------------------------- #
 UPDATE_BASE = os.environ.get("VAULT_UPDATE_BASE") or "https://raw.githubusercontent.com/brokeuh/nightvault-pocket/main/pc/"
+UPDATE_BASES = [UPDATE_BASE] if os.environ.get("VAULT_UPDATE_BASE") else [UPDATE_BASE, "https://brokeuh.github.io/nightvault-pocket/pc/", "https://cdn.jsdelivr.net/gh/brokeuh/nightvault-pocket@main/pc/"]
 UPDATE_SKIP = {"media_catalog.py", "media_online.py", "vault_cardsrc.py"}       # not published: never replaced
 
 
@@ -3750,9 +3751,20 @@ def _upd_name_ok(name):
     return True
 
 
+def _upd_manifest():
+    """Try each download address in turn -> (manifest, base). Some networks (work PCs) block one of them."""
+    errs = []
+    for base in UPDATE_BASES:
+        try:
+            return json.loads(_fetch(base + "manifest.json", 20)), base
+        except Exception as e:
+            errs.append(f"{base.split('/')[2]}: {type(e).__name__}: {e}")
+    raise ValueError("No download address answered - " + " | ".join(errs) + ". Use 'Update from a zip file' instead.")
+
+
 def update_check():
     """-> dict(available, files=[names that differ], version, notes). Raises on network problems."""
-    man = json.loads(_fetch(UPDATE_BASE + "manifest.json", 20))
+    man, base = _upd_manifest()
     changed = []
     for f in man.get("files") or []:
         name = str(f.get("name") or "")
@@ -3761,27 +3773,17 @@ def update_check():
         local = HERE / name
         if not local.exists() or _sha256(local) != f.get("sha256"):
             changed.append(name)
-    return dict(available=bool(changed), files=changed, version=man.get("version", ""), notes=man.get("notes", []), build=BUILD)
+    return dict(available=bool(changed), files=changed, version=man.get("version", ""), notes=man.get("notes", []), build=BUILD, source=base.split("/")[2])
 
 
-def update_apply():
-    """Download the changed files, check them, keep the old ones in update_backup/<time>/, then put the new ones in place."""
-    man = json.loads(_fetch(UPDATE_BASE + "manifest.json", 20))
-    want = {f["name"]: f["sha256"] for f in man.get("files") or [] if _upd_name_ok(f.get("name") or "")}
-    todo = {n: h for n, h in want.items() if not (HERE / n).exists() or _sha256(HERE / n) != h}
-    if not todo:
-        return dict(updated=[], backup="")
-    new = {}
-    for name, sha in todo.items():
-        data = _fetch(UPDATE_BASE + urllib.parse.quote(name), 120)
-        if hashlib.sha256(data).hexdigest() != sha:
-            raise ValueError(f"{name} did not download correctly - nothing was changed. Try again.")
+def _upd_install(new):
+    """new = {name: bytes}. Keeps the old files in update_backup/<time>/ then puts the new ones in place."""
+    for name, data in new.items():
         if name.endswith(".py"):
             try:
                 compile(data, name, "exec")
             except SyntaxError as e:
                 raise ValueError(f"{name} from the update is broken ({e.msg}) - nothing was changed.")
-        new[name] = data
     backup = HERE / "update_backup" / time.strftime("%Y%m%d-%H%M%S")
     backup.mkdir(parents=True, exist_ok=True)
     for name, data in new.items():
@@ -3794,6 +3796,61 @@ def update_apply():
         tmp.write_bytes(data)
         os.replace(tmp, target)
     return dict(updated=sorted(new), backup=str(backup))
+
+
+def update_apply():
+    """Download the changed files, check them, keep the old ones in update_backup/<time>/, then put the new ones in place."""
+    man, base = _upd_manifest()
+    want = {f["name"]: f["sha256"] for f in man.get("files") or [] if _upd_name_ok(f.get("name") or "")}
+    todo = {n: h for n, h in want.items() if not (HERE / n).exists() or _sha256(HERE / n) != h}
+    if not todo:
+        return dict(updated=[], backup="")
+    new = {}
+    for name, sha in todo.items():
+        err = ""
+        for b in [base] + [x for x in UPDATE_BASES if x != base]:       # the other addresses may be a little behind, so the checksum decides
+            try:
+                data = _fetch(b + urllib.parse.quote(name), 120)
+            except Exception as e:
+                err = f"{type(e).__name__}: {e}"; continue
+            if hashlib.sha256(data).hexdigest() == sha:
+                new[name] = data; break
+            err = "downloaded file did not match"
+        else:
+            raise ValueError(f"{name} did not download correctly ({err}) - nothing was changed. Try again, or use 'Update from a zip file'.")
+    return _upd_install(new)
+
+
+def update_zip(blob):
+    """Update from Nightvault-PC-latest.zip: the files inside (with the manifest checksums when it has one)."""
+    import zipfile, io
+    try:
+        z = zipfile.ZipFile(io.BytesIO(blob))
+    except zipfile.BadZipFile:
+        raise ValueError("That is not a zip file.")
+    infos = [i for i in z.infolist() if not i.is_dir()]
+    names = [i.filename.replace("\\", "/") for i in infos]
+    top = {n.split("/")[0] for n in names if "/" in n}
+    strip = len(top) == 1 and all("/" in n for n in names) and "fonts" not in top      # the zip has one folder around everything
+    members = {(n.split("/", 1)[1] if strip else n): i for n, i in zip(names, infos)}
+    man = {}
+    if "manifest.json" in members:
+        man = {f["name"]: f["sha256"] for f in json.loads(z.read(members["manifest.json"])).get("files") or []}
+    if "vault.py" not in members and not man:
+        raise ValueError("This zip does not look like Nightvault-PC-latest.zip.")
+    new = {}
+    for name, info in members.items():
+        if name == "manifest.json" or not _upd_name_ok(name) or not (name.endswith((".py", ".html", ".ttf", ".txt"))):
+            continue
+        data = z.read(info)
+        if man and name in man and hashlib.sha256(data).hexdigest() != man[name]:
+            raise ValueError(f"{name} in the zip is damaged - nothing was changed.")
+        if (HERE / name).exists() and _sha256(HERE / name) == hashlib.sha256(data).hexdigest():
+            continue
+        new[name] = data
+    if not new:
+        return dict(updated=[], backup="")
+    return _upd_install(new)
 
 
 def update_restart():
@@ -5225,6 +5282,14 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, res)
         if path == "/api/template/upload":
             return self.template_upload(q)
+        if path == "/api/update/zip":
+            n = int(self.headers.get("Content-Length") or 0)
+            if n < 100 or n > 60 << 20:
+                return self._error(400, "That file is empty or too big")
+            try:
+                return self._send(200, update_zip(self.rfile.read(n)))
+            except ValueError as e:
+                return self._error(400, str(e))
         data = self._json()
         h = getattr(self, "post_" + path.strip("/").replace("api/", "", 1).replace("/", "_"), None)
         if not h:
