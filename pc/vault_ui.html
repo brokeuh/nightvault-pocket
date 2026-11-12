@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261112-n21";
+const UI_BUILD = "20261112-n22";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1792,10 +1792,11 @@ function tpDefaults(){
     else TP.sel['l' + n] = !!it.visible;
   });
 }
+function tpSel(key){ return TP.prev && TP.prev.key === key ? TP.prev.v : TP.sel[key] }          // what is shown: the option under the mouse while a list is open, else the chosen one
 function tpVisible(){        // layer indexes that are on, bottom to top
   const out = [];
   (TP.st ? TP.st.items : []).forEach((it, n) => {
-    if(it.kind === 'group'){ const k = TP.sel['g' + n]; if(k >= 0 && it.kids[k]){ const vk = tpValueKid(it, k); out.push(Object.assign({grp:it.name}, vk || it.kids[k], vk ? {valued:true} : {})) } }
+    if(it.kind === 'group'){ const k = tpSel('g' + n); if(k >= 0 && it.kids[k]){ const vk = tpValueKid(it, k); out.push(Object.assign({grp:it.name}, vk || it.kids[k], vk ? {valued:true} : {})) } }
     else if(TP.sel['l' + n]) out.push(it);
   });
   return out;
@@ -1858,7 +1859,9 @@ async function tpUpload(file){
 }
 function tpCtlRow(it){
   const n = TP.st.items.indexOf(it);
-  if(it.kind === 'group') return `<label>${esc(it.name)}</label><select data-g="${n}"><option value="-1" ${TP.sel['g' + n] < 0 ? 'selected' : ''}>- off -</option>${it.kids.slice().reverse().filter(k => !/Input=/.test(k.name)).map(k => { const ki = it.kids.indexOf(k); return `<option value="${ki}" ${TP.sel['g' + n] === ki ? 'selected' : ''}>${esc(k.name)}</option>` }).join('')}</select>`;
+  if(it.kind === 'group'){ const cur = TP.sel['g' + n], items = [[-1, '- off -']].concat(it.kids.slice().reverse().filter(k => !/Input=/.test(k.name)).map(k => [it.kids.indexOf(k), k.name]));
+    const nm = v => (items.find(x => x[0] === v) || [0, '- off -'])[1];
+    return `<label>${esc(it.name)}</label><div class="tpdd" data-g="${n}"><button type="button" class="tpddb">${esc(nm(cur))}</button><div class="tpddl" hidden>${items.map(([v, t]) => `<div class="tpddi ${v === cur ? 'on' : ''}" data-v="${v}">${esc(t)}</div>`).join('')}</div></div>` }
   return `<label>${esc(it.name)}</label><label><input type="checkbox" data-l="${n}" ${TP.sel['l' + n] ? 'checked' : ''}> on</label>`;
 }
 // the editing options, grouped by the part of the card they change, from the top of the card down
@@ -1879,7 +1882,7 @@ function tpPanelHtml(){
   const G = 'display:grid;grid-template-columns:minmax(110px,auto) 1fr;gap:8px 12px;align-items:center;margin-top:8px';
   const T = (id, key, label, ph) => `<label>${label}</label><input type="text" id="tpt_${id}" value="${esc(TP.txt[key])}" ${ph ? 'placeholder="' + ph + '"' : ''}>`;
   const box = (key, title, fields) => { const r = (rows[key] || []).join(''); if(!r && !fields) return '';
-    return `<details open class="tpsec" style="margin-top:14px"><summary><b>${title}</b></summary><div class="tpctl" style="${G}">${fields || ''}${r}</div></details>` };
+    return `<details open class="tpsec" style="margin-top:14px"><summary><b>${title}</b></summary><style>.tpdd{position:relative}.tpddb{width:100%;text-align:left;padding:9px 12px;background:var(--panel2,#1a2030);color:inherit;border:1px solid var(--line,#2a3142);border-radius:8px;cursor:pointer;font:inherit}.tpddb:after{content:'\\25BE';float:right;opacity:.6}.tpddl{position:absolute;z-index:30;left:0;right:0;top:100%;max-height:340px;overflow:auto;background:var(--panel,#151a22);border:1px solid var(--accent,#7aa2f7);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.5)}.tpddi{padding:7px 12px;cursor:pointer}.tpddi:hover{background:var(--accent,#7aa2f7);color:#000}.tpddi.on{font-weight:700}</style><div class="tpctl" style="${G}">${fields || ''}${r}</div></details>` };
   let h = `<p class="hint">Top of the card first. Each part has its text (if any) and its look together. "- off -" hides a part. You can also click a text on the card and type there. Save PNG gives the finished card.</p>`;
   h += `<details open class="tpsec"><summary><b>Card data</b></summary><div style="${G}">
       <label>Use my text</label><label><input type="checkbox" id="tptxon" ${TP.txt.on ? 'checked' : ''}> draw my text instead of "EDIT HERE"</label>
@@ -1929,6 +1932,19 @@ async function viewTemplate(){
   $('#main').innerHTML = h;
   bindTp();
   if(TP.st) tpDraw();
+}
+function tpCloseDD(){ TP.prev = null; clearTimeout(TP.hov); $$('.tpddl').forEach(l => l.hidden = true) }
+function tpBindDropdowns(){
+  if(!window.__tpddDoc){ window.__tpddDoc = 1; document.addEventListener('mousedown', e => { if(!e.target.closest || !e.target.closest('.tpdd')){ const was = TP.prev; tpCloseDD(); if(was) tpDraw() } }) }
+  $$('.tpdd').forEach(dd => {
+    const key = 'g' + dd.dataset.g, btn = $('.tpddb', dd), list = $('.tpddl', dd);
+    btn.onclick = () => { const open = list.hidden; tpCloseDD(); if(open){ list.hidden = false; const on = $('.tpddi.on', list); if(on) on.scrollIntoView({block:'center'}) } else tpDraw() };
+    $$('.tpddi', list).forEach(item => {
+      item.onmouseenter = () => { clearTimeout(TP.hov); TP.hov = setTimeout(() => { TP.prev = {key, v:+item.dataset.v}; tpDraw() }, 80) };       // show what it would look like
+      item.onclick = () => { TP.sel[key] = +item.dataset.v; btn.textContent = item.textContent; $$('.tpddi', list).forEach(x => x.classList.toggle('on', x === item)); tpCloseDD(); tpDraw() };
+    });
+    list.onmouseleave = () => { clearTimeout(TP.hov); if(TP.prev){ TP.prev = null; tpDraw() } };
+  });
 }
 function tpHL(bb){
   const h = $('#tphl'), cv = $('#tpcv'); if(!h || !cv || !TP.st) return;
@@ -1982,7 +1998,7 @@ function bindTp(){
   const c = id => $('#' + id);
   if(c('tpcv')){ c('tpcv').style.cursor = 'text'; c('tpcv').title = 'Click a text on the card to type there'; c('tpcv').onclick = tpEditAt }
   [['tpt_name','name'],['tpt_cost','cost'],['tpt_life','life'],['tpt_power','power'],['tpt_type','type'],['tpt_num','num'],['tpt_ability','ability']].forEach(([id, k]) => { if(c(id)) tpHLbind(c(id), k) });
-  $$('.tpctl select[data-g]').forEach(el => tpHLbind(el, 'g' + el.dataset.g));
+  $$('.tpdd .tpddb').forEach(el => tpHLbind(el, 'g' + el.parentNode.dataset.g));
   $$('.tpctl input[data-l]').forEach(el => tpHLbind(el, 'l' + el.dataset.l));
   $$('#tpartbar button, #tpartbar input').forEach(el => tpHLbind(el, 'art'));
   if(c('tpadd')) c('tpadd').onclick = () => c('tpfile').click();
@@ -1990,7 +2006,7 @@ function bindTp(){
   if(c('tpsel')) c('tpsel').onchange = e => tpOpen(e.target.value);
   if(c('tpdel')) c('tpdel').onclick = async () => { if(!confirm('Remove this template from Nightvault? Your original PSD is not touched.')) return;
     try{ await api('/api/template/delete', {name:TP.name}); TP.list = null; TP.name = ''; TP.st = null; viewTemplate() }catch(e){ toast(e.message, true) } };
-  $$('.tpctl select[data-g]').forEach(sel => sel.onchange = () => { TP.sel['g' + sel.dataset.g] = +sel.value; tpDraw() });
+  tpBindDropdowns();
   $$('.tpctl input[data-l]').forEach(cb => cb.onchange = () => { TP.sel['l' + cb.dataset.l] = cb.checked; tpDraw() });
   const tx = (id, key, num) => { const el = c(id); if(el) el.oninput = () => { TP.txt[key] = el.type === 'checkbox' ? el.checked : (num ? +el.value : el.value); tpDraw() } };
   tx('tptxon', 'on'); tx('tpt_name', 'name'); tx('tpt_power', 'power'); tx('tpt_cost', 'cost'); tx('tpt_life', 'life'); tx('tpt_type', 'type'); tx('tpt_num', 'num'); tx('tpt_ability', 'ability'); tx('tpt_size', 'size', 1); tx('tpt_outline', 'outline'); tx('tpt_auto', 'auto');

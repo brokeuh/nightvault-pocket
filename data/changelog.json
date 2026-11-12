@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 190,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: preview a look by hovering it",
+   "items": [
+    "In Card templates the layer dropdowns now open our own list. Moving the mouse over an option shows it on the card right away; moving away restores the card; clicking picks it."
+   ]
+  },
+  {
    "id": 189,
    "date": "2026-11-12",
    "where": [
