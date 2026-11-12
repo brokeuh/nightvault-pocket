@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 13:19",
+ "version": "2026-11-12 13:37",
  "notes": [
-  "Card templates: card stays in place, sections, highlight"
+  "Card templates: Don card support"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "8936b851f963ce1f69639382d63b6837db672ac92a8704e5dd05cdfac3d3e7bd"
+   "sha256": "d172c6ebe06bf4743161596dace2b153ea574984b0d5c68817fdd30a39d30bff"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "a159bc6b6953e2813c55f757d3b337b179ef340684a111af137036525a25b54f"
+   "sha256": "e62f0ed4efba3af7fb97a971319979dcf5d6173e66c5b0c9304e4401c0f79b0f"
   },
   {
    "name": "fonts/OFL.txt",

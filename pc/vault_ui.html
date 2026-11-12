@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261112-n8";
+const UI_BUILD = "20261112-n9";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1752,6 +1752,7 @@ function tpDrawText(ctx){
   if(P['Card Info'] || has('Card Info')){ const b = P['Card Info'] || {l:769, t:1322, r:932, b:1343}, px = Math.min((b.b - b.t) / 0.72, 26);
     ctx.font = FR.replace('@', px + 'px'); ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#fff'; ctx.fillText(T.num, (P['Card Info'] ? b.r : 868) - 66, b.b - 1) }
   // ability text inside the box
+  if(!(P['Textbox'] || has('Textbox') || has('Ability Text'))){ ctx.restore(); return }      // e.g. Don cards have no ability box
   const TB = P['Textbox'] || {l:62, t:849, r:938, b:1151}, bx = TB.l + 13 + T.dx, by = TB.t + 10 + T.dy, bw = TB.r - TB.l - 26, bh = TB.b - TB.t - 20, toks = tpParse(T.ability || '');
   let px = T.size, lines;
   for(;;){ lines = tpLayout(ctx, toks, px, bw); if(!T.auto || lines.length * px * 1.3 <= bh || px <= 12) break; px -= 1 }

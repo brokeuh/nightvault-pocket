@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 179,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: card templates handle Don cards",
+   "items": [
+    "Card templates page no longer draws an ability text on templates that have no ability box (Don cards)."
+   ]
+  },
+  {
    "id": 178,
    "date": "2026-11-12",
    "where": [
