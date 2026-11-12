@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261112-n20";
+const UI_BUILD = "20261112-n21";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1856,6 +1856,52 @@ async function tpUpload(file){
     TP.list = null; await tpOpen(j.name);
   }catch(e){ toast(e.message, true) }
 }
+function tpCtlRow(it){
+  const n = TP.st.items.indexOf(it);
+  if(it.kind === 'group') return `<label>${esc(it.name)}</label><select data-g="${n}"><option value="-1" ${TP.sel['g' + n] < 0 ? 'selected' : ''}>- off -</option>${it.kids.slice().reverse().filter(k => !/Input=/.test(k.name)).map(k => { const ki = it.kids.indexOf(k); return `<option value="${ki}" ${TP.sel['g' + n] === ki ? 'selected' : ''}>${esc(k.name)}</option>` }).join('')}</select>`;
+  return `<label>${esc(it.name)}</label><label><input type="checkbox" data-l="${n}" ${TP.sel['l' + n] ? 'checked' : ''}> on</label>`;
+}
+// the editing options, grouped by the part of the card they change, from the top of the card down
+const TP_SECS = [
+  ['frame', 'Frame & background', /^(Background|Outer Frame|Inner Frame|Pattern|Colou?r Wheel|Hexagons|Front Art Overlay|Flagship Overlay|Serialized|Don Word|DON!! CARD Title)/i],
+  ['cost', 'Cost (top left)', /^Cost/i],
+  ['power', 'Power & life (top right)', /^(Power|Life|Counter)/i],
+  ['art', 'Art', /^$/],
+  ['ability', 'Ability text & trigger', /^(Ability|Textbox|Trigger|Your Turn)/i],
+  ['type', 'Type', /^(Type|Character$|Attribute)/i],
+  ['name', 'Name', /^Card Name/i],
+  ['info', 'Card number, rarity & marks', /^(Card Info|Rarity|Block|Alt Art Star|Winner|Extra)/i],
+  ['extra', 'Extras', /^(Watermark|Logo)/i]];
+function tpPanelHtml(){
+  const rows = {}, other = [];
+  tpGroups().forEach(it => { const sec = TP_SECS.find(x => x[2].test(it.name)); (sec ? (rows[sec[0]] = rows[sec[0]] || []) : other).push(tpCtlRow(it)) });
+  if(other.length) rows.frame = (rows.frame || []).concat(other);
+  const G = 'display:grid;grid-template-columns:minmax(110px,auto) 1fr;gap:8px 12px;align-items:center;margin-top:8px';
+  const T = (id, key, label, ph) => `<label>${label}</label><input type="text" id="tpt_${id}" value="${esc(TP.txt[key])}" ${ph ? 'placeholder="' + ph + '"' : ''}>`;
+  const box = (key, title, fields) => { const r = (rows[key] || []).join(''); if(!r && !fields) return '';
+    return `<details open class="tpsec" style="margin-top:14px"><summary><b>${title}</b></summary><div class="tpctl" style="${G}">${fields || ''}${r}</div></details>` };
+  let h = `<p class="hint">Top of the card first. Each part has its text (if any) and its look together. "- off -" hides a part. You can also click a text on the card and type there. Save PNG gives the finished card.</p>`;
+  h += `<details open class="tpsec"><summary><b>Card data</b></summary><div style="${G}">
+      <label>Use my text</label><label><input type="checkbox" id="tptxon" ${TP.txt.on ? 'checked' : ''}> draw my text instead of "EDIT HERE"</label>
+      <label>Card data</label><span><input type="text" id="tpc_q" placeholder="card number or name, e.g. OP18-004" style="width:60%"> <button class="btn sm" id="tpc_go">Load</button> <button class="btn sm ghost" id="tpc_upd">Update list</button><br><span id="tpc_st" class="hint"></span><select id="tpc_pick" style="display:none;width:100%;margin-top:4px"></select></span></div></details>`;
+  h += box('frame', 'Frame & background');
+  h += box('cost', 'Cost (top left)', T('cost', 'cost', 'Cost value', '0-10'));
+  h += box('power', 'Power & life (top right)', T('power', 'power', 'Power value') + T('life', 'life', 'Life value', 'Leaders only'));
+  h += `<details open class="tpsec" style="margin-top:14px"><summary><b>Art</b></summary>
+      <div class="bar" id="tpartbar" style="margin-top:8px"><button class="btn sm" id="tpartb"><i class="ti ti-photo-up"></i>Choose art</button><input type="file" id="tpartf" accept="image/*" hidden>
+        <label>Zoom <input type="range" id="tpa_zoom" min="0.5" max="3" step="0.01" value="${TP.art.zoom}"></label>
+        <label>Left/right <input type="range" id="tpa_x" min="-500" max="500" value="${TP.art.x}"></label>
+        <label>Up/down <input type="range" id="tpa_y" min="-700" max="700" value="${TP.art.y}"></label></div></details>`;
+  h += box('ability', 'Ability text & trigger', `<label>Ability</label><textarea id="tpt_ability" rows="5">${esc(TP.txt.ability)}</textarea>
+        <label>Outline</label><label><input type="checkbox" id="tpt_outline" ${TP.txt.outline ? 'checked' : ''}> white outline on the text (for see-through boxes)</label>
+        <label>Text size</label><span><input type="range" id="tpt_size" min="14" max="44" value="${TP.txt.size}"> <label><input type="checkbox" id="tpt_auto" ${TP.txt.auto ? 'checked' : ''}> auto-fit</label></span>
+        <span></span><span class="hint">Tags: [blue|Activate: Main] [pink|Once Per Turn] [orange|Rush] [black|DON!! x1]. Colours: blue pink orange black red green purple yellow grey.</span>`);
+  h += box('type', 'Type', T('type', 'type', 'Type words'));
+  h += box('name', 'Name', T('name', 'name', 'Name text'));
+  h += box('info', 'Card number, rarity & marks', T('num', 'num', 'Card number'));
+  h += box('extra', 'Extras');
+  return h;
+}
 async function viewTemplate(){
   if(TP.list === null){
     $('#main').innerHTML = '<div class="empty">Loading ...</div>';
@@ -1876,35 +1922,7 @@ async function viewTemplate(){
       <div class="panel" style="position:sticky;top:12px;align-self:start"><div id="tpbusy" class="muted" style="min-height:20px"></div>
         <div id="tpwrap" style="position:relative;width:fit-content;max-width:100%;margin:0 auto"><canvas id="tpcv" style="display:block;max-width:100%;max-height:calc(100vh - 110px);width:auto;height:auto;background:#444;border-radius:8px"></canvas>
         <div id="tphl" style="position:absolute;display:none;pointer-events:none;border:3px solid #ffd23f;background:rgba(255,210,63,.18);border-radius:6px;box-shadow:0 0 0 2px rgba(0,0,0,.45)"></div></div></div>
-      <div class="panel"><details open class="tpsec"><summary><b>Frame &amp; layers</b></summary><p class="hint">Each dropdown is one part of the card. "- off -" hides it. Type the card's text below, or just click a text on the card and type there - no Photoshop needed. Save PNG gives the finished card with your text.</p>
-      <div id="tpctl" style="display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:8px 12px;align-items:center">${tpGroups().map(it => {
-        const n = TP.st.items.indexOf(it);
-        if(it.kind === 'group') return `<label>${esc(it.name)}</label><select data-g="${n}"><option value="-1" ${TP.sel['g' + n] < 0 ? 'selected' : ''}>- off -</option>${it.kids.slice().reverse().filter(k => !/Input=/.test(k.name)).map(k => { const ki = it.kids.indexOf(k); return `<option value="${ki}" ${TP.sel['g' + n] === ki ? 'selected' : ''}>${esc(k.name)}</option>` }).join('')}</select>`;
-        return `<label>${esc(it.name)}</label><label><input type="checkbox" data-l="${n}" ${TP.sel['l' + n] ? 'checked' : ''}> on</label>`;
-      }).join('')}</div>
-      </details>
-      <details open class="tpsec" style="margin-top:14px"><summary><b>Text</b></summary>
-      <div style="display:grid;grid-template-columns:90px 1fr;gap:6px 10px;align-items:center;margin-top:8px">
-        <label>Use my text</label><label><input type="checkbox" id="tptxon" ${TP.txt.on ? 'checked' : ''}> draw the text below instead of "EDIT HERE"</label>
-        <label>Card data</label><span><input type="text" id="tpc_q" placeholder="card number or name, e.g. OP18-004" style="width:60%"> <button class="btn sm" id="tpc_go">Load</button> <button class="btn sm ghost" id="tpc_upd">Update list</button><br><span id="tpc_st" class="hint"></span><select id="tpc_pick" style="display:none;width:100%;margin-top:4px"></select></span>
-        <label>Name</label><input type="text" id="tpt_name" value="${esc(TP.txt.name)}">
-        <label>Life</label><input type="text" id="tpt_life" value="${esc(TP.txt.life)}" placeholder="Leaders only">
-        <label>Cost</label><input type="text" id="tpt_cost" value="${esc(TP.txt.cost)}" placeholder="0-10">
-        <label>Power</label><input type="text" id="tpt_power" value="${esc(TP.txt.power)}">
-        <label>Type</label><input type="text" id="tpt_type" value="${esc(TP.txt.type)}">
-        <label>Card number</label><input type="text" id="tpt_num" value="${esc(TP.txt.num)}">
-        <label>Ability</label><textarea id="tpt_ability" rows="5">${esc(TP.txt.ability)}</textarea>
-        <label>Outline</label><label><input type="checkbox" id="tpt_outline" ${TP.txt.outline ? 'checked' : ''}> white outline on the ability text (for see-through text boxes)</label>
-        <label>Text size</label><span><input type="range" id="tpt_size" min="14" max="44" value="${TP.txt.size}"> <label><input type="checkbox" id="tpt_auto" ${TP.txt.auto ? 'checked' : ''}> auto-fit</label></span>
-      </div>
-      <p class="hint">Tags: [blue|Activate: Main] [pink|Once Per Turn] [orange|Rush] [black|DON!! x1]. Colours: blue pink orange black red green purple yellow grey.</p>
-      </details>
-      <details open class="tpsec" style="margin-top:14px"><summary><b>Art</b></summary>
-      <div class="bar" id="tpartbar" style="margin-top:8px"><button class="btn sm" id="tpartb"><i class="ti ti-photo-up"></i>Choose art</button><input type="file" id="tpartf" accept="image/*" hidden>
-        <label>Zoom <input type="range" id="tpa_zoom" min="0.5" max="3" step="0.01" value="${TP.art.zoom}"></label>
-        <label>Left/right <input type="range" id="tpa_x" min="-500" max="500" value="${TP.art.x}"></label>
-        <label>Up/down <input type="range" id="tpa_y" min="-700" max="700" value="${TP.art.y}"></label></div>
-      </details>
+      <div class="panel">${tpPanelHtml()}
       <div class="bar" style="margin-top:14px"><button class="btn primary" id="tppng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="tppsd"><i class="ti ti-file-download"></i>Save PSD with these layers</button><button class="btn sm ghost" id="tpreset">Back to the file's own layers</button></div>
       <div id="tpmsg" class="hint"></div></div></div>`;
   }
@@ -1964,16 +1982,16 @@ function bindTp(){
   const c = id => $('#' + id);
   if(c('tpcv')){ c('tpcv').style.cursor = 'text'; c('tpcv').title = 'Click a text on the card to type there'; c('tpcv').onclick = tpEditAt }
   [['tpt_name','name'],['tpt_cost','cost'],['tpt_life','life'],['tpt_power','power'],['tpt_type','type'],['tpt_num','num'],['tpt_ability','ability']].forEach(([id, k]) => { if(c(id)) tpHLbind(c(id), k) });
-  $$('#tpctl select').forEach(el => tpHLbind(el, 'g' + el.dataset.g));
-  $$('#tpctl input[type=checkbox]').forEach(el => tpHLbind(el, 'l' + el.dataset.l));
+  $$('.tpctl select[data-g]').forEach(el => tpHLbind(el, 'g' + el.dataset.g));
+  $$('.tpctl input[data-l]').forEach(el => tpHLbind(el, 'l' + el.dataset.l));
   $$('#tpartbar button, #tpartbar input').forEach(el => tpHLbind(el, 'art'));
   if(c('tpadd')) c('tpadd').onclick = () => c('tpfile').click();
   if(c('tpfile')) c('tpfile').onchange = e => tpUpload(e.target.files[0]);
   if(c('tpsel')) c('tpsel').onchange = e => tpOpen(e.target.value);
   if(c('tpdel')) c('tpdel').onclick = async () => { if(!confirm('Remove this template from Nightvault? Your original PSD is not touched.')) return;
     try{ await api('/api/template/delete', {name:TP.name}); TP.list = null; TP.name = ''; TP.st = null; viewTemplate() }catch(e){ toast(e.message, true) } };
-  $$('#tpctl select').forEach(sel => sel.onchange = () => { TP.sel['g' + sel.dataset.g] = +sel.value; tpDraw() });
-  $$('#tpctl input[type=checkbox]').forEach(cb => cb.onchange = () => { TP.sel['l' + cb.dataset.l] = cb.checked; tpDraw() });
+  $$('.tpctl select[data-g]').forEach(sel => sel.onchange = () => { TP.sel['g' + sel.dataset.g] = +sel.value; tpDraw() });
+  $$('.tpctl input[data-l]').forEach(cb => cb.onchange = () => { TP.sel['l' + cb.dataset.l] = cb.checked; tpDraw() });
   const tx = (id, key, num) => { const el = c(id); if(el) el.oninput = () => { TP.txt[key] = el.type === 'checkbox' ? el.checked : (num ? +el.value : el.value); tpDraw() } };
   tx('tptxon', 'on'); tx('tpt_name', 'name'); tx('tpt_power', 'power'); tx('tpt_cost', 'cost'); tx('tpt_life', 'life'); tx('tpt_type', 'type'); tx('tpt_num', 'num'); tx('tpt_ability', 'ability'); tx('tpt_size', 'size', 1); tx('tpt_outline', 'outline'); tx('tpt_auto', 'auto');
   tpCardsStatus();

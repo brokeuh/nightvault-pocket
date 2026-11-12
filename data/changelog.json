@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 189,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: Card templates options grouped by part of the card",
+   "items": [
+    "The options are now grouped per part of the card, from the top down: Card data, Frame & background, Cost, Power & life, Art, Ability text & trigger, Type, Name, Card number & marks, Extras.",
+    "Each part has its text field and its look dropdowns together."
+   ]
+  },
+  {
    "id": 188,
    "date": "2026-11-12",
    "where": [

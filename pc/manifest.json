@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 16:09",
+ "version": "2026-11-12 16:16",
  "notes": [
-  "White outline on ability text"
+  "Card templates: options grouped per part of the card"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "f497509a290c5873e1a9a473da901d2c53b81b379c9708e72c87e1ce208e5004"
+   "sha256": "936c67861b0621d92be9e3d3960673265af35b26f51d13d683375948aab8e1a5"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "41d6e770141fdec39f362a318ee28e19749400d3cf0d57ae2a87948716c92c49"
+   "sha256": "be9a08b6aefb5d7b405946a742bf2f8d074f47291149bb51fd5acb2e22de072f"
   },
   {
    "name": "fonts/OFL.txt",
