@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261112-n10";
+const UI_BUILD = "20261112-n11";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1856,7 +1856,7 @@ async function viewTemplate(){
       <div class="panel" style="position:sticky;top:12px;align-self:start"><div id="tpbusy" class="muted" style="min-height:20px"></div>
         <div id="tpwrap" style="position:relative;width:fit-content;max-width:100%;margin:0 auto"><canvas id="tpcv" style="display:block;max-width:100%;max-height:calc(100vh - 110px);width:auto;height:auto;background:#444;border-radius:8px"></canvas>
         <div id="tphl" style="position:absolute;display:none;pointer-events:none;border:3px solid #ffd23f;background:rgba(255,210,63,.18);border-radius:6px;box-shadow:0 0 0 2px rgba(0,0,0,.45)"></div></div></div>
-      <div class="panel"><details open class="tpsec"><summary><b>Frame &amp; layers</b></summary><p class="hint">Each dropdown is one part of the card. "- off -" hides it. The text on the card stays as it is in the file - edit that in Photoshop or GIMP after saving the PSD.</p>
+      <div class="panel"><details open class="tpsec"><summary><b>Frame &amp; layers</b></summary><p class="hint">Each dropdown is one part of the card. "- off -" hides it. Type the card's text below, or just click a text on the card and type there - no Photoshop needed. Save PNG gives the finished card with your text.</p>
       <div id="tpctl" style="display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:8px 12px;align-items:center">${tpGroups().map(it => {
         const n = TP.st.items.indexOf(it);
         if(it.kind === 'group') return `<label>${esc(it.name)}</label><select data-g="${n}"><option value="-1" ${TP.sel['g' + n] < 0 ? 'selected' : ''}>- off -</option>${it.kids.slice().reverse().map(k => { const ki = it.kids.indexOf(k); return `<option value="${ki}" ${TP.sel['g' + n] === ki ? 'selected' : ''}>${esc(k.name)}</option>` }).join('')}</select>`;
@@ -1906,12 +1906,40 @@ async function tpZone(key){
   if(m[key] && P[m[key]]) return P[m[key]];
   return ({name:{l:200,t:1230,r:800,b:1280}, power:{l:760,t:40,r:870,b:110}, life:{l:790,t:40,r:900,b:130}, type:{l:429,t:1308,r:575,b:1329}, num:{l:769,t:1322,r:932,b:1343}, ability:{l:62,t:849,r:938,b:1151}})[key] || null;
 }
+function tpTextZones(){          // where each text sits on the card (template coordinates)
+  const P = TP.pos || {}, has = n => TP.st && TP.st.items.some(i => i.name === n);
+  const z = [], add = (k, bb) => { if(bb) z.push([k, bb]) };
+  add('name', P['Card Name'] || (has('Card Name') ? {l:200, t:1230, r:800, b:1280} : null));
+  add('power', P['Power'] || (has('Power') ? {l:760, t:40, r:870, b:110} : null));
+  if(P['Life']) add('life', P['Life']);
+  add('type', P['Type'] || (has('Type') ? {l:429, t:1308, r:575, b:1329} : null));
+  add('num', P['Card Info'] || (has('Card Info') ? {l:769, t:1322, r:932, b:1343} : null));
+  if(P['Textbox'] || has('Textbox') || has('Ability Text')) add('ability', P['Textbox'] || {l:62, t:849, r:938, b:1151});
+  return z;
+}
+function tpEditAt(ev){
+  const cv = $('#tpcv'), wrap = $('#tpwrap'); if(!cv || !TP.st) return;
+  const r = cv.getBoundingClientRect(), [W, H] = TP.st.size, x = (ev.clientX - r.left) / r.width * W, y = (ev.clientY - r.top) / r.height * H, pad = 12;
+  const hit = tpTextZones().filter(([k, b]) => x >= b.l - pad && x <= b.r + pad && y >= b.t - pad && y <= b.b + pad).sort((a, b) => (a[1].r - a[1].l) * (a[1].b - a[1].t) - (b[1].r - b[1].l) * (b[1].b - b[1].t))[0];
+  const old = $('#tpedit'); if(old) old.remove();
+  if(!hit) return;
+  const [key, b] = hit;
+  if(!TP.txt.on){ TP.txt.on = true; if($('#tptxon')) $('#tptxon').checked = true; tpDraw() }
+  const big = key === 'ability', el = document.createElement(big ? 'textarea' : 'input'); el.id = 'tpedit'; el.value = TP.txt[key] == null ? '' : String(TP.txt[key]);
+  const sc = r.width / W, w = Math.max(b.r - b.l, 160), l = Math.min(Math.max(b.l + (b.r - b.l) / 2 - w / 2, 0), W - w);
+  el.style.cssText = `position:absolute;left:${l / W * 100}%;top:${(b.t - 4) / H * 100}%;width:${w / W * 100}%;height:${(b.b - b.t + 8) / H * 100}%;min-height:28px;box-sizing:border-box;font:600 ${Math.max(13, 20 * sc)}px Roboto,Arial,sans-serif;padding:2px 6px;border:2px solid #ffd23f;border-radius:6px;background:rgba(20,20,26,.92);color:#fff;z-index:5;resize:none;text-align:${key === 'ability' ? 'left' : 'center'}`;
+  wrap.appendChild(el); tpHL(b); el.focus(); el.select && !big && el.select();
+  el.oninput = () => { TP.txt[key] = el.value; const side = $('#tpt_' + key); if(side) side.value = el.value; tpDraw() };
+  let gone = false; const done = () => { if(gone) return; gone = true; el.onblur = null; el.remove(); tpHL(null) };
+  el.onblur = done; el.onkeydown = e => { if(e.key === 'Escape' || (e.key === 'Enter' && !big)){ e.preventDefault(); done() } };
+}
 function tpHLbind(el, key){
   const on = async () => { const z = await tpZone(key); tpHL(z) }, off = () => tpHL(null);
   el.addEventListener('focus', on); el.addEventListener('mouseenter', on); el.addEventListener('blur', off); el.addEventListener('mouseleave', () => { if(document.activeElement !== el) off() });
 }
 function bindTp(){
   const c = id => $('#' + id);
+  if(c('tpcv')){ c('tpcv').style.cursor = 'text'; c('tpcv').title = 'Click a text on the card to type there'; c('tpcv').onclick = tpEditAt }
   [['tpt_name','name'],['tpt_life','life'],['tpt_power','power'],['tpt_type','type'],['tpt_num','num'],['tpt_ability','ability']].forEach(([id, k]) => { if(c(id)) tpHLbind(c(id), k) });
   $$('#tpctl select').forEach(el => tpHLbind(el, 'g' + el.dataset.g));
   $$('#tpctl input[type=checkbox]').forEach(el => tpHLbind(el, 'l' + el.dataset.l));

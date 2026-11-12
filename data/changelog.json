@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 181,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: click a text on the card to type it",
+   "items": [
+    "In Card templates you can now click the name, power, type, card number or ability on the card and type right there.",
+    "The hint no longer sends you to Photoshop: the PNG already has your text."
+   ]
+  },
+  {
    "id": 180,
    "date": "2026-11-12",
    "where": [

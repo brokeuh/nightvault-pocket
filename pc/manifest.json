@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 13:40",
+ "version": "2026-11-12 13:50",
  "notes": [
-  "Easier updating: side-menu button, backup addresses, update from zip"
+  "Card templates: click a text on the card to type"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "83888e17d1b3370b3eeb29663ed76f35a20d653c7177c5b9c54dee008451946c"
+   "sha256": "5bad098e466e9703f805d6bb0028d9f19b8fc549dcf8baa3b9eedb6bca894c82"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "dd3613634f322d9ddc1a41a64edc2cbe27443451dcc1ccc8fd0b1bf97c8cfa1b"
+   "sha256": "d85b685de500ea30e6450671c541fca5052217ef4f39c845038e73503d6ae54a"
   },
   {
    "name": "fonts/OFL.txt",
