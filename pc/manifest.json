@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 14:19",
+ "version": "2026-11-12 14:23",
  "notes": [
-  "5-digit power fits the frame"
+  "5-digit power: real proportions"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "5a708604cd9b93c287117286659b58cb32bf5e0201708ca334b0f486cf5babd8"
+   "sha256": "9d1d252fd36b05451cfce6c55d3bde52265c54ca796e494bf6e9f094c1234caf"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "37b9411d6c629063a69a92c43bfbb16cca3dc09d416318d2e7e21319ba783a5c"
+   "sha256": "761f50025336d88ed6ad8d8b9eb59a7f883afdbb9dd863787064951999a2f958"
   },
   {
    "name": "fonts/OFL.txt",

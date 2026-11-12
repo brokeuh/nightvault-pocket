@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 185,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: 5-digit power keeps real proportions",
+   "items": [
+    "Power of 10000 and up is now drawn slightly smaller with the same proportions (measured on a real card), instead of being squeezed sideways."
+   ]
+  },
+  {
    "id": 184,
    "date": "2026-11-12",
    "where": [
