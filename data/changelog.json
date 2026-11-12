@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 178,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: card stays in place, sections and highlight in Card templates",
+   "items": [
+    "The card preview now stays on screen while you scroll the list of editable parts.",
+    "The edit options are split into sections (Frame & layers, Text, Art) that can be folded.",
+    "When you click or hover a field or dropdown, the matching zone on the card is highlighted in yellow."
+   ]
+  },
+  {
    "id": 177,
    "date": "2026-11-12",
    "where": [

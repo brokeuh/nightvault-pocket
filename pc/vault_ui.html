@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261112-n7";
+const UI_BUILD = "20261112-n8";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1850,16 +1850,18 @@ async function viewTemplate(){
   if(TP.name && !TP.st){ $('#main').innerHTML = h + '<div class="panel"><i class="ti ti-loader-2"></i> Reading the layers ...</div>'; bindTp(); return }
   if(TP.st){
     h += `<div class="cols2" style="grid-template-columns:minmax(300px,520px) 1fr;align-items:start">
-      <div class="panel"><div id="tpbusy" class="muted" style="min-height:20px"></div>
-        <canvas id="tpcv" style="width:100%;height:auto;background:#444;border-radius:8px"></canvas></div>
-      <div class="panel"><h3>Layers</h3><p class="hint">Each dropdown is one part of the card. "- off -" hides it. The text on the card stays as it is in the file - edit that in Photoshop or GIMP after saving the PSD.</p>
+      <div class="panel" style="position:sticky;top:12px;align-self:start"><div id="tpbusy" class="muted" style="min-height:20px"></div>
+        <div id="tpwrap" style="position:relative;width:fit-content;max-width:100%;margin:0 auto"><canvas id="tpcv" style="display:block;max-width:100%;max-height:calc(100vh - 110px);width:auto;height:auto;background:#444;border-radius:8px"></canvas>
+        <div id="tphl" style="position:absolute;display:none;pointer-events:none;border:3px solid #ffd23f;background:rgba(255,210,63,.18);border-radius:6px;box-shadow:0 0 0 2px rgba(0,0,0,.45)"></div></div></div>
+      <div class="panel"><details open class="tpsec"><summary><b>Frame &amp; layers</b></summary><p class="hint">Each dropdown is one part of the card. "- off -" hides it. The text on the card stays as it is in the file - edit that in Photoshop or GIMP after saving the PSD.</p>
       <div id="tpctl" style="display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:8px 12px;align-items:center">${tpGroups().map(it => {
         const n = TP.st.items.indexOf(it);
         if(it.kind === 'group') return `<label>${esc(it.name)}</label><select data-g="${n}"><option value="-1" ${TP.sel['g' + n] < 0 ? 'selected' : ''}>- off -</option>${it.kids.slice().reverse().map(k => { const ki = it.kids.indexOf(k); return `<option value="${ki}" ${TP.sel['g' + n] === ki ? 'selected' : ''}>${esc(k.name)}</option>` }).join('')}</select>`;
         return `<label>${esc(it.name)}</label><label><input type="checkbox" data-l="${n}" ${TP.sel['l' + n] ? 'checked' : ''}> on</label>`;
       }).join('')}</div>
-      <h3 style="margin-top:16px">Text</h3>
-      <div style="display:grid;grid-template-columns:90px 1fr;gap:6px 10px;align-items:center">
+      </details>
+      <details open class="tpsec" style="margin-top:14px"><summary><b>Text</b></summary>
+      <div style="display:grid;grid-template-columns:90px 1fr;gap:6px 10px;align-items:center;margin-top:8px">
         <label>Use my text</label><label><input type="checkbox" id="tptxon" ${TP.txt.on ? 'checked' : ''}> draw the text below instead of "EDIT HERE"</label>
         <label>Card data</label><span><input type="text" id="tpc_q" placeholder="card number or name, e.g. OP18-004" style="width:60%"> <button class="btn sm" id="tpc_go">Load</button> <button class="btn sm ghost" id="tpc_upd">Update list</button><br><span id="tpc_st" class="hint"></span><select id="tpc_pick" style="display:none;width:100%;margin-top:4px"></select></span>
         <label>Name</label><input type="text" id="tpt_name" value="${esc(TP.txt.name)}">
@@ -1871,11 +1873,13 @@ async function viewTemplate(){
         <label>Text size</label><span><input type="range" id="tpt_size" min="14" max="44" value="${TP.txt.size}"> <label><input type="checkbox" id="tpt_auto" ${TP.txt.auto ? 'checked' : ''}> auto-fit</label></span>
       </div>
       <p class="hint">Tags: [blue|Activate: Main] [pink|Once Per Turn] [orange|Rush] [black|DON!! x1]. Colours: blue pink orange black red green purple yellow grey.</p>
-      <h3 style="margin-top:12px">Art</h3>
-      <div class="bar"><button class="btn sm" id="tpartb"><i class="ti ti-photo-up"></i>Choose art</button><input type="file" id="tpartf" accept="image/*" hidden>
+      </details>
+      <details open class="tpsec" style="margin-top:14px"><summary><b>Art</b></summary>
+      <div class="bar" id="tpartbar" style="margin-top:8px"><button class="btn sm" id="tpartb"><i class="ti ti-photo-up"></i>Choose art</button><input type="file" id="tpartf" accept="image/*" hidden>
         <label>Zoom <input type="range" id="tpa_zoom" min="0.5" max="3" step="0.01" value="${TP.art.zoom}"></label>
         <label>Left/right <input type="range" id="tpa_x" min="-500" max="500" value="${TP.art.x}"></label>
         <label>Up/down <input type="range" id="tpa_y" min="-700" max="700" value="${TP.art.y}"></label></div>
+      </details>
       <div class="bar" style="margin-top:14px"><button class="btn primary" id="tppng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="tppsd"><i class="ti ti-file-download"></i>Save PSD with these layers</button><button class="btn sm ghost" id="tpreset">Back to the file's own layers</button></div>
       <div id="tpmsg" class="hint"></div></div></div>`;
   }
@@ -1883,8 +1887,32 @@ async function viewTemplate(){
   bindTp();
   if(TP.st) tpDraw();
 }
+function tpHL(bb){
+  const h = $('#tphl'), cv = $('#tpcv'); if(!h || !cv || !TP.st) return;
+  if(!bb){ h.style.display = 'none'; return }
+  const [W, H] = TP.st.size, pad = 6;
+  h.style.display = 'block'; h.style.left = ((bb.l - pad) / W * 100) + '%'; h.style.top = ((bb.t - pad) / H * 100) + '%';
+  h.style.width = ((bb.r - bb.l + pad * 2) / W * 100) + '%'; h.style.height = ((bb.b - bb.t + pad * 2) / H * 100) + '%';
+}
+async function tpZone(key){
+  const P = TP.pos || {}, [W, H] = TP.st ? TP.st.size : [0, 0];
+  const m = {name:'Card Name', power:'Power', life:'Life', type:'Type', num:'Card Info', ability:'Textbox'};
+  if(key === 'art'){ const tb = P['Textbox'] || {t:849}; return {l:0, t:0, r:W, b:tb.t - 10} }
+  if(key.startsWith('g')){ const n = +key.slice(1), it = TP.st.items[n], k = TP.sel['g' + n]; if(!it || k < 0 || !it.kids[k] || it.kids[k].empty) return null; return await tpBBox(Object.assign({grp:it.name}, it.kids[k])) }
+  if(key.startsWith('l')){ const it = TP.st.items[+key.slice(1)]; return it && !it.empty ? await tpBBox(it) : null }
+  if(m[key] && P[m[key]]) return P[m[key]];
+  return ({name:{l:200,t:1230,r:800,b:1280}, power:{l:760,t:40,r:870,b:110}, life:{l:790,t:40,r:900,b:130}, type:{l:429,t:1308,r:575,b:1329}, num:{l:769,t:1322,r:932,b:1343}, ability:{l:62,t:849,r:938,b:1151}})[key] || null;
+}
+function tpHLbind(el, key){
+  const on = async () => { const z = await tpZone(key); tpHL(z) }, off = () => tpHL(null);
+  el.addEventListener('focus', on); el.addEventListener('mouseenter', on); el.addEventListener('blur', off); el.addEventListener('mouseleave', () => { if(document.activeElement !== el) off() });
+}
 function bindTp(){
   const c = id => $('#' + id);
+  [['tpt_name','name'],['tpt_life','life'],['tpt_power','power'],['tpt_type','type'],['tpt_num','num'],['tpt_ability','ability']].forEach(([id, k]) => { if(c(id)) tpHLbind(c(id), k) });
+  $$('#tpctl select').forEach(el => tpHLbind(el, 'g' + el.dataset.g));
+  $$('#tpctl input[type=checkbox]').forEach(el => tpHLbind(el, 'l' + el.dataset.l));
+  $$('#tpartbar button, #tpartbar input').forEach(el => tpHLbind(el, 'art'));
   if(c('tpadd')) c('tpadd').onclick = () => c('tpfile').click();
   if(c('tpfile')) c('tpfile').onchange = e => tpUpload(e.target.files[0]);
   if(c('tpsel')) c('tpsel').onchange = e => tpOpen(e.target.value);

@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 12:01",
+ "version": "2026-11-12 13:19",
  "notes": [
-  "Card templates: Event support, cards without power"
+  "Card templates: card stays in place, sections, highlight"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "6a87c49a0f51920e307e77434313aa6d0ed1f324b2044ffacb655eeb3dd0abcb"
+   "sha256": "8936b851f963ce1f69639382d63b6837db672ac92a8704e5dd05cdfac3d3e7bd"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "640afc11b64c39d4cdc5c2f3b05032ddd0f4070d2855d1a09502cdf80e5d8af4"
+   "sha256": "a159bc6b6953e2813c55f757d3b337b179ef340684a111af137036525a25b54f"
   },
   {
    "name": "fonts/OFL.txt",
