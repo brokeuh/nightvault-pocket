@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 176,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: card templates work for Leaders too",
+   "items": [
+    "The text editor now follows the layout of whichever template is open (Character or Leader), with a Life field for Leaders.",
+    "Fixes a rare error when switching templates while the card was still drawing."
+   ]
+  },
+  {
    "id": 175,
    "date": "2026-11-12",
    "where": [

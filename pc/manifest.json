@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 09:42",
+ "version": "2026-11-12 11:09",
  "notes": [
-  "Card templates: text and art editor, [colour|text] tags, One Piece card data loader"
+  "Card templates: Leader support (life, layout follows each template)"
  ],
  "files": [
   {
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "d620d3c46c1fbfd3a0e563c2fb779331430bbd6974e2df19306b3fc78775b6be"
+   "sha256": "a73d7e0eb3c1e945d388c8b2d5723ec758acd44fa45c6c70f8fc68e8af34a269"
   },
   {
    "name": "fonts/OFL.txt",
