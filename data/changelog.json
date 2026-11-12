@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 177,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: card templates handle Event cards",
+   "items": [
+    "Card templates page now handles templates without a power number or other text parts (like Event cards): parts the template does not have are simply not drawn."
+   ]
+  },
+  {
    "id": 176,
    "date": "2026-11-12",
    "where": [

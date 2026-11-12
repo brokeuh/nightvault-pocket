@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 11:10",
+ "version": "2026-11-12 12:01",
  "notes": [
-  "Card templates: Leader support, layout follows each template"
+  "Card templates: Event support, cards without power"
  ],
  "files": [
   {
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "f50e1200786fffe8e9bebdc1ab3de49497b49e40742460b789f15afc3205899c"
+   "sha256": "640afc11b64c39d4cdc5c2f3b05032ddd0f4070d2855d1a09502cdf80e5d8af4"
   },
   {
    "name": "fonts/OFL.txt",

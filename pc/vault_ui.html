@@ -1738,17 +1738,18 @@ function tpDrawText(ctx){
   const outlined = (txt, x, y, px, font, align) => { ctx.font = font.replace('@', px + 'px'); ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
     ctx.lineWidth = px * 0.16; ctx.strokeStyle = '#111'; ctx.strokeText(txt, x, y); ctx.fillStyle = '#fff'; ctx.fillText(txt, x, y) };
   ctx.save();
+  const has = n => TP.st && TP.st.items.some(i => i.name === n);
   const P = TP.pos, cx = b => (b.l + b.r) / 2, FN = '700 @ NVRobotoCond, Roboto, sans-serif', FR = '400 @ NVRoboto, Roboto, sans-serif';
   if(P['Card Name']){ const b = P['Card Name']; ctx.font = FN; let px = tpFit(ctx, FN, 'EDIT HERE', b, 46); px = Math.min(px, 66);
     ctx.font = FN.replace('@', px + 'px'); while(ctx.measureText(T.name).width > 560 && px > 20){ px -= 2; ctx.font = FN.replace('@', px + 'px') }
     outlined(T.name, cx(b), b.b, px, FN, 'center') }
-  else outlined(T.name, 498, 1268, 46, FN, 'center');
+  else if(has('Card Name')) outlined(T.name, 498, 1268, 46, FN, 'center');
   if(P['Power']){ const b = P['Power']; outlined(String(T.power), b.r, b.b, Math.min(tpFit(ctx, FN, '5000', b, 72), 96), FN, 'right') }
-  else outlined(String(T.power), 857, 99, 72, FN, 'right');
+  else if(has('Power')) outlined(String(T.power), 857, 99, 72, FN, 'right');
   if(P['Life'] && T.life !== '') { const b = P['Life']; outlined(String(T.life), cx(b), b.b, Math.min(tpFit(ctx, FN, '5', b, 60), 90), FN, 'center') }
-  { const b = P['Type'] || {l:429, t:1308, r:575, b:1329}, px = Math.min(tpFit(ctx, FR, 'EDIT HERE', b, 22), 30);
+  if(P['Type'] || has('Type')){ const b = P['Type'] || {l:429, t:1308, r:575, b:1329}, px = Math.min(tpFit(ctx, FR, 'EDIT HERE', b, 22), 30);
     ctx.font = FR.replace('@', px + 'px'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#fff'; ctx.fillText(T.type, cx(b), b.b - 1) }
-  { const b = P['Card Info'] || {l:769, t:1322, r:932, b:1343}, px = Math.min((b.b - b.t) / 0.72, 26);
+  if(P['Card Info'] || has('Card Info')){ const b = P['Card Info'] || {l:769, t:1322, r:932, b:1343}, px = Math.min((b.b - b.t) / 0.72, 26);
     ctx.font = FR.replace('@', px + 'px'); ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#fff'; ctx.fillText(T.num, (P['Card Info'] ? b.r : 868) - 66, b.b - 1) }
   // ability text inside the box
   const TB = P['Textbox'] || {l:62, t:849, r:938, b:1151}, bx = TB.l + 13 + T.dx, by = TB.t + 10 + T.dy, bw = TB.r - TB.l - 26, bh = TB.b - TB.t - 20, toks = tpParse(T.ability || '');
@@ -1792,7 +1793,7 @@ async function tpDraw(){
   await tpFonts(); await tpMeasure(); if(my !== TP.token) return;
   tpBusy('Loading layers ...');
   let ims;
-  try{ ims = await Promise.all(vis.map(l => tpImg(l.i))) }catch(e){ tpBusy('Could not load a layer: ' + e.message); return }
+  try{ ims = await Promise.all(vis.map(l => tpImg(l.i))) }catch(e){ if(my === TP.token) tpBusy('Could not load a layer: ' + e.message); return }
   if(my !== TP.token) return;
   if(!TP.st || my !== TP.token) return;
   const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H);
