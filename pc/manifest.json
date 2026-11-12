@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 14:23",
+ "version": "2026-11-12 15:49",
  "notes": [
-  "5-digit power: real proportions"
+  "Cost numbers for Event and Stage"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "9d1d252fd36b05451cfce6c55d3bde52265c54ca796e494bf6e9f094c1234caf"
+   "sha256": "83c797c1a4473bf77359bc5a3ed1cd72196fb85dc86829e50ff93c2245d85a15"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "761f50025336d88ed6ad8d8b9eb59a7f883afdbb9dd863787064951999a2f958"
+   "sha256": "ee88a6959673732bf6333ef332467560545aeed89db282674d4ac8d07a14a2f7"
   },
   {
    "name": "fonts/OFL.txt",

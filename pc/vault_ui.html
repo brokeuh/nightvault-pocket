@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261112-n17";
+const UI_BUILD = "20261112-n18";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1691,7 +1691,9 @@ function tpValueKid(it, k){       // a ready-made layer for exactly this number 
   const V = TP_VALUES[it.name]; if(!V || !TP.txt.on || !it.kids[k] || it.kids[k].name !== 'default') return null;
   const raw = String(TP.txt[V[1]] == null ? '' : TP.txt[V[1]]).trim(); if(raw === '') return null;
   const val = /^\d+$/.test(raw) ? String(parseInt(raw, 10)) : raw;
-  if(val === V[2]) return it.kids[k];
+  let base = V[2];
+  if(it.name === 'Cost Number'){ const miss = []; for(let n = 0; n <= 10; n++) if(!it.kids.some(x => x.name === V[0] + '=' + n)) miss.push(n); if(miss.length === 1) base = String(miss[0]) }      // the default layer shows this cost (4 on Character, 5 on Event/Stage)
+  if(val === base) return it.kids[k];
   return it.kids.find(x => x.name === V[0] + '=' + val) || null;
 }
 const TP_TEXTGROUPS = ['Card Name', 'Power', 'Type', 'Ability Text', 'Card Info', 'Life'];

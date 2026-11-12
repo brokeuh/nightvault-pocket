@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 186,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: cost numbers for Event and Stage",
+   "items": [
+    "The Cost field now swaps the real number layer on Event and Stage templates too (new templates with cost 0-10).",
+    "The page works out the default cost of each template by itself (4 on Character, 5 on Event and Stage)."
+   ]
+  },
+  {
    "id": 185,
    "date": "2026-11-12",
    "where": [
