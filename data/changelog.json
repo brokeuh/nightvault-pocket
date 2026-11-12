@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 187,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: ability text looks more like the printed cards",
+   "items": [
+    "Ability text uses a medium weight instead of thin, and the (reminder text in brackets) is shown in italics like on real cards."
+   ]
+  },
+  {
    "id": 186,
    "date": "2026-11-12",
    "where": [

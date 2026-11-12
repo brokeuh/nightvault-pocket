@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261112-n18";
+const UI_BUILD = "20261112-n19";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1715,13 +1715,14 @@ function tpParse(text){            // -> lines of tokens: {w:'word'} | {tag:'col
   return out;
 }
 function tpLayout(ctx, toks, px, maxW){
-  const F = (b) => (b ? '700 ' : '400 ') + px + 'px NVRoboto, Roboto, Arial, sans-serif';
+  const F = (b, i) => (i ? 'italic ' : '') + (b ? '700 ' : '500 ') + px + 'px NVRoboto, Roboto, Arial, sans-serif';       // medium weight like the printed cards; (reminder text) in italics
   const sp = (ctx.font = F(false), ctx.measureText(' ').width), pad = px * 0.42, lines = [[]]; let x = 0;
   const put = (it, w) => { const L = lines[lines.length - 1]; if(x > 0 && x + w > maxW){ lines.push([]); x = 0 } lines[lines.length - 1].push(Object.assign(it, {w2:w, x})); x += w + sp };
+  let inParen = false;
   toks.forEach(t => {
     if(t.nl){ lines.push([]); x = 0; return }
     if(t.tag){ ctx.font = F(true); const w = ctx.measureText(t.w).width + pad * 2; put({tag:t.tag, w:t.w}, w) }
-    else { ctx.font = F(false); put({w:t.w}, ctx.measureText(t.w).width) }
+    else { if(t.w.startsWith('(')) inParen = true; const it = inParen; ctx.font = F(false, it); put({w:t.w, i:it}, ctx.measureText(t.w).width); if(t.w.includes(')')) inParen = false }
   });
   return lines;
 }
@@ -1776,7 +1777,7 @@ function tpDrawText(ctx){
     L.forEach(it => { const x = bx + it.x;
       if(it.tag){ const col = TP_TAGS[it.tag] || '#555', h = px * 1.02; ctx.fillStyle = col; rr(x, cy - h / 2, it.w2, h, h / 2); ctx.fill();
         ctx.fillStyle = '#fff'; ctx.font = '700 ' + px * 0.82 + 'px NVRoboto, Roboto, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(it.w, x + it.w2 / 2, cy + px * 0.03); ctx.textAlign = 'left' }
-      else { ctx.fillStyle = '#000'; ctx.font = '400 ' + px + 'px NVRoboto, Roboto, sans-serif'; ctx.fillText(it.w, x, cy + px * 0.03) } }) });
+      else { ctx.fillStyle = '#000'; ctx.font = (it.i ? 'italic ' : '') + '500 ' + px + 'px NVRoboto, Roboto, sans-serif'; ctx.fillText(it.w, x, cy + px * 0.03) } }) });
   ctx.restore();
 }
 
