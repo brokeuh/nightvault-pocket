@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261112-n12";
+const UI_BUILD = "20261112-n13";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1868,7 +1868,7 @@ async function viewTemplate(){
       <div class="panel"><details open class="tpsec"><summary><b>Frame &amp; layers</b></summary><p class="hint">Each dropdown is one part of the card. "- off -" hides it. Type the card's text below, or just click a text on the card and type there - no Photoshop needed. Save PNG gives the finished card with your text.</p>
       <div id="tpctl" style="display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:8px 12px;align-items:center">${tpGroups().map(it => {
         const n = TP.st.items.indexOf(it);
-        if(it.kind === 'group') return `<label>${esc(it.name)}</label><select data-g="${n}"><option value="-1" ${TP.sel['g' + n] < 0 ? 'selected' : ''}>- off -</option>${it.kids.slice().reverse().map(k => { const ki = it.kids.indexOf(k); return `<option value="${ki}" ${TP.sel['g' + n] === ki ? 'selected' : ''}>${esc(k.name)}</option>` }).join('')}</select>`;
+        if(it.kind === 'group') return `<label>${esc(it.name)}</label><select data-g="${n}"><option value="-1" ${TP.sel['g' + n] < 0 ? 'selected' : ''}>- off -</option>${it.kids.slice().reverse().filter(k => !/Input=/.test(k.name)).map(k => { const ki = it.kids.indexOf(k); return `<option value="${ki}" ${TP.sel['g' + n] === ki ? 'selected' : ''}>${esc(k.name)}</option>` }).join('')}</select>`;
         return `<label>${esc(it.name)}</label><label><input type="checkbox" data-l="${n}" ${TP.sel['l' + n] ? 'checked' : ''}> on</label>`;
       }).join('')}</div>
       </details>

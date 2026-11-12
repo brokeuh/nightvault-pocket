@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 14:04",
+ "version": "2026-11-12 14:11",
  "notes": [
-  "Card templates: cost field and real number layers"
+  "Number layers hidden from dropdowns"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "86c916c9d5c48429d5d96f9489613868d590162e270dd80f85f76f9c1b923aa3"
+   "sha256": "2bf999d6ee071e5533b9a5ad9269b18f80df567de8ee96fd76de3d59d7f99ab4"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "b2a266df59d9539b1b0416dc2d4195bcc8353ff2d5d84d34b14bab5b8d1b6242"
+   "sha256": "06e43ca3aa70fb0ae9a5df3f6d318a7f3705ad2585af6d50f1a2b0d7d4de3955"
   },
   {
    "name": "fonts/OFL.txt",

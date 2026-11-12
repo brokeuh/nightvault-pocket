@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 183,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: number layers hidden from the layer dropdowns",
+   "items": [
+    "The ready-made number layers (power 6000, cost 7 ...) are no longer listed in the layer dropdowns. Type the number in the Power / Cost fields instead."
+   ]
+  },
+  {
    "id": 182,
    "date": "2026-11-12",
    "where": [
