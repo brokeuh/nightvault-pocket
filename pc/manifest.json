@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 16:21",
+ "version": "2026-11-12 16:32",
  "notes": [
-  "Hover preview in Card templates"
+  "Card presets page"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "ff2fd29a339b79f33965b2f834c42d42ef57ef022a76c573e8a43adaa1aabf60"
+   "sha256": "50f980b8c2075c142e83f7ad1b4f0a43448de4d8ba4134ea64ecfcb59d3dfb69"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "746dab497b02073b21eb508622e5ac6ddcea83c0e97ac8f70f977491c5c21a3d"
+   "sha256": "c8f8f36436aa3a8dbe51df3a83f6e59678a67330ad5d6ba37ff6ca06f29acf0f"
   },
   {
    "name": "fonts/OFL.txt",

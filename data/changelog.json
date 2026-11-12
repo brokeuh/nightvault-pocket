@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 191,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: card presets page",
+   "items": [
+    "Card templates now opens on a Presets page: a tile for every card type (Character, Leader, Event, Stage, Don) and colour, with a preview picture. Click one and the editor opens with the right layers chosen and every text field empty, ready for your text and art.",
+    "Character also has two-colour tiles. The Custom tile opens the editor as before, and a Presets button brings you back."
+   ]
+  },
+  {
    "id": 190,
    "date": "2026-11-12",
    "where": [
