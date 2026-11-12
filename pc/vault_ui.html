@@ -1714,13 +1714,15 @@ function tpLayout(ctx, toks, px, maxW){
 }
 async function tpBBox(l){          // the pixels that are really used in a full-size layer
   if(TP.bb[l.i]) return TP.bb[l.i];
-  const im = await tpImg(l.i), c = document.createElement('canvas'); c.width = TP.st.size[0]; c.height = TP.st.size[1];
+  const im = await tpImg(l.i); if(!TP.st) return null;
+  const c = document.createElement('canvas'); c.width = TP.st.size[0]; c.height = TP.st.size[1];
   const x = c.getContext('2d', {willReadFrequently:true}); x.drawImage(im, l.rect[0], l.rect[1]);
   const W = c.width, H = c.height, d = x.getImageData(0, 0, W, H).data; let L = W, T = H, R = -1, B = -1;
   for(let y = 0; y < H; y++) for(let xx = 0; xx < W; xx++) if(d[(y * W + xx) * 4 + 3] > 40){ if(xx < L) L = xx; if(xx > R) R = xx; if(y < T) T = y; if(y > B) B = y }
   return TP.bb[l.i] = R < 0 ? null : {l:L, t:T, r:R + 1, b:B + 1};
 }
 async function tpMeasure(){
+  if(!TP.st) return;
   const all = tpVisible().filter(l => !l.empty && (TP_TEXTGROUPS.includes(l.grp) || l.grp === 'Textbox'));
   TP.pos = {};
   for(const l of all){ const bb = await tpBBox(l); if(bb) TP.pos[l.grp] = bb }
@@ -1792,6 +1794,7 @@ async function tpDraw(){
   let ims;
   try{ ims = await Promise.all(vis.map(l => tpImg(l.i))) }catch(e){ tpBusy('Could not load a layer: ' + e.message); return }
   if(my !== TP.token) return;
+  if(!TP.st || my !== TP.token) return;
   const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H);
   const OPS = {'mul ':'multiply', 'scrn':'screen', 'over':'overlay', 'dark':'darken', 'lite':'lighten', 'diff':'difference', 'sLit':'soft-light', 'hLit':'hard-light', 'div ':'color-dodge', 'idiv':'color-burn', 'lddg':'lighter'};
   vis.forEach((l, k) => { if(k === 1 || (vis.length === 1 && k === 0)) tpDrawArt(ctx, W, H); ctx.globalAlpha = (l.op == null ? 255 : l.op) / 255; ctx.globalCompositeOperation = OPS[l.blend] || 'source-over'; ctx.drawImage(ims[k], l.rect[0], l.rect[1]) });

@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 11:09",
+ "version": "2026-11-12 11:10",
  "notes": [
-  "Card templates: Leader support (life, layout follows each template)"
+  "Card templates: Leader support, layout follows each template"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "0366e1deb1c6d69da59377655c02935d1e6c870a8f541827e76ef57aace1f2cb"
+   "sha256": "6a87c49a0f51920e307e77434313aa6d0ed1f324b2044ffacb655eeb3dd0abcb"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "a73d7e0eb3c1e945d388c8b2d5723ec758acd44fa45c6c70f8fc68e8af34a269"
+   "sha256": "f50e1200786fffe8e9bebdc1ab3de49497b49e40742460b789f15afc3205899c"
   },
   {
    "name": "fonts/OFL.txt",

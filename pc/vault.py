@@ -6092,6 +6092,8 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/template/layer":
             f = self._tpl_path(q.get("name", ""))
             i = int(q.get("i", "0"))
+            if i < 0 or i >= len(vtpl.scan(str(f))["layers"]):
+                return self._error(404, "No such layer")
             cdir = TEMPLATE_DIR / "cache" / f"{f.stem}_{int(f.stat().st_mtime)}_{f.stat().st_size}"
             cf = cdir / f"{i}.png"
             if not cf.exists():
