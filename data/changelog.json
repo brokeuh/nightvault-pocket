@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 182,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: real card numbers for cost and power",
+   "items": [
+    "Card templates has a new Cost field. When the template has a ready-made layer for the number you type, the card uses it (same look as the real card) instead of drawn text.",
+    "Works with the new Character template that includes cost 0-10 and power 0-13000 layers. Other card types follow.",
+    "Saved PSDs also contain the right number layers."
+   ]
+  },
+  {
    "id": 181,
    "date": "2026-11-12",
    "where": [

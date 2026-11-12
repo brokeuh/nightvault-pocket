@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261112-n11";
+const UI_BUILD = "20261112-n12";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1683,8 +1683,16 @@ async function startCovers(scope){
 
 /* ---------------------------------------------------------------- card templates (layered PSD) */
 const TP = {list:null, name:'', st:null, sel:{}, imgs:{}, token:0, busy:false,
-  txt:{on:true, life:'', name:'Karoo', power:'5000', type:'Animal/Alabasta', num:'OP18-004', ability:"Apply each of the following effects based on this Character's power: \u2022 If it has 5000 power or more, this Character gains [orange|Rush]. \u2022 If it has 6000 power or more, this Character gains [orange|Banish].", size:30, dx:0, dy:0, auto:true},
+  txt:{on:true, life:'', name:'Karoo', power:'5000', cost:'4', type:'Animal/Alabasta', num:'OP18-004', ability:"Apply each of the following effects based on this Character's power: \u2022 If it has 5000 power or more, this Character gains [orange|Rush]. \u2022 If it has 6000 power or more, this Character gains [orange|Banish].", size:30, dx:0, dy:0, auto:true},
   art:{img:null, zoom:1, x:0, y:0}};
+const TP_VALUES = {'Power':['powerInput', 'power', '5000'], 'Cost Number':['costInput', 'cost', '4'], 'Life':['lifeInput', 'life', ''], 'Counter':['counterInput', 'counter', ''], 'Block':['blockInput', 'block', '']};   // group -> [OPPP input id, our field, value of the default layer]
+function tpValueKid(it, k){       // a ready-made layer for exactly this number (made from OPPP), if the template has one
+  const V = TP_VALUES[it.name]; if(!V || !TP.txt.on || !it.kids[k] || it.kids[k].name !== 'default') return null;
+  const raw = String(TP.txt[V[1]] == null ? '' : TP.txt[V[1]]).trim(); if(raw === '') return null;
+  const val = /^\d+$/.test(raw) ? String(parseInt(raw, 10)) : raw;
+  if(val === V[2]) return it.kids[k];
+  return it.kids.find(x => x.name === V[0] + '=' + val) || null;
+}
 const TP_TEXTGROUPS = ['Card Name', 'Power', 'Type', 'Ability Text', 'Card Info', 'Life'];
 TP.pos = {}; TP.bb = {};
 const TP_TAGS = {blue:'#1f6fa8', pink:'#c2455f', orange:'#e8812e', black:'#222222', red:'#c0282d', green:'#2f8f5b', purple:'#6b3fa0', yellow:'#d9a514', grey:'#666666', gray:'#666666'};
@@ -1725,7 +1733,7 @@ async function tpBBox(l){          // the pixels that are really used in a full-
 }
 async function tpMeasure(){
   if(!TP.st) return;
-  const all = tpVisible().filter(l => !l.empty && (TP_TEXTGROUPS.includes(l.grp) || l.grp === 'Textbox'));
+  const all = tpVisible().filter(l => !l.empty && (TP_TEXTGROUPS.includes(l.grp) || l.grp === 'Textbox' || l.grp === 'Cost Number'));
   TP.pos = {};
   for(const l of all){ const bb = await tpBBox(l); if(bb) TP.pos[l.grp] = bb }
 }
@@ -1746,9 +1754,10 @@ function tpDrawText(ctx){
     ctx.font = FN.replace('@', px + 'px'); while(ctx.measureText(T.name).width > 560 && px > 20){ px -= 2; ctx.font = FN.replace('@', px + 'px') }
     outlined(T.name, cx(b), b.b, px, FN, 'center') }
   else if(has('Card Name')) outlined(T.name, 498, 1268, 46, FN, 'center');
-  if(P['Power']){ const b = P['Power']; outlined(String(T.power), b.r, b.b, Math.min(tpFit(ctx, FN, '5000', b, 72), 96), FN, 'right') }
+  const usedLayer = g => tpVisible().some(l => l.grp === g && l.valued);
+  if(usedLayer('Power')){} else if(P['Power']){ const b = P['Power']; outlined(String(T.power), b.r, b.b, Math.min(tpFit(ctx, FN, '5000', b, 72), 96), FN, 'right') }
   else if(has('Power')) outlined(String(T.power), 857, 99, 72, FN, 'right');
-  if(P['Life'] && T.life !== '') { const b = P['Life']; outlined(String(T.life), cx(b), b.b, Math.min(tpFit(ctx, FN, '5', b, 60), 90), FN, 'center') }
+  if(!usedLayer('Life') && P['Life'] && T.life !== '') { const b = P['Life']; outlined(String(T.life), cx(b), b.b, Math.min(tpFit(ctx, FN, '5', b, 60), 90), FN, 'center') }
   if(P['Type'] || has('Type')){ const b = P['Type'] || {l:429, t:1308, r:575, b:1329}, px = Math.min(tpFit(ctx, FR, 'EDIT HERE', b, 22), 30);
     ctx.font = FR.replace('@', px + 'px'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#fff'; ctx.fillText(T.type, cx(b), b.b - 1) }
   if(P['Card Info'] || has('Card Info')){ const b = P['Card Info'] || {l:769, t:1322, r:932, b:1343}, px = Math.min((b.b - b.t) / 0.72, 26);
@@ -1779,7 +1788,7 @@ function tpDefaults(){
 function tpVisible(){        // layer indexes that are on, bottom to top
   const out = [];
   (TP.st ? TP.st.items : []).forEach((it, n) => {
-    if(it.kind === 'group'){ const k = TP.sel['g' + n]; if(k >= 0 && it.kids[k]) out.push(Object.assign({grp:it.name}, it.kids[k])) }
+    if(it.kind === 'group'){ const k = TP.sel['g' + n]; if(k >= 0 && it.kids[k]){ const vk = tpValueKid(it, k); out.push(Object.assign({grp:it.name}, vk || it.kids[k], vk ? {valued:true} : {})) } }
     else if(TP.sel['l' + n]) out.push(it);
   });
   return out;
@@ -1792,7 +1801,7 @@ function tpBusy(t){ const e = $('#tpbusy'); if(e) e.textContent = t }
 async function tpDraw(){
   const my = ++TP.token, cv = $('#tpcv'); if(!cv || !TP.st) return;
   const [W, H] = TP.st.size; cv.width = W; cv.height = H;
-  const vis = tpVisible().filter(l => !l.empty && !(TP.txt.on && TP_TEXTGROUPS.includes(l.grp)));
+  const vis = tpVisible().filter(l => !l.empty && !(TP.txt.on && TP_TEXTGROUPS.includes(l.grp) && !l.valued));
   await tpFonts(); await tpMeasure(); if(my !== TP.token) return;
   tpBusy('Loading layers ...');
   let ims;
@@ -1814,7 +1823,7 @@ function tpTags(txt){          // official card text -> our [colour|word] tags
 }
 function tpFill(c){
   if(!c) return; const T = TP.txt;
-  T.name = c.name; T.power = c.power == null ? '' : String(c.power); T.type = c.types || ''; T.num = c.id; T.life = c.life == null ? '' : String(c.life); T.ability = tpTags(c.text); T.on = true; TP.card = c;
+  T.name = c.name; T.power = c.power == null ? '' : String(c.power); T.cost = c.cost == null ? '' : String(c.cost); T.type = c.types || ''; T.num = c.id; T.life = c.life == null ? '' : String(c.life); T.ability = tpTags(c.text); T.on = true; TP.card = c;
   viewTemplate();
 }
 function tpDrawArt(ctx, W, H){
@@ -1869,6 +1878,7 @@ async function viewTemplate(){
         <label>Card data</label><span><input type="text" id="tpc_q" placeholder="card number or name, e.g. OP18-004" style="width:60%"> <button class="btn sm" id="tpc_go">Load</button> <button class="btn sm ghost" id="tpc_upd">Update list</button><br><span id="tpc_st" class="hint"></span><select id="tpc_pick" style="display:none;width:100%;margin-top:4px"></select></span>
         <label>Name</label><input type="text" id="tpt_name" value="${esc(TP.txt.name)}">
         <label>Life</label><input type="text" id="tpt_life" value="${esc(TP.txt.life)}" placeholder="Leaders only">
+        <label>Cost</label><input type="text" id="tpt_cost" value="${esc(TP.txt.cost)}" placeholder="0-10">
         <label>Power</label><input type="text" id="tpt_power" value="${esc(TP.txt.power)}">
         <label>Type</label><input type="text" id="tpt_type" value="${esc(TP.txt.type)}">
         <label>Card number</label><input type="text" id="tpt_num" value="${esc(TP.txt.num)}">
@@ -1899,17 +1909,18 @@ function tpHL(bb){
 }
 async function tpZone(key){
   const P = TP.pos || {}, [W, H] = TP.st ? TP.st.size : [0, 0];
-  const m = {name:'Card Name', power:'Power', life:'Life', type:'Type', num:'Card Info', ability:'Textbox'};
+  const m = {name:'Card Name', cost:'Cost Number', power:'Power', life:'Life', type:'Type', num:'Card Info', ability:'Textbox'};
   if(key === 'art'){ const tb = P['Textbox'] || {t:849}; return {l:0, t:0, r:W, b:tb.t - 10} }
   if(key.startsWith('g')){ const n = +key.slice(1), it = TP.st.items[n], k = TP.sel['g' + n]; if(!it || k < 0 || !it.kids[k] || it.kids[k].empty) return null; return await tpBBox(Object.assign({grp:it.name}, it.kids[k])) }
   if(key.startsWith('l')){ const it = TP.st.items[+key.slice(1)]; return it && !it.empty ? await tpBBox(it) : null }
   if(m[key] && P[m[key]]) return P[m[key]];
-  return ({name:{l:200,t:1230,r:800,b:1280}, power:{l:760,t:40,r:870,b:110}, life:{l:790,t:40,r:900,b:130}, type:{l:429,t:1308,r:575,b:1329}, num:{l:769,t:1322,r:932,b:1343}, ability:{l:62,t:849,r:938,b:1151}})[key] || null;
+  return ({name:{l:200,t:1230,r:800,b:1280}, cost:{l:20,t:20,r:160,b:160}, power:{l:760,t:40,r:870,b:110}, life:{l:790,t:40,r:900,b:130}, type:{l:429,t:1308,r:575,b:1329}, num:{l:769,t:1322,r:932,b:1343}, ability:{l:62,t:849,r:938,b:1151}})[key] || null;
 }
 function tpTextZones(){          // where each text sits on the card (template coordinates)
   const P = TP.pos || {}, has = n => TP.st && TP.st.items.some(i => i.name === n);
   const z = [], add = (k, bb) => { if(bb) z.push([k, bb]) };
   add('name', P['Card Name'] || (has('Card Name') ? {l:200, t:1230, r:800, b:1280} : null));
+  add('cost', P['Cost Number'] || null);
   add('power', P['Power'] || (has('Power') ? {l:760, t:40, r:870, b:110} : null));
   if(P['Life']) add('life', P['Life']);
   add('type', P['Type'] || (has('Type') ? {l:429, t:1308, r:575, b:1329} : null));
@@ -1940,7 +1951,7 @@ function tpHLbind(el, key){
 function bindTp(){
   const c = id => $('#' + id);
   if(c('tpcv')){ c('tpcv').style.cursor = 'text'; c('tpcv').title = 'Click a text on the card to type there'; c('tpcv').onclick = tpEditAt }
-  [['tpt_name','name'],['tpt_life','life'],['tpt_power','power'],['tpt_type','type'],['tpt_num','num'],['tpt_ability','ability']].forEach(([id, k]) => { if(c(id)) tpHLbind(c(id), k) });
+  [['tpt_name','name'],['tpt_cost','cost'],['tpt_life','life'],['tpt_power','power'],['tpt_type','type'],['tpt_num','num'],['tpt_ability','ability']].forEach(([id, k]) => { if(c(id)) tpHLbind(c(id), k) });
   $$('#tpctl select').forEach(el => tpHLbind(el, 'g' + el.dataset.g));
   $$('#tpctl input[type=checkbox]').forEach(el => tpHLbind(el, 'l' + el.dataset.l));
   $$('#tpartbar button, #tpartbar input').forEach(el => tpHLbind(el, 'art'));
@@ -1952,7 +1963,7 @@ function bindTp(){
   $$('#tpctl select').forEach(sel => sel.onchange = () => { TP.sel['g' + sel.dataset.g] = +sel.value; tpDraw() });
   $$('#tpctl input[type=checkbox]').forEach(cb => cb.onchange = () => { TP.sel['l' + cb.dataset.l] = cb.checked; tpDraw() });
   const tx = (id, key, num) => { const el = c(id); if(el) el.oninput = () => { TP.txt[key] = el.type === 'checkbox' ? el.checked : (num ? +el.value : el.value); tpDraw() } };
-  tx('tptxon', 'on'); tx('tpt_name', 'name'); tx('tpt_power', 'power'); tx('tpt_life', 'life'); tx('tpt_type', 'type'); tx('tpt_num', 'num'); tx('tpt_ability', 'ability'); tx('tpt_size', 'size', 1); tx('tpt_auto', 'auto');
+  tx('tptxon', 'on'); tx('tpt_name', 'name'); tx('tpt_power', 'power'); tx('tpt_cost', 'cost'); tx('tpt_life', 'life'); tx('tpt_type', 'type'); tx('tpt_num', 'num'); tx('tpt_ability', 'ability'); tx('tpt_size', 'size', 1); tx('tpt_auto', 'auto');
   tpCardsStatus();
   if(c('tpc_upd')) c('tpc_upd').onclick = async () => { c('tpc_st').textContent = 'Downloading the card list ...'; try{ const r = await api('/api/template/cards_update', {}); c('tpc_st').textContent = r.count + ' cards saved on this PC (' + r.saved + ')' }catch(e){ c('tpc_st').textContent = ''; toast(e.message, true) } };
   const go = async () => { const q = c('tpc_q').value.trim(); if(!q) return; let r; try{ r = await api('/api/template/cards_find?q=' + enc(q)) }catch(e){ return toast(e.message, true) }

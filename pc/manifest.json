@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 13:50",
+ "version": "2026-11-12 14:04",
  "notes": [
-  "Card templates: click a text on the card to type"
+  "Card templates: cost field and real number layers"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "5bad098e466e9703f805d6bb0028d9f19b8fc549dcf8baa3b9eedb6bca894c82"
+   "sha256": "86c916c9d5c48429d5d96f9489613868d590162e270dd80f85f76f9c1b923aa3"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "d85b685de500ea30e6450671c541fca5052217ef4f39c845038e73503d6ae54a"
+   "sha256": "b2a266df59d9539b1b0416dc2d4195bcc8353ff2d5d84d34b14bab5b8d1b6242"
   },
   {
    "name": "fonts/OFL.txt",
