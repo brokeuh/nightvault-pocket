@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261112-n13";
+const UI_BUILD = "20261112-n16";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1685,6 +1685,7 @@ async function startCovers(scope){
 const TP = {list:null, name:'', st:null, sel:{}, imgs:{}, token:0, busy:false,
   txt:{on:true, life:'', name:'Karoo', power:'5000', cost:'4', type:'Animal/Alabasta', num:'OP18-004', ability:"Apply each of the following effects based on this Character's power: \u2022 If it has 5000 power or more, this Character gains [orange|Rush]. \u2022 If it has 6000 power or more, this Character gains [orange|Banish].", size:30, dx:0, dy:0, auto:true},
   art:{img:null, zoom:1, x:0, y:0}};
+const TP_POWER5 = 0.86;      // 5-digit power (10000 and up) is squeezed sideways to this fraction, like on real cards
 const TP_VALUES = {'Power':['powerInput', 'power', '5000'], 'Cost Number':['costInput', 'cost', '4'], 'Life':['lifeInput', 'life', ''], 'Counter':['counterInput', 'counter', ''], 'Block':['blockInput', 'block', '']};   // group -> [OPPP input id, our field, value of the default layer]
 function tpValueKid(it, k){       // a ready-made layer for exactly this number (made from OPPP), if the template has one
   const V = TP_VALUES[it.name]; if(!V || !TP.txt.on || !it.kids[k] || it.kids[k].name !== 'default') return null;
@@ -1755,7 +1756,8 @@ function tpDrawText(ctx){
     outlined(T.name, cx(b), b.b, px, FN, 'center') }
   else if(has('Card Name')) outlined(T.name, 498, 1268, 46, FN, 'center');
   const usedLayer = g => tpVisible().some(l => l.grp === g && l.valued);
-  if(usedLayer('Power')){} else if(P['Power']){ const b = P['Power']; outlined(String(T.power), b.r, b.b, Math.min(tpFit(ctx, FN, '5000', b, 72), 96), FN, 'right') }
+  if(usedLayer('Power')){} else if(P['Power']){ const b = P['Power'], px = Math.min(tpFit(ctx, FN, '5000', b, 72), 96); ctx.font = FN.replace('@', px + 'px'); const w = ctx.measureText(String(T.power)).width, mw = (b.r - b.l) * 1.1, k = String(parseInt(T.power, 10)).length >= 5 ? TP_POWER5 : (w > mw ? mw / w : 1);
+    ctx.save(); ctx.translate(b.r, 0); ctx.scale(k, 1); ctx.translate(-b.r, 0); outlined(String(T.power), b.r, b.b, px, FN, 'right'); ctx.restore() }       // 5 digits: squeezed sideways like on real cards
   else if(has('Power')) outlined(String(T.power), 857, 99, 72, FN, 'right');
   if(!usedLayer('Life') && P['Life'] && T.life !== '') { const b = P['Life']; outlined(String(T.life), cx(b), b.b, Math.min(tpFit(ctx, FN, '5', b, 60), 90), FN, 'center') }
   if(P['Type'] || has('Type')){ const b = P['Type'] || {l:429, t:1308, r:575, b:1329}, px = Math.min(tpFit(ctx, FR, 'EDIT HERE', b, 22), 30);
@@ -1810,7 +1812,11 @@ async function tpDraw(){
   if(!TP.st || my !== TP.token) return;
   const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H);
   const OPS = {'mul ':'multiply', 'scrn':'screen', 'over':'overlay', 'dark':'darken', 'lite':'lighten', 'diff':'difference', 'sLit':'soft-light', 'hLit':'hard-light', 'div ':'color-dodge', 'idiv':'color-burn', 'lddg':'lighter'};
-  vis.forEach((l, k) => { if(k === 1 || (vis.length === 1 && k === 0)) tpDrawArt(ctx, W, H); ctx.globalAlpha = (l.op == null ? 255 : l.op) / 255; ctx.globalCompositeOperation = OPS[l.blend] || 'source-over'; ctx.drawImage(ims[k], l.rect[0], l.rect[1]) });
+  const sx = {};          // 5-digit power is squeezed sideways like on real cards, so it stays clear of the frame corner
+  for(const l of vis) if(l.valued && l.grp === 'Power'){ const bb = await tpBBox(l), it = TP.st && TP.st.items.find(i => i.name === 'Power'), d = it && it.kids.find(x => x.name === 'default'), db = d && !d.empty && await tpBBox(Object.assign({grp:'Power'}, d));
+    if(bb && db && String(parseInt(TP.txt.power, 10)).length >= 5) sx[l.i] = {s:TP_POWER5, r:bb.r} }
+  if(my !== TP.token || !TP.st) return;
+  vis.forEach((l, k) => { if(k === 1 || (vis.length === 1 && k === 0)) tpDrawArt(ctx, W, H); ctx.save(); if(sx[l.i]){ ctx.translate(sx[l.i].r, 0); ctx.scale(sx[l.i].s, 1); ctx.translate(-sx[l.i].r, 0) } ctx.globalAlpha = (l.op == null ? 255 : l.op) / 255; ctx.globalCompositeOperation = OPS[l.blend] || 'source-over'; ctx.drawImage(ims[k], l.rect[0], l.rect[1]); ctx.restore() });
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   tpDrawText(ctx);
   tpBusy('');

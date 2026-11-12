@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 14:11",
+ "version": "2026-11-12 14:19",
  "notes": [
-  "Number layers hidden from dropdowns"
+  "5-digit power fits the frame"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "2bf999d6ee071e5533b9a5ad9269b18f80df567de8ee96fd76de3d59d7f99ab4"
+   "sha256": "5a708604cd9b93c287117286659b58cb32bf5e0201708ca334b0f486cf5babd8"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "06e43ca3aa70fb0ae9a5df3f6d318a7f3705ad2585af6d50f1a2b0d7d4de3955"
+   "sha256": "37b9411d6c629063a69a92c43bfbb16cca3dc09d416318d2e7e21319ba783a5c"
   },
   {
    "name": "fonts/OFL.txt",

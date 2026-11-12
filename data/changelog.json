@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 184,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: 5-digit power fits the frame",
+   "items": [
+    "Power of 10000 and up is squeezed sideways so it no longer touches the frame corner, like on real cards."
+   ]
+  },
+  {
    "id": 183,
    "date": "2026-11-12",
    "where": [
