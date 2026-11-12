@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 175,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: card templates get a text and art editor",
+   "items": [
+    "Card templates page: type the name, power, type, card number and ability text; tags like [blue|Activate: Main], [pink|Once Per Turn], [orange|Rush] and [black|DON!! x1] become coloured labels; text auto-fits the box.",
+    "Choose your own art and move/zoom it behind the frame.",
+    "Load card data: type a card number or name and it fills the fields from an offline One Piece card list (press Update list once; needs internet).",
+    "Roboto and Roboto Condensed (free fonts) are included. If the fonts do not show after one update, press Check for updates a second time."
+   ]
+  },
+  {
    "id": 174,
    "date": "2026-11-11",
    "where": [

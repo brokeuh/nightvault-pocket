@@ -1,7 +1,7 @@
 {
- "version": "2026-11-11 23:50",
+ "version": "2026-11-12 09:42",
  "notes": [
-  "Card templates page: open a layered PSD, pick layers with dropdowns, save PNG/PSD"
+  "Card templates: text and art editor, [colour|text] tags, One Piece card data loader"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "aedce05b02b27c9ab934e62ea0213e9271ea1bc4cdab376ecc1e7004b349ef82"
+   "sha256": "0366e1deb1c6d69da59377655c02935d1e6c870a8f541827e76ef57aace1f2cb"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -27,6 +27,10 @@
   {
    "name": "vault_news.py",
    "sha256": "09b7e0d5c9b7017396d922f30543633b9e1933ff45bae898abdeb619302df7f7"
+  },
+  {
+   "name": "vault_opcards.py",
+   "sha256": "86adf9b78b82b3b4df658d946339a1366148179401742373876e9706541113bb"
   },
   {
    "name": "vault_phone.py",
@@ -46,7 +50,19 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "52dca87dee0774c301e6360b3232c835056ba1ceb5415b41f320acf608ff03e4"
+   "sha256": "d620d3c46c1fbfd3a0e563c2fb779331430bbd6974e2df19306b3fc78775b6be"
+  },
+  {
+   "name": "fonts/OFL.txt",
+   "sha256": "061402327a96aadb0bfb694a960ed289ecd38d383e396243831ab81feb109c41"
+  },
+  {
+   "name": "fonts/Roboto.ttf",
+   "sha256": "d7598e12c5dbef095ff8272cfc55da0250bd07fbdecbac8a530b9b277872a134"
+  },
+  {
+   "name": "fonts/RobotoCondensed.ttf",
+   "sha256": "dace262afcee68a5276f200d8026c57221735c0118ab5fda8c2c0d3dc409a8d0"
   }
  ]
 }

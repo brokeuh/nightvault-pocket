@@ -170,6 +170,10 @@ try:
 except Exception:
     tdata = None
 try:
+    import vault_opcards as opc            # One Piece card list kept offline for the Card templates page
+except Exception:
+    opc = None
+try:
     import vault_template as vtpl          # Card templates: pick the layers of a layered PSD with dropdowns, preview, save PNG/PSD
 except Exception:
     vtpl = None
@@ -187,7 +191,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261111-n6"   # the page and the program must carry the same build id
+BUILD = "20261112-n7"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -3736,13 +3740,23 @@ def _sha256(path):
     return h.hexdigest()
 
 
+def _upd_name_ok(name):
+    """Plain file names next to vault.py, plus fonts/<file> (the free fonts for the Card templates page)."""
+    if not name or "\\" in name or name.startswith(".") or name in UPDATE_SKIP:
+        return False
+    if "/" in name:
+        d, _, f = name.partition("/")
+        return d == "fonts" and f and "/" not in f and not f.startswith(".")
+    return True
+
+
 def update_check():
     """-> dict(available, files=[names that differ], version, notes). Raises on network problems."""
     man = json.loads(_fetch(UPDATE_BASE + "manifest.json", 20))
     changed = []
     for f in man.get("files") or []:
         name = str(f.get("name") or "")
-        if not name or "/" in name or "\\" in name or name.startswith(".") or name in UPDATE_SKIP:
+        if not _upd_name_ok(name):
             continue
         local = HERE / name
         if not local.exists() or _sha256(local) != f.get("sha256"):
@@ -3753,8 +3767,7 @@ def update_check():
 def update_apply():
     """Download the changed files, check them, keep the old ones in update_backup/<time>/, then put the new ones in place."""
     man = json.loads(_fetch(UPDATE_BASE + "manifest.json", 20))
-    want = {f["name"]: f["sha256"] for f in man.get("files") or [] if f.get("name") and "/" not in f["name"] and "\\" not in f["name"]
-            and not f["name"].startswith(".") and f["name"] not in UPDATE_SKIP}
+    want = {f["name"]: f["sha256"] for f in man.get("files") or [] if _upd_name_ok(f.get("name") or "")}
     todo = {n: h for n, h in want.items() if not (HERE / n).exists() or _sha256(HERE / n) != h}
     if not todo:
         return dict(updated=[], backup="")
@@ -3773,7 +3786,9 @@ def update_apply():
     backup.mkdir(parents=True, exist_ok=True)
     for name, data in new.items():
         target = HERE / name
+        target.parent.mkdir(parents=True, exist_ok=True)
         if target.exists():
+            (backup / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(target, backup / name)
         tmp = HERE / (name + ".new")
         tmp.write_bytes(data)
@@ -6063,6 +6078,10 @@ class Handler(BaseHTTPRequestHandler):
     def template_get(self, path, q):
         if not vtpl:
             return self._error(404, "vault_template.py is missing next to vault.py - update Nightvault")
+        if path == "/api/template/cards_status":
+            return self._send(200, opc.status(mc.DB_PATH.parent) if opc else dict(have=False, count=0, saved=""))
+        if path == "/api/template/cards_find":
+            return self._send(200, dict(cards=opc.find(mc.DB_PATH.parent, q.get("q", "")) if opc else []))
         if path == "/api/template/list":
             TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
             return self._send(200, {"templates": [dict(name=f.name, size=f.stat().st_size) for f in sorted(TEMPLATE_DIR.glob("*.psd"))]})
@@ -6080,6 +6099,12 @@ class Handler(BaseHTTPRequestHandler):
                 cdir.mkdir(parents=True, exist_ok=True)
                 cf.write_bytes(png)
             return self._send(200, cf.read_bytes(), "image/png", {"Cache-Control": "private, max-age=86400"})
+        if path == "/api/template/font":
+            fn = os.path.basename(q.get("f", ""))
+            ff = Path(__file__).resolve().parent / "fonts" / fn
+            if fn not in ("Roboto.ttf", "RobotoCondensed.ttf") or not ff.exists():
+                return self._error(404, "Font not found - update Nightvault")
+            return self._send(200, ff.read_bytes(), "font/ttf", {"Cache-Control": "private, max-age=86400"})
         if path == "/api/template/out":
             f = TEMPLATE_DIR / "out" / vtpl.safe_name(q.get("f", ""))
             if not f.exists():
@@ -6119,6 +6144,11 @@ class Handler(BaseHTTPRequestHandler):
         out = TEMPLATE_DIR / "out" / f"{f.stem}_custom_{stamp}.psd"
         vtpl.save_psd(str(f), str(out), d.get("visible") or [])
         return self._send(200, {"file": out.name, "folder": str(out.parent)})
+
+    def post_template_cards_update(self, conn, d):
+        if not opc:
+            raise ValueError("vault_opcards.py is missing next to vault.py - update Nightvault")
+        return self._send(200, opc.update(mc.DB_PATH.parent, _fetch))
 
     def post_template_delete(self, conn, d):
         f = self._tpl_path(d.get("name", ""))
