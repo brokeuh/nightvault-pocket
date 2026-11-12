@@ -1,7 +1,7 @@
 {
  "version": "2026-11-12 16:09",
  "notes": [
-  "Ability text closer to printed cards"
+  "White outline on ability text"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "cd8c8479770d2c76a977ba5337a2727ca79d16784eceace21412cd0332f89fde"
+   "sha256": "f497509a290c5873e1a9a473da901d2c53b81b379c9708e72c87e1ce208e5004"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "56ffe3441f46e5fdd5eb6f339645999e781b5dd83f18b58ee932d7f29341aacf"
+   "sha256": "41d6e770141fdec39f362a318ee28e19749400d3cf0d57ae2a87948716c92c49"
   },
   {
    "name": "fonts/OFL.txt",

@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261112-n19";
+const UI_BUILD = "20261112-n20";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1683,7 +1683,7 @@ async function startCovers(scope){
 
 /* ---------------------------------------------------------------- card templates (layered PSD) */
 const TP = {list:null, name:'', st:null, sel:{}, imgs:{}, token:0, busy:false,
-  txt:{on:true, life:'', name:'Karoo', power:'5000', cost:'4', type:'Animal/Alabasta', num:'OP18-004', ability:"Apply each of the following effects based on this Character's power: \u2022 If it has 5000 power or more, this Character gains [orange|Rush]. \u2022 If it has 6000 power or more, this Character gains [orange|Banish].", size:30, dx:0, dy:0, auto:true},
+  txt:{on:true, life:'', name:'Karoo', power:'5000', cost:'4', type:'Animal/Alabasta', num:'OP18-004', ability:"Apply each of the following effects based on this Character's power: \u2022 If it has 5000 power or more, this Character gains [orange|Rush]. \u2022 If it has 6000 power or more, this Character gains [orange|Banish].", size:30, dx:0, dy:0, auto:true, outline:true},
   art:{img:null, zoom:1, x:0, y:0}};
 const TP_POWER5 = 0.93;      // 5-digit power (10000 and up) is drawn a little smaller (same proportions) like on real cards - measured on a real 10000 card
 const TP_VALUES = {'Power':['powerInput', 'power', '5000'], 'Cost Number':['costInput', 'cost', '4'], 'Life':['lifeInput', 'life', ''], 'Counter':['counterInput', 'counter', ''], 'Block':['blockInput', 'block', '']};   // group -> [OPPP input id, our field, value of the default layer]
@@ -1775,9 +1775,11 @@ function tpDrawText(ctx){
   const lh = px * 1.3; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   lines.forEach((L, li) => { const cy = by + lh * li + lh / 2;
     L.forEach(it => { const x = bx + it.x;
-      if(it.tag){ const col = TP_TAGS[it.tag] || '#555', h = px * 1.02; ctx.fillStyle = col; rr(x, cy - h / 2, it.w2, h, h / 2); ctx.fill();
+      if(it.tag){ const col = TP_TAGS[it.tag] || '#555', h = px * 1.02; ctx.fillStyle = col; rr(x, cy - h / 2, it.w2, h, h / 2); if(T.outline){ ctx.lineWidth = px * 0.1; ctx.strokeStyle = '#fff'; ctx.stroke() } ctx.fill();
         ctx.fillStyle = '#fff'; ctx.font = '700 ' + px * 0.82 + 'px NVRoboto, Roboto, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(it.w, x + it.w2 / 2, cy + px * 0.03); ctx.textAlign = 'left' }
-      else { ctx.fillStyle = '#000'; ctx.font = (it.i ? 'italic ' : '') + '500 ' + px + 'px NVRoboto, Roboto, sans-serif'; ctx.fillText(it.w, x, cy + px * 0.03) } }) });
+      else { ctx.font = (it.i ? 'italic ' : '') + '500 ' + px + 'px NVRoboto, Roboto, sans-serif';
+        if(T.outline){ ctx.lineJoin = 'round'; ctx.lineWidth = px * 0.2; ctx.strokeStyle = '#fff'; ctx.strokeText(it.w, x, cy + px * 0.03) }
+        ctx.fillStyle = '#000'; ctx.fillText(it.w, x, cy + px * 0.03) } }) });
   ctx.restore();
 }
 
@@ -1892,6 +1894,7 @@ async function viewTemplate(){
         <label>Type</label><input type="text" id="tpt_type" value="${esc(TP.txt.type)}">
         <label>Card number</label><input type="text" id="tpt_num" value="${esc(TP.txt.num)}">
         <label>Ability</label><textarea id="tpt_ability" rows="5">${esc(TP.txt.ability)}</textarea>
+        <label>Outline</label><label><input type="checkbox" id="tpt_outline" ${TP.txt.outline ? 'checked' : ''}> white outline on the ability text (for see-through text boxes)</label>
         <label>Text size</label><span><input type="range" id="tpt_size" min="14" max="44" value="${TP.txt.size}"> <label><input type="checkbox" id="tpt_auto" ${TP.txt.auto ? 'checked' : ''}> auto-fit</label></span>
       </div>
       <p class="hint">Tags: [blue|Activate: Main] [pink|Once Per Turn] [orange|Rush] [black|DON!! x1]. Colours: blue pink orange black red green purple yellow grey.</p>
@@ -1972,7 +1975,7 @@ function bindTp(){
   $$('#tpctl select').forEach(sel => sel.onchange = () => { TP.sel['g' + sel.dataset.g] = +sel.value; tpDraw() });
   $$('#tpctl input[type=checkbox]').forEach(cb => cb.onchange = () => { TP.sel['l' + cb.dataset.l] = cb.checked; tpDraw() });
   const tx = (id, key, num) => { const el = c(id); if(el) el.oninput = () => { TP.txt[key] = el.type === 'checkbox' ? el.checked : (num ? +el.value : el.value); tpDraw() } };
-  tx('tptxon', 'on'); tx('tpt_name', 'name'); tx('tpt_power', 'power'); tx('tpt_cost', 'cost'); tx('tpt_life', 'life'); tx('tpt_type', 'type'); tx('tpt_num', 'num'); tx('tpt_ability', 'ability'); tx('tpt_size', 'size', 1); tx('tpt_auto', 'auto');
+  tx('tptxon', 'on'); tx('tpt_name', 'name'); tx('tpt_power', 'power'); tx('tpt_cost', 'cost'); tx('tpt_life', 'life'); tx('tpt_type', 'type'); tx('tpt_num', 'num'); tx('tpt_ability', 'ability'); tx('tpt_size', 'size', 1); tx('tpt_outline', 'outline'); tx('tpt_auto', 'auto');
   tpCardsStatus();
   if(c('tpc_upd')) c('tpc_upd').onclick = async () => { c('tpc_st').textContent = 'Downloading the card list ...'; try{ const r = await api('/api/template/cards_update', {}); c('tpc_st').textContent = r.count + ' cards saved on this PC (' + r.saved + ')' }catch(e){ c('tpc_st').textContent = ''; toast(e.message, true) } };
   const go = async () => { const q = c('tpc_q').value.trim(); if(!q) return; let r; try{ r = await api('/api/template/cards_find?q=' + enc(q)) }catch(e){ return toast(e.message, true) }

@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 188,
+   "date": "2026-11-12",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: white outline on ability text",
+   "items": [
+    "New \"Outline\" option in Card templates: black ability text and the coloured pills get a white outline so they stay readable on see-through text boxes over art (on by default)."
+   ]
+  },
+  {
    "id": 187,
    "date": "2026-11-12",
    "where": [
