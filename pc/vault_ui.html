@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261113-n25";
+const UI_BUILD = "20261113-n26";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1707,6 +1707,20 @@ async function tpGradProfile(l){       // top-to-bottom colours of a gradient la
   for(let k = 0; k < 5; k++){ let y = Math.round(y0 + (y1 - y0) * k / 4), t = 0; while(!rows[y] && t < 60){ y += (k < 3 ? 1 : -1); t++ } const r = rows[y] || rows[y0]; out.push('rgb(' + Math.round(r[0]) + ',' + Math.round(r[1]) + ',' + Math.round(r[2]) + ')') }
   return out;
 }
+const TP_TSKEY = {'Card Name':'name', 'Power':'power', 'Life':'life', 'Type':'type', 'Card Info':'num'};
+function tpTextStyle(name, grp){       // what the chosen layer version means for the colour of our own text; null = the normal white look
+  const n = String(name || '').split(' | ')[0];
+  if(/black_outline$/.test(n)) return {fill:'#111', stroke:'#fff'};
+  if(/white_outline$/.test(n)) return {fill:'#fff', stroke:'#111'};
+  if(/red_outline$/.test(n)) return {fill:'#c00020', stroke:'#111'};
+  if(/=black$/.test(n)) return {fill:'#111', stroke:null};
+  if(/=white$/.test(n)) return {fill:'#fff', stroke:'#111'};
+  if(/golden|tournament/.test(n)) return {fill:'#d2ac28', stroke:'#111'};
+  if(/5_elders/.test(n)) return {fill:'#e02020', stroke:'#111'};
+  if(/serialized/.test(n)) return {fill:'#e0c060', stroke:'#111'};
+  if(/wanted/.test(n) && grp === 'Power') return {fill:'#c0a080', stroke:'#111'};
+  return null;
+}
 function tpGradFill(ctx, key, y0, y1){ const p = TP.gf && TP.gf[key]; if(!p) return null; const g = ctx.createLinearGradient(0, y0, 0, y1); p.forEach((c, i) => g.addColorStop(i / (p.length - 1), c)); return g }
 const TP_TEXTGROUPS = ['Card Name', 'Power', 'Type', 'Ability Text', 'Card Info', 'Life'];
 TP.pos = {}; TP.bb = {};
@@ -1761,8 +1775,8 @@ function tpFit(ctx, font, sample, bb, def){       // font size that makes the sa
 function tpDrawText(ctx){
   const T = TP.txt; if(!T.on) return;
   const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath() };
-  const outlined = (txt, x, y, px, font, align, gk) => { ctx.font = font.replace('@', px + 'px'); ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
-    ctx.lineWidth = px * 0.16; ctx.strokeStyle = '#111'; ctx.strokeText(txt, x, y); ctx.fillStyle = (gk && tpGradFill(ctx, gk, y - px * 0.8, y)) || '#fff'; ctx.fillText(txt, x, y) };
+  const outlined = (txt, x, y, px, font, align, gk) => { const ts = (TP.ts || {})[gk || '']; ctx.font = font.replace('@', px + 'px'); ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+    ctx.lineWidth = px * 0.16; if(!ts || ts.stroke){ ctx.strokeStyle = ts ? ts.stroke : '#111'; ctx.strokeText(txt, x, y) } ctx.fillStyle = (gk && tpGradFill(ctx, gk, y - px * 0.8, y)) || (ts && ts.fill) || '#fff'; ctx.fillText(txt, x, y) };
   ctx.save();
   const has = n => TP.st && TP.st.items.some(i => i.name === n);
   const P = TP.pos, cx = b => (b.l + b.r) / 2, FN = '700 @ NVRobotoCond, Roboto, sans-serif', FR = '400 @ NVRoboto, Roboto, sans-serif';
@@ -1774,11 +1788,11 @@ function tpDrawText(ctx){
   if(usedLayer('Power')){} else if(P['Power']){ const b = P['Power'], px = Math.min(tpFit(ctx, FN, '5000', b, 72), 96); ctx.font = FN.replace('@', px + 'px'); const w = ctx.measureText(String(T.power)).width, mw = (b.r - b.l) * 1.1, k = String(parseInt(T.power, 10)).length >= 5 ? TP_POWER5 : (w > mw ? mw / w : 1);
     ctx.save(); ctx.translate(b.r, b.b); ctx.scale(k, k); ctx.translate(-b.r, -b.b); outlined(String(T.power), b.r, b.b, px, FN, 'right', 'power'); ctx.restore() }       // 5 digits: a little smaller like on real cards
   else if(has('Power')) outlined(String(T.power), 857, 99, 72, FN, 'right', 'power');
-  if(!usedLayer('Life') && P['Life'] && T.life !== '') { const b = P['Life']; outlined(String(T.life), cx(b), b.b, Math.min(tpFit(ctx, FN, '5', b, 60), 90), FN, 'center') }
+  if(!usedLayer('Life') && P['Life'] && T.life !== '') { const b = P['Life']; outlined(String(T.life), cx(b), b.b, Math.min(tpFit(ctx, FN, '5', b, 60), 90), FN, 'center', 'life') }
   if(P['Type'] || has('Type')){ const b = P['Type'] || {l:429, t:1308, r:575, b:1329}, px = Math.min(tpFit(ctx, FR, 'EDIT HERE', b, 22), 30);
-    ctx.font = FR.replace('@', px + 'px'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = tpGradFill(ctx, 'type', b.b - px * 0.8, b.b) || '#fff'; ctx.fillText(T.type, cx(b), b.b - 1) }
+    ctx.font = FR.replace('@', px + 'px'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; const tt = (TP.ts || {}).type; if(tt && tt.stroke){ ctx.lineJoin = 'round'; ctx.lineWidth = px * 0.14; ctx.strokeStyle = tt.stroke; ctx.strokeText(T.type, cx(b), b.b - 1) } ctx.fillStyle = tpGradFill(ctx, 'type', b.b - px * 0.8, b.b) || (tt && tt.fill) || '#fff'; ctx.fillText(T.type, cx(b), b.b - 1) }
   if(P['Card Info'] || has('Card Info')){ const b = P['Card Info'] || {l:769, t:1322, r:932, b:1343}, px = Math.min((b.b - b.t) / 0.72, 26);
-    ctx.font = FR.replace('@', px + 'px'); ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#fff'; ctx.fillText(T.num, (P['Card Info'] ? b.r : 868) - 66, b.b - 1) }
+    ctx.font = FR.replace('@', px + 'px'); ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic'; const tn = (TP.ts || {}).num; if(tn && tn.stroke){ ctx.lineJoin = 'round'; ctx.lineWidth = px * 0.14; ctx.strokeStyle = tn.stroke; ctx.strokeText(T.num, (P['Card Info'] ? b.r : 868) - 66, b.b - 1) } ctx.fillStyle = (tn && tn.fill) || '#fff'; ctx.fillText(T.num, (P['Card Info'] ? b.r : 868) - 66, b.b - 1) }
   // ability text inside the box
   if(!(P['Textbox'] || has('Textbox') || has('Ability Text'))){ ctx.restore(); return }      // e.g. Don cards have no ability box
   const TB = P['Textbox'] || {l:62, t:849, r:938, b:1151}, bx = TB.l + 13 + T.dx, by = TB.t + 10 + T.dy, bw = TB.r - TB.l - 26, bh = TB.b - TB.t - 20, toks = tpParse(T.ability || '');
@@ -1823,6 +1837,7 @@ async function tpDraw(){
   const [W, H] = TP.st.size; cv.width = W; cv.height = H;
   const vis = tpVisible().filter(l => !l.empty && !(TP.txt.on && TP_TEXTGROUPS.includes(l.grp) && !l.valued) && !(TP.txt.on && TP_GRADS[l.grp]) && !(TP.txt.on && l.grp === 'Cost Number' && !l.valued && String(TP.txt.cost).trim() === ''));
   await tpFonts(); await tpMeasure(); if(my !== TP.token) return;
+  TP.ts = {}; if(TP.txt.on) tpVisible().forEach(l => { const k = TP_TSKEY[l.grp]; if(k && !l.valued){ const st = tpTextStyle(l.name, l.grp); if(st) TP.ts[k] = st } });
   TP.gf = {}; if(TP.txt.on) for(const l of tpVisible().filter(l => !l.empty && TP_GRADS[l.grp])){ try{ TP.gf[TP_GRADS[l.grp]] = await tpGradProfile(l) }catch(e){} }
   if(my !== TP.token) return;
   tpBusy('Loading layers ...');

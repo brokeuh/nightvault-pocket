@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 194,
+   "date": "2026-11-13",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: text colour choices work on your own text",
+   "items": [
+    "Fix: with \"Use my text\" on, choosing a text colour version (black, white, outlined, golden, red) for Name, Power, Life, Type and Card number now changes your own text instead of the hidden original."
+   ]
+  },
+  {
    "id": 193,
    "date": "2026-11-13",
    "where": [
