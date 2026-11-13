@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 202,
+   "date": "2026-11-13",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: cost and power looks work on the number you type",
+   "items": [
+    "Fix: choosing a Cost digits look or a Power digits look (gold, red, outlined, white ...) always showed the sample number (4 or 5000). It now shows your own number in that look."
+   ]
+  },
+  {
    "id": 201,
    "date": "2026-11-13",
    "where": [

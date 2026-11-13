@@ -1,7 +1,7 @@
 {
- "version": "2026-11-13 13:38",
+ "version": "2026-11-13 14:13",
  "notes": [
-  "Layered PSD with your art and text"
+  "Number looks on typed numbers"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "13631492c2a7d2b2ac87720337a7167af275c4441d14758e334901adb78ea572"
+   "sha256": "ef5eca82b7d3e651b94c112c626a227b8374072b60d6aec2a2bd744f4f816d95"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "5254f151696e4f9cc33a3a996b6e755665d78351657c4f4fd582ba748b75b7af"
+   "sha256": "802a3d85d86cdbd2c2157338c784480a9cf186b8438debada916b25b3b477412"
   },
   {
    "name": "fonts/OFL.txt",

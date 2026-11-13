@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261113-n33";
+const UI_BUILD = "20261113-n34";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1723,6 +1723,21 @@ function tpTextStyle(name, grp){       // what the chosen layer version means fo
   if(/wanted/.test(n) && grp === 'Power') return {fill:'#c0a080', stroke:'#111'};
   return null;
 }
+function tpRecolor(target, defImg, styleImg){       // the style versions only exist with the sample number baked in; learn "plain colour -> style colour" from that sample and apply it to the number we want
+  const rd = im => { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const x = c.getContext('2d', {willReadFrequently:true}); x.drawImage(im, 0, 0); return x.getImageData(0, 0, c.width, c.height) };
+  const D = rd(defImg), S = rd(styleImg), T = rd(target); if(D.width !== S.width || D.height !== S.height) return target;
+  const rows = I => { let a = -1, b = 0; for(let y = 0; y < I.height; y++) for(let x = 0; x < I.width; x++) if(I.data[(y * I.width + x) * 4 + 3] > 200){ if(a < 0) a = y; b = y; break } return [a, b] };
+  const [d0, d1] = rows(D), [t0, t1] = rows(T); if(d0 < 0 || t0 < 0) return target;
+  const B = 6, bk = (r, g, b) => ((r >> 5) << 6) | ((g >> 5) << 3) | (b >> 5), tb = new Float32Array(B * 512 * 4), ab = new Float32Array(512 * 4);
+  for(let y = d0; y <= d1; y++){ const band = Math.min(B - 1, Math.floor((y - d0) / (d1 - d0 + 1) * B));
+    for(let x = 0; x < D.width; x++){ const o = (y * D.width + x) * 4; if(D.data[o + 3] < 200 || S.data[o + 3] < 200) continue; const k = bk(D.data[o], D.data[o + 1], D.data[o + 2]);
+      for(const [arr, i] of [[tb, (band * 512 + k) * 4], [ab, k * 4]]){ arr[i] += S.data[o]; arr[i + 1] += S.data[o + 1]; arr[i + 2] += S.data[o + 2]; arr[i + 3]++ } } }
+  const get = (arr, i) => arr[i + 3] > 0 ? [arr[i] / arr[i + 3], arr[i + 1] / arr[i + 3], arr[i + 2] / arr[i + 3]] : null;
+  for(let y = t0; y <= t1; y++){ const band = Math.min(B - 1, Math.floor((y - t0) / (t1 - t0 + 1) * B));
+    for(let x = 0; x < T.width; x++){ const o = (y * T.width + x) * 4; if(T.data[o + 3] === 0) continue; const k = bk(T.data[o], T.data[o + 1], T.data[o + 2]);
+      let c = get(tb, (band * 512 + k) * 4) || get(ab, k * 4); if(!c){ for(let dk = 1; dk < 40 && !c; dk++) c = get(ab, ((k + dk) & 511) * 4) || get(ab, ((k - dk) & 511) * 4) } if(c){ T.data[o] = c[0]; T.data[o + 1] = c[1]; T.data[o + 2] = c[2] } } }
+  const c = document.createElement('canvas'); c.width = T.width; c.height = T.height; c.getContext('2d').putImageData(T, 0, 0); return c;
+}
 function tpTint(img, stops){       // colour the dark inside of a number picture (black digits with a white edge) with a top-to-bottom gradient
   const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d', {willReadFrequently:true}); x.drawImage(img, 0, 0);
   const im = x.getImageData(0, 0, c.width, c.height), d = im.data; let y0 = -1, y1 = 0;
@@ -1834,7 +1849,9 @@ function tpSel(key){ return TP.prev && TP.prev.key === key ? TP.prev.v : TP.sel[
 function tpVisible(){        // layer indexes that are on, bottom to top
   const out = [];
   (TP.st ? TP.st.items : []).forEach((it, n) => {
-    if(it.kind === 'group'){ const k = tpSel('g' + n); if(k >= 0 && it.kids[k]){ const vk = tpValueKid(it, k); out.push(Object.assign({grp:it.name}, vk || it.kids[k], vk ? {valued:true} : {})) } }
+    if(it.kind === 'group'){ const k = tpSel('g' + n); if(k >= 0 && it.kids[k]){ let vk = tpValueKid(it, k), sty = null;
+      if(!vk && TP_VALUES[it.name] && it.kids[k].name !== 'default' && !it.kids[k].empty && !/Input=/.test(it.kids[k].name) && it.name !== 'Counter'){ const dk = it.kids.findIndex(x => x.name === 'default'); if(dk >= 0){ vk = tpValueKid(it, dk); if(vk) sty = it.kids[k] } }
+      out.push(Object.assign({grp:it.name}, vk || it.kids[k], vk ? {valued:true} : {}, sty ? {styleKid:sty, defKid:it.kids.find(x => x.name === 'default')} : {})) } }
     else if(TP.sel['l' + n]) out.push(it);
   });
   const ci = TP.st ? TP.st.items.findIndex(i => i.name === 'Counter' && i.kind === 'group') : -1;      // a chosen counter value also brings the little lightning icon
@@ -1879,14 +1896,16 @@ async function tpDraw(){
   for(const l of vis) if(l.valued && l.grp === 'Power'){ const bb = await tpBBox(l), it = TP.st && TP.st.items.find(i => i.name === 'Power'), d = it && it.kids.find(x => x.name === 'default'), db = d && !d.empty && await tpBBox(Object.assign({grp:'Power'}, d));
     if(bb && db && String(parseInt(TP.txt.power, 10)).length >= 5) sx[l.i] = {s:TP_POWER5, r:bb.r, b:bb.b} }
   if(my !== TP.token || !TP.st) return;
+  const rcol = {}; for(let k = 0; k < vis.length; k++){ const l = vis[k]; if(l.styleKid && l.defKid && !l.defKid.empty){ try{ rcol[k] = tpRecolor(ims[k], await tpImg(l.defKid.i), await tpImg(l.styleKid.i)) }catch(e){} } }
+  if(my !== TP.token) return;
   const rec = TP.rec || null, snap = fn => { const c = document.createElement('canvas'); c.width = W; c.height = H; fn(c.getContext('2d')); return c.toDataURL('image/png') }, nm = l => (l.grp ? (TP_LABELS[l.grp] || l.grp) + ': ' : '') + tpNice(l.name || 'layer');
   vis.forEach((l, k) => {
     if(k === 1 || (vis.length === 1 && k === 0)){ tpDrawArt(ctx, W, H); if(rec && TP.art.img) rec.push({type:'png', name:'Your art', data:snap(c => tpDrawArt(c, W, H))}) }
     if(l.grp === 'Counter' && TP.bar){ ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.drawImage(TP.bar, 0, 0); if(rec) rec.push({type:'png', name:'Counter bar', data:snap(c => c.drawImage(TP.bar, 0, 0))}) }
-    const tint = l.valued && l.grp === 'Power' && TP.gf && TP.gf.power, src = tint ? tpTint(ims[k], TP.gf.power) : ims[k];
+    const tint = l.valued && l.grp === 'Power' && TP.gf && TP.gf.power, src = rcol[k] ? (tint ? tpTint(rcol[k], TP.gf.power) : rcol[k]) : tint ? tpTint(ims[k], TP.gf.power) : ims[k];
     const put = c => { c.save(); if(sx[l.i]){ c.translate(sx[l.i].r, sx[l.i].b); c.scale(sx[l.i].s, sx[l.i].s); c.translate(-sx[l.i].r, -sx[l.i].b) } c.globalAlpha = (l.op == null ? 255 : l.op) / 255; c.globalCompositeOperation = OPS[l.blend] || 'source-over'; c.drawImage(src, l.rect[0], l.rect[1]); c.restore() };
     put(ctx);
-    if(rec) rec.push(tint || sx[l.i] ? {type:'png', name:nm(l), data:snap(put), blend:'norm', op:255} : {type:'src', i:l.i, name:nm(l), op:l.op == null ? 255 : l.op, blend:l.blend});
+    if(rec) rec.push(tint || sx[l.i] || rcol[k] ? {type:'png', name:nm(l), data:snap(put), blend:'norm', op:255} : {type:'src', i:l.i, name:nm(l), op:l.op == null ? 255 : l.op, blend:l.blend});
   });
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   tpDrawText(ctx);
