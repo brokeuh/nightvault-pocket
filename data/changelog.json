@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 195,
+   "date": "2026-11-13",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: Counter option on Character cards",
+   "items": [
+    "Card templates has a new Counter (left side) section: choose Counter +1000 or +2000 (the lightning icon comes with it). Loading a card from the card list sets its counter automatically."
+   ]
+  },
+  {
    "id": 194,
    "date": "2026-11-13",
    "where": [

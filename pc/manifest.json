@@ -1,7 +1,7 @@
 {
- "version": "2026-11-13 08:44",
+ "version": "2026-11-13 09:06",
  "notes": [
-  "Text colour choices"
+  "Counter option"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "0dc321e308ab8915b2f6ad2e96968b82afa6a40a6d0521f5d8edebb10f9a5102"
+   "sha256": "83b63afbab1ced8ad4a27be7b29b16c4d5a288ff7306e4af7b8279968d59ac30"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "2dc79d27a05e024601859e782062e525ad9b8dd29d7fb5211959c34f5190111d"
+   "sha256": "eb399abaa56ed3f46e742ccc19649df785cc788a05d58d016db98004036ecb4a"
   },
   {
    "name": "fonts/OFL.txt",

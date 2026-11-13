@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261113-n26";
+const UI_BUILD = "20261113-n27";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1825,6 +1825,8 @@ function tpVisible(){        // layer indexes that are on, bottom to top
     if(it.kind === 'group'){ const k = tpSel('g' + n); if(k >= 0 && it.kids[k]){ const vk = tpValueKid(it, k); out.push(Object.assign({grp:it.name}, vk || it.kids[k], vk ? {valued:true} : {})) } }
     else if(TP.sel['l' + n]) out.push(it);
   });
+  const ci = TP.st ? TP.st.items.findIndex(i => i.name === 'Counter' && i.kind === 'group') : -1;      // a chosen counter value also brings the little lightning icon
+  if(ci >= 0 && tpSel('g' + ci) >= 0){ const ic = TP.st.items.find(i => i.kind === 'layer' && i.name === 'Counter Icon'); if(ic && !out.includes(ic)) out.push(ic) }
   return out;
 }
 function tpImg(i){
@@ -1865,6 +1867,7 @@ function tpTags(txt){          // official card text -> our [colour|word] tags
 function tpFill(c){
   if(!c) return; const T = TP.txt;
   T.name = c.name; T.power = c.power == null ? '' : String(c.power); T.cost = c.cost == null ? '' : String(c.cost); T.type = c.types || ''; T.num = c.id; T.life = c.life == null ? '' : String(c.life); T.ability = tpTags(c.text); T.on = true; TP.card = c;
+  const ci = TP.st ? TP.st.items.findIndex(i => i.name === 'Counter' && i.kind === 'group') : -1; if(ci >= 0) TP.sel['g' + ci] = TP.st.items[ci].kids.findIndex(k => k.name === 'counterInput=' + c.counter);
   viewTemplate();
 }
 function tpDrawArt(ctx, W, H){
@@ -1888,7 +1891,7 @@ async function tpUpload(file){
 }
 function tpCtlRow(it){
   const n = TP.st.items.indexOf(it);
-  if(it.kind === 'group'){ const cur = TP.sel['g' + n], items = [[-1, '- off -']].concat(it.kids.slice().reverse().filter(k => !/Input=/.test(k.name)).map(k => [it.kids.indexOf(k), k.name]));
+  if(it.kind === 'group'){ const cur = TP.sel['g' + n], items = [[-1, '- off -']].concat(it.kids.slice().reverse().filter(k => !/Input=/.test(k.name) || it.name === 'Counter').map(k => [it.kids.indexOf(k), it.name === 'Counter' ? k.name.replace(/^counterInput=/, 'Counter +') : k.name]));
     const nm = v => (items.find(x => x[0] === v) || [0, '- off -'])[1];
     return `<label>${esc(it.name)}</label><div class="tpdd" data-g="${n}"><button type="button" class="tpddb">${esc(nm(cur))}</button><div class="tpddl" hidden>${items.map(([v, t]) => `<div class="tpddi ${v === cur ? 'on' : ''}" data-v="${v}">${esc(t)}</div>`).join('')}</div></div>` }
   return `<label>${esc(it.name)}</label><label><input type="checkbox" data-l="${n}" ${TP.sel['l' + n] ? 'checked' : ''}> on</label>`;
@@ -1897,7 +1900,8 @@ function tpCtlRow(it){
 const TP_SECS = [
   ['frame', 'Frame & background', /^(Background|Outer Frame|Inner Frame|Pattern|Colou?r Wheel|Hexagons|Front Art Overlay|Flagship Overlay|Serialized|Don Word|DON!! CARD Title)/i],
   ['cost', 'Cost (top left)', /^Cost/i],
-  ['power', 'Power & life (top right)', /^(Power|Life|Counter)/i],
+  ['counter', 'Counter (left side)', /^Counter/i],
+  ['power', 'Power & life (top right)', /^(Power|Life)/i],
   ['art', 'Art', /^$/],
   ['ability', 'Ability text & trigger', /^(Ability|Textbox|Trigger|Your Turn)/i],
   ['type', 'Type', /^(Type|Character$|Attribute)/i],
@@ -1918,6 +1922,7 @@ function tpPanelHtml(){
       <label>Card data</label><span><input type="text" id="tpc_q" placeholder="card number or name, e.g. OP18-004" style="width:60%"> <button class="btn sm" id="tpc_go">Load</button> <button class="btn sm ghost" id="tpc_upd">Update list</button><br><span id="tpc_st" class="hint"></span><select id="tpc_pick" style="display:none;width:100%;margin-top:4px"></select></span></div></details>`;
   h += box('frame', 'Frame & background');
   h += box('cost', 'Cost (top left)', T('cost', 'cost', 'Cost value', '0-10'));
+  h += box('counter', 'Counter (left side)');
   h += box('power', 'Power & life (top right)', T('power', 'power', 'Power value') + T('life', 'life', 'Life value', 'Leaders only'));
   h += `<details open class="tpsec" style="margin-top:14px"><summary><b>Art</b></summary>
       <div class="bar" id="tpartbar" style="margin-top:8px"><button class="btn sm" id="tpartb"><i class="ti ti-photo-up"></i>Choose art</button><input type="file" id="tpartf" accept="image/*" hidden>
