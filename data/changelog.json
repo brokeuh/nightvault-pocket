@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 199,
+   "date": "2026-11-13",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: counter bar behind the counter text",
+   "items": [
+    "Choosing a Counter value now also draws the little bar behind the counter text on the left side, in the colour of your card's frame, like on the official cards."
+   ]
+  },
+  {
    "id": 198,
    "date": "2026-11-13",
    "where": [
