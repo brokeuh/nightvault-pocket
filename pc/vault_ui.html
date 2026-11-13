@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261113-n34";
+const UI_BUILD = "20261113-n35";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2032,9 +2032,32 @@ async function tpUsePreset(type, id){
     try{ TP.st = await api('/api/template/open?name=' + enc(t.name)) }catch(e){ toast(e.message, true); TP.name = ''; return viewTemplate() } }
   tpApplyPresetSel(tile ? tile.sel : {}); tpBlankText(); TP.view = 'edit'; viewTemplate();
 }
+async function tpMineList(){ try{ TP.mine = (await api('/api/template/mine_list')).cards }catch(e){ TP.mine = [] } }
+async function tpMineSave(){
+  if(!TP.st) return; const names = {g:{}, l:{}};
+  TP.st.items.forEach((it, n) => { if(it.kind === 'group'){ const k = TP.sel['g' + n]; names.g[it.name] = k >= 0 && it.kids[k] ? it.kids[k].name : null } else names.l[it.name] = !!TP.sel['l' + n] });
+  let art = null; if(TP.art.img){ const im = TP.art.img, f = Math.min(1, 2400 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * f); c.height = Math.round(im.height * f); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); art = c.toDataURL('image/jpeg', 0.92) }
+  const cv = $('#tpcv'), tc = document.createElement('canvas'); tc.width = 150; tc.height = Math.round(150 * cv.height / cv.width); tc.getContext('2d').drawImage(cv, 0, 0, tc.width, tc.height);
+  const nm = ($('#tpsvname') && $('#tpsvname').value.trim()) || TP.txt.name || 'My card';
+  const r = await api('/api/template/mine_save', {id:TP.mineId || '', name:nm, template:TP.name, thumb:tc.toDataURL('image/webp', 0.8), art, state:{names, txt:TP.txt, art:{zoom:TP.art.zoom, x:TP.art.x, y:TP.art.y}, card:TP.card || null}});
+  TP.mineId = r.id; toast('Saved "' + nm + '" to My cards'); return r;
+}
+async function tpMineLoad(id){
+  let r; try{ r = await api('/api/template/mine_load?id=' + enc(id)) }catch(e){ return toast(e.message, true) }
+  const t = (TP.list || []).find(x => x.name === r.template); if(!t) return toast('The template "' + r.template + '" is not here any more. Open it again first (Open another PSD).', true);
+  TP.name = t.name; TP.st = null; TP.imgs = {}; TP.bb = {}; TP.pos = {}; TP.barc = {}; $('#main').innerHTML = '<div class="empty">Opening ...</div>';
+  try{ TP.st = await api('/api/template/open?name=' + enc(t.name)) }catch(e){ toast(e.message, true); return viewTemplate() }
+  tpDefaults(); const S = r.state || {}, N = S.names || {g:{}, l:{}};
+  TP.st.items.forEach((it, n) => { if(it.kind === 'group'){ if(it.name in N.g){ const w = N.g[it.name]; TP.sel['g' + n] = w === null ? -1 : it.kids.findIndex(x => x.name === w) } } else if(it.name in N.l) TP.sel['l' + n] = !!N.l[it.name] });
+  Object.assign(TP.txt, S.txt || {}); TP.card = S.card || null; TP.mineId = id; TP.art = {img:null, zoom:(S.art || {}).zoom || 1, x:(S.art || {}).x || 0, y:(S.art || {}).y || 0};
+  if(r.art){ await new Promise(res => { const im = new Image(); im.onload = () => { TP.art.img = im; res() }; im.onerror = res; im.src = r.art }) }
+  TP.view = 'edit'; viewTemplate();
+}
 function tpPresetsHTML(){
   const TYPES = ['Character', 'Leader', 'Event', 'Stage', 'Don'];
-  let h = `<div class="panel"><h3>Pick a card to start from</h3><p class="hint">Click a tile: the right template opens with that colour already chosen and every text field empty. Then add your text and art. Or pick <b>Custom</b> to start from the template's own look.</p></div>`;
+  const mine = TP.mine || [];
+  let h0 = mine.length ? `<div class="panel"><h3>My cards</h3><p class="hint">Cards you saved. Click one to carry on editing it.</p><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px">${mine.map(m => `<div style="position:relative"><button class="tptile" data-mine="${esc(m.id)}" style="width:100%"><div class="tpth">${m.thumb ? `<img src="${m.thumb}" alt="">` : ''}</div><div class="tpl">${esc(m.name)}</div></button><button class="btn sm ghost danger" data-minedel="${esc(m.id)}" title="Delete this saved card" style="position:absolute;top:4px;right:4px;padding:0 6px">×</button></div>`).join('')}</div></div>` : '';
+  let h = h0 + `<div class="panel"><h3>Pick a card to start from</h3><p class="hint">Click a tile: the right template opens with that colour already chosen and every text field empty. Then add your text and art. Or pick <b>Custom</b> to start from the template's own look.</p></div>`;
   TYPES.forEach(type => { const t = tpTemplateFor(type), tiles = TP_PRESETS[type] || [];
     h += `<div class="panel"><h3 style="display:flex;align-items:center;gap:10px">${type}${t ? '' : ' <span class="muted" style="font-weight:400;font-size:13px">- open the ' + type + ' template first (Open another PSD)</span>'}</h3>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px;${t ? '' : 'opacity:.45;pointer-events:none'}">
@@ -2059,7 +2082,10 @@ async function viewTemplate(){
       <input type="file" id="tpfile" accept=".psd" hidden>
       ${have ? `<span style="margin-left:auto;display:flex;gap:6px;align-items:center"><input type="text" id="tplk" placeholder="Card lookup, e.g. OP12-034" style="width:210px"><button class="btn" id="tplkgo"><i class="ti ti-search"></i>Find card</button><select id="tplkpick" style="display:none;max-width:260px"></select></span>` : ''}
     </div>${have ? '' : '<p class="hint">Pick the merged template PSD (for example OnePiece_Character_template.psd). It is copied into Nightvault\'s own folder; the original is not touched. Only 8-bit RGB PSD files work.</p>'}</div>`;
-  if(TP.view === 'presets' && have){ $('#main').innerHTML = h + tpPresetsHTML(); bindTp(); $$('.tptile').forEach(b => b.onclick = () => { if(b.dataset.id === '__custom'){ const t = tpTemplateFor(b.dataset.t); TP.view = 'edit'; if(t && t.name !== TP.name) tpOpen(t.name); else viewTemplate() } else tpUsePreset(b.dataset.t, b.dataset.id) }); return }
+  if(TP.view === 'presets' && have){ if(!TP.mineLoaded){ TP.mineLoaded = true; await tpMineList() }
+    $('#main').innerHTML = h + tpPresetsHTML(); bindTp(); $$('[data-minedel]').forEach(b => b.onclick = async e => { e.stopPropagation(); if(!confirm('Delete this saved card?')) return; try{ await api('/api/template/mine_delete', {id:b.dataset.minedel}) }catch(x){ return toast(x.message, true) } await tpMineList(); viewTemplate() });
+    $$('.tptile[data-mine]').forEach(b => b.onclick = () => tpMineLoad(b.dataset.mine));
+    $$('.tptile:not([data-mine])').forEach(b => b.onclick = () => { if(b.dataset.id === '__custom'){ const t = tpTemplateFor(b.dataset.t); TP.view = 'edit'; if(t && t.name !== TP.name) tpOpen(t.name); else viewTemplate() } else tpUsePreset(b.dataset.t, b.dataset.id) }); return }
   if(TP.name && !TP.st){ $('#main').innerHTML = h + '<div class="panel"><i class="ti ti-loader-2"></i> Reading the layers ...</div>'; bindTp(); return }
   if(TP.st){
     h += `<div class="cols2" style="grid-template-columns:minmax(300px,520px) 1fr;align-items:start">
@@ -2068,6 +2094,7 @@ async function viewTemplate(){
         <div id="tphl" style="position:absolute;display:none;pointer-events:none;border:3px solid #ffd23f;background:rgba(255,210,63,.18);border-radius:6px;box-shadow:0 0 0 2px rgba(0,0,0,.45)"></div></div></div>
       <div class="panel">${tpPanelHtml()}
       <div class="bar" style="margin-top:14px"><button class="btn primary" id="tppng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="tppsd"><i class="ti ti-file-download"></i>Save PSD with these layers</button><button class="btn sm ghost" id="tpreset">Back to the file's own layers</button></div>
+      <div class="bar" style="margin-top:8px"><input type="text" id="tpsvname" placeholder="Name for My cards" value="${esc(TP.txt.name || '')}" style="width:220px"><button class="btn" id="tpsave"><i class="ti ti-device-floppy"></i>Save to My cards</button><span class="muted">Keeps the layers, text and art, so you can carry on later.</span></div>
       <div id="tpmsg" class="hint"></div></div></div>`;
   }
   $('#main').innerHTML = h;
@@ -2169,6 +2196,7 @@ function bindTp(){
   if(c('tpartb')) c('tpartb').onclick = () => c('tpartf').click();
   if(c('tpartf')) c('tpartf').onchange = e => { const f = e.target.files[0]; if(!f) return; const im = new Image(); im.onload = () => { TP.art.img = im; TP.art.zoom = 1; TP.art.x = 0; TP.art.y = 0; viewTemplate() }; im.src = URL.createObjectURL(f) };
   if(c('tpreset')) c('tpreset').onclick = () => { tpDefaults(); viewTemplate() };
+  if(c('tpsave')) c('tpsave').onclick = async () => { try{ await tpMineSave(); TP.mineLoaded = false }catch(e){ toast(e.message, true) } };
   if(c('tppng')) c('tppng').onclick = () => { const cv = c('tpcv'); cv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = TP.name.replace(/\.psd$/i, '') + '.png'; document.body.appendChild(a); a.click(); a.remove() }, 'image/png') };
   if(c('tppsd')) c('tppsd').onclick = async () => {
     try{ c('tpmsg').textContent = 'Building the layered PSD ...'; TP.rec = []; await tpDraw(); const layers = TP.rec; TP.rec = null;

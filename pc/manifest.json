@@ -1,7 +1,7 @@
 {
- "version": "2026-11-13 14:13",
+ "version": "2026-11-13 14:20",
  "notes": [
-  "Number looks on typed numbers"
+  "My cards: save and reopen"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "ef5eca82b7d3e651b94c112c626a227b8374072b60d6aec2a2bd744f4f816d95"
+   "sha256": "e5e02e592c838a6999a0522fccf0ce1ad2175fa852faf38e28bd683068805c4b"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "802a3d85d86cdbd2c2157338c784480a9cf186b8438debada916b25b3b477412"
+   "sha256": "0a09bbcfa88c5c9e270bbfb3c93f2c74f47d928b0f3142b9001edadd7e900762"
   },
   {
    "name": "fonts/OFL.txt",

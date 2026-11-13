@@ -186,12 +186,13 @@ if os.environ.get("VAULT_DB"):
     mc.DB_PATH = Path(os.environ["VAULT_DB"])
 COVER_DIR = mc.DB_PATH.parent / "vault_covers"
 PHOTO_DIR = mc.DB_PATH.parent / "vault_photos"
+MINE_DIR = mc.DB_PATH.parent / "vault_templates" / "mine"                  # cards the owner saved from the template editor (layers + text + art)
 TEMPLATE_DIR = mc.DB_PATH.parent / "vault_templates"            # layered PSD templates the owner opened (stay on this PC)
 TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault downloads for itself (ffmpeg)
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261113-n34"   # the page and the program must carry the same build id
+BUILD = "20261113-n35"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -6150,6 +6151,23 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/template/list":
             TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
             return self._send(200, {"templates": [dict(name=f.name, size=f.stat().st_size) for f in sorted(TEMPLATE_DIR.glob("*.psd"))]})
+        if path == "/api/template/mine_list":
+            MINE_DIR.mkdir(parents=True, exist_ok=True)
+            out = []
+            for f in sorted(MINE_DIR.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True):
+                try:
+                    m = json.loads(f.read_text("utf-8"))
+                    out.append(dict(id=f.stem, name=m.get("name", f.stem), template=m.get("template", ""), saved=m.get("saved", ""), thumb=m.get("thumb", "")))
+                except Exception:
+                    pass
+            return self._send(200, {"cards": out})
+        if path == "/api/template/mine_load":
+            f = MINE_DIR / (re.sub(r"[^A-Za-z0-9_\-]", "", q.get("id", "")) + ".json")
+            if not f.exists():
+                return self._error(404, "That saved card is not here any more")
+            m = json.loads(f.read_text("utf-8"))
+            af = f.with_suffix(".art")
+            return self._send(200, dict(template=m.get("template", ""), state=m.get("state") or {}, art=af.read_text("utf-8") if af.exists() else None))
         if path == "/api/template/open":
             return self._send(200, vtpl.structure(str(self._tpl_path(q.get("name", "")))))
         if q.get("t") != TOKEN:
@@ -6211,6 +6229,27 @@ class Handler(BaseHTTPRequestHandler):
         out = TEMPLATE_DIR / "out" / f"{f.stem}_custom_{stamp}.psd"
         vtpl.save_psd(str(f), str(out), d.get("visible") or [])
         return self._send(200, {"file": out.name, "folder": str(out.parent)})
+
+    def post_template_mine_save(self, conn, d):
+        MINE_DIR.mkdir(parents=True, exist_ok=True)
+        cid = re.sub(r"[^A-Za-z0-9_\-]", "", str(d.get("id") or ""))
+        if not cid or not (MINE_DIR / (cid + ".json")).exists():
+            slug = re.sub(r"[^A-Za-z0-9]+", "-", str(d.get("name") or "card")).strip("-")[:40] or "card"
+            cid = slug + "-" + time.strftime("%Y%m%d-%H%M%S")
+        f = MINE_DIR / (cid + ".json")
+        f.write_text(json.dumps(dict(name=str(d.get("name") or "My card")[:80], template=d.get("template", ""), saved=time.strftime("%Y-%m-%d %H:%M"), thumb=d.get("thumb", ""), state=d.get("state") or {}), ensure_ascii=False), "utf-8")
+        af = f.with_suffix(".art")
+        if d.get("art"):
+            af.write_text(d["art"], "utf-8")
+        elif af.exists():
+            af.unlink()
+        return self._send(200, {"id": cid})
+
+    def post_template_mine_delete(self, conn, d):
+        cid = re.sub(r"[^A-Za-z0-9_\-]", "", str(d.get("id") or ""))
+        for ext in (".json", ".art"):
+            (MINE_DIR / (cid + ext)).unlink(missing_ok=True)
+        return self._send(200, {"ok": True})
 
     def post_template_save_layers(self, conn, d):
         import base64

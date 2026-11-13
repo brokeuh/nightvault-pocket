@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 203,
+   "date": "2026-11-13",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: save your cards and edit them again later",
+   "items": [
+    "Card templates has a Save to My cards button. It keeps your layer choices, text and art on this PC. The Presets page shows a My cards row with a picture of each saved card: click one to carry on editing, or press the x to delete it."
+   ]
+  },
+  {
    "id": 202,
    "date": "2026-11-13",
    "where": [
