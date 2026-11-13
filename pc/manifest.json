@@ -1,7 +1,7 @@
 {
- "version": "2026-11-13 13:33",
+ "version": "2026-11-13 13:35",
  "notes": [
-  "Counter bar"
+  "Clearer option names"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "2028d4b098d16865102e396c8153e5758826994e6c72f565e8ca03fbe7518844"
+   "sha256": "a33b478f0c531521ceb7e2b083aa058ea2c770c78958658d93e0f74820f156e8"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "34178e90de81b083e3f7457c8ed511c578422741347403fb45bde2734c3d38c5"
+   "sha256": "092922ea6db44d0692ed93378d5ae6d059a94e4bc3d65a4eafbf9a3657f09b33"
   },
   {
    "name": "fonts/OFL.txt",

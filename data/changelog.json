@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 200,
+   "date": "2026-11-13",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: clearer card template options",
+   "items": [
+    "The options in Card templates now have plain names (for example Cost circle colour, Power colour, Name colour), the options for the same part sit next to each other, and the dropdown entries are short readable names (Golden SP, Red + Blue, Black outlined ...) instead of file-style names. Hover an entry to see the original name."
+   ]
+  },
+  {
    "id": 199,
    "date": "2026-11-13",
    "where": [

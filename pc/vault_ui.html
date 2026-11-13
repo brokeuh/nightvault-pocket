@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261113-n31";
+const UI_BUILD = "20261113-n32";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1923,12 +1923,29 @@ async function tpUpload(file){
     TP.list = null; await tpOpen(j.name);
   }catch(e){ toast(e.message, true) }
 }
+const TP_LABELS = {'Flagship Overlay':'Flagship overlay', 'Front Art Overlay':'Overlay on the art', 'Hexagons':'Hexagon pattern', 'Pattern':'Pattern overlay', 'Colour Wheel':'Compass wheel', 'Inner Frame':'Inner frame', 'Outer Frame':'Outer frame',
+  'Serialized Number Gradient':'Serial number colour', 'Serialized Number':'Serial number', 'Serialized Overlay':'Serialized overlay', 'Background':'Background art', 'Background Fill':'Background colour', '"LIFE" Text':'"LIFE" label',
+  'Cost Number':'Cost digits look', 'Cost Style':'Cost circle colour', 'Counter':'Counter value', 'Counter Icon':'Counter lightning icon', 'Power':'Power digits look', 'Power Gradient':'Power colour (gold, red ...)', 'Life':'Life digits look', 'Life Circle':'Life circle',
+  'Trigger Text':'Trigger label', 'Trigger Icon':'Trigger icon', 'Ability Text':'Ability text look', 'Textbox':'Ability box', 'Attribute Icon':'Attribute icon', 'Attribute Text':'Attribute word', 'Type':'Type text look', 'Type Gradient':'Type colour (gold, red ...)', 'Type Frame':'Type plate',
+  'Character':'Card kind word', 'Card Name':'Name text look', 'Card Name Gradient':'Name colour (gold, red ...)', 'Card Info':'Card number look', 'Alt Art Star':'Alt-art star', 'Winner Mark':'Winner mark', 'Extra Rarity':'Extra rarity mark', 'Block':'Block icon', 'Rarity':'Rarity mark', 'Logo Emblem':'Logo emblem'};
+const TP_ORDER = ['Background', 'Background Fill', 'Outer Frame', 'Inner Frame', 'Colour Wheel', 'Hexagons', 'Pattern', 'Front Art Overlay', 'Flagship Overlay', 'Serialized Overlay', 'Serialized Number', 'Serialized Number Gradient', '"LIFE" Text',
+  'Cost Style', 'Cost Number', 'Counter', 'Counter Icon', 'Power', 'Power Gradient', 'Life', 'Life Circle', 'Textbox', 'Ability Text', 'Trigger Icon', 'Trigger Text', 'Type Frame', 'Type', 'Type Gradient', 'Character', 'Attribute Icon', 'Attribute Text',
+  'Card Name', 'Card Name Gradient', 'Card Info', 'Rarity', 'Block', 'Alt Art Star', 'Extra Rarity', 'Winner Mark', 'Logo', 'Logo Emblem', 'Watermark'];
+const TP_WORDS = {golden_sp:'Golden SP', redwhite_sp:'Red/white SP', manga:'Manga', '5_elders':'Five Elders', tournament:'Tournament', tournament_golden:'Tournament gold', tournament_silver:'Tournament silver', wanted:'Wanted poster', alt_art:'Alt art', serialized:'Serialized', sec:'Secret rare',
+  sp:'SP', prb02:'PRB02', black:'Black', white:'White', golden:'Gold', red:'Red', black_outline:'Black, outlined', white_outline:'White, outlined', golden_outline:'Gold, outlined', black_no_outline:'Black, no outline', golden_no_outline:'Gold, no outline', 'default':'Standard', common:'Standard', big:'Big', small:'Small', yes:'On', foil:'Foil'};
+function tpNice(name){        // "innerBorder=golden_sp | innerBorder=manga +2" -> "Golden SP (+3)"
+  const m = String(name).match(/^(.*?)(?:\s\+(\d+))?$/), parts = m[1].split(' | '), extra = parts.length - 1 + (m[2] ? +m[2] : 0);
+  const one = x => { const eq = x.indexOf('='), key = eq < 0 ? '' : x.slice(0, eq), v = eq < 0 ? x : x.slice(eq + 1);
+    if(key === 'counterInput') return 'Counter +' + v; if(key === 'colour') return v.replace(/\+/g, ' + ');
+    return TP_WORDS[v] || v.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase()) };
+  return one(parts[0]) + (extra > 0 ? ' (+' + extra + ')' : '');
+}
 function tpCtlRow(it){
   const n = TP.st.items.indexOf(it);
-  if(it.kind === 'group'){ const cur = TP.sel['g' + n], items = [[-1, '- off -']].concat(it.kids.slice().reverse().filter(k => !/Input=/.test(k.name) || it.name === 'Counter').map(k => [it.kids.indexOf(k), it.name === 'Counter' ? k.name.replace(/^counterInput=/, 'Counter +') : k.name]));
+  if(it.kind === 'group'){ const cur = TP.sel['g' + n], items = [[-1, '- off -']].concat(it.kids.slice().reverse().filter(k => !/Input=/.test(k.name) || it.name === 'Counter').map(k => [it.kids.indexOf(k), tpNice(k.name), k.name]));
     const nm = v => (items.find(x => x[0] === v) || [0, '- off -'])[1];
-    return `<label>${esc(it.name)}</label><div class="tpdd" data-g="${n}"><button type="button" class="tpddb">${esc(nm(cur))}</button><div class="tpddl" hidden>${items.map(([v, t]) => `<div class="tpddi ${v === cur ? 'on' : ''}" data-v="${v}">${esc(t)}</div>`).join('')}</div></div>` }
-  return `<label>${esc(it.name)}</label><label><input type="checkbox" data-l="${n}" ${TP.sel['l' + n] ? 'checked' : ''}> on</label>`;
+    return `<label title="${esc(it.name)}">${esc(TP_LABELS[it.name] || it.name)}</label><div class="tpdd" data-g="${n}"><button type="button" class="tpddb">${esc(nm(cur))}</button><div class="tpddl" hidden>${items.map(([v, t, raw]) => `<div class="tpddi ${v === cur ? 'on' : ''}" data-v="${v}" title="${esc(raw || '')}">${esc(t)}</div>`).join('')}</div></div>` }
+  return `<label title="${esc(it.name)}">${esc(TP_LABELS[it.name] || it.name)}</label><label><input type="checkbox" data-l="${n}" ${TP.sel['l' + n] ? 'checked' : ''}> on</label>`;
 }
 // the editing options, grouped by the part of the card they change, from the top of the card down
 const TP_SECS = [
@@ -1944,7 +1961,7 @@ const TP_SECS = [
   ['extra', 'Extras', /^(Watermark|Logo)/i]];
 function tpPanelHtml(){
   const rows = {}, other = [];
-  tpGroups().forEach(it => { const sec = TP_SECS.find(x => x[2].test(it.name)); (sec ? (rows[sec[0]] = rows[sec[0]] || []) : other).push(tpCtlRow(it)) });
+  tpGroups().slice().sort((a, b) => { const x = TP_ORDER.indexOf(a.name), y = TP_ORDER.indexOf(b.name); return (x < 0 ? 999 : x) - (y < 0 ? 999 : y) }).forEach(it => { const sec = TP_SECS.find(x => x[2].test(it.name)); (sec ? (rows[sec[0]] = rows[sec[0]] || []) : other).push(tpCtlRow(it)) });
   if(other.length) rows.frame = (rows.frame || []).concat(other);
   const G = 'display:grid;grid-template-columns:minmax(110px,auto) 1fr;gap:8px 12px;align-items:center;margin-top:8px';
   const T = (id, key, label, ph) => `<label>${label}</label><input type="text" id="tpt_${id}" value="${esc(TP.txt[key])}" ${ph ? 'placeholder="' + ph + '"' : ''}>`;
