@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 205,
+   "date": "2026-11-13",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: WoW Worldbreak frames (extended and full art)",
+   "items": [
+    "Card templates also understands the WoW Worldbreak Border PSD. Open it once with Open another PSD, then the Presets page shows a second WoW row: Ally in four factions, Extended art, Full art (rare), Hero, Equipment, Ability, Location and Quest. Choose faction, class and damage type, type your text, add art, then Save PNG, Save PSD or Save to My cards."
+   ]
+  },
+  {
    "id": 204,
    "date": "2026-11-13",
    "where": [

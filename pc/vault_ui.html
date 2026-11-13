@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261113-n36";
+const UI_BUILD = "20261113-n37";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1842,11 +1842,34 @@ const WOW_CLASSES = ['Death Knight', 'Druid', 'Hunter', 'Mage', 'Paladin', 'Prie
 const WOW_DMG = ['Melee', 'Range', 'Nature', 'Shadow', 'Arcane', 'Fire', 'Frost', 'Holy'];
 const WOW_EMPTY_T = {name:'', cost:'', typeline:'', herotype:'', spec:'', prof1:'', prof2:'', eqtype:'', kw:'', rules:'', flavor:'', damage:'', health:'', setnum:'', artist:'', copy:''};
 function wowOn(){ return !!(TP.st && /wow/i.test(TP.name) && TP.st.items.some(i => i.name === 'Frames')) }
-function wowNew(type, faction){ const S = {type:type || 'ally', faction:faction || 'alliance', cls:'', dmg:'', equip:'Armor', eqcls:[], banner:true, t:Object.assign({}, WOW_EMPTY_T)}; wowFix(S); return S }
-function wowFix(S){ if(S.type === 'hero' && S.faction === 'neutral') S.faction = 'alliance'; if(S.type === 'hero' && !S.cls) S.cls = 'Warrior' }
-function wowS(){ if(!TP.wow) TP.wow = wowNew('ally', 'alliance'); return TP.wow }
+function wowVar(){ return /worldbreak/i.test(TP.name) ? 'wb' : 'cl' }
+function wowNew(type, faction){ const S = {v:wowVar(), type:type || 'ally', faction:faction || 'alliance', cls:'', dmg:'', equip:'Armor', eqcls:[], banner:true, t:Object.assign({}, WOW_EMPTY_T)}; wowFix(S); return S }
+const WB_TYPES = [['ally', 'Ally'], ['ea', 'Ally - extended art'], ['rare', 'Ally - full art (rare)'], ['hero', 'Hero'], ['equipment', 'Equipment'], ['ability', 'Ability'], ['location', 'Location'], ['quest', 'Quest'], ['questns', 'Quest (no symbol)']];
+const WB_CLASSES = ['Death Knight', 'Demon Hunter', 'Druid', 'Hunter', 'Mage', 'Monk', 'Paladin', 'Priest', 'Rogue', 'Shaman', 'Warlock', 'Warrior'];
+const WB_DMG = ['Melee', 'Ranged', 'Nature', 'Shadow', 'Arcane', 'Fire', 'Frost', 'Holy'];
+function wowFactions(S){
+  const all = [['alliance', 'Alliance'], ['horde', 'Horde'], ['neutral', 'Neutral']];
+  if(wowVar() === 'cl') return S.type === 'ally' ? all : S.type === 'hero' ? all.slice(0, 2) : [];
+  const mon = [all[0], all[1], ['monster', 'Monster'], all[2]];
+  return ['ally', 'ea', 'hero'].includes(S.type) ? mon : S.type === 'rare' ? all.slice(0, 2) : [];
+}
+function wowFix(S){ const f = wowFactions(S); if(f.length && !f.some(x => x[0] === S.faction)) S.faction = f[0][0]; if(S.type === 'hero' && !S.cls) S.cls = 'Warrior' }
+function wowS(){ if(!TP.wow || (TP.wow.v || 'cl') !== wowVar()) TP.wow = wowNew('ally', 'alliance'); return TP.wow }
 function wowItem(path){ let list = TP.st.items, it = null; for(const n of path){ it = (list || []).find(x => x.name === n); if(!it) return null; list = it.kids } return it && it.kind === 'layer' && !it.empty ? it : null }
-function wowLayers(S){       // -> {pre:[layers drawn over the art], post:[the border]}, bottom to top
+function wowLayers(S){ return wowVar() === 'wb' ? wowLayersWb(S) : wowLayersCl(S) }
+function wowLayersWb(S){
+  const it = (...p) => wowItem(p), cap = s => s.charAt(0).toUpperCase() + s.slice(1), cn = c => c === 'Rogue' ? 'Rouge' : c, fac = cap(S.faction), pre = [];
+  const eq = {'Death Knight':'dk_equip', 'Druid':'dr_equip', 'Hunter':'hu_equip', 'Mage':'ma_equip', 'Paladin':'pa_equip', 'Priest':'pr_equip', 'Rogue':'ro_equip', 'Shaman':'sh_equip', 'Warlock':'wk_equip', 'Warrior':'wr_equip'};
+  if(S.type === 'ally'){ pre.push(it('Frames', 'Standard Frame', fac + ' Ally')); if(S.dmg) pre.push(it('Frames', 'Standard Frame', 'Damage Icon', S.dmg)) }
+  else if(S.type === 'ea'){ pre.push(it('Frames', 'Extended Art', fac + ' Ally EA')); if(S.dmg) pre.push(it('Frames', 'Extended Art', 'Damage', S.dmg)) }
+  else if(S.type === 'rare'){ pre.push(it('Frames', 'Rare EA', fac + ' Rare EA')); if(S.dmg) pre.push(it('Frames', 'Rare EA', 'Damage', S.dmg)) }
+  else if(S.type === 'hero'){ pre.push(it('Frames', 'Hero', fac + ' Hero')); if(S.cls) pre.push(it('Frames', 'Hero', 'Hero Icons', cn(S.cls))); if(S.banner && (S.faction === 'alliance' || S.faction === 'horde')) pre.push(it('Frames', fac + ' Banner')); if(S.dmg) pre.push(it('Frames', 'Standard Frame', 'Damage Icon', S.dmg)) }
+  else if(S.type === 'equipment'){ pre.push(it('Frames', 'Equipment', 'Equipment Frame'), it('Frames', 'Equipment', S.equip + ' Icon')); (S.eqcls || []).forEach(c => pre.push(it('Frames', 'Equipment', 'Class Req', eq[c]))) }
+  else if(S.type === 'ability'){ pre.push(it('Frames', 'Standard Frame', 'Ability')); if(S.cls) pre.push(it('Frames', 'Standard Frame', 'Hero Icons for Ability', cn(S.cls))) }
+  else pre.push(it('Frames', 'Standard Frame', {location:'Location', quest:'Quest', questns:'Quest No icon'}[S.type]));
+  return {pre:pre.filter(Boolean), post:[wowItem(['WoW Border'])].filter(Boolean)};
+}
+function wowLayersCl(S){       // -> {pre:[layers drawn over the art], post:[the border]}, bottom to top
   const F = (...p) => wowItem(['Frames', ...p]), cap = s => s.charAt(0).toUpperCase() + s.slice(1), cn = c => c === 'Rogue' ? 'Rouge' : c, pre = [];
   if(S.type === 'ally'){ pre.push(F(cap(S.faction) + ' Ally')); if(S.cls) pre.push(F('Class Req.', cn(S.cls))) }
   else if(S.type === 'hero'){ pre.push(F('Hero', cap(S.faction) + ' Hero')); if(S.cls) pre.push(F('Hero', 'Class Icons', cn(S.cls))); if(S.banner) pre.push(F(cap(S.faction) + ' Banner')) }
@@ -1856,7 +1879,7 @@ function wowLayers(S){       // -> {pre:[layers drawn over the art], post:[the b
   return {pre:pre.filter(Boolean), post:[wowItem(['Border'])].filter(Boolean)};
 }
 function wowArt(ctx){
-  const A = TP.art; if(!A.img) return; const a = wowItem(['Art', 'Parvink Art']), R = a ? a.rect : [5, -14, 734, 803];
+  const A = TP.art; if(!A.img) return; const a = wowItem(['Art', 'Parvink Art']), S = wowS(), R = wowVar() === 'wb' ? ({ea:[28, 32, 722, 805], rare:[28, 110, 722, 915]}[S.type] || [28, 100, 722, 660]) : (a ? a.rect : [5, -14, 734, 803]);
   const rw = R[2] - R[0], rh = R[3] - R[1], sc = Math.max(rw / A.img.width, rh / A.img.height) * A.zoom, w = A.img.width * sc, h = A.img.height * sc;
   ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.drawImage(A.img, R[0] + rw / 2 - w / 2 + A.x, R[1] + rh / 2 - h / 2 + A.y, w, h); ctx.restore();
 }
@@ -1864,7 +1887,44 @@ function wowWrap(ctx, text, maxW){       // -> lines (words wrapped, new lines k
   const out = []; String(text || '').split('\n').forEach(par => { let cur = ''; par.split(/\s+/).filter(Boolean).forEach(w => { const t = cur ? cur + ' ' + w : w; if(cur && ctx.measureText(t).width > maxW){ out.push(cur); cur = w } else cur = t }); out.push(cur) });
   while(out.length && out[out.length - 1] === '') out.pop(); return out;
 }
-function wowText(ctx, part){
+function wowText(ctx, part){ return wowVar() === 'wb' ? wowTextWb(ctx, part) : wowTextCl(ctx, part) }
+function wowTextWb(ctx, part){
+  const S = wowS(), T = S.t, fam = S.type === 'ea' ? 'ea' : S.type === 'rare' ? 'rare' : 'std';
+  const SERIF = "700 @ Georgia, 'Times New Roman', serif", BOLD = '700 @ NVRoboto, Roboto, sans-serif', COND = '400 @ NVRobotoCond, Roboto, sans-serif', ITAL = 'italic 400 @ NVRoboto, Roboto, sans-serif';
+  const set = (font, px) => { ctx.font = font.replace('@', px + 'px') };
+  const fit = (txt, font, px, maxW) => { set(font, px); while(maxW && px > 8 && ctx.measureText(txt).width > maxW){ px -= 0.5; set(font, px) } return px };
+  const white = (txt, x, y, px, font, align, maxW) => { if(txt === '' || txt == null) return; txt = String(txt); px = fit(txt, font, px, maxW);
+    ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(2, px * 0.14); ctx.strokeStyle = 'rgba(0,0,0,.9)'; ctx.strokeText(txt, x, y); ctx.fillStyle = '#fff'; ctx.fillText(txt, x, y) };
+  const plain = (txt, x, y, px, font, align, color, maxW) => { if(txt === '' || txt == null) return; txt = String(txt); px = fit(txt, font, px, maxW); ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = color; ctx.fillText(txt, x, y) };
+  ctx.save();
+  if(part === 'head'){
+    if(fam === 'ea'){ white(T.name, 245, 792, 32, SERIF, 'left', 440); white(T.cost, 81, 797, 38, SERIF, 'center', 40) }
+    else { white(T.name, 202, 76, 38, SERIF, 'left', 430); white(T.cost, 100, 98, 48, SERIF, 'center', 44) }
+  }
+  if(part === 'type'){
+    const y = fam === 'ea' ? 845 : fam === 'rare' ? 959 : 698, x = fam === 'ea' ? 151 : fam === 'rare' ? 123 : 90;
+    white(T.typeline, x, y, 22, BOLD, 'left', S.type === 'equipment' ? 440 : 500); if(S.type === 'equipment') white(T.eqtype, 682, 694, 22, BOLD, 'right', 100);
+  }
+  if(part === 'rules' && fam !== 'rare'){
+    const box = fam === 'ea' ? [60, 876, 690, 966] : [60, 735, 640, 935], maxW = box[2] - box[0], hgt = box[3] - box[1]; let px = fam === 'ea' ? 26 : 34, kwL, rL, fL, lh, total;
+    for(;;){ lh = px * 1.12; set(BOLD, px); kwL = wowWrap(ctx, T.kw, maxW); set(COND, px); rL = wowWrap(ctx, T.rules, maxW); set(ITAL, px * 0.6); fL = fam === 'ea' ? wowWrap(ctx, T.flavor, maxW) : [];
+      total = (kwL.length + rL.length) * lh + fL.length * px * 0.7 + ((kwL.length && rL.length) ? px * 0.3 : 0); if(total <= hgt || px <= 11) break; px -= 1 }
+    let y = box[1] + (hgt - total) / 2 + px * 0.85; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#000'; const cx = (box[0] + box[2]) / 2;
+    set(BOLD, px); kwL.forEach(l => { ctx.fillText(l, cx, y); y += lh }); if(kwL.length && rL.length) y += px * 0.3;
+    set(COND, px); rL.forEach(l => { ctx.fillText(l, cx, y); y += lh });
+    if(fam === 'ea'){ set(ITAL, px * 0.6); ctx.fillStyle = '#373737'; fL.forEach(l => { ctx.fillText(l, cx, y); y += px * 0.7 }) }
+    else { let f = 21, fl; for(;;){ set(ITAL, f); fl = wowWrap(ctx, T.flavor, 480); if(fl.length * f * 1.12 <= 34 || f <= 11) break; f -= 1 }
+      if(fl.length){ let fy = 934 + (34 - fl.length * f * 1.12) / 2 + f * 0.85; ctx.fillStyle = '#373737'; set(ITAL, f); fl.forEach(l => { ctx.fillText(l, 385, fy); fy += f * 1.12 }) } }
+  }
+  if(part === 'nums'){
+    const N = {std:[71, 668, 985], ea:[65, 683, 996], rare:[58, 685, 996]}[fam];
+    if(S.type !== 'equipment') white(T.damage, N[0], N[2], 42, SERIF, 'center', 46); white(T.health, N[1], N[2], 42, SERIF, 'center', 46);
+    const LIGHT = '#f0e6c8', B2 = '700 @ NVRobotoCond, Roboto, sans-serif', R2 = '400 @ NVRoboto, Roboto, sans-serif';
+    plain(T.setnum, 308, 1006, 17, B2, 'center', LIGHT, 150); plain(T.artist, 405, 997, 11, R2, 'left', LIGHT, 200); plain(T.copy, 404, 1011, 10.5, R2, 'left', LIGHT, 215);
+  }
+  ctx.restore();
+}
+function wowTextCl(ctx, part){
   const S = wowS(), T = S.t, SERIF = "700 @ Georgia, 'Times New Roman', serif", BOLD = '700 @ NVRoboto, Roboto, sans-serif', COND = '400 @ NVRobotoCond, Roboto, sans-serif', ITAL = 'italic 400 @ NVRoboto, Roboto, sans-serif';
   const set = (font, px) => { ctx.font = font.replace('@', px + 'px') };
   const white = (txt, x, y, px, font, align, maxW) => { if(txt === '' || txt == null) return; txt = String(txt); set(font, px); while(maxW && px > 10 && ctx.measureText(txt).width > maxW){ px -= 1; set(font, px) }
@@ -1914,7 +1974,35 @@ async function wowDraw(my, cv){
   L.post.forEach((l, k) => put(l, post[k]));
   tpBusy('');
 }
+function wowPanelWb(){
+  const S = wowS(), T = S.t, G = 'display:grid;grid-template-columns:minmax(110px,auto) 1fr;gap:8px 12px;align-items:center;margin-top:8px', ty = S.type;
+  const sel = (k, label, opts) => `<label>${label}</label><select data-w="${k}">${opts.map(([v, t]) => `<option value="${esc(v)}" ${String(S[k]) === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>`;
+  const tx = (k, label, ph, rows) => `<label>${label}</label>` + (rows ? `<textarea data-wt="${k}" rows="${rows}" placeholder="${esc(ph || '')}">${esc(T[k])}</textarea>` : `<input type="text" data-wt="${k}" value="${esc(T[k])}" placeholder="${esc(ph || '')}">`);
+  const sec = (title, body) => `<details open class="tpsec" style="margin-top:14px"><summary><b>${title}</b></summary><div style="${G}">${body}</div></details>`;
+  const cls = WB_CLASSES.map(c => [c, c]), fac = wowFactions(S);
+  let h = `<p class="hint">Pick the card type, then fill in the text. The frames come from your own PSD file and stay on this PC. Save PNG gives the finished card, Save PSD keeps the frame, art and text as separate layers.</p>`;
+  let look = sel('type', 'Card type', WB_TYPES);
+  if(fac.length) look += sel('faction', 'Faction', fac);
+  if(ty === 'ability') look += sel('cls', 'Class icon', [['', '- none -'], ...cls]);
+  if(ty === 'hero') look += sel('cls', 'Class', cls) + `<label>Faction banner</label><label><input type="checkbox" data-wb="banner" ${S.banner ? 'checked' : ''}> small banner top right</label>`;
+  if(ty === 'equipment') look += sel('equip', 'Number badge', [['Armor', 'Armor'], ['Strike', 'Strike']]) + `<label>Classes</label><span style="display:flex;flex-wrap:wrap;gap:4px 14px">${WB_CLASSES.filter(c => c !== 'Demon Hunter' && c !== 'Monk').map(c => `<label><input type="checkbox" data-wc="${c}" ${(S.eqcls || []).includes(c) ? 'checked' : ''}> ${c}</label>`).join('')}</span>`;
+  if(['ally', 'ea', 'rare', 'hero'].includes(ty)) look += sel('dmg', 'Damage type', [['', '- none -'], ...WB_DMG.filter(d => !(ty === 'ea' && d === 'Frost')).map(d => [d, d])]);
+  h += sec('Card look', look);
+  h += sec('Name & cost', tx('name', 'Name', 'Card name') + tx('cost', 'Cost', '0-10'));
+  h += sec('Type line', tx('typeline', 'Type line', 'e.g. Ally - Orc Warrior') + (ty === 'equipment' ? tx('eqtype', 'Equipment type', 'e.g. Weapon') : ''));
+  if(ty !== 'rare') h += sec('Rules box', tx('kw', 'Keyword line', 'bold line on top, e.g. Protector') + tx('rules', 'Rules text', '', 5) + tx('flavor', 'Flavor text', ty === 'ea' ? 'small italic text under the rules' : 'small italic text at the bottom', 2));
+  let nums = ''; if(['ally', 'ea', 'rare', 'hero'].includes(ty)) nums += tx('damage', 'Damage', ''); if(['ally', 'ea', 'rare', 'hero', 'equipment'].includes(ty)) nums += tx('health', ty === 'equipment' ? 'Badge number' : 'Health', '');
+  nums += tx('setnum', 'Set & number', 'e.g. MYSET 012/100') + tx('artist', 'Artist', 'Art by ...') + tx('copy', 'Copyright line', '');
+  h += sec('Numbers & credits', nums);
+  h += `<details open class="tpsec" style="margin-top:14px"><summary><b>Art</b></summary>
+      <div class="bar" id="tpartbar" style="margin-top:8px"><button class="btn sm" id="tpartb"><i class="ti ti-photo-up"></i>Choose art</button><input type="file" id="tpartf" accept="image/*" hidden>
+        <label>Zoom <input type="range" id="tpa_zoom" min="0.5" max="3" step="0.01" value="${TP.art.zoom}"></label>
+        <label>Left/right <input type="range" id="tpa_x" min="-500" max="500" value="${TP.art.x}"></label>
+        <label>Up/down <input type="range" id="tpa_y" min="-700" max="700" value="${TP.art.y}"></label></div></details>`;
+  return h;
+}
 function wowPanel(){
+  if(wowVar() === 'wb') return wowPanelWb();
   const S = wowS(), T = S.t, G = 'display:grid;grid-template-columns:minmax(110px,auto) 1fr;gap:8px 12px;align-items:center;margin-top:8px';
   const sel = (k, label, opts) => `<label>${label}</label><select data-w="${k}">${opts.map(([v, t]) => `<option value="${esc(v)}" ${String(S[k]) === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>`;
   const tx = (k, label, ph, rows) => `<label>${label}</label>` + (rows ? `<textarea data-wt="${k}" rows="${rows}" placeholder="${esc(ph || '')}">${esc(T[k])}</textarea>` : `<input type="text" data-wt="${k}" value="${esc(T[k])}" placeholder="${esc(ph || '')}">`);
@@ -1951,18 +2039,23 @@ function wowBind(){
   $$('[data-wt]').forEach(el => el.oninput = () => { S.t[el.dataset.wt] = el.value; tpDraw() });
   $$('[data-wc]').forEach(el => el.onchange = () => { S.eqcls = $$('[data-wc]').filter(x => x.checked).map(x => x.dataset.wc); tpDraw() });
 }
-function wowTemplate(){ return (TP.list || []).find(t => /wow/i.test(t.name)) }
-async function wowUsePreset(type, faction){
-  const t = wowTemplate(); if(!t) return;
+function wowTemplate(v){ return (TP.list || []).find(t => /wow/i.test(t.name) && (/worldbreak/i.test(t.name) ? 'wb' : 'cl') === (v || 'cl')) }
+async function wowUsePreset(type, faction, v){
+  const t = wowTemplate(v); if(!t) return;
   if(!TP.st || t.name !== TP.name) await tpOpen(t.name);
   TP.wow = wowNew(type, faction); TP.art = {img:null, zoom:1, x:0, y:0}; TP.mineId = null; TP.card = null; TP.view = 'edit'; viewTemplate();
 }
 function wowPresetsHTML(){
-  const t = wowTemplate(); if(!t) return '';
-  const tiles = [['ally', 'alliance', 'Ally - Alliance', '#1f6fa8'], ['ally', 'horde', 'Ally - Horde', '#b02a2a'], ['ally', 'neutral', 'Ally - Neutral', '#8a8f98'], ['hero', 'alliance', 'Hero - Alliance', '#1f6fa8'], ['hero', 'horde', 'Hero - Horde', '#b02a2a'],
-    ['equipment', 'neutral', 'Equipment', '#c9a227'], ['ability', 'neutral', 'Ability', '#6b3fa0'], ['quest', 'neutral', 'Quest', '#2f8f5b'], ['questns', 'neutral', 'Quest (no symbol)', '#2f8f5b'], ['event', 'neutral', 'Event', '#e8812e']];
-  return `<div class="panel"><h3>WoW</h3><p class="hint">Click a tile: the frame opens with every text field empty. These come from your own WoW PSD (${esc(t.name)}) and are never shown or stored anywhere else.</p>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px">${tiles.map(([ty, f, lab, col]) => `<button class="tptile" data-wow="${ty}:${f}"><div class="tpth" style="display:flex;align-items:center;justify-content:center"><i class="tpdot" style="background:${col};width:34px;height:34px"></i></div><div class="tpl">${esc(lab)}</div></button>`).join('')}</div></div>`;
+  const B = '#1f6fa8', R = '#b02a2a', N = '#8a8f98', G = '#2f8f5b', M = '#6b8f2f', Y = '#c9a227', P = '#6b3fa0', O = '#e8812e';
+  const sets = {cl:['WoW - Classic Border', [['ally', 'alliance', 'Ally - Alliance', B], ['ally', 'horde', 'Ally - Horde', R], ['ally', 'neutral', 'Ally - Neutral', N], ['hero', 'alliance', 'Hero - Alliance', B], ['hero', 'horde', 'Hero - Horde', R],
+      ['equipment', 'neutral', 'Equipment', Y], ['ability', 'neutral', 'Ability', P], ['quest', 'neutral', 'Quest', G], ['questns', 'neutral', 'Quest (no symbol)', G], ['event', 'neutral', 'Event', O]]],
+    wb:['WoW - Worldbreak Border', [['ally', 'alliance', 'Ally - Alliance', B], ['ally', 'horde', 'Ally - Horde', R], ['ally', 'monster', 'Ally - Monster', M], ['ally', 'neutral', 'Ally - Neutral', N],
+      ['ea', 'alliance', 'Extended art - Alliance', B], ['ea', 'horde', 'Extended art - Horde', R], ['ea', 'monster', 'Extended art - Monster', M], ['ea', 'neutral', 'Extended art - Neutral', N],
+      ['rare', 'alliance', 'Full art - Alliance', B], ['rare', 'horde', 'Full art - Horde', R], ['hero', 'alliance', 'Hero - Alliance', B], ['hero', 'horde', 'Hero - Horde', R], ['hero', 'monster', 'Hero - Monster', M], ['hero', 'neutral', 'Hero - Neutral', N],
+      ['equipment', 'neutral', 'Equipment', Y], ['ability', 'neutral', 'Ability', P], ['location', 'neutral', 'Location', G], ['quest', 'neutral', 'Quest', G], ['questns', 'neutral', 'Quest (no symbol)', G]]]};
+  return Object.keys(sets).map(v => { const t = wowTemplate(v); if(!t) return ''; const [title, tiles] = sets[v];
+    return `<div class="panel"><h3>${title}</h3><p class="hint">Click a tile: the frame opens with every text field empty. These come from your own PSD (${esc(t.name)}) and are never shown or stored anywhere else.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px">${tiles.map(([ty, f, lab, col]) => `<button class="tptile" data-wow="${ty}:${f}:${v}"><div class="tpth" style="display:flex;align-items:center;justify-content:center"><i class="tpdot" style="background:${col};width:34px;height:34px"></i></div><div class="tpl">${esc(lab)}</div></button>`).join('')}</div></div>` }).join('');
 }
 
 const tpURL = i => '/api/template/layer?name=' + enc(TP.name) + '&i=' + i + '&t=' + enc(TOKEN);
@@ -2217,7 +2310,7 @@ async function viewTemplate(){
   if(TP.view === 'presets' && have){ if(!TP.mineLoaded){ TP.mineLoaded = true; await tpMineList() }
     $('#main').innerHTML = h + tpPresetsHTML(); bindTp(); $$('[data-minedel]').forEach(b => b.onclick = async e => { e.stopPropagation(); if(!confirm('Delete this saved card?')) return; try{ await api('/api/template/mine_delete', {id:b.dataset.minedel}) }catch(x){ return toast(x.message, true) } await tpMineList(); viewTemplate() });
     $$('.tptile[data-mine]').forEach(b => b.onclick = () => tpMineLoad(b.dataset.mine));
-    $$('[data-wow]').forEach(b => b.onclick = () => { const [ty, f] = b.dataset.wow.split(':'); wowUsePreset(ty, f) });
+    $$('[data-wow]').forEach(b => b.onclick = () => { const [ty, f, v] = b.dataset.wow.split(':'); wowUsePreset(ty, f, v) });
     $$('.tptile:not([data-mine]):not([data-wow])').forEach(b => b.onclick = () => { if(b.dataset.id === '__custom'){ const t = tpTemplateFor(b.dataset.t); TP.view = 'edit'; if(t && t.name !== TP.name) tpOpen(t.name); else viewTemplate() } else tpUsePreset(b.dataset.t, b.dataset.id) }); return }
   if(TP.name && !TP.st){ $('#main').innerHTML = h + '<div class="panel"><i class="ti ti-loader-2"></i> Reading the layers ...</div>'; bindTp(); return }
   if(TP.st){
