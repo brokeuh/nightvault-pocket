@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261113-n35";
+const UI_BUILD = "20261113-n36";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1836,6 +1836,135 @@ function tpDrawText(ctx){
   ctx.restore();
 }
 
+/* ---------------------------------------------------------------- WoW card mode (layered "Classic Border" style PSD) */
+const WOW_TYPES = [['ally','Ally'], ['hero','Hero'], ['equipment','Equipment'], ['ability','Ability'], ['quest','Quest'], ['questns','Quest (no symbol)'], ['event','Event']];
+const WOW_CLASSES = ['Death Knight', 'Druid', 'Hunter', 'Mage', 'Paladin', 'Priest', 'Rogue', 'Shaman', 'Warlock', 'Warrior'];
+const WOW_DMG = ['Melee', 'Range', 'Nature', 'Shadow', 'Arcane', 'Fire', 'Frost', 'Holy'];
+const WOW_EMPTY_T = {name:'', cost:'', typeline:'', herotype:'', spec:'', prof1:'', prof2:'', eqtype:'', kw:'', rules:'', flavor:'', damage:'', health:'', setnum:'', artist:'', copy:''};
+function wowOn(){ return !!(TP.st && /wow/i.test(TP.name) && TP.st.items.some(i => i.name === 'Frames')) }
+function wowNew(type, faction){ const S = {type:type || 'ally', faction:faction || 'alliance', cls:'', dmg:'', equip:'Armor', eqcls:[], banner:true, t:Object.assign({}, WOW_EMPTY_T)}; wowFix(S); return S }
+function wowFix(S){ if(S.type === 'hero' && S.faction === 'neutral') S.faction = 'alliance'; if(S.type === 'hero' && !S.cls) S.cls = 'Warrior' }
+function wowS(){ if(!TP.wow) TP.wow = wowNew('ally', 'alliance'); return TP.wow }
+function wowItem(path){ let list = TP.st.items, it = null; for(const n of path){ it = (list || []).find(x => x.name === n); if(!it) return null; list = it.kids } return it && it.kind === 'layer' && !it.empty ? it : null }
+function wowLayers(S){       // -> {pre:[layers drawn over the art], post:[the border]}, bottom to top
+  const F = (...p) => wowItem(['Frames', ...p]), cap = s => s.charAt(0).toUpperCase() + s.slice(1), cn = c => c === 'Rogue' ? 'Rouge' : c, pre = [];
+  if(S.type === 'ally'){ pre.push(F(cap(S.faction) + ' Ally')); if(S.cls) pre.push(F('Class Req.', cn(S.cls))) }
+  else if(S.type === 'hero'){ pre.push(F('Hero', cap(S.faction) + ' Hero')); if(S.cls) pre.push(F('Hero', 'Class Icons', cn(S.cls))); if(S.banner) pre.push(F(cap(S.faction) + ' Banner')) }
+  else if(S.type === 'equipment'){ pre.push(F('Equipment', 'Equipment'), F('Equipment', S.equip + ' Icon')); (S.eqcls || []).forEach(c => pre.push(F('Equipment', 'Class Icons', cn(c)))) }
+  else pre.push(F({ability:'Ability', quest:'Quest', questns:'Quest no Symbol', event:'Onyxia-Style Event'}[S.type]));
+  if(S.dmg) pre.push(wowItem(['Damage Types', S.dmg]));
+  return {pre:pre.filter(Boolean), post:[wowItem(['Border'])].filter(Boolean)};
+}
+function wowArt(ctx){
+  const A = TP.art; if(!A.img) return; const a = wowItem(['Art', 'Parvink Art']), R = a ? a.rect : [5, -14, 734, 803];
+  const rw = R[2] - R[0], rh = R[3] - R[1], sc = Math.max(rw / A.img.width, rh / A.img.height) * A.zoom, w = A.img.width * sc, h = A.img.height * sc;
+  ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.drawImage(A.img, R[0] + rw / 2 - w / 2 + A.x, R[1] + rh / 2 - h / 2 + A.y, w, h); ctx.restore();
+}
+function wowWrap(ctx, text, maxW){       // -> lines (words wrapped, new lines kept)
+  const out = []; String(text || '').split('\n').forEach(par => { let cur = ''; par.split(/\s+/).filter(Boolean).forEach(w => { const t = cur ? cur + ' ' + w : w; if(cur && ctx.measureText(t).width > maxW){ out.push(cur); cur = w } else cur = t }); out.push(cur) });
+  while(out.length && out[out.length - 1] === '') out.pop(); return out;
+}
+function wowText(ctx, part){
+  const S = wowS(), T = S.t, SERIF = "700 @ Georgia, 'Times New Roman', serif", BOLD = '700 @ NVRoboto, Roboto, sans-serif', COND = '400 @ NVRobotoCond, Roboto, sans-serif', ITAL = 'italic 400 @ NVRoboto, Roboto, sans-serif';
+  const set = (font, px) => { ctx.font = font.replace('@', px + 'px') };
+  const white = (txt, x, y, px, font, align, maxW) => { if(txt === '' || txt == null) return; txt = String(txt); set(font, px); while(maxW && px > 10 && ctx.measureText(txt).width > maxW){ px -= 1; set(font, px) }
+    ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(2, px * 0.14); ctx.strokeStyle = 'rgba(0,0,0,.9)'; ctx.strokeText(txt, x, y); ctx.fillStyle = '#fff'; ctx.fillText(txt, x, y) };
+  const plain = (txt, x, y, px, font, align, color, maxW) => { if(txt === '' || txt == null) return; txt = String(txt); set(font, px); while(maxW && px > 7 && ctx.measureText(txt).width > maxW){ px -= 0.5; set(font, px) }
+    ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = color; ctx.fillText(txt, x, y) };
+  ctx.save();
+  if(part === 'head'){
+    white(T.name, 201, 70, 40, SERIF, 'left', 430);
+    white(T.cost, ['ally', 'equipment', 'ability'].includes(S.type) ? 100 : 120, 88, 50, SERIF, 'center', 60);
+  }
+  if(part === 'type'){
+    if(S.type === 'hero'){ white(T.herotype, 74, 699, 22, BOLD, 'left', 300); white(T.spec, 74, 727, 22, BOLD, 'left', 300); white(T.prof1, 683, 699, 22, BOLD, 'right', 200); white(T.prof2, 683, 727, 22, BOLD, 'right', 200) }
+    else if(S.type === 'event') plain(T.typeline, 74, 699, 22, BOLD, 'left', '#000', 560);       // the event frame has a light background
+    else { white(T.typeline, 74, 699, 22, BOLD, 'left', S.type === 'equipment' ? 470 : 560); if(S.type === 'equipment') white(T.eqtype, 665, 699, 22, BOLD, 'right', 150) }
+  }
+  if(part === 'rules'){
+    const maxW = 540, top = 748, hgt = 178; let px = 34, kwL = [], rL = [], lh, total;
+    for(;;){ lh = px * 1.12; set(BOLD, px); kwL = wowWrap(ctx, T.kw, maxW); set(COND, px); rL = wowWrap(ctx, T.rules, maxW); total = (kwL.length + rL.length) * lh + (kwL.length && rL.length ? px * 0.35 : 0); if(total <= hgt || px <= 13) break; px -= 1 }
+    let y = top + (hgt - total) / 2 + px * 0.85; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#000';
+    set(BOLD, px); kwL.forEach(l => { ctx.fillText(l, 372, y); y += lh }); if(kwL.length && rL.length) y += px * 0.35;
+    set(COND, px); rL.forEach(l => { ctx.fillText(l, 372, y); y += lh });
+    let f = 22, fl; for(;;){ set(ITAL, f); fl = wowWrap(ctx, T.flavor, 470); if(fl.length * f * 1.15 <= 50 || f <= 11) break; f -= 1 }
+    if(fl.length){ let fy = 930 + (50 - fl.length * f * 1.15) / 2 + f * 0.85; ctx.fillStyle = '#373737'; fl.forEach(l => { ctx.fillText(l, 380, fy); fy += f * 1.15 }) }
+  }
+  if(part === 'nums'){
+    if(S.type !== 'equipment') white(T.damage, 72, 993, 46, SERIF, 'center', 60);
+    white(T.health, S.type === 'equipment' ? 686 : 671, 993, 46, SERIF, 'center', 60);
+    plain(T.setnum, 299, 1012, 19, '700 @ NVRobotoCond, Roboto, sans-serif', 'center', '#000', 160);
+    plain(T.artist, 403, 1002, 11, '400 @ NVRoboto, Roboto, sans-serif', 'left', '#000', 200);
+    plain(T.copy, 403, 1017, 10.5, '400 @ NVRoboto, Roboto, sans-serif', 'left', '#000', 215);
+  }
+  ctx.restore();
+}
+async function wowDraw(my, cv){
+  const [W, H] = TP.st.size; cv.width = W; cv.height = H;
+  const S = wowS(), L = wowLayers(S); await tpFonts(); if(my !== TP.token) return;
+  tpBusy('Loading layers ...'); let pre, post;
+  try{ pre = await Promise.all(L.pre.map(l => tpImg(l.i))); post = await Promise.all(L.post.map(l => tpImg(l.i))) }catch(e){ if(my === TP.token) tpBusy('Could not load a layer: ' + e.message); return }
+  if(my !== TP.token) return;
+  const ctx = cv.getContext('2d'), rec = TP.rec || null, snap = fn => { const c = document.createElement('canvas'); c.width = W; c.height = H; fn(c.getContext('2d')); return c.toDataURL('image/png') };
+  ctx.clearRect(0, 0, W, H);
+  wowArt(ctx); if(rec && TP.art.img) rec.push({type:'png', name:'Your art', data:snap(c => wowArt(c))});
+  const put = (l, im) => { ctx.drawImage(im, l.rect[0], l.rect[1]); if(rec) rec.push({type:'src', i:l.i, name:l.name, op:255, blend:'norm'}) };
+  L.pre.forEach((l, k) => put(l, pre[k]));
+  [['head', 'Name and cost'], ['type', 'Type line'], ['rules', 'Rules and flavor text'], ['nums', 'Numbers and credits']].forEach(([p, n]) => { wowText(ctx, p); if(rec) rec.push({type:'png', name:n, data:snap(c => wowText(c, p))}) });
+  L.post.forEach((l, k) => put(l, post[k]));
+  tpBusy('');
+}
+function wowPanel(){
+  const S = wowS(), T = S.t, G = 'display:grid;grid-template-columns:minmax(110px,auto) 1fr;gap:8px 12px;align-items:center;margin-top:8px';
+  const sel = (k, label, opts) => `<label>${label}</label><select data-w="${k}">${opts.map(([v, t]) => `<option value="${esc(v)}" ${String(S[k]) === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>`;
+  const tx = (k, label, ph, rows) => `<label>${label}</label>` + (rows ? `<textarea data-wt="${k}" rows="${rows}" placeholder="${esc(ph || '')}">${esc(T[k])}</textarea>` : `<input type="text" data-wt="${k}" value="${esc(T[k])}" placeholder="${esc(ph || '')}">`);
+  const sec = (title, body) => `<details open class="tpsec" style="margin-top:14px"><summary><b>${title}</b></summary><div style="${G}">${body}</div></details>`;
+  const ty = S.type, cls = WOW_CLASSES.map(c => [c, c]);
+  let h = `<p class="hint">Pick the card type, then fill in the text. The frames come from your own PSD file and stay on this PC. Save PNG gives the finished card, Save PSD keeps the frame, art and text as separate layers.</p>`;
+  let look = sel('type', 'Card type', WOW_TYPES);
+  if(ty === 'ally') look += sel('faction', 'Faction', [['alliance', 'Alliance'], ['horde', 'Horde'], ['neutral', 'Neutral']]) + sel('cls', 'Class needed', [['', 'Any class'], ...cls]);
+  if(ty === 'hero') look += sel('faction', 'Faction', [['alliance', 'Alliance'], ['horde', 'Horde']]) + sel('cls', 'Class', cls) + `<label>Faction banner</label><label><input type="checkbox" data-wb="banner" ${S.banner ? 'checked' : ''}> small banner top right</label>`;
+  if(ty === 'equipment') look += sel('equip', 'Number badge', [['Armor', 'Armor'], ['Strike', 'Strike']]) + `<label>Classes</label><span style="display:flex;flex-wrap:wrap;gap:4px 14px">${WOW_CLASSES.filter(c => c !== 'Death Knight').map(c => `<label><input type="checkbox" data-wc="${c}" ${(S.eqcls || []).includes(c) ? 'checked' : ''}> ${c}</label>`).join('')}</span>`;
+  if(ty === 'ally' || ty === 'hero' || ty === 'equipment') look += sel('dmg', 'Damage type', [['', '- none -'], ...WOW_DMG.map(d => [d, d])]);
+  h += sec('Card look', look);
+  let top = tx('name', 'Name', 'Card name') + tx('cost', 'Cost', '0-10');
+  h += sec('Name & cost', top);
+  let tl = '';
+  if(ty === 'hero') tl = tx('herotype', 'Hero line', 'e.g. Hero - Human Paladin') + tx('spec', 'Spec', 'e.g. Protection') + tx('prof1', 'Profession 1', '') + tx('prof2', 'Profession 2', '');
+  else { tl = tx('typeline', 'Type line', 'e.g. Ally - Gnome Warrior'); if(ty === 'equipment') tl += tx('eqtype', 'Equipment type', 'e.g. Weapon') }
+  h += sec('Type line', tl);
+  h += sec('Rules box', tx('kw', 'Keyword line', 'bold line on top, e.g. Protector') + tx('rules', 'Rules text', '', 5) + tx('flavor', 'Flavor text', 'small italic text at the bottom', 2));
+  let nums = ''; if(ty === 'ally' || ty === 'hero') nums += tx('damage', 'Damage', ''); if(ty !== 'ability' && ty !== 'quest' && ty !== 'questns' && ty !== 'event') nums += tx('health', ty === 'equipment' ? 'Badge number' : 'Health', '');
+  nums += tx('setnum', 'Set & number', 'e.g. MYSET 012/100') + tx('artist', 'Artist', 'Art by ...') + tx('copy', 'Copyright line', '');
+  h += sec('Numbers & credits', nums);
+  h += `<details open class="tpsec" style="margin-top:14px"><summary><b>Art</b></summary>
+      <div class="bar" id="tpartbar" style="margin-top:8px"><button class="btn sm" id="tpartb"><i class="ti ti-photo-up"></i>Choose art</button><input type="file" id="tpartf" accept="image/*" hidden>
+        <label>Zoom <input type="range" id="tpa_zoom" min="0.5" max="3" step="0.01" value="${TP.art.zoom}"></label>
+        <label>Left/right <input type="range" id="tpa_x" min="-500" max="500" value="${TP.art.x}"></label>
+        <label>Up/down <input type="range" id="tpa_y" min="-700" max="700" value="${TP.art.y}"></label></div></details>`;
+  return h;
+}
+function wowBind(){
+  const S = wowS();
+  $$('[data-w]').forEach(el => el.onchange = () => { S[el.dataset.w] = el.value; if(el.dataset.w === 'type' || el.dataset.w === 'faction'){ wowFix(S); viewTemplate() } else tpDraw() });
+  $$('[data-wb]').forEach(el => el.onchange = () => { S[el.dataset.wb] = el.checked; tpDraw() });
+  $$('[data-wt]').forEach(el => el.oninput = () => { S.t[el.dataset.wt] = el.value; tpDraw() });
+  $$('[data-wc]').forEach(el => el.onchange = () => { S.eqcls = $$('[data-wc]').filter(x => x.checked).map(x => x.dataset.wc); tpDraw() });
+}
+function wowTemplate(){ return (TP.list || []).find(t => /wow/i.test(t.name)) }
+async function wowUsePreset(type, faction){
+  const t = wowTemplate(); if(!t) return;
+  if(!TP.st || t.name !== TP.name) await tpOpen(t.name);
+  TP.wow = wowNew(type, faction); TP.art = {img:null, zoom:1, x:0, y:0}; TP.mineId = null; TP.card = null; TP.view = 'edit'; viewTemplate();
+}
+function wowPresetsHTML(){
+  const t = wowTemplate(); if(!t) return '';
+  const tiles = [['ally', 'alliance', 'Ally - Alliance', '#1f6fa8'], ['ally', 'horde', 'Ally - Horde', '#b02a2a'], ['ally', 'neutral', 'Ally - Neutral', '#8a8f98'], ['hero', 'alliance', 'Hero - Alliance', '#1f6fa8'], ['hero', 'horde', 'Hero - Horde', '#b02a2a'],
+    ['equipment', 'neutral', 'Equipment', '#c9a227'], ['ability', 'neutral', 'Ability', '#6b3fa0'], ['quest', 'neutral', 'Quest', '#2f8f5b'], ['questns', 'neutral', 'Quest (no symbol)', '#2f8f5b'], ['event', 'neutral', 'Event', '#e8812e']];
+  return `<div class="panel"><h3>WoW</h3><p class="hint">Click a tile: the frame opens with every text field empty. These come from your own WoW PSD (${esc(t.name)}) and are never shown or stored anywhere else.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px">${tiles.map(([ty, f, lab, col]) => `<button class="tptile" data-wow="${ty}:${f}"><div class="tpth" style="display:flex;align-items:center;justify-content:center"><i class="tpdot" style="background:${col};width:34px;height:34px"></i></div><div class="tpl">${esc(lab)}</div></button>`).join('')}</div></div>`;
+}
+
 const tpURL = i => '/api/template/layer?name=' + enc(TP.name) + '&i=' + i + '&t=' + enc(TOKEN);
 function tpGroups(){ return TP.st ? TP.st.items.slice().reverse() : [] }      // top of the card first
 function tpDefaults(){
@@ -1878,6 +2007,7 @@ async function tpCounterBar(){      // the little bar behind the counter text on
 function tpBusy(t){ const e = $('#tpbusy'); if(e) e.textContent = t }
 async function tpDraw(){
   const my = ++TP.token, cv = $('#tpcv'); if(!cv || !TP.st) return;
+  if(wowOn()) return wowDraw(my, cv);
   const [W, H] = TP.st.size; cv.width = W; cv.height = H;
   const vis = tpVisible().filter(l => !l.empty && !(TP.txt.on && TP_TEXTGROUPS.includes(l.grp) && !l.valued) && !(TP.txt.on && TP_GRADS[l.grp]) && !(TP.txt.on && l.grp === 'Cost Number' && !l.valued && String(TP.txt.cost).trim() === ''));
   await tpFonts(); await tpMeasure(); if(my !== TP.token) return;
@@ -1988,6 +2118,7 @@ const TP_SECS = [
   ['info', 'Card number, rarity & marks', /^(Card Info|Rarity|Block|Alt Art Star|Winner|Extra)/i],
   ['extra', 'Extras', /^(Watermark|Logo)/i]];
 function tpPanelHtml(){
+  if(wowOn()) return wowPanel();
   const rows = {}, other = [];
   tpGroups().slice().sort((a, b) => { const x = TP_ORDER.indexOf(a.name), y = TP_ORDER.indexOf(b.name); return (x < 0 ? 999 : x) - (y < 0 ? 999 : y) }).forEach(it => { const sec = TP_SECS.find(x => x[2].test(it.name)); (sec ? (rows[sec[0]] = rows[sec[0]] || []) : other).push(tpCtlRow(it)) });
   if(other.length) rows.frame = (rows.frame || []).concat(other);
@@ -2038,8 +2169,8 @@ async function tpMineSave(){
   TP.st.items.forEach((it, n) => { if(it.kind === 'group'){ const k = TP.sel['g' + n]; names.g[it.name] = k >= 0 && it.kids[k] ? it.kids[k].name : null } else names.l[it.name] = !!TP.sel['l' + n] });
   let art = null; if(TP.art.img){ const im = TP.art.img, f = Math.min(1, 2400 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * f); c.height = Math.round(im.height * f); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); art = c.toDataURL('image/jpeg', 0.92) }
   const cv = $('#tpcv'), tc = document.createElement('canvas'); tc.width = 150; tc.height = Math.round(150 * cv.height / cv.width); tc.getContext('2d').drawImage(cv, 0, 0, tc.width, tc.height);
-  const nm = ($('#tpsvname') && $('#tpsvname').value.trim()) || TP.txt.name || 'My card';
-  const r = await api('/api/template/mine_save', {id:TP.mineId || '', name:nm, template:TP.name, thumb:tc.toDataURL('image/webp', 0.8), art, state:{names, txt:TP.txt, art:{zoom:TP.art.zoom, x:TP.art.x, y:TP.art.y}, card:TP.card || null}});
+  const nm = ($('#tpsvname') && $('#tpsvname').value.trim()) || (wowOn() ? wowS().t.name : TP.txt.name) || 'My card';
+  const r = await api('/api/template/mine_save', {id:TP.mineId || '', name:nm, template:TP.name, thumb:tc.toDataURL('image/webp', 0.8), art, state:{names, txt:TP.txt, wow:wowOn() ? TP.wow : null, art:{zoom:TP.art.zoom, x:TP.art.x, y:TP.art.y}, card:TP.card || null}});
   TP.mineId = r.id; toast('Saved "' + nm + '" to My cards'); return r;
 }
 async function tpMineLoad(id){
@@ -2049,7 +2180,7 @@ async function tpMineLoad(id){
   try{ TP.st = await api('/api/template/open?name=' + enc(t.name)) }catch(e){ toast(e.message, true); return viewTemplate() }
   tpDefaults(); const S = r.state || {}, N = S.names || {g:{}, l:{}};
   TP.st.items.forEach((it, n) => { if(it.kind === 'group'){ if(it.name in N.g){ const w = N.g[it.name]; TP.sel['g' + n] = w === null ? -1 : it.kids.findIndex(x => x.name === w) } } else if(it.name in N.l) TP.sel['l' + n] = !!N.l[it.name] });
-  Object.assign(TP.txt, S.txt || {}); TP.card = S.card || null; TP.mineId = id; TP.art = {img:null, zoom:(S.art || {}).zoom || 1, x:(S.art || {}).x || 0, y:(S.art || {}).y || 0};
+  Object.assign(TP.txt, S.txt || {}); if(S.wow) TP.wow = S.wow; TP.card = S.card || null; TP.mineId = id; TP.art = {img:null, zoom:(S.art || {}).zoom || 1, x:(S.art || {}).x || 0, y:(S.art || {}).y || 0};
   if(r.art){ await new Promise(res => { const im = new Image(); im.onload = () => { TP.art.img = im; res() }; im.onerror = res; im.src = r.art }) }
   TP.view = 'edit'; viewTemplate();
 }
@@ -2063,6 +2194,7 @@ function tpPresetsHTML(){
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px;${t ? '' : 'opacity:.45;pointer-events:none'}">
       <button class="tptile" data-t="${type}" data-id="__custom"><div class="tpth" style="display:flex;align-items:center;justify-content:center;font-size:30px;opacity:.6">✎</div><div class="tpl">Custom</div></button>
       ${tiles.map(x => `<button class="tptile" data-t="${type}" data-id="${esc(x.id)}"><div class="tpth">${x.thumb ? `<img src="${x.thumb}" alt="">` : ''}</div><div class="tpl">${(x.dots || []).map(c => `<i class="tpdot" style="background:${c}"></i>`).join('')}${esc(x.label)}</div></button>`).join('')}</div></div>`; });
+  h += wowPresetsHTML();
   return `<style>.tptile{background:var(--panel2,#1a2030);border:1px solid var(--line,#2a3142);border-radius:12px;padding:8px;cursor:pointer;color:inherit;text-align:center;font:inherit}.tptile:hover{border-color:var(--accent,#7aa2f7);transform:translateY(-2px)}.tpth{aspect-ratio:1000/1398;background:#2a2f3a;border-radius:8px;overflow:hidden}.tpth img{width:100%;height:100%;object-fit:cover;display:block}.tpl{margin-top:6px;font-size:13px}.tpdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;border:1px solid rgba(255,255,255,.4)}</style>` + h;
 }
 async function viewTemplate(){
@@ -2085,7 +2217,8 @@ async function viewTemplate(){
   if(TP.view === 'presets' && have){ if(!TP.mineLoaded){ TP.mineLoaded = true; await tpMineList() }
     $('#main').innerHTML = h + tpPresetsHTML(); bindTp(); $$('[data-minedel]').forEach(b => b.onclick = async e => { e.stopPropagation(); if(!confirm('Delete this saved card?')) return; try{ await api('/api/template/mine_delete', {id:b.dataset.minedel}) }catch(x){ return toast(x.message, true) } await tpMineList(); viewTemplate() });
     $$('.tptile[data-mine]').forEach(b => b.onclick = () => tpMineLoad(b.dataset.mine));
-    $$('.tptile:not([data-mine])').forEach(b => b.onclick = () => { if(b.dataset.id === '__custom'){ const t = tpTemplateFor(b.dataset.t); TP.view = 'edit'; if(t && t.name !== TP.name) tpOpen(t.name); else viewTemplate() } else tpUsePreset(b.dataset.t, b.dataset.id) }); return }
+    $$('[data-wow]').forEach(b => b.onclick = () => { const [ty, f] = b.dataset.wow.split(':'); wowUsePreset(ty, f) });
+    $$('.tptile:not([data-mine]):not([data-wow])').forEach(b => b.onclick = () => { if(b.dataset.id === '__custom'){ const t = tpTemplateFor(b.dataset.t); TP.view = 'edit'; if(t && t.name !== TP.name) tpOpen(t.name); else viewTemplate() } else tpUsePreset(b.dataset.t, b.dataset.id) }); return }
   if(TP.name && !TP.st){ $('#main').innerHTML = h + '<div class="panel"><i class="ti ti-loader-2"></i> Reading the layers ...</div>'; bindTp(); return }
   if(TP.st){
     h += `<div class="cols2" style="grid-template-columns:minmax(300px,520px) 1fr;align-items:start">
@@ -2094,7 +2227,7 @@ async function viewTemplate(){
         <div id="tphl" style="position:absolute;display:none;pointer-events:none;border:3px solid #ffd23f;background:rgba(255,210,63,.18);border-radius:6px;box-shadow:0 0 0 2px rgba(0,0,0,.45)"></div></div></div>
       <div class="panel">${tpPanelHtml()}
       <div class="bar" style="margin-top:14px"><button class="btn primary" id="tppng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="tppsd"><i class="ti ti-file-download"></i>Save PSD with these layers</button><button class="btn sm ghost" id="tpreset">Back to the file's own layers</button></div>
-      <div class="bar" style="margin-top:8px"><input type="text" id="tpsvname" placeholder="Name for My cards" value="${esc(TP.txt.name || '')}" style="width:220px"><button class="btn" id="tpsave"><i class="ti ti-device-floppy"></i>Save to My cards</button><span class="muted">Keeps the layers, text and art, so you can carry on later.</span></div>
+      <div class="bar" style="margin-top:8px"><input type="text" id="tpsvname" placeholder="Name for My cards" value="${esc(wowOn() ? wowS().t.name : (TP.txt.name || ''))}" style="width:220px"><button class="btn" id="tpsave"><i class="ti ti-device-floppy"></i>Save to My cards</button><span class="muted">Keeps the layers, text and art, so you can carry on later.</span></div>
       <div id="tpmsg" class="hint"></div></div></div>`;
   }
   $('#main').innerHTML = h;
@@ -2164,7 +2297,7 @@ function tpHLbind(el, key){
 }
 function bindTp(){
   const c = id => $('#' + id);
-  if(c('tpcv')){ c('tpcv').style.cursor = 'text'; c('tpcv').title = 'Click a text on the card to type there'; c('tpcv').onclick = tpEditAt }
+  if(c('tpcv')){ c('tpcv').style.cursor = 'text'; c('tpcv').title = 'Click a text on the card to type there'; c('tpcv').onclick = wowOn() ? null : tpEditAt }
   [['tpt_name','name'],['tpt_cost','cost'],['tpt_life','life'],['tpt_power','power'],['tpt_type','type'],['tpt_num','num'],['tpt_ability','ability']].forEach(([id, k]) => { if(c(id)) tpHLbind(c(id), k) });
   $$('.tpdd .tpddb').forEach(el => tpHLbind(el, 'g' + el.parentNode.dataset.g));
   $$('.tpctl input[data-l]').forEach(el => tpHLbind(el, 'l' + el.dataset.l));
@@ -2175,7 +2308,7 @@ function bindTp(){
   if(c('tppres')) c('tppres').onclick = () => { TP.view = 'presets'; viewTemplate() };
   if(c('tpdel')) c('tpdel').onclick = async () => { if(!confirm('Remove this template from Nightvault? Your original PSD is not touched.')) return;
     try{ await api('/api/template/delete', {name:TP.name}); TP.list = null; TP.name = ''; TP.st = null; viewTemplate() }catch(e){ toast(e.message, true) } };
-  tpBindDropdowns();
+  tpBindDropdowns(); if(wowOn()) wowBind();
   $$('.tpctl input[data-l]').forEach(cb => cb.onchange = () => { TP.sel['l' + cb.dataset.l] = cb.checked; tpDraw() });
   const tx = (id, key, num) => { const el = c(id); if(el) el.oninput = () => { TP.txt[key] = el.type === 'checkbox' ? el.checked : (num ? +el.value : el.value); tpDraw() } };
   tx('tptxon', 'on'); tx('tpt_name', 'name'); tx('tpt_power', 'power'); tx('tpt_cost', 'cost'); tx('tpt_life', 'life'); tx('tpt_type', 'type'); tx('tpt_num', 'num'); tx('tpt_ability', 'ability'); tx('tpt_size', 'size', 1); tx('tpt_outline', 'outline'); tx('tpt_auto', 'auto');

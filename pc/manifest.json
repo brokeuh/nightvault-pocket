@@ -1,7 +1,7 @@
 {
- "version": "2026-11-13 14:20",
+ "version": "2026-11-13 14:54",
  "notes": [
-  "My cards: save and reopen"
+  "WoW card templates"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "e5e02e592c838a6999a0522fccf0ce1ad2175fa852faf38e28bd683068805c4b"
+   "sha256": "776abfd18e224ef77323ad31d48181c984fac997b3a05c4ec5a6e98e9109b133"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "0a09bbcfa88c5c9e270bbfb3c93f2c74f47d928b0f3142b9001edadd7e900762"
+   "sha256": "755d64087b1fb057a7a459cbbe466c8c4af84665d5f44ecaecb9479b474a5f43"
   },
   {
    "name": "fonts/OFL.txt",

@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 204,
+   "date": "2026-11-13",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: WoW card templates",
+   "items": [
+    "Card templates now understands your WoW Classic Border PSD. On the Presets page there is a WoW row: Ally (Alliance, Horde, Neutral), Hero, Equipment, Ability, Quest and Event. Pick the card type, faction, class and damage type, type the name, cost, rules, flavor, numbers and credits, add your art, then Save PNG or Save PSD (art, frame and text as separate layers). Save to My cards works too. Your frames stay on your PC only."
+   ]
+  },
+  {
    "id": 203,
    "date": "2026-11-13",
    "where": [
