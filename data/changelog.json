@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 192,
+   "date": "2026-11-13",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: two-colour Leader cards",
+   "items": [
+    "The Leader template now has all 15 two-colour looks (Red/Blue, Black/Purple, ...) and the Presets page shows a tile for each. Replace your Leader template with the new OnePiece_Leader_template.psd (Remove this template, then Open another PSD)."
+   ]
+  },
+  {
    "id": 191,
    "date": "2026-11-12",
    "where": [

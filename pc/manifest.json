@@ -1,7 +1,7 @@
 {
- "version": "2026-11-12 16:32",
+ "version": "2026-11-13 08:25",
  "notes": [
-  "Card presets page"
+  "Two-colour Leader presets"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "50f980b8c2075c142e83f7ad1b4f0a43448de4d8ba4134ea64ecfcb59d3dfb69"
+   "sha256": "7d69eb717a58f8124cb9997ae503ecfeb515685795dcaa616ee3438c611ee780"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "c8f8f36436aa3a8dbe51df3a83f6e59678a67330ad5d6ba37ff6ca06f29acf0f"
+   "sha256": "f63898ee347615268588ebaa77b0c5e8df00e9da1bd13a1e4f8f75879ebe714e"
   },
   {
    "name": "fonts/OFL.txt",
