@@ -1,7 +1,7 @@
 {
- "version": "2026-11-13 13:35",
+ "version": "2026-11-13 13:38",
  "notes": [
-  "Clearer option names"
+  "Layered PSD with your art and text"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "a33b478f0c531521ceb7e2b083aa058ea2c770c78958658d93e0f74820f156e8"
+   "sha256": "13631492c2a7d2b2ac87720337a7167af275c4441d14758e334901adb78ea572"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -46,11 +46,11 @@
   },
   {
    "name": "vault_template.py",
-   "sha256": "0a4b90dfb64e675fab0a9b206848d912ebf5869c0865a51f81b1dcb88880d4a6"
+   "sha256": "8028c129167c0963393c1dec93d9b3c3a15a9e21e197c71b320e5f6339147fb5"
   },
   {
    "name": "vault_ui.html",
-   "sha256": "092922ea6db44d0692ed93378d5ae6d059a94e4bc3d65a4eafbf9a3657f09b33"
+   "sha256": "5254f151696e4f9cc33a3a996b6e755665d78351657c4f4fd582ba748b75b7af"
   },
   {
    "name": "fonts/OFL.txt",

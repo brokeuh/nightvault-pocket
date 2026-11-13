@@ -222,3 +222,58 @@ def save_psd(path, dest, visible):
     with open(dest, "wb") as f:
         f.write(data)
     return dest
+
+
+def write_layered(path, dest, layers, size, merged=None):
+    """Writes a new layered PSD from a list of layers, bottom to top.
+    layers: dict(type='src', i=<layer index in `path`>, name, op, blend) or dict(type='png', name, png=<bytes of a full-size picture>, op, blend).
+    merged: PNG bytes of the finished card (stored as the flat preview). Each layer is saved as its own picture layer (text is flattened)."""
+    from PIL import Image
+    W, H = size
+    recs, datas = [], []
+    for L in layers:
+        if L.get("type") == "src":
+            png, left, top = layer_png(path, int(L["i"]))
+            im = Image.open(io.BytesIO(png)).convert("RGBA")
+        else:
+            im = Image.open(io.BytesIO(L["png"])).convert("RGBA")
+            left = top = 0
+        bb = im.getchannel("A").getbbox()
+        if not bb:
+            continue
+        im = im.crop(bb)
+        l0, t0 = left + bb[0], top + bb[1]
+        w, h = im.size
+        planes = [im.getchannel("A").tobytes()] + [im.getchannel(c).tobytes() for c in "RGB"]
+        chd = [struct.pack(">H", 2) + zlib.compress(pl, 3) for pl in planes]
+        name = str(L.get("name") or "Layer")[:120]
+        nb = name.encode("latin1", "replace")[:255]
+        pas = bytes([len(nb)]) + nb
+        pas += b"\0" * ((4 - len(pas) % 4) % 4)
+        u = name.encode("utf-16-be")
+        luni = struct.pack(">I", len(name)) + u
+        luni += b"\0" * (len(luni) % 2)
+        extra = struct.pack(">I", 0) + struct.pack(">I", 0) + pas + b"8BIM" + b"luni" + struct.pack(">I", len(luni)) + luni
+        blend = (L.get("blend") or "norm").encode("latin1")[:4].ljust(4, b" ")
+        r = struct.pack(">iiii", t0, l0, t0 + h, l0 + w) + struct.pack(">H", 4)
+        for cid, cd in zip((-1, 0, 1, 2), chd):
+            r += struct.pack(">hI", cid, len(cd))
+        r += b"8BIM" + blend + bytes([int(L.get("op", 255)) & 255, 0, 0, 0]) + struct.pack(">I", len(extra)) + extra
+        recs.append(r)
+        datas.extend(chd)
+    info = struct.pack(">h", len(recs)) + b"".join(recs) + b"".join(datas)
+    if len(info) % 2:
+        info += b"\0"
+    lm = struct.pack(">I", len(info)) + info + struct.pack(">I", 0)
+    if merged:
+        flat = Image.new("RGB", (W, H), (255, 255, 255))
+        m = Image.open(io.BytesIO(merged)).convert("RGBA")
+        flat.paste(m, (0, 0), m)
+    else:
+        flat = Image.new("RGB", (W, H), (255, 255, 255))
+    img = struct.pack(">H", 0) + b"".join(flat.getchannel(c).tobytes() for c in "RGB")
+    head = b"8BPS" + struct.pack(">H", 1) + b"\0" * 6 + struct.pack(">HIIHH", 3, H, W, 8, 3)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with open(dest, "wb") as f:
+        f.write(head + struct.pack(">I", 0) + struct.pack(">I", 0) + struct.pack(">I", len(lm)) + lm + img)
+    return dest

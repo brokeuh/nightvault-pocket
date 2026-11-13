@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 201,
+   "date": "2026-11-13",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: Save PSD now includes your art, text and counter bar",
+   "items": [
+    "Fix: the saved PSD only switched template layers on or off, so Photoshop showed the empty template with EDIT HERE. It now holds your finished card as named layers: the template layers you chose, your art, the counter bar and your text (the text is one flattened picture layer, not editable text)."
+   ]
+  },
+  {
    "id": 200,
    "date": "2026-11-13",
    "where": [
