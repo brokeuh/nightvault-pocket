@@ -1,7 +1,7 @@
 {
- "version": "2026-11-13 13:23",
+ "version": "2026-11-13 13:25",
  "notes": [
-  "Card lookup"
+  "Power style on typed number"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "a72df76bbac5c5f7fd99ee07766d10fae13226657fc1ccac35b89284d27848c2"
+   "sha256": "511d161233dc1fd063eb92eb2117bd5ba9481831744793666fc37b104229b163"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "bdf7c923190c019a3e8f9c9e4cacf1653f7cac0169a44ae2432dbf1aabedd4b8"
+   "sha256": "67d18fecbdd6bc2fefc209c65753dad039ea9de124e0ff7e8895cd6a4666c632"
   },
   {
    "name": "fonts/OFL.txt",
