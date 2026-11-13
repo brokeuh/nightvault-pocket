@@ -556,7 +556,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261113-n27";
+const UI_BUILD = "20261113-n28";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1864,6 +1864,14 @@ function tpTags(txt){          // official card text -> our [colour|word] tags
         orange = /^(Rush|Rush: Character|Blocker|Double Attack|Banish|Unblockable)$/i;
   return String(txt || '').replace(/\[([^\]]+)\]/g, (m, w) => /^Once Per Turn$/i.test(w) ? '[pink|' + w + ']' : /^DON!! ?[x\u00d7\-\u2212]\s?\d+$/i.test(w) ? '[black|' + w + ']' : blue.test(w) ? '[blue|' + w + ']' : orange.test(w) ? '[orange|' + w + ']' : m);
 }
+async function tpLookup(c){       // a card from the list -> right template + colour look + its text
+  if(!c) return; const cat = String(c.category || '');
+  const type = /leader/i.test(cat) ? 'Leader' : /event/i.test(cat) ? 'Event' : /stage/i.test(cat) ? 'Stage' : /don/i.test(cat) ? 'Don' : 'Character';
+  if(!tpTemplateFor(type)){ toast('There is no ' + type + ' template yet (Open another PSD), so only the text is filled in.', true); return tpFill(c) }
+  const cols = (c.colors || []).map(x => String(x).toLowerCase()), tiles = TP_PRESETS[type] || [];
+  const tile = tiles.find(t => { const p = t.id.split('+'); return p.length === cols.length && p.every(x => cols.includes(x)) }) || tiles.find(t => t.id === cols[0]) || tiles[0];
+  await tpUsePreset(type, tile ? tile.id : '__none'); tpFill(c); toast(c.id + ' ' + c.name + ': ' + type + (tile ? ', ' + tile.label : ''));
+}
 function tpFill(c){
   if(!c) return; const T = TP.txt;
   T.name = c.name; T.power = c.power == null ? '' : String(c.power); T.cost = c.cost == null ? '' : String(c.cost); T.type = c.types || ''; T.num = c.id; T.life = c.life == null ? '' : String(c.life); T.ability = tpTags(c.text); T.on = true; TP.card = c;
@@ -1978,6 +1986,7 @@ async function viewTemplate(){
       <button class="btn ${have ? '' : 'primary'}" id="tpadd"><i class="ti ti-upload"></i>${have ? 'Open another PSD' : 'Open a PSD template'}</button>
       ${have ? '<button class="btn sm ghost danger" id="tpdel">Remove this template</button>' : ''}
       <input type="file" id="tpfile" accept=".psd" hidden>
+      ${have ? `<span style="margin-left:auto;display:flex;gap:6px;align-items:center"><input type="text" id="tplk" placeholder="Card lookup, e.g. OP12-034" style="width:210px"><button class="btn" id="tplkgo"><i class="ti ti-search"></i>Find card</button><select id="tplkpick" style="display:none;max-width:260px"></select></span>` : ''}
     </div>${have ? '' : '<p class="hint">Pick the merged template PSD (for example OnePiece_Character_template.psd). It is copied into Nightvault\'s own folder; the original is not touched. Only 8-bit RGB PSD files work.</p>'}</div>`;
   if(TP.view === 'presets' && have){ $('#main').innerHTML = h + tpPresetsHTML(); bindTp(); $$('.tptile').forEach(b => b.onclick = () => { if(b.dataset.id === '__custom'){ const t = tpTemplateFor(b.dataset.t); TP.view = 'edit'; if(t && t.name !== TP.name) tpOpen(t.name); else viewTemplate() } else tpUsePreset(b.dataset.t, b.dataset.id) }); return }
   if(TP.name && !TP.st){ $('#main').innerHTML = h + '<div class="panel"><i class="ti ti-loader-2"></i> Reading the layers ...</div>'; bindTp(); return }
@@ -2077,6 +2086,11 @@ function bindTp(){
   const go = async () => { const q = c('tpc_q').value.trim(); if(!q) return; let r; try{ r = await api('/api/template/cards_find?q=' + enc(q)) }catch(e){ return toast(e.message, true) }
     const pk = c('tpc_pick'); if(!r.cards.length){ pk.style.display = 'none'; c('tpc_st').textContent = 'No card found. Press "Update list" first if the list is empty.'; return }
     TP.found = r.cards; pk.innerHTML = r.cards.map((x, n) => `<option value="${n}">${esc(x.id)} - ${esc(x.name)} (${esc(x.rarity)})</option>`).join(''); pk.style.display = r.cards.length > 1 ? '' : 'none'; tpFill(r.cards[0]) };
+  const lk = async () => { const q = c('tplk').value.trim(); if(!q) return; let r; try{ r = await api('/api/template/cards_find?q=' + enc(q)) }catch(e){ return toast(e.message, true) }
+    const pk = c('tplkpick'); if(!r.cards.length){ pk.style.display = 'none'; return toast('No card found. If the list is empty, press "Update list" in the Card data section first.', true) }
+    TP.found = r.cards; pk.innerHTML = r.cards.map((x, n) => `<option value="${n}">${esc(x.id)} - ${esc(x.name)} (${esc(x.rarity)})</option>`).join(''); pk.style.display = r.cards.length > 1 ? '' : 'none'; tpLookup(r.cards[0]) };
+  if(c('tplkgo')) c('tplkgo').onclick = lk; if(c('tplk')) c('tplk').onkeydown = e => { if(e.key === 'Enter') lk() };
+  if(c('tplkpick')) c('tplkpick').onchange = e => tpLookup(TP.found[+e.target.value]);
   if(c('tpc_go')) c('tpc_go').onclick = go; if(c('tpc_q')) c('tpc_q').onkeydown = e => { if(e.key === 'Enter') go() };
   if(c('tpc_pick')) c('tpc_pick').onchange = e => tpFill(TP.found[+e.target.value]);
   const ar = (id, key) => { const el = c(id); if(el) el.oninput = () => { TP.art[key] = +el.value; tpDraw() } };

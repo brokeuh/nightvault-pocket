@@ -1,7 +1,7 @@
 {
- "version": "2026-11-13 09:06",
+ "version": "2026-11-13 13:23",
  "notes": [
-  "Counter option"
+  "Card lookup"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "83b63afbab1ced8ad4a27be7b29b16c4d5a288ff7306e4af7b8279968d59ac30"
+   "sha256": "a72df76bbac5c5f7fd99ee07766d10fae13226657fc1ccac35b89284d27848c2"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "eb399abaa56ed3f46e742ccc19649df785cc788a05d58d016db98004036ecb4a"
+   "sha256": "bdf7c923190c019a3e8f9c9e4cacf1653f7cac0169a44ae2432dbf1aabedd4b8"
   },
   {
    "name": "fonts/OFL.txt",

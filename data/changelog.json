@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 196,
+   "date": "2026-11-13",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: card lookup on the template page",
+   "items": [
+    "Card templates has a Card lookup box at the top: type a card number (for example OP12-034) and press Find card. The right template opens with the card's colour look already chosen (two-colour cards too) and its name, cost, power, type and text filled in. You only add the picture."
+   ]
+  },
+  {
    "id": 195,
    "date": "2026-11-13",
    "where": [
