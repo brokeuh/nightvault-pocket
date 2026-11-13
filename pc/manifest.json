@@ -1,7 +1,7 @@
 {
- "version": "2026-11-13 08:25",
+ "version": "2026-11-13 08:42",
  "notes": [
-  "Two-colour Leader presets"
+  "Text colour options fix"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "7d69eb717a58f8124cb9997ae503ecfeb515685795dcaa616ee3438c611ee780"
+   "sha256": "5d30ee0d1c7a5932d4c58f015fe466a81f6c5ec8b7c174e75adcecf5872ddd4d"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "f63898ee347615268588ebaa77b0c5e8df00e9da1bd13a1e4f8f75879ebe714e"
+   "sha256": "ae124b58537c0b36a9bfc86152da39e57caf09ab5f91f5f83a488c1281d7a666"
   },
   {
    "name": "fonts/OFL.txt",

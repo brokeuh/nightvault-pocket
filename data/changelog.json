@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 193,
+   "date": "2026-11-13",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: name, power and type colour options now colour your own text",
+   "items": [
+    "Fix: with \"Use my text\" on, the Card Name Gradient, Power Gradient and Type Gradient options coloured the original EDIT HERE text and did nothing to yours. They now colour your own text (for example red or gold)."
+   ]
+  },
+  {
    "id": 192,
    "date": "2026-11-13",
    "where": [
