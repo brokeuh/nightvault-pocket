@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 198,
+   "date": "2026-11-13",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "hub"
+   ],
+   "title": "PC app: Update button always visible",
+   "items": [
+    "The Update Nightvault button in the left menu now stays pinned at the bottom, so you can reach it in a small window without making the app full screen."
+   ]
+  },
+  {
    "id": 197,
    "date": "2026-11-13",
    "where": [

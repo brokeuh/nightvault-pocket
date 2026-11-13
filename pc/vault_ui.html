@@ -22,6 +22,8 @@ a{color:inherit;text-decoration:none}
 button,input,select,textarea{font:inherit;color:inherit}
 #app{display:grid;grid-template-columns:210px minmax(0,1fr);height:100vh}
 #side{background:var(--side);border-right:1px solid var(--line);padding:16px 10px;overflow-y:auto}
+.sideupdw{position:sticky;bottom:0;background:var(--side);padding:6px 0 4px;z-index:2;box-shadow:0 -8px 8px -6px rgba(0,0,0,.35)}
+body.has-player .sideupdw{bottom:-76px}
 #main{overflow-y:auto;padding:22px 28px 60px}
 .logo{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;padding:2px 10px 14px}
 .logo i{color:var(--accent);font-size:20px}
@@ -556,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261113-n29";
+const UI_BUILD = "20261113-n30";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -650,7 +652,7 @@ function renderSide(){
   }
   if(S.state.setup && S.state.setup.running) h += `<div class="demonote"><i class="ti ti-loader-2"></i> Setting up Nightvault ...<div class="sbar"><i style="width:${S.state.setup.pct}%"></i></div><span style="font-size:11.5px">${esc(S.state.setup.text)}</span></div>`;
   if(S.state.demo) h += '<div class="demonote">Demo data is loaded · <a href="#/settings">Remove</a></div>';
-  h += `<div class="grp" style="margin-top:10px"><a class="nav" href="#" id="sideupd" title="Look for a newer Nightvault, or update from a zip file"><i class="ti ti-cloud-download"></i>Update Nightvault<span class="n">${esc(((S.state.build || '').split('-')[1]) || '')}</span></a></div>`;
+  h += `<div class="grp sideupdw" style="margin-top:10px"><a class="nav" href="#" id="sideupd" title="Look for a newer Nightvault, or update from a zip file"><i class="ti ti-cloud-download"></i>Update Nightvault<span class="n">${esc(((S.state.build || '').split('-')[1]) || '')}</span></a></div>`;
   $('#side').innerHTML = h;
   if($('#sideupd')) $('#sideupd').onclick = e => { e.preventDefault(); updMenu() };
   wireSide();

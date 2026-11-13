@@ -1,7 +1,7 @@
 {
- "version": "2026-11-13 13:25",
+ "version": "2026-11-13 13:28",
  "notes": [
-  "Power style on typed number"
+  "Update button pinned"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "511d161233dc1fd063eb92eb2117bd5ba9481831744793666fc37b104229b163"
+   "sha256": "0a28699eeda85404da9e8f673adc904907783e059886393bd56430d9e09bdd2e"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "67d18fecbdd6bc2fefc209c65753dad039ea9de124e0ff7e8895cd6a4666c632"
+   "sha256": "b86ae5de550f8b755f25ebb752d4a540b86fac5cac7c841ae3edcc28f3c40a6c"
   },
   {
    "name": "fonts/OFL.txt",
