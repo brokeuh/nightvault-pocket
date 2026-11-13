@@ -10,7 +10,7 @@
    "files": [
     {
      "path": "hub/index.html",
-     "size": 95699
+     "size": 96493
     },
     {
      "path": "hub/core.js",
@@ -30,15 +30,15 @@
     },
     {
      "path": "hub/nvbackup.js",
-     "size": 21285
+     "size": 21424
     },
     {
      "path": "hub/nvsetup.js",
-     "size": 35801
+     "size": 36861
     },
     {
      "path": "hub/nvtheme.js",
-     "size": 10375
+     "size": 10420
     },
     {
      "path": "hub/nvmenu.js",
@@ -50,7 +50,7 @@
     },
     {
      "path": "hub/nvsplash.js",
-     "size": 9324
+     "size": 9673
     },
     {
      "path": "hub/nvvoice.js",
@@ -63,10 +63,10 @@
    ],
    "provides": [],
    "uses": [],
-   "size": 292706,
-   "hash": "c647a87b3764",
-   "version": "2026.11.10.0816",
-   "updated": "2026-11-10"
+   "size": 295093,
+   "hash": "d69cd031a546",
+   "version": "2026.11.13.1535",
+   "updated": "2026-11-13"
   },
   {
    "id": "scanner",
@@ -590,6 +590,36 @@
    "hash": "f6c08ba40cfd",
    "version": "2026.11.10.0816",
    "updated": "2026-11-10"
+  },
+  {
+   "id": "cardmaker",
+   "name": "Card maker",
+   "desc": "Make your own cards on the phone from your template frames: tabs for frame, text and art",
+   "color": "#3a2a16",
+   "files": [
+    {
+     "path": "cardmaker/index.html",
+     "size": 27108
+    },
+    {
+     "path": "cardmaker/wow.js",
+     "size": 13744
+    },
+    {
+     "path": "cardmaker/manifest.webmanifest",
+     "size": 550
+    }
+   ],
+   "provides": [
+    "cardmaker"
+   ],
+   "uses": [],
+   "entry": "cardmaker/?nv=hub",
+   "keepsData": "Your frames files and saved cards stay on this device.",
+   "size": 41402,
+   "hash": "7e4442c7443b",
+   "version": "2026.11.13.1535",
+   "updated": "2026-11-13"
   }
  ]
 }
