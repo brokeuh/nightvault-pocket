@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e13">
+<title>Nightvault Card maker</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<script src="../hub/nvtheme.js"></script>
+<script>NVTHEME.apply('cardmaker')</script>
+<script src="../hub/nvlog.js"></script>
+<script src="../hub/nvbackup.js"></script>
+<script src="../hub/nvsetup.js"></script>
+<script src="../hub/nvmenu.js"></script>
+<!-- Nightvault Card maker (test): make your own cards on the phone from the frames of a template PSD. The PC app unpacks the PSD ("Send frames to phone"
+     in Card templates -> one .nvcard file), this page draws the card on the phone: tabs Frame / Text / Art, tap a part of the card to edit exactly that part.
+     First templates: the two WoW ones. Plan: plans/cardmaker-phone.md. The drawing code is wow.js, GENERATED from pc/vault_ui.html (tools/make_cardmaker_wow.py). -->
+<style>
+:root{--bg:#0b0e13;--pan:#151a22;--pan2:#10141b;--line:#232b36;--text:#e9edf2;--dim:#9aa7b5;--dim2:#8fa0b2;--accent:#a9b4ff;--accentd:#4651a8;--accentb:#6f7be0;--accentbg:#1c1f3e;--red:#ef8a8f;--green:#8fe0a0}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 'DM Sans',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{max-width:760px;margin:0 auto;padding:calc(10px + env(safe-area-inset-top,0px)) 14px calc(86px + env(safe-area-inset-bottom,0px))}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+.muted{color:var(--dim)}.small{font-size:12.5px}
+.top{display:flex;align-items:center;gap:10px;padding:2px 0 8px}
+.top h1{font-size:20px;margin:0;flex:1;min-width:0}
+.ib{width:42px;height:42px;border-radius:13px;border:1px solid var(--line);background:var(--pan);display:inline-flex;align-items:center;justify-content:center;padding:0;color:var(--text);cursor:pointer;flex:none}
+.btn{height:44px;border-radius:13px;border:1px solid var(--line);background:var(--pan);color:var(--text);font-size:14.5px;cursor:pointer;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.primary{background:var(--accentd);border-color:var(--accentb);color:#fff;font-weight:700}
+.btn.sm{height:34px;font-size:13px;padding:0 12px;border-radius:11px}
+.btn.danger{color:var(--red)}
+.panel{background:var(--pan);border:1px solid var(--line);border-radius:18px;padding:14px;margin:0 0 12px}
+.panel h2{font-size:15px;margin:0 0 10px}
+input[type=text],textarea,select{width:100%;min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--pan2);color:var(--text);padding:8px 12px;font:inherit;font-size:15px}
+textarea{resize:vertical;min-height:84px}
+label.f{display:block;margin:0 0 12px}
+label.f>span{display:block;font-size:12.5px;color:var(--dim);margin:0 0 4px}
+label.f.hl>span{color:var(--accent);font-weight:700}
+label.f.hl input,label.f.hl textarea{border-color:var(--accentb);box-shadow:0 0 0 2px rgba(111,123,224,.35)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.chip{border:1px solid var(--line);background:var(--pan2);border-radius:999px;padding:9px 14px;font-size:14px;cursor:pointer}
+.chip.on{background:var(--accentbg);border-color:var(--accentb);color:#fff;font-weight:700}
+.sec{font-size:12.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin:2px 0 6px}
+#stage{position:sticky;top:0;z-index:6;background:var(--bg);padding:2px 0 8px}
+#wrap{position:relative;width:fit-content;max-width:100%;margin:0 auto;touch-action:none}
+#cv{display:block;height:min(46vh,520px);width:auto;max-width:100%;border-radius:10px;background:#333}
+#hl{position:absolute;display:none;pointer-events:none;border:3px solid #ffd23f;background:rgba(255,210,63,.2);border-radius:6px;box-shadow:0 0 0 2px rgba(0,0,0,.45)}
+#nav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;gap:6px;max-width:760px;margin:0 auto;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:var(--pan);border-top:1px solid var(--line)}
+#nav button{flex:1;height:52px;border-radius:14px;border:1px solid var(--line);background:var(--pan2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:12.5px;cursor:pointer}
+#nav button.on{background:var(--accentbg);border-color:var(--accentb);color:#fff;font-weight:700}
+#nav b{font-size:18px;line-height:1}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.tile{position:relative;border:1px solid var(--line);background:var(--pan2);border-radius:12px;padding:6px;text-align:center;cursor:pointer}
+.tile img{width:100%;aspect-ratio:750/1050;object-fit:cover;border-radius:7px;display:block;background:#222}
+.tile .l{font-size:12.5px;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile .x{position:absolute;top:2px;right:2px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:15px;line-height:1}
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--pan);border:1px solid var(--line);padding:10px 14px;border-radius:12px;z-index:50;max-width:90vw}
+</style>
+</head>
+<body>
+<script src="../hub/nvsplash.js" data-app="cardmaker"></script>
+<div class="top"><button class="ib" id="back" aria-label="Back" hidden>‹</button><h1 id="title">Card maker</h1><span id="menumount"></span></div>
+<div id="home"></div>
+<div id="edit" hidden>
+  <div id="stage"><div id="wrap"><canvas id="cv" width="750" height="1050"></canvas><div id="hl"></div></div><div class="muted small" id="busy" style="text-align:center;min-height:18px"></div></div>
+  <div id="panel"></div>
+</div>
+<div id="nav" hidden>
+  <button data-tab="frame"><b>🖼</b>Frame</button><button data-tab="text"><b>Aa</b>Text</button><button data-tab="art"><b>🎨</b>Art</button><button data-tab="save"><b>💾</b>Save</button>
+</div>
+<div id="toast" hidden></div>
+<input type="file" id="packfile" accept="*/*" hidden>
+<input type="file" id="artfile" accept="image/*" hidden>
+<script src="wow.js"></script>
+<script>
+'use strict';
+const $ = (s, r) => (r || document).querySelector(s), $$ = (s, r) => [...(r || document).querySelectorAll(s)];
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]));
+const L = (...a) => { try{ NVLOG && NVLOG.log('cardmaker', a.join(' ')) }catch(e){} };
+const NATIVE = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+let _t; function toast(m){ const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(_t); _t = setTimeout(() => t.hidden = true, 3500) }
+
+/* ---------- storage: frames files and My cards live in this app's own IndexedDB ---------- */
+const DB = {
+  open(){ return this._p || (this._p = new Promise((ok, no) => { const r = indexedDB.open('nvcardmaker', 1); r.onupgradeneeded = () => { r.result.createObjectStore('packs'); r.result.createObjectStore('mine', {keyPath:'id'}) }; r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error) })) },
+  async tx(store, mode, fn){ const db = await this.open(); return new Promise((ok, no) => { const t = db.transaction(store, mode), rq = fn(t.objectStore(store)); t.oncomplete = () => ok(rq && rq.result); t.onerror = () => no(t.error) }) },
+  get(s, k){ return this.tx(s, 'readonly', o => o.get(k)) }, put(s, k, v){ return this.tx(s, 'readwrite', o => s === 'mine' ? o.put(v) : o.put(v, k)) }, del(s, k){ return this.tx(s, 'readwrite', o => o.delete(k)) },
+  keys(s){ return this.tx(s, 'readonly', o => o.getAllKeys()) }, all(s){ return this.tx(s, 'readonly', o => o.getAll()) },
+};
+
+/* ---------- the frames file (.nvcard, made by the PC app) ---------- */
+const CM = {name:'', st:null, wow:null, art:{img:null, zoom:1, x:0, y:0}, imgs:{}, pack:null, tab:'frame', mineId:null};
+const PK = {};      // name -> {head, buf, base}
+function parsePack(buf){
+  const u = new Uint8Array(buf), dv = new DataView(buf), magic = new TextDecoder().decode(u.slice(0, 8));
+  if(magic !== 'NVCARD1\n') throw new Error('This is not a Card maker frames file. On the PC: Card templates > open your WoW PSD > Send frames to phone.');
+  const hl = dv.getUint32(8), head = JSON.parse(new TextDecoder().decode(u.slice(12, 12 + hl)));
+  return {head, buf, base:12 + hl};
+}
+async function openPack(name, buf){
+  const p = PK[name] || (PK[name] = parsePack(buf || await DB.get('packs', name)));
+  CM.name = p.head.name; CM.st = {size:p.head.size, items:p.head.items}; CM.pack = p; CM.imgs = {};
+  for(const [fn, [o, n]] of Object.entries(p.head.fonts || {})){ const fam = fn.startsWith('RobotoCondensed') ? 'NVRobotoCond' : 'NVRoboto';
+    try{ const ff = new FontFace(fam, p.buf.slice(p.base + o, p.base + o + n), {weight:'100 900'}); await ff.load(); document.fonts.add(ff) }catch(e){ L('font', fn, e.message) } }
+}
+function img(i){
+  if(!CM.imgs[i]) CM.imgs[i] = (async () => { const r = CM.pack.head.layers[i]; if(!r) throw new Error('layer ' + i); return await createImageBitmap(new Blob([CM.pack.buf.slice(CM.pack.base + r[0], CM.pack.base + r[0] + r[1])], {type:'image/webp'})) })();
+  return CM.imgs[i];
+}
+
+/* ---------- drawing ---------- */
+let token = 0;
+async function draw(){
+  const my = ++token, cv = $('#cv'); if(!CM.st) return;
+  const [W, H] = CM.st.size; if(cv.width !== W) cv.width = W; if(cv.height !== H) cv.height = H;
+  const S = wowS(), Ls = wowLayers(S); let pre, post;
+  try{ pre = await Promise.all(Ls.pre.map(l => img(l.i))); post = await Promise.all(Ls.post.map(l => img(l.i))) }catch(e){ $('#busy').textContent = 'Could not load a layer: ' + e.message; return }
+  if(my !== token) return;
+  const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H);
+  wowArt(ctx);
+  Ls.pre.forEach((l, k) => ctx.drawImage(pre[k], l.rect[0], l.rect[1]));
+  ['head', 'type', 'rules', 'nums'].forEach(p => wowText(ctx, p));
+  Ls.post.forEach((l, k) => ctx.drawImage(post[k], l.rect[0], l.rect[1]));
+  $('#busy').textContent = '';
+}
+
+/* ---------- which parts of the card can be tapped ---------- */
+function zones(){       // [{k, tab, rect:[l,t,r,b], field}] in card coordinates, smaller ones win
+  const S = wowS(), wb = wowVar() === 'wb', T = S.type, z = [];
+  const add = (k, tab, rect, field) => z.push({k, tab, rect, field});
+  if(wb){
+    const fam = T === 'ea' ? 'ea' : T === 'rare' ? 'rare' : 'std';
+    if(fam === 'ea'){ add('name', 'text', [245, 766, 504, 798], 'name'); add('cost', 'text', [66, 766, 98, 802], 'cost'); add('type', 'text', [151, 824, 391, 851], 'typeline'); add('rules', 'text', [47, 876, 690, 966], 'rules'); add('dmg', 'text', [46, 966, 92, 1002], 'damage'); add('hp', 'text', [658, 966, 708, 1002], 'health'); add('art', 'art', [28, 32, 722, 760]) }
+    else { add('name', 'text', [200, 42, 556, 84], 'name'); add('cost', 'text', [84, 58, 116, 104], 'cost'); add('type', 'text', fam === 'rare' ? [121, 939, 370, 966] : [88, 674, 392, 706], 'typeline'); add('dmg', 'text', [46, 942, 98, 1002], 'damage'); add('hp', 'text', [640, 942, 706, 1002], 'health');
+      if(fam === 'std'){ add('rules', 'text', [47, 735, 643, 932], 'rules'); add('flavor', 'text', [145, 934, 629, 970], 'flavor'); add('art', 'art', [28, 114, 722, 653]) } else add('art', 'art', [28, 116, 722, 908]) }
+    add('credits', 'text', [228, 984, 625, 1018], 'setnum'); add('icon', 'frame', [586, 28, 724, 160]);
+    if(['ally', 'ea', 'rare', 'hero'].includes(T)) add('dmgicon', 'frame', [20, 870, 160, 1034]);
+  } else {
+    add('name', 'text', [195, 40, 640, 80], 'name'); add('cost', 'text', [95, 45, 150, 100], 'cost'); add('type', 'text', [70, 675, 360, 705], T === 'hero' ? 'herotype' : 'typeline'); add('rules', 'text', [100, 740, 640, 928], 'rules'); add('flavor', 'text', [145, 930, 614, 980], 'flavor');
+    add('dmg', 'text', [40, 940, 110, 1000], 'damage'); add('hp', 'text', [640, 940, 705, 1000], 'health'); add('credits', 'text', [200, 985, 620, 1020], 'setnum'); add('art', 'art', [25, 100, 725, 650]); add('icon', 'frame', [590, 25, 725, 150]);
+    if(T === 'hero'){ add('spec', 'text', [70, 708, 260, 732], 'spec'); add('p1', 'text', [510, 680, 690, 706], 'prof1'); add('p2', 'text', [598, 708, 690, 732], 'prof2') }
+  }
+  return z;
+}
+function hit(x, y){ const c = zones().filter(z => x >= z.rect[0] && x <= z.rect[2] && y >= z.rect[1] && y <= z.rect[3]).sort((a, b) => (a.rect[2] - a.rect[0]) * (a.rect[3] - a.rect[1]) - (b.rect[2] - b.rect[0]) * (b.rect[3] - b.rect[1])); return c[0] }
+function showHL(rect){ const h = $('#hl'); if(!rect){ h.style.display = 'none'; return } const [W, H] = CM.st.size, p = 6;
+  h.style.display = 'block'; h.style.left = ((rect[0] - p) / W * 100) + '%'; h.style.top = ((rect[1] - p) / H * 100) + '%'; h.style.width = ((rect[2] - rect[0] + p * 2) / W * 100) + '%'; h.style.height = ((rect[3] - rect[1] + p * 2) / H * 100) + '%' }
+
+/* ---------- the three tabs ---------- */
+function fieldsFor(S){
+  const wb = wowVar() === 'wb', T = S.type, f = [['name', 'Name', 'Card name'], ['cost', 'Cost', '0-10']];
+  if(!wb && T === 'hero') f.push(['herotype', 'Hero line', 'e.g. Hero - Human Paladin'], ['spec', 'Spec', 'e.g. Protection'], ['prof1', 'Profession 1', ''], ['prof2', 'Profession 2', '']);
+  else { f.push(['typeline', 'Type line', 'e.g. Ally - Orc Warrior']); if(T === 'equipment') f.push(['eqtype', 'Equipment type', 'e.g. Weapon']) }
+  if(!(wb && T === 'rare')) f.push(['kw', 'Keyword line', 'bold line on top, e.g. Protector'], ['rules', 'Rules text', '', 5], ['flavor', 'Flavor text', 'small italic text', 2]);
+  const dmgOk = wb ? ['ally', 'ea', 'rare', 'hero'].includes(T) : ['ally', 'hero'].includes(T), hpOk = wb ? ['ally', 'ea', 'rare', 'hero', 'equipment'].includes(T) : !['ability', 'quest', 'questns', 'event'].includes(T);
+  if(dmgOk) f.push(['damage', 'Damage', '']); if(hpOk) f.push(['health', T === 'equipment' ? 'Badge number' : 'Health', '']);
+  f.push(['setnum', 'Set & number', 'e.g. MYSET 012/100'], ['artist', 'Artist', 'Art by ...'], ['copy', 'Copyright line', '']);
+  return f;
+}
+function chips(key, opts, cur){ return `<div class="chips">${opts.map(([v, t]) => `<button class="chip ${String(cur) === String(v) ? 'on' : ''}" data-set="${key}" data-v="${esc(v)}">${esc(t)}</button>`).join('')}</div>` }
+function panelFrame(){
+  const S = wowS(), wb = wowVar() === 'wb', T = S.type, types = wb ? WB_TYPES : WOW_TYPES, fac = wowFactions(S), cls = (wb ? WB_CLASSES : WOW_CLASSES);
+  let h = `<div class="sec">Card type</div>` + chips('type', types, T);
+  if(fac.length) h += `<div class="sec">Faction</div>` + chips('faction', fac, S.faction);
+  const cl = (title, any) => `<div class="sec">${title}</div>` + chips('cls', [...(any ? [['', 'None']] : []), ...cls.map(c => [c, c])], S.cls);
+  if(wb ? T === 'ability' : T === 'ally') h += cl(wb ? 'Class icon' : 'Class needed', true);
+  if(T === 'hero'){ h += cl('Class', false); h += `<div class="sec">Faction banner</div>` + chips('banner', [['1', 'Show'], ['', 'Hide']], S.banner ? '1' : '') }
+  if(T === 'equipment'){ h += `<div class="sec">Number badge</div>` + chips('equip', [['Armor', 'Armor'], ['Strike', 'Strike']], S.equip) + `<div class="sec">Classes</div><div class="chips">${cls.filter(c => c !== 'Demon Hunter' && c !== 'Monk' && (wb || c !== 'Death Knight')).map(c => `<button class="chip ${(S.eqcls || []).includes(c) ? 'on' : ''}" data-eq="${c}">${c}</button>`).join('')}</div>` }
+  if(wb ? ['ally', 'ea', 'rare', 'hero'].includes(T) : ['ally', 'hero', 'equipment'].includes(T)) h += `<div class="sec">Damage type</div>` + chips('dmg', [['', 'None'], ...(wb ? WB_DMG : WOW_DMG).filter(d => !(wb && T === 'ea' && d === 'Frost')).map(d => [d, d])], S.dmg);
+  return h;
+}
+function panelText(focus){
+  const S = wowS(); return fieldsFor(S).map(([k, label, ph, rows]) => `<label class="f ${focus === k ? 'hl' : ''}" data-fk="${k}"><span>${label}</span>${rows ? `<textarea data-wt="${k}" rows="${rows}" placeholder="${esc(ph)}">${esc(S.t[k])}</textarea>` : `<input type="text" data-wt="${k}" value="${esc(S.t[k])}" placeholder="${esc(ph)}">`}</label>`).join('');
+}
+function panelArt(){
+  return `<div class="panel"><button class="btn primary" id="artpick" style="width:100%">${CM.art.img ? 'Choose a different picture' : 'Choose a picture'}</button>
+    <p class="muted small">Then drag the picture on the card to move it, pinch (or use the slider) to make it bigger or smaller.</p>
+    <label class="f"><span>Zoom</span><input type="range" id="azoom" min="0.5" max="4" step="0.01" value="${CM.art.zoom}" style="width:100%"></label>
+    <button class="btn sm" id="areset">Fit to the frame</button> ${CM.art.img ? '<button class="btn sm danger" id="aclear">Remove picture</button>' : ''}</div>`;
+}
+function panelSave(){
+  const S = wowS();
+  return `<div class="panel"><label class="f"><span>Name for this card</span><input type="text" id="svname" value="${esc(S.t.name || '')}" placeholder="My card"></label>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" id="svpng">Save PNG</button><button class="btn" id="svmine">Save to My cards</button></div>
+    <p class="muted small">Save PNG puts the finished card in your Downloads. My cards keeps it here so you can edit it again later.</p></div>`;
+}
+function render(focus){
+  $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === CM.tab));
+  const p = $('#panel'); p.innerHTML = CM.tab === 'frame' ? panelFrame() : CM.tab === 'text' ? panelText(focus) : CM.tab === 'art' ? panelArt() : panelSave();
+  $('#cv').style.cursor = CM.tab === 'art' ? 'move' : 'pointer';
+  bind(focus);
+}
+function bind(focus){
+  const S = wowS();
+  $$('[data-set]').forEach(b => b.onclick = () => { const k = b.dataset.set, v = b.dataset.v; S[k] = k === 'banner' ? !!v : v; if(k === 'type' || k === 'faction') wowFix(S); render(); draw() });
+  $$('[data-eq]').forEach(b => b.onclick = () => { const c = b.dataset.eq, a = S.eqcls || (S.eqcls = []); const i = a.indexOf(c); i < 0 ? a.push(c) : a.splice(i, 1); render(); draw() });
+  $$('[data-wt]').forEach(el => { el.oninput = () => { S.t[el.dataset.wt] = el.value; draw() }; el.onfocus = () => { const z = zones().find(z => z.field === el.dataset.wt); showHL(z && z.rect) }; el.onblur = () => showHL(null) });
+  if(focus){ const el = $(`[data-wt="${focus}"]`); if(el){ el.scrollIntoView({block:'center'}); el.focus(); } }
+  if($('#artpick')) $('#artpick').onclick = () => $('#artfile').click();
+  if($('#azoom')) $('#azoom').oninput = e => { CM.art.zoom = +e.target.value; draw() };
+  if($('#areset')) $('#areset').onclick = () => { Object.assign(CM.art, {zoom:1, x:0, y:0}); render(); draw() };
+  if($('#aclear')) $('#aclear').onclick = () => { CM.art.img = null; render(); draw() };
+  if($('#svpng')) $('#svpng').onclick = savePng; if($('#svmine')) $('#svmine').onclick = saveMine;
+}
+$('#artfile').onchange = e => { const f = e.target.files[0]; if(!f) return; createImageBitmap(f).then(b => { CM.art = {img:b, zoom:1, x:0, y:0}; render(); draw() }).catch(() => toast('That picture could not be opened')); e.target.value = '' };
+$$('#nav button').forEach(b => b.onclick = () => { CM.tab = b.dataset.tab; render() });
+
+/* tap a part of the card = edit that part; in the Art tab: drag to move, pinch to zoom */
+(() => {
+  const cv = $('#cv'), P = new Map(); let last = null, moved = 0, startD = 0, startZ = 1;
+  const pt = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * cv.width, (e.clientY - r.top) / r.height * cv.height, r] };
+  cv.addEventListener('pointerdown', e => { if(!CM.st) return; cv.setPointerCapture(e.pointerId); P.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; last = [e.clientX, e.clientY]; if(P.size === 2){ const [a, b] = [...P.values()]; startD = Math.hypot(a[0] - b[0], a[1] - b[1]); startZ = CM.art.zoom } });
+  cv.addEventListener('pointermove', e => { if(!P.has(e.pointerId)) return; P.set(e.pointerId, [e.clientX, e.clientY]);
+    if(CM.tab !== 'art' || !CM.art.img) return;
+    if(P.size === 2){ const [a, b] = [...P.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if(startD){ CM.art.zoom = Math.min(4, Math.max(0.5, startZ * d / startD)); moved += 5; draw() } }
+    else if(last){ const r = cv.getBoundingClientRect(), k = cv.width / r.width; CM.art.x += (e.clientX - last[0]) * k; CM.art.y += (e.clientY - last[1]) * k; moved += Math.abs(e.clientX - last[0]) + Math.abs(e.clientY - last[1]); last = [e.clientX, e.clientY]; draw() } });
+  cv.addEventListener('pointerup', e => { const was = P.size; P.delete(e.pointerId); if(was === 1 && moved < 8){ const [x, y] = pt(e), z = hit(x, y); if(z){ if(z.tab === 'text'){ CM.tab = 'text'; render(z.field); showHL(z.rect) } else if(z.tab === 'frame'){ CM.tab = 'frame'; render(); showHL(z.rect); setTimeout(() => showHL(null), 900) } else { CM.tab = 'art'; render(); showHL(z.rect); setTimeout(() => showHL(null), 900) } } }
+    if(!P.size) last = null; else last = [...P.values()][0] });
+  cv.addEventListener('pointercancel', e => { P.delete(e.pointerId); last = null });
+  cv.addEventListener('wheel', e => { if(CM.tab === 'art' && CM.art.img){ e.preventDefault(); CM.art.zoom = Math.min(4, Math.max(0.5, CM.art.zoom * (e.deltaY < 0 ? 1.06 : 0.94))); draw() } }, {passive:false});
+})();
+
+/* ---------- saving ---------- */
+const blobB64 = b => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => no(r.error); r.readAsDataURL(b) });
+async function deliver(blob, name){
+  if(NATIVE){ try{ const FS = Capacitor.registerPlugin('Filesystem'), NV = Capacitor.registerPlugin('NvFiles'), SH = Capacitor.registerPlugin('Share');
+      const r = await FS.writeFile({path:name, data:await blobB64(blob), directory:'CACHE'});
+      try{ const o = await NV.saveToDownloads({uri:r.uri, name, mime:blob.type}); toast('Saved in Downloads: ' + o.name) }catch(e){ try{ await SH.share({title:name, files:[r.uri]}) }catch(x){ toast('Could not save: ' + (x.message || e.message)) } }
+    }catch(e){ toast('Could not save: ' + e.message) } return }
+  const a = Object.assign(document.createElement('a'), {href:URL.createObjectURL(blob), download:name}); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000);
+}
+const cardName = () => ($('#svname') && $('#svname').value.trim()) || wowS().t.name || 'card';
+async function savePng(){ await draw(); const b = await new Promise(r => $('#cv').toBlob(r, 'image/png')); await deliver(b, cardName().replace(/[^\w\- ]+/g, '') + '.png') }
+async function saveMine(){
+  await draw(); const cv = $('#cv'), tc = document.createElement('canvas'); tc.width = 160; tc.height = Math.round(160 * cv.height / cv.width); tc.getContext('2d').drawImage(cv, 0, 0, tc.width, tc.height);
+  let art = null; if(CM.art.img){ const im = CM.art.img, f = Math.min(1, 2400 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * f); c.height = Math.round(im.height * f); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); art = c.toDataURL('image/jpeg', 0.92) }
+  const id = CM.mineId || ('m' + Date.now()); CM.mineId = id;
+  await DB.put('mine', id, {id, name:cardName(), pack:CM.name, wow:JSON.parse(JSON.stringify(wowS())), art, zoom:CM.art.zoom, x:CM.art.x, y:CM.art.y, thumb:tc.toDataURL('image/webp', 0.8), at:Date.now()});
+  toast('Saved to My cards');
+}
+
+/* ---------- home: frames files and My cards ---------- */
+async function home(){
+  CM.st = null; $('#edit').hidden = true; $('#nav').hidden = true; $('#back').hidden = true; $('#title').textContent = 'Card maker';
+  const packs = await DB.keys('packs'), mine = (await DB.all('mine')).sort((a, b) => b.at - a.at);
+  let h = `<div class="panel"><h2>Frames</h2>${packs.length ? '' : `<p class="muted">No frames yet. Make them once on your PC: <b>Nightvault PC → Tools → Card templates</b>, open your WoW template PSD, press <b>Send frames to phone</b>. Send the small file it makes (1-2 MB) to this phone and add it here.</p>`}
+    <div class="chips">${packs.map(n => `<span style="display:inline-flex;gap:6px"><button class="chip" data-open="${esc(n)}">${esc(String(n).replace(/\.psd$/i, '').replace(/_/g, ' '))}</button><button class="chip" data-delpack="${esc(n)}" aria-label="Remove">✕</button></span>`).join('')}</div>
+    <button class="btn ${packs.length ? '' : 'primary'}" id="addpack">Add a frames file</button></div>`;
+  if(mine.length) h += `<div class="panel"><h2>My cards</h2><div class="tiles">${mine.map(m => `<div class="tile" data-mine="${esc(m.id)}"><img src="${m.thumb}" alt=""><div class="l">${esc(m.name)}</div><button class="x" data-delmine="${esc(m.id)}" aria-label="Delete">✕</button></div>`).join('')}</div></div>`;
+  $('#home').innerHTML = h; $('#home').hidden = false;
+  $('#addpack').onclick = () => $('#packfile').click();
+  $$('[data-open]').forEach(b => b.onclick = () => startNew(b.dataset.open));
+  $$('[data-delpack]').forEach(b => b.onclick = async () => { if(!confirm('Remove these frames from the phone? (My cards made with them stay, but need the frames to open.)')) return; await DB.del('packs', b.dataset.delpack); delete PK[b.dataset.delpack]; home() });
+  $$('[data-mine]').forEach(t => t.onclick = e => { if(e.target.closest('[data-delmine]')) return; openMine(t.dataset.mine) });
+  $$('[data-delmine]').forEach(b => b.onclick = async () => { if(!confirm('Delete this saved card?')) return; await DB.del('mine', b.dataset.delmine); home() });
+}
+$('#packfile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if(!f) return;
+  try{ const buf = await f.arrayBuffer(), p = parsePack(buf); await DB.put('packs', p.head.name, buf); PK[p.head.name] = p; toast('Frames added: ' + p.head.name); home() }catch(x){ toast(x.message) } };
+async function startNew(name){
+  try{ await openPack(name); }catch(e){ return toast('Could not open the frames: ' + e.message) }
+  CM.wow = null; CM.mineId = null; CM.art = {img:null, zoom:1, x:0, y:0}; CM.tab = 'frame'; wowS(); enter();
+}
+async function openMine(id){
+  const m = await DB.get('mine', id); if(!m) return;
+  try{ await openPack(m.pack) }catch(e){ return toast('These frames are not on the phone any more. Add the frames file again first.') }
+  CM.wow = m.wow; CM.mineId = id; CM.art = {img:null, zoom:m.zoom || 1, x:m.x || 0, y:m.y || 0};
+  if(m.art){ try{ CM.art.img = await createImageBitmap(await (await fetch(m.art)).blob()) }catch(e){} }
+  CM.tab = 'text'; enter();
+}
+function enter(){ $('#home').hidden = true; $('#edit').hidden = false; $('#nav').hidden = false; $('#back').hidden = false; $('#title').textContent = 'Card maker'; render(); draw() }
+$('#back').onclick = () => home();
+try{ NVMENU.make({app:'cardmaker', mount:'#menumount', hub:'../hub/index.html', backup:'cardmaker', backHub:false, items:() => []}) }catch(e){ console.error(e) }
+home();
+</script>
+</body>
+</html>

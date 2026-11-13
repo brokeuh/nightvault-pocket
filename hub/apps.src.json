@@ -1,305 +1,322 @@
 {
-  "note": "The Nightvault app list (source). build_catalog.py turns this into apps.json with version and size per app. Paths are relative to the site root.",
-  "apps": [
-    {
-      "id": "hub",
-      "name": "The Nightvault",
-      "desc": "The home screen with the app tiles, installing and updates",
-      "system": true,
-      "files": [
-        "hub/index.html",
-        "hub/core.js",
-        "hub/nvlog.js",
-        "hub/nvpc.js",
-        "hub/nvgroups.js",
-        "hub/nvbackup.js",
-        "hub/nvsetup.js",
-        "hub/nvtheme.js",
-        "hub/nvmenu.js",
-        "hub/nvnew.js",
-        "hub/nvsplash.js",
-        "hub/nvvoice.js",
-        "hub/nvcards.js"
-      ],
-      "provides": [],
-      "uses": []
-    },
-    {
-      "id": "scanner",
-      "name": "Scanner",
-      "desc": "The full app: scan cards, binders, my cards, decks, prices",
-      "color": "#173a30",
-      "entry": "test/?nv=hub&mode=full",
-      "files": [
-        "test/index.html"
-      ],
-      "provides": [
-        "scan",
-        "collection",
-        "prices",
-        "decks"
-      ],
-      "uses": [
-        "convert"
-      ],
-      "keepsData": "Your collection stays: Scanner and Binder share it."
-    },
-    {
-      "id": "binder",
-      "name": "Binder",
-      "desc": "Only your binders - the same collection as Scanner, no scanning",
-      "color": "#173a30",
-      "entry": "test/?nv=hub&mode=binder",
-      "files": [
-        "test/index.html"
-      ],
-      "provides": [
-        "binders"
-      ],
-      "uses": [
-        "scan"
-      ],
-      "keepsData": "Your collection stays: Scanner and Binder share it."
-    },
-    {
-      "id": "convert",
-      "name": "Convert",
-      "desc": "Many pictures to WebP and AVIF at once",
-      "color": "#13323a",
-      "entry": "tools/convert/?nv=hub",
-      "files": [
-        "tools/convert/index.html",
-        "tools/convert/worker.js",
-        "tools/convert/manifest.webmanifest",
-        "tools/convert/lib/feature.js",
-        "tools/convert/lib/webp/encode.js",
-        "tools/convert/lib/webp/meta.js",
-        "tools/convert/lib/webp/utils.js",
-        "tools/convert/lib/webp/codec/enc/webp_enc.js",
-        "tools/convert/lib/webp/codec/enc/webp_enc.wasm",
-        "tools/convert/lib/webp/codec/enc/webp_enc_simd.js",
-        "tools/convert/lib/webp/codec/enc/webp_enc_simd.wasm",
-        "tools/convert/lib/avif/encode.js",
-        "tools/convert/lib/avif/meta.js",
-        "tools/convert/lib/avif/utils.js",
-        "tools/convert/lib/avif/codec/enc/avif_enc.js",
-        "tools/convert/lib/avif/codec/enc/avif_enc.wasm"
-      ],
-      "provides": [
-        "convert"
-      ],
-      "uses": []
-    },
-    {
-      "id": "control",
-      "name": "Control",
-      "desc": "Data jobs and your data sets",
-      "color": "#222a33",
-      "owner": true,
-      "entry": "admin/?nv=hub",
-      "files": [
-        "admin/index.html"
-      ],
-      "provides": [
-        "datajobs"
-      ],
-      "uses": []
-    },
-    {
-      "id": "go",
-      "name": "GO",
-      "desc": "Keep or transfer advice for Pokémon GO",
-      "color": "#2e2a12",
-      "soon": true,
-      "files": [],
-      "provides": [
-        "pogo"
-      ],
-      "uses": [
-        "collection"
-      ]
-    },
-    {
-      "id": "calendar",
-      "name": "Calendar",
-      "desc": "What is coming out: movies, series, comics, games and manga, nothing to add first",
-      "color": "#3a3118",
-      "entry": "calendar/?nv=hub",
-      "files": [
-        "calendar/index.html"
-      ],
-      "provides": [],
-      "uses": [],
-      "keepsData": "Your follows stay on this device."
-    },
-    {
-      "id": "bookcase",
-      "name": "Bookcase",
-      "desc": "Comics, manga, books and rulebooks on shelves, with one reader",
-      "color": "#3a2816",
-      "files": [
-        "books/index.html",
-        "books/app.js",
-        "books/panels.js",
-        "books/panelview.js",
-        "books/translate.js",
-        "books/manifest.webmanifest",
-        "books/lib/pdfjs/pdf.min.js",
-        "books/lib/pdfjs/pdf.worker.min.js",
-        "books/lib/unrar/index.esm.js",
-        "books/lib/unrar/js/Extractor.js",
-        "books/lib/unrar/js/ExtractorData.js",
-        "books/lib/unrar/js/ExtractorData.helper.js",
-        "books/lib/unrar/js/unrar.js",
-        "books/lib/unrar/js/unrar.singleton.js",
-        "books/lib/unrar/js/unrar.wasm"
-      ],
-      "provides": [
-        "reader",
-        "books"
-      ],
-      "uses": [],
-      "entry": "books/?nv=hub",
-      "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted."
-    },
-    {
-      "id": "music",
-      "name": "Music",
-      "desc": "Your music with big covers, albums and playlists",
-      "color": "#2e1a3a",
-      "entry": "audio/?nv=hub&mode=music",
-      "files": [
-        "audio/index.html",
-        "audio/manifest.webmanifest"
-      ],
-      "keepsData": "Your songs, favourites, play counts and playlists stay on this device.",
-      "provides": [
-        "music"
-      ],
-      "uses": []
-    },
-    {
-      "id": "audiobooks",
-      "name": "Audiobooks",
-      "desc": "Audiobooks that remember where you were, at any speed",
-      "color": "#13283d",
-      "entry": "audio/?nv=hub&mode=audiobooks",
-      "files": [
-        "audio/index.html",
-        "audio/manifest.webmanifest"
-      ],
-      "keepsData": "Your audiobooks and where you were stay on this device.",
-      "provides": [
-        "audiobooks"
-      ],
-      "uses": []
-    },
-    {
-      "id": "cinema",
-      "name": "Cinema",
-      "desc": "Movies, TV shows, cartoons and anime, each on its own shelf, with one video player (phone, PC or saved for a trip)",
-      "color": "#3a1620",
-      "files": [
-        "cinema/index.html",
-        "cinema/app.js",
-        "cinema/tv.js",
-        "cinema/calendar.js",
-        "cinema/manifest.webmanifest"
-      ],
-      "provides": [
-        "video"
-      ],
-      "uses": [],
-      "entry": "cinema/?nv=hub",
-      "keepsData": "Your list, what you watched, groups and TMDB key stay on this device. Video files are never deleted."
-    },
-    {
-      "id": "boardgames",
-      "name": "Boardgames",
-      "desc": "Your board games with BoardGameGeek sync, miniatures and terrain",
-      "color": "#1f3216",
-      "files": [
-        "boardgames/index.html",
-        "boardgames/app.js",
-        "boardgames/manifest.webmanifest"
-      ],
-      "provides": [
-        "boardgames"
-      ],
-      "uses": [],
-      "entry": "boardgames/?nv=hub",
-      "keepsData": "Your plays, games added by hand, pictures and groups stay on this device. Games from BoardGameGeek come back by themselves."
-    },
-    {
-      "id": "print3d",
-      "name": "3D Print",
-      "desc": "Your 3D models (STL, OBJ, 3MF) with a 3D viewer, projects and your print log",
-      "color": "#16323a",
-      "files": [
-        "print3d/index.html",
-        "print3d/app.js",
-        "print3d/viewer.js",
-        "print3d/manifest.webmanifest"
-      ],
-      "provides": [
-        "models3d"
-      ],
-      "uses": [],
-      "entry": "print3d/?nv=hub",
-      "keepsData": "Your models list, prints, tags, groups and copies in the app stay on this device. Files in phone folders are never deleted."
-    },
-    {
-      "id": "collectables",
-      "name": "Collectables",
-      "desc": "Everything else you collect: your own fields per collection, photos, values and a barcode scanner",
-      "color": "#3a3216",
-      "files": [
-        "collectables/index.html",
-        "collectables/app.js",
-        "collectables/manifest.webmanifest"
-      ],
-      "provides": [
-        "collectables"
-      ],
-      "uses": [],
-      "entry": "collectables/?nv=hub",
-      "keepsData": "Your collections, templates, items, photos and groups stay on this device."
-    },
-    {
-      "id": "games",
-      "name": "Games",
-      "desc": "Your computer, console, retro and handheld games, and your wishlist",
-      "color": "#1c1f3e",
-      "files": [
-        "games/index.html",
-        "games/app.js",
-        "games/play.js",
-        "games/manifest.webmanifest"
-      ],
-      "provides": [
-        "videogames"
-      ],
-      "uses": [],
-      "entry": "games/?nv=hub",
-      "keepsData": "Your games, copies, wishlist, groups and keys stay on this device."
-    },
-    {
-      "id": "proxies",
-      "name": "Proxies",
-      "desc": "Print a deck as proxy cards: pick the art, get a PDF sheet with cut lines",
-      "color": "#2a2440",
-      "files": [
-        "proxies/index.html",
-        "proxies/app.js",
-        "proxies/cards.js",
-        "proxies/manifest.webmanifest"
-      ],
-      "provides": [
-        "proxies"
-      ],
-      "uses": [],
-      "entry": "proxies/?nv=hub",
-      "keepsData": "Your deck, saved decks, own pictures and sheet settings stay on this device. The PDFs you make are yours to keep."
-    }
-  ]
+ "note": "The Nightvault app list (source). build_catalog.py turns this into apps.json with version and size per app. Paths are relative to the site root.",
+ "apps": [
+  {
+   "id": "hub",
+   "name": "The Nightvault",
+   "desc": "The home screen with the app tiles, installing and updates",
+   "system": true,
+   "files": [
+    "hub/index.html",
+    "hub/core.js",
+    "hub/nvlog.js",
+    "hub/nvpc.js",
+    "hub/nvgroups.js",
+    "hub/nvbackup.js",
+    "hub/nvsetup.js",
+    "hub/nvtheme.js",
+    "hub/nvmenu.js",
+    "hub/nvnew.js",
+    "hub/nvsplash.js",
+    "hub/nvvoice.js",
+    "hub/nvcards.js"
+   ],
+   "provides": [],
+   "uses": []
+  },
+  {
+   "id": "scanner",
+   "name": "Scanner",
+   "desc": "The full app: scan cards, binders, my cards, decks, prices",
+   "color": "#173a30",
+   "entry": "test/?nv=hub&mode=full",
+   "files": [
+    "test/index.html"
+   ],
+   "provides": [
+    "scan",
+    "collection",
+    "prices",
+    "decks"
+   ],
+   "uses": [
+    "convert"
+   ],
+   "keepsData": "Your collection stays: Scanner and Binder share it."
+  },
+  {
+   "id": "binder",
+   "name": "Binder",
+   "desc": "Only your binders - the same collection as Scanner, no scanning",
+   "color": "#173a30",
+   "entry": "test/?nv=hub&mode=binder",
+   "files": [
+    "test/index.html"
+   ],
+   "provides": [
+    "binders"
+   ],
+   "uses": [
+    "scan"
+   ],
+   "keepsData": "Your collection stays: Scanner and Binder share it."
+  },
+  {
+   "id": "convert",
+   "name": "Convert",
+   "desc": "Many pictures to WebP and AVIF at once",
+   "color": "#13323a",
+   "entry": "tools/convert/?nv=hub",
+   "files": [
+    "tools/convert/index.html",
+    "tools/convert/worker.js",
+    "tools/convert/manifest.webmanifest",
+    "tools/convert/lib/feature.js",
+    "tools/convert/lib/webp/encode.js",
+    "tools/convert/lib/webp/meta.js",
+    "tools/convert/lib/webp/utils.js",
+    "tools/convert/lib/webp/codec/enc/webp_enc.js",
+    "tools/convert/lib/webp/codec/enc/webp_enc.wasm",
+    "tools/convert/lib/webp/codec/enc/webp_enc_simd.js",
+    "tools/convert/lib/webp/codec/enc/webp_enc_simd.wasm",
+    "tools/convert/lib/avif/encode.js",
+    "tools/convert/lib/avif/meta.js",
+    "tools/convert/lib/avif/utils.js",
+    "tools/convert/lib/avif/codec/enc/avif_enc.js",
+    "tools/convert/lib/avif/codec/enc/avif_enc.wasm"
+   ],
+   "provides": [
+    "convert"
+   ],
+   "uses": []
+  },
+  {
+   "id": "control",
+   "name": "Control",
+   "desc": "Data jobs and your data sets",
+   "color": "#222a33",
+   "owner": true,
+   "entry": "admin/?nv=hub",
+   "files": [
+    "admin/index.html"
+   ],
+   "provides": [
+    "datajobs"
+   ],
+   "uses": []
+  },
+  {
+   "id": "go",
+   "name": "GO",
+   "desc": "Keep or transfer advice for Pokémon GO",
+   "color": "#2e2a12",
+   "soon": true,
+   "files": [],
+   "provides": [
+    "pogo"
+   ],
+   "uses": [
+    "collection"
+   ]
+  },
+  {
+   "id": "calendar",
+   "name": "Calendar",
+   "desc": "What is coming out: movies, series, comics, games and manga, nothing to add first",
+   "color": "#3a3118",
+   "entry": "calendar/?nv=hub",
+   "files": [
+    "calendar/index.html"
+   ],
+   "provides": [],
+   "uses": [],
+   "keepsData": "Your follows stay on this device."
+  },
+  {
+   "id": "bookcase",
+   "name": "Bookcase",
+   "desc": "Comics, manga, books and rulebooks on shelves, with one reader",
+   "color": "#3a2816",
+   "files": [
+    "books/index.html",
+    "books/app.js",
+    "books/panels.js",
+    "books/panelview.js",
+    "books/translate.js",
+    "books/manifest.webmanifest",
+    "books/lib/pdfjs/pdf.min.js",
+    "books/lib/pdfjs/pdf.worker.min.js",
+    "books/lib/unrar/index.esm.js",
+    "books/lib/unrar/js/Extractor.js",
+    "books/lib/unrar/js/ExtractorData.js",
+    "books/lib/unrar/js/ExtractorData.helper.js",
+    "books/lib/unrar/js/unrar.js",
+    "books/lib/unrar/js/unrar.singleton.js",
+    "books/lib/unrar/js/unrar.wasm"
+   ],
+   "provides": [
+    "reader",
+    "books"
+   ],
+   "uses": [],
+   "entry": "books/?nv=hub",
+   "keepsData": "Your books, reading places, bookmarks and groups stay on this device. Books in phone folders are never deleted."
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "desc": "Your music with big covers, albums and playlists",
+   "color": "#2e1a3a",
+   "entry": "audio/?nv=hub&mode=music",
+   "files": [
+    "audio/index.html",
+    "audio/manifest.webmanifest"
+   ],
+   "keepsData": "Your songs, favourites, play counts and playlists stay on this device.",
+   "provides": [
+    "music"
+   ],
+   "uses": []
+  },
+  {
+   "id": "audiobooks",
+   "name": "Audiobooks",
+   "desc": "Audiobooks that remember where you were, at any speed",
+   "color": "#13283d",
+   "entry": "audio/?nv=hub&mode=audiobooks",
+   "files": [
+    "audio/index.html",
+    "audio/manifest.webmanifest"
+   ],
+   "keepsData": "Your audiobooks and where you were stay on this device.",
+   "provides": [
+    "audiobooks"
+   ],
+   "uses": []
+  },
+  {
+   "id": "cinema",
+   "name": "Cinema",
+   "desc": "Movies, TV shows, cartoons and anime, each on its own shelf, with one video player (phone, PC or saved for a trip)",
+   "color": "#3a1620",
+   "files": [
+    "cinema/index.html",
+    "cinema/app.js",
+    "cinema/tv.js",
+    "cinema/calendar.js",
+    "cinema/manifest.webmanifest"
+   ],
+   "provides": [
+    "video"
+   ],
+   "uses": [],
+   "entry": "cinema/?nv=hub",
+   "keepsData": "Your list, what you watched, groups and TMDB key stay on this device. Video files are never deleted."
+  },
+  {
+   "id": "boardgames",
+   "name": "Boardgames",
+   "desc": "Your board games with BoardGameGeek sync, miniatures and terrain",
+   "color": "#1f3216",
+   "files": [
+    "boardgames/index.html",
+    "boardgames/app.js",
+    "boardgames/manifest.webmanifest"
+   ],
+   "provides": [
+    "boardgames"
+   ],
+   "uses": [],
+   "entry": "boardgames/?nv=hub",
+   "keepsData": "Your plays, games added by hand, pictures and groups stay on this device. Games from BoardGameGeek come back by themselves."
+  },
+  {
+   "id": "print3d",
+   "name": "3D Print",
+   "desc": "Your 3D models (STL, OBJ, 3MF) with a 3D viewer, projects and your print log",
+   "color": "#16323a",
+   "files": [
+    "print3d/index.html",
+    "print3d/app.js",
+    "print3d/viewer.js",
+    "print3d/manifest.webmanifest"
+   ],
+   "provides": [
+    "models3d"
+   ],
+   "uses": [],
+   "entry": "print3d/?nv=hub",
+   "keepsData": "Your models list, prints, tags, groups and copies in the app stay on this device. Files in phone folders are never deleted."
+  },
+  {
+   "id": "collectables",
+   "name": "Collectables",
+   "desc": "Everything else you collect: your own fields per collection, photos, values and a barcode scanner",
+   "color": "#3a3216",
+   "files": [
+    "collectables/index.html",
+    "collectables/app.js",
+    "collectables/manifest.webmanifest"
+   ],
+   "provides": [
+    "collectables"
+   ],
+   "uses": [],
+   "entry": "collectables/?nv=hub",
+   "keepsData": "Your collections, templates, items, photos and groups stay on this device."
+  },
+  {
+   "id": "games",
+   "name": "Games",
+   "desc": "Your computer, console, retro and handheld games, and your wishlist",
+   "color": "#1c1f3e",
+   "files": [
+    "games/index.html",
+    "games/app.js",
+    "games/play.js",
+    "games/manifest.webmanifest"
+   ],
+   "provides": [
+    "videogames"
+   ],
+   "uses": [],
+   "entry": "games/?nv=hub",
+   "keepsData": "Your games, copies, wishlist, groups and keys stay on this device."
+  },
+  {
+   "id": "proxies",
+   "name": "Proxies",
+   "desc": "Print a deck as proxy cards: pick the art, get a PDF sheet with cut lines",
+   "color": "#2a2440",
+   "files": [
+    "proxies/index.html",
+    "proxies/app.js",
+    "proxies/cards.js",
+    "proxies/manifest.webmanifest"
+   ],
+   "provides": [
+    "proxies"
+   ],
+   "uses": [],
+   "entry": "proxies/?nv=hub",
+   "keepsData": "Your deck, saved decks, own pictures and sheet settings stay on this device. The PDFs you make are yours to keep."
+  },
+  {
+   "id": "cardmaker",
+   "name": "Card maker",
+   "desc": "Make your own cards on the phone from your template frames: tabs for frame, text and art",
+   "color": "#3a2a16",
+   "files": [
+    "cardmaker/index.html",
+    "cardmaker/wow.js",
+    "cardmaker/manifest.webmanifest"
+   ],
+   "provides": [
+    "cardmaker"
+   ],
+   "uses": [],
+   "entry": "cardmaker/?nv=hub",
+   "keepsData": "Your frames files and saved cards stay on this device."
+  }
+ ]
 }

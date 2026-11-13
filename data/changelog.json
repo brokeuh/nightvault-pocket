@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 206,
+   "date": "2026-11-13",
+   "where": [
+    "test",
+    "android"
+   ],
+   "apps": [
+    "hub",
+    "cardmaker"
+   ],
+   "title": "New app: Card maker (phone)",
+   "items": [
+    "Card maker is a new app on the home screen. Make your own WoW cards on the phone: tabs at the bottom for Frame, Text, Art and Save. Tap a part of the card (the name, the rules, the damage ...) and that field opens; in Art you drag and pinch the picture on the card.",
+    "The frames come from your PC: in the PC app, Card templates, open your WoW PSD and press Send frames to phone, then add the small file in Card maker. Saved cards are kept in My cards."
+   ]
+  },
+  {
    "id": 205,
    "date": "2026-11-13",
    "where": [

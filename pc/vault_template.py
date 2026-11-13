@@ -277,3 +277,48 @@ def write_layered(path, dest, layers, size, merged=None):
     with open(dest, "wb") as f:
         f.write(head + struct.pack(">I", 0) + struct.pack(">I", 0) + struct.pack(">I", len(lm)) + lm + img)
     return dest
+
+
+def phone_pack(path, dest, fonts_dir, scale=1.0, quality=88):
+    """One file for the phone card maker (.nvcard): the layer structure plus the pictures of every non-text layer as WebP, and the free
+    fonts. Format: b'NVCARD1\\n' + 4 bytes (big endian) header length + header JSON + the pictures one after the other.
+    header = {v, name, size, items (like structure()), layers:{i:[offset,length]}, fonts:{file:[offset,length]}}; offsets count from the end of the header."""
+    import json
+    from PIL import Image
+    st = structure(path)
+    blobs = []
+    pos = [0]
+    index = {}
+
+    def put(key, data, table):
+        table[key] = [pos[0], len(data)]
+        blobs.append(data)
+        pos[0] += len(data)
+
+    def walk(items, top):
+        for it in items:
+            if it["kind"] == "group":
+                walk(it["kids"], top or it["name"])
+                continue
+            if it["empty"] or it["text"] or top == "Art" or it["name"].lower().startswith("refrence") or it["name"].lower().startswith("reference"):
+                continue
+            png, left, top_ = layer_png(path, it["i"])
+            im = Image.open(io.BytesIO(png)).convert("RGBA")
+            if scale != 1.0:
+                im = im.resize((max(1, round(im.width * scale)), max(1, round(im.height * scale))), Image.LANCZOS)
+            b = io.BytesIO()
+            im.save(b, "WEBP", quality=quality, method=4)
+            put(str(it["i"]), b.getvalue(), index)
+    walk(st["items"], None)
+    fonts = {}
+    for fn in ("Roboto.ttf", "RobotoCondensed.ttf"):
+        fp = os.path.join(fonts_dir, fn)
+        if os.path.exists(fp):
+            put(fn, open(fp, "rb").read(), fonts)
+    head = json.dumps(dict(v=1, name=os.path.basename(path), size=st["size"], scale=scale, items=st["items"], layers=index, fonts=fonts),
+                      separators=(",", ":")).encode("utf-8")
+    with open(dest, "wb") as f:
+        f.write(b"NVCARD1\n" + struct.pack(">I", len(head)) + head)
+        for b in blobs:
+            f.write(b)
+    return dict(file=os.path.basename(dest), bytes=os.path.getsize(dest), layers=len(index))

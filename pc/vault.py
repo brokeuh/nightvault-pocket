@@ -192,7 +192,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261113-n37"   # the page and the program must carry the same build id
+BUILD = "20261113-n38"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -6264,6 +6264,13 @@ class Handler(BaseHTTPRequestHandler):
             layers.append(L)
         vtpl.write_layered(str(f), str(out), layers, vtpl.scan(str(f))["size"], dec(d["merged"]) if d.get("merged") else None)
         return self._send(200, {"file": out.name, "folder": str(out.parent)})
+
+    def post_template_phone_pack(self, conn, d):
+        f = self._tpl_path(d.get("name", ""))
+        out = TEMPLATE_DIR / "out" / (f.stem + ".nvcard")
+        out.parent.mkdir(parents=True, exist_ok=True)
+        r = vtpl.phone_pack(str(f), str(out), str(Path(__file__).resolve().parent / "fonts"))
+        return self._send(200, {"file": out.name, "folder": str(out.parent), "bytes": r["bytes"]})
 
     def post_template_cards_update(self, conn, d):
         if not opc:

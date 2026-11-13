@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261113-n37";
+const UI_BUILD = "20261113-n38";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2304,6 +2304,7 @@ async function viewTemplate(){
       ${have ? `<select id="tpsel">${TP.list.map(t => `<option value="${esc(t.name)}" ${t.name === TP.name ? 'selected' : ''}>${esc(t.name)} (${fmtSize(t.size)})</option>`).join('')}</select>` : ''}
       <button class="btn ${have ? '' : 'primary'}" id="tpadd"><i class="ti ti-upload"></i>${have ? 'Open another PSD' : 'Open a PSD template'}</button>
       ${have ? '<button class="btn sm ghost danger" id="tpdel">Remove this template</button>' : ''}
+      ${wowOn() ? '<button class="btn" id="tpphone" title="One small file with these frames for the phone card maker"><i class="ti ti-device-mobile"></i>Send frames to phone</button>' : ''}
       <input type="file" id="tpfile" accept=".psd" hidden>
       ${have ? `<span style="margin-left:auto;display:flex;gap:6px;align-items:center"><input type="text" id="tplk" placeholder="Card lookup, e.g. OP12-034" style="width:210px"><button class="btn" id="tplkgo"><i class="ti ti-search"></i>Find card</button><select id="tplkpick" style="display:none;max-width:260px"></select></span>` : ''}
     </div>${have ? '' : '<p class="hint">Pick the merged template PSD (for example OnePiece_Character_template.psd). It is copied into Nightvault\'s own folder; the original is not touched. Only 8-bit RGB PSD files work.</p>'}</div>`;
@@ -2398,6 +2399,9 @@ function bindTp(){
   if(c('tpadd')) c('tpadd').onclick = () => c('tpfile').click();
   if(c('tpfile')) c('tpfile').onchange = e => tpUpload(e.target.files[0]);
   if(c('tpsel')) c('tpsel').onchange = e => tpOpen(e.target.value);
+  if(c('tpphone')) c('tpphone').onclick = async () => { try{ toast('Packing the frames ...'); const r = await api('/api/template/phone_pack', {name:TP.name});
+    const a = document.createElement('a'); a.href = '/api/template/out?f=' + enc(r.file) + '&t=' + enc(TOKEN); a.download = r.file; document.body.appendChild(a); a.click(); a.remove();
+    toast('Saved ' + r.file + ' (' + fmtSize(r.bytes) + '). Send it to your phone and open it in Card maker.') }catch(e){ toast(e.message, true) } };
   if(c('tppres')) c('tppres').onclick = () => { TP.view = 'presets'; viewTemplate() };
   if(c('tpdel')) c('tpdel').onclick = async () => { if(!confirm('Remove this template from Nightvault? Your original PSD is not touched.')) return;
     try{ await api('/api/template/delete', {name:TP.name}); TP.list = null; TP.name = ''; TP.st = null; viewTemplate() }catch(e){ toast(e.message, true) } };

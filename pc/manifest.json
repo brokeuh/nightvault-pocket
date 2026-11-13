@@ -1,7 +1,7 @@
 {
- "version": "2026-11-13 16:24",
+ "version": "2026-11-13 16:35",
  "notes": [
-  "WoW Worldbreak frames"
+  "Phone card maker: Send frames to phone"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "26ca7d2a9ca7bbc0513ee485f1136c8c306567d81309babb54c091fe06b50106"
+   "sha256": "67b1ca21051ddfaaa4e9bd09a851167ea554951d21b9ceb30c4fd4dbab696d24"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -46,11 +46,11 @@
   },
   {
    "name": "vault_template.py",
-   "sha256": "8028c129167c0963393c1dec93d9b3c3a15a9e21e197c71b320e5f6339147fb5"
+   "sha256": "46e14900930c9142631d88dd1596be93c965341df8518cfffa3420f07bcbde13"
   },
   {
    "name": "vault_ui.html",
-   "sha256": "7e5b49dc2c43a133fb9abf35a5ae7b4dd84a8733b3d9322105d800404ad88a56"
+   "sha256": "207de9893eea35ac74de546c06595e450b66ff49725bee519cb00ee05c92ed5b"
   },
   {
    "name": "fonts/OFL.txt",

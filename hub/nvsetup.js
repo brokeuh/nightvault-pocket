@@ -91,6 +91,10 @@
       {id:'welcome', added:'2026-10-23', icon:'🧊', title:'Welcome to Nightvault 3D Print', body:'Your 3D models (STL, OBJ, 3MF) with a 3D viewer, projects with their pictures and print files, and a log of what you printed.'},
       {id:'add', added:'2026-10-23', icon:'➕', title:'Add models', body:'Tap <b>Add</b> and pick a folder or files. One folder or ZIP = one project tile.'},
       MYPC]},
+    cardmaker:{name:'Card maker', prefix:'nvCardmaker.', steps:[
+      {id:'welcome', added:'2026-11-13', icon:'🖌️', title:'Welcome to Card maker', body:'Make your own cards on the phone from the frames of a template. Pick the frame, type the text, add your art, save a PNG. The first templates are the two WoW ones.'},
+      {id:'frames', added:'2026-11-13', icon:'🖥️', title:'Get the frames from your PC', body:'On the PC: <b>Nightvault → Tools → Card templates</b>, open your WoW template PSD and press <b>Send frames to phone</b>. It makes one small file (1-2 MB). Send it to this phone (cable, Drive, mail) and tap <b>Add a frames file</b> here. Your PSD never leaves the PC.'},
+      {id:'tabs', added:'2026-11-13', icon:'👆', title:'Frame, Text and Art tabs', body:'The tabs at the bottom: <b>Frame</b> (card type, faction, class), <b>Text</b>, <b>Art</b> (drag and pinch the picture on the card) and <b>Save</b>. You can also <b>tap a part of the card</b>: the name, the rules, the damage ... and that exact field opens.'}]},
     proxies:{name:'Proxies', prefix:'nvProxies.', steps:[
       {id:'welcome', added:'2026-11-05', icon:'🃏', title:'Welcome to Nightvault Proxies', body:'Print a deck as proxy cards. Paste a deck list, pick the art of every card, and get a PDF sheet with cut lines. The PDF is made on this device - nothing is uploaded.'},
       {id:'deck', added:'2026-11-05', icon:'📋', title:'Paste a deck list', body:'Pick the game, paste lines like <b>4 Lightning Bolt</b> (or <b>1 Sol Ring (CMD) 123</b> to pick the printing) and tap <b>Import deck</b>. Tap a card to choose another art or edition, or to use your own picture.'},
@@ -124,7 +128,7 @@
     if(/\/audio\//.test(p)) return /mode=music/.test(q) ? 'music' : 'audiobooks';
     if(/\/tools\/convert\//.test(p)) return 'convert';
     if(/\/calendar\//.test(p)) return 'calendar';
-    const m = p.match(/\/(books|games|boardgames|cinema|print3d|collectables|proxies)\//); return m ? (m[1] === 'books' ? 'bookcase' : m[1]) : null }
+    const m = p.match(/\/(books|games|boardgames|cinema|print3d|collectables|proxies|cardmaker)\//); return m ? (m[1] === 'books' ? 'bookcase' : m[1]) : null }
   const usable = s => !(s.android && !NATIVE);
   const seen = app => (get('nvSetup', {})[app] || {}).seen || [];
   function markSeen(app, ids){ const all = get('nvSetup', {}), a = all[app] || {seen:[]}; a.seen = [...new Set(a.seen.concat(ids))]; a.at = Date.now(); all[app] = a; set('nvSetup', all) }
