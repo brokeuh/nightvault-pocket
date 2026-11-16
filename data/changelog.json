@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 233,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: Saga chapters fixed",
+   "items": [
+    "Saga cards now show the chapter badges (I, II, III, IV) and the dividers.",
+    "Chapter boxes grow with the text, so a long last chapter is no longer tiny.",
+    "If you downloaded the Saga style before, the picker offers 'Download this style' again – press it once to get the badge pictures."
+   ]
+  },
+  {
    "id": 232,
    "date": "2026-11-16",
    "where": [

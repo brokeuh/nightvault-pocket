@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n64";
+const UI_BUILD = "20261116-n65";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2681,6 +2681,7 @@ function mtgGroups(force){ if(force) MTGS.gp = null; if(!MTGS.gp) MTGS.gp = (asy
     return out.length ? out : null })(); return MTGS.gp }
 async function mtgStyleInfo(v){ if(v in MTGS.info) return MTGS.info[v]; const t = await mtgText1('js/frames/pack' + v + '.js'); if(!t) return null;   // not downloaded: not cached, so a later download works
   const r = await mtgSandbox(t); if(!r || !r.frames || !r.frames.length){ return (MTGS.info[v] = {bad:true, err:(r && r.err) || 'no frames'}) }
+  { const ov = r.card && r.card.onload; if(ov && /^\/js\/frames\//.test(ov) && !(await mtgText1(ov.replace(/^\//, '')))) return null }   // downloaded before the layout script was fetched too: ask for the download again
   r.main = r.frames.filter(f => !f.bounds); r.addon = !r.main.length; if(r.addon) r.main = r.frames; r.text = r.text || {}; r.card = r.card || {};
   if(!Object.keys(r.text).length){ r.text = JSON.parse(JSON.stringify(MTG_TEXT0)); r.fallback = true }    // add-on / colour-only packs bring no text boxes: use the modern layout
   if(r.fallback) r.card = Object.assign({artBounds:{x:0.0767, y:0.1129, width:0.8476, height:0.4429}, setSymbolBounds:{x:0.9213, y:0.591, width:0.12, height:0.041, vertical:'center', horizontal:'right'}}, r.card);
@@ -2702,8 +2703,8 @@ async function mtgStyleDraw(cv, my, S){
   if(T.loyalty && T.ability0){ const ex = S.ex || {}, used = [0, 1, 2, 3].filter(i => ex['ability' + i]), top = T.ability0.y, total = 0.2796, n = Math.max(1, used.length);   // planeswalker: abilities share the text area
     [0, 1, 2, 3].forEach(i => { const o = T['ability' + i], k = used.indexOf(i); if(!o) return; if(k < 0){ o.y = 2; return } o.y = top + k * total / n; o.height = total / n }) }
   let sagaDraw = null;
-  if(T.reminder && T.ability0 && /saga/i.test(cd.version || '')){ const ex = S.ex || {}, used = [0, 1, 2, 3].filter(i => ex['ability' + i]), ch = used.map((i, k) => (S.saga && S.saga[k]) || 1), sum = ch.reduce((a, b) => a + b, 0) || 1, top = T.ability0.y, per = (0.8368 - top) / Math.max(sum, 3);
-    let y = top; const slots = []; [0, 1, 2, 3].forEach(i => { const o = T['ability' + i], k = used.indexOf(i); if(!o) return; if(k < 0){ o.y = 2; return } o.y = y; o.height = per * ch[k]; slots.push({y, h:o.height, n:ch[k]}); y += o.height }); sagaDraw = slots }
+  if(T.reminder && T.ability0 && /saga/i.test(cd.version || '')){ const ex = S.ex || {}, used = [0, 1, 2, 3].filter(i => ex['ability' + i]), ch = used.map((i, k) => (S.saga && S.saga[k]) || 1), sum = ch.reduce((a, b) => a + b, 0) || 1, top = T.ability0.y, wt = used.map((i, k) => Math.max(ch[k], String(ex['ability' + i]).length / 40)), wsum = Math.max(wt.reduce((a, b) => a + b, 0), 3), per = (0.8368 - top) / wsum;   // room by chapters or by text length, whichever is bigger
+    let y = top; const slots = []; [0, 1, 2, 3].forEach(i => { const o = T['ability' + i], k = used.indexOf(i); if(!o) return; if(k < 0){ o.y = 2; return } o.y = y; o.height = per * wt[k]; slots.push({y, h:o.height, n:ch[k]}); y += o.height }); sagaDraw = slots }
   Object.keys(T).forEach(k => { if(/^(level|ability)/.test(k) && !(T[k].y > 0 && T[k].y < 1)) delete T[k] });
   await mtgFonts(); const img = await mtgImg(fr.src.replace(/^\//, '')); if(my !== MTG.token) return;
   const ext = S.pt ? (() => { const w1 = (fr.name || '').split(' ')[0].toLowerCase(), l = inf.frames.filter(f => f.bounds && /power|toughness|\bpt\b/i.test(f.name || '')); return l.find(f => (f.name || '').toLowerCase().startsWith(w1)) || l[0] })() : null;

@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 14:35",
+ "version": "2026-11-16 14:38",
  "notes": [
-  "Magic: sagas"
+  "Saga chapters fix (n65)"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "398afe42c1a4aec924a3d262416c74dfc7231f928cc66eca5cf800fa03ce1fe8"
+   "sha256": "9ea98fec46bc12d17790838ffebb02e0baa1f2d50af146db2d170802c9fd1732"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "eea242e96089603e3e275093302fbd52bb6c0aa153e28e36f0730d560e794dfb"
+   "sha256": "a45b9f57d738664abb2286a86dd515cbe523ee3a537304feacb23287d7003633"
   },
   {
    "name": "fonts/OFL.txt",
