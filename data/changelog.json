@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 210,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Card templates: easy way back",
+   "items": [
+    "The button at the top of the template builder is now called All templates and takes you back to the list of games."
+   ]
+  },
+  {
    "id": 209,
    "date": "2026-11-16",
    "where": [

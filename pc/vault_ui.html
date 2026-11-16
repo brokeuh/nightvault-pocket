@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n41";
+const UI_BUILD = "20261116-n42";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2285,7 +2285,7 @@ function pkBind(){
 function pkViewHTML(){
   return `<div class="cols2" style="grid-template-columns:minmax(300px,520px) 1fr;align-items:start">
     <div class="panel" style="position:sticky;top:12px;align-self:start"><canvas id="tpcv" style="display:block;max-width:100%;max-height:calc(100vh - 110px);width:auto;height:auto;margin:0 auto;background:#444;border-radius:8px"></canvas></div>
-    <div class="panel">${pkPanel()}<div class="bar" style="margin-top:14px"><button class="btn primary" id="pkpng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="pkback">Back to presets</button></div>
+    <div class="panel">${pkPanel()}<div class="bar" style="margin-top:14px"><button class="btn primary" id="pkpng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="pkback">Back to Pokémon cards</button></div>
     <p class="hint">Test version: the frames and fonts come from the Pokémon pack in your own templates folder and are only used on this PC. Please keep what you make for personal use.</p></div></div>`;
 }
 function pkPresetsHTML(){
@@ -2550,7 +2550,7 @@ async function viewTemplate(){
   if(TP.view === undefined) TP.view = showPres ? 'presets' : 'edit';
   let h = `<div class="head"><h1>Card templates</h1><span class="sub">Open a layered PSD, choose its layers with dropdowns, save a PNG or a PSD. Your file stays on this PC.</span></div>`;
   h += `<div class="panel"><div class="bar">
-      ${showPres ? `<button class="btn" id="tppres"><i class="ti ti-layout-grid"></i>Presets</button>` : ''}
+      ${showPres ? `<button class="btn" id="tppres" title="Back to the list of games and templates"><i class="ti ti-arrow-left"></i>All templates</button>` : ''}
       ${have ? `<select id="tpsel">${TP.list.map(t => `<option value="${esc(t.name)}" ${t.name === TP.name ? 'selected' : ''}>${esc(t.name)} (${fmtSize(t.size)})</option>`).join('')}</select>` : ''}
       <button class="btn ${have ? '' : 'primary'}" id="tpadd"><i class="ti ti-upload"></i>${have ? 'Open another PSD' : 'Open a PSD template'}</button>
       ${have ? '<button class="btn sm ghost danger" id="tpdel">Remove this template</button>' : ''}
@@ -2656,7 +2656,7 @@ function bindTp(){
   if(c('tpphone')) c('tpphone').onclick = async () => { try{ toast('Packing the frames ...'); const r = await api('/api/template/phone_pack', {name:TP.name});
     const a = document.createElement('a'); a.href = '/api/template/out?f=' + enc(r.file) + '&t=' + enc(TOKEN); a.download = r.file; document.body.appendChild(a); a.click(); a.remove();
     toast('Saved ' + r.file + ' (' + fmtSize(r.bytes) + '). Send it to your phone and open it in Card maker.') }catch(e){ toast(e.message, true) } };
-  if(c('tppres')) c('tppres').onclick = () => { TP.view = 'presets'; viewTemplate() };
+  if(c('tppres')) c('tppres').onclick = () => { TP.view = 'presets'; TP.game = null; viewTemplate() };
   if(c('tpdel')) c('tpdel').onclick = async () => { if(!confirm('Remove this template from Nightvault? Your original PSD is not touched.')) return;
     try{ await api('/api/template/delete', {name:TP.name}); TP.list = null; TP.name = ''; TP.st = null; viewTemplate() }catch(e){ toast(e.message, true) } };
   tpBindDropdowns(); if(wowOn()) wowBind();

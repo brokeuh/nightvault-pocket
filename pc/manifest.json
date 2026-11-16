@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 11:16",
+ "version": "2026-11-16 11:21",
  "notes": [
-  "WoW: real fonts, rules icons, Hero back"
+  "Back to all templates button"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "0a6f9e4bb765c33113e08efa858ef5b3ac3458a978eaec672004bebfbcbac555"
+   "sha256": "004aa88c7c255591057828f74f5e18dfbc6aea74dc3550fdc4abf1ea90f0c075"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "39fed0a08fe0907b880b767b2df7a7461dfe8e0b2ffe9c27ac6a8b56ec6ed943"
+   "sha256": "db3f16c7a5826b302444c8581b417a03dfa35b57025d4070ad583f37c91e6bd1"
   },
   {
    "name": "fonts/OFL.txt",
