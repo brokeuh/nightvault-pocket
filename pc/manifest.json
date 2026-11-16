@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 10:55",
+ "version": "2026-11-16 11:08",
  "notes": [
-  "Pok\u00e9mon (Sun & Moon) test in Card templates"
+  "One tile per game in Card templates"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "a3c99abf898e770b04978ee4591f53b797b867f49ee141e013a82dcc84967c16"
+   "sha256": "62bb8e6ebc269b71ab4e7228ba05852116fd9d41ec8839770cadc9ac8fd1e081"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "e8e8ab85d9c0c3506fab21defb2689bbc5a2fe44c4a9c0168c460837c0ea1c62"
+   "sha256": "6d8fd459348ef2ca3d0fce95c1e210faf58469591e78185ac389e5b89ebe3d9d"
   },
   {
    "name": "fonts/OFL.txt",

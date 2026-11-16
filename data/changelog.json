@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 208,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Card templates: one tile per game",
+   "items": [
+    "The Presets page now starts with a tile for each card game (One Piece, WoW Classic, WoW Worldbreak, Pokémon). Click one to see only that game's cards, and use All games to go back. My cards stays on top."
+   ]
+  },
+  {
    "id": 207,
    "date": "2026-11-16",
    "where": [
