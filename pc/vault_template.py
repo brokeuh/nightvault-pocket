@@ -258,7 +258,7 @@ def write_layered(path, dest, layers, size, merged=None):
         r = struct.pack(">iiii", t0, l0, t0 + h, l0 + w) + struct.pack(">H", 4)
         for cid, cd in zip((-1, 0, 1, 2), chd):
             r += struct.pack(">hI", cid, len(cd))
-        r += b"8BIM" + blend + bytes([int(L.get("op", 255)) & 255, 0, 0, 0]) + struct.pack(">I", len(extra)) + extra
+        r += b"8BIM" + blend + bytes([int(L.get("op", 255)) & 255, 0, 2 if L.get("hidden") else 0, 0]) + struct.pack(">I", len(extra)) + extra
         recs.append(r)
         datas.extend(chd)
     info = struct.pack(">h", len(recs)) + b"".join(recs) + b"".join(datas)

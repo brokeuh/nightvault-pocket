@@ -192,7 +192,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261116-n61"   # the page and the program must carry the same build id
+BUILD = "20261116-n62"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -6564,6 +6564,19 @@ class Handler(BaseHTTPRequestHandler):
                 L = dict(L, png=dec(L["data"]))
             layers.append(L)
         vtpl.write_layered(str(f), str(out), layers, vtpl.scan(str(f))["size"], dec(d["merged"]) if d.get("merged") else None)
+        return self._send(200, {"file": out.name, "folder": str(out.parent)})
+
+    def post_template_save_psd_free(self, conn, d):
+        """Layered PSD from layers the page drew itself (no template file needed): the Magic card maker."""
+        import base64
+        if not vtpl:
+            raise ValueError("vault_template.py is missing next to vault.py")
+        name = re.sub(r"[^\w\- ]+", "", str(d.get("name") or "card")).strip()[:60] or "card"
+        out = TEMPLATE_DIR / "out" / f"{name}_{time.strftime('%Y%m%d-%H%M%S')}.psd"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        dec = lambda u: base64.b64decode(str(u).split(",", 1)[1])
+        layers = [dict(L, png=dec(L["data"]), type="png") for L in d.get("layers") or []]
+        vtpl.write_layered("", str(out), layers, (int(d["w"]), int(d["h"])), dec(d["merged"]) if d.get("merged") else None)
         return self._send(200, {"file": out.name, "folder": str(out.parent)})
 
     def post_template_phone_pack(self, conn, d):

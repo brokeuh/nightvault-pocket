@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 230,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: Save PSD (layers)",
+   "items": [
+    "New \"Save PSD\" button in the Magic editor, using the same layered-PSD writer as the One Piece templates: art, frame, mana cost, title, type line + set symbol, power/toughness, rules text and the bottom line each on their own layer. Works for every frame style too (each text box becomes a layer).",
+    "An extra hidden layer holds the art at full size (not cut to the art window), so you can show it and let the art overlap the frame.",
+    "Text is saved as pictures (move, mask, recolour…), not as editable text – to change words, change them in Nightvault and save again."
+   ]
+  },
+  {
    "id": 229,
    "date": "2026-11-16",
    "where": [

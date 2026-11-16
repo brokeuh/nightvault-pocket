@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 14:13",
+ "version": "2026-11-16 14:20",
  "notes": [
-  "Magic: style picks"
+  "Magic: Save PSD"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "cb01ee4b2d574cabd3de1c6ca0e929cef0a5ca5bfdaf1a04dabbba72c2d249a8"
+   "sha256": "9cc8b1cad22401b4a50dbc0fc08128147e421d73a14a559415fc300496ef40b1"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -46,11 +46,11 @@
   },
   {
    "name": "vault_template.py",
-   "sha256": "46e14900930c9142631d88dd1596be93c965341df8518cfffa3420f07bcbde13"
+   "sha256": "669ea69f6d49e506d388f6f5fed41e887afd29ed7fc44533233c20ec2f60295a"
   },
   {
    "name": "vault_ui.html",
-   "sha256": "3d700c0b23e89f04e22fc6c2963c2aa717d5d91f570910b81634ed709425e502"
+   "sha256": "bcef92ecd935465df791af2dc74f6f7670eb94811ae7cb814340a81d1e049dce"
   },
   {
    "name": "fonts/OFL.txt",

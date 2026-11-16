@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n61";
+const UI_BUILD = "20261116-n62";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2615,6 +2615,17 @@ const MTGR = {
 function mtgNew(frame){ return {frame:frame || 'W', name:'', cost:'', type:'', rules:'', flavor:'', pt:'', set:'', lang:'EN', artist:'', num:'', rarity:'', legal:'', tsize:'1', sym:'', style:'', sframe:0, ex:{}} }
 const MTG_EXAMPLE = {frame:'G', name:'Wirewood Savage', cost:'{2}{G}', type:'Creature — Elf', pt:'2/2', rules:'Whenever a Beast enters the battlefield, you may draw a card.', flavor:'“She is truly Wirewood’s child now.”\n—Elvish refugee', artist:'DiTerlizzi', set:'GVL', lang:'EN', num:'006/063', rarity:'C', legal:'™ & © 2014 Wizards of the Coast', tsize:'0.9', sym:'ddd'};
 
+// layered export: while MTG.layers is an array every drawing stage is cut off the canvas into its own layer
+function mtgLayer(c, W, H, name, hidden){ if(!MTG.layers || !name) return; const q = document.createElement('canvas'); q.width = W; q.height = H; q.getContext('2d').drawImage(c.canvas, 0, 0); MTG.layers.push({name, cv:q, hidden:!!hidden}); c.clearRect(0, 0, W, H) }
+function mtgArtFull(W, H, A){ if(!MTG.layers || !TP.art || !TP.art.img) return; const im = TP.art.img, z = TP.art.zoom || 1, sc = Math.max(A[2] / im.width, A[3] / im.height) * z, w = im.width * sc, h = im.height * sc, q = document.createElement('canvas'); q.width = W; q.height = H;
+  q.getContext('2d').drawImage(im, A[0] + (A[2] - w) / 2 + (TP.art.x || 0) * 10, A[1] + (A[3] - h) / 2 + (TP.art.y || 0) * 10, w, h); MTG.layers.push({name:'Art, full size (hidden - show it to let the art overlap the frame)', cv:q, hidden:true}) }
+async function mtgSavePsd(say){
+  const S = TP.mtg; say('Building the layers…'); MTG.layers = []; try{ await mtgDraw() }finally{ const lay = MTG.layers; MTG.layers = null; MTG.got = lay }
+  const lay = MTG.got, cv = $('#tpcv'); if(cv && cv.width){ const q = document.createElement('canvas'); q.width = cv.width; q.height = cv.height; q.getContext('2d').drawImage(cv, 0, 0); lay.push({name:'Bottom line and extras', cv:q}) }
+  const W = lay.length ? lay[0].cv.width : 2010, H = lay.length ? lay[0].cv.height : 2814; await mtgDraw();
+  const merged = $('#tpcv').toDataURL('image/png'), layers = lay.map(L => ({name:L.name, hidden:L.hidden, data:L.cv.toDataURL('image/png')}));
+  say('Saving…'); const r = await api('/api/template/save_psd_free', {name:S.name || 'magic-card', w:W, h:H, layers, merged}); const a = document.createElement('a'); a.href = '/api/template/out?f=' + enc(r.file) + '&t=' + enc(TOKEN); a.download = r.file; document.body.appendChild(a); a.click(); a.remove();
+  say('Saved ' + r.file + ' (also kept in ' + r.folder + ')') }
 // set symbol: measure (fits into the bounds box of the style) and draw (rarity colours, white outline)
 async function mtgSymMeasure(c, W, H, S, b){
   const sets = await mtgSets(), code = String(S.sym || S.set || '').trim().toLowerCase(); if(!sets || !sets[code]) return null;
@@ -2682,7 +2693,7 @@ const mtgBox = (o, W, H) => ({x:(o.x || 0) * W, y:(o.y || 0) * H, w:(o.width || 
 async function mtgStyleDraw(cv, my, S){
   const inf = await mtgStyleInfo(S.style), c = cv.getContext('2d');
   if(!inf || inf.bad){ cv.width = 600; cv.height = 840; c.fillStyle = '#555'; c.fillRect(0, 0, 600, 840); c.fillStyle = '#fff'; c.font = '26px sans-serif'; c.textAlign = 'center'; c.fillText(inf ? 'This style could not be read.' : 'Download this style first.', 300, 420); return }
-  if(inf.addon){ const keep = S.style; S.style = ''; try{ await mtgDraw() } finally{ S.style = keep } if(TP.mtg !== S) return; const f = inf.main[Math.min(S.sframe | 0, inf.main.length - 1)], im = f && await mtgImg(f.src.replace(/^\//, '')), b = f && f.bounds;
+  if(inf.addon){ const keep = S.style; S.style = ''; try{ await mtgDraw() } finally{ S.style = keep } if(TP.mtg !== S) return; { const q = cv.getContext('2d'); mtgLayer(q, cv.width, cv.height, 'Card (modern frame)') } const f = inf.main[Math.min(S.sframe | 0, inf.main.length - 1)], im = f && await mtgImg(f.src.replace(/^\//, '')), b = f && f.bounds;
     if(im && b){ const W0 = cv.width, H0 = cv.height; cv.getContext('2d').drawImage(im, b.x * W0, b.y * H0, b.width * W0, b.height * H0) } return }
   const cd = inf.card, W = cd.width || 2010, H = cd.height || 2814, fr = inf.main[Math.min(S.sframe | 0, inf.main.length - 1)], T = JSON.parse(JSON.stringify(inf.text));
   if(T.level0c){ const ex = S.ex || {}, used = [0, 1, 2, 3].filter(i => i === 0 || ['a', 'b', 'c'].some(l => ex['level' + i + l])), top = inf.text.level0c.y, bottom = 0.8368, hh = (bottom - top) / used.length;   // Class: the script shares the card height between the levels in use
@@ -2695,14 +2706,17 @@ async function mtgStyleDraw(cv, my, S){
   await mtgSyms([S.cost, S.rules, S.flavor, ...Object.values(S.ex || {})]); { const pre = (T.mana && T.mana.manaPrefix) || ''; if(pre) await Promise.all(mtgCostToks(S.cost).map(async t => { const key = mtgKey(t); if(!MTG.sym[pre + '|' + key]) MTG.sym[pre + '|' + key] = await mtgImg('img/manaSymbols/' + pre + key + '.svg') })) } const brush = S.artist ? await mtgImg('img/manaSymbols/artistbrush.svg') : null; if(my !== MTG.token) return;
   cv.width = W; cv.height = H; c.clearRect(0, 0, W, H);
   const ab = cd.artBounds || {x:0.0767, y:0.1129, width:0.8476, height:0.4429}, A = [ab.x * W, ab.y * H, ab.width * W, ab.height * H];
+  mtgArtFull(W, H, A);
   if(TP.art && TP.art.img){ const im = TP.art.img, z = TP.art.zoom || 1; c.save(); c.beginPath(); c.rect(...A); c.clip(); const sc = Math.max(A[2] / im.width, A[3] / im.height) * z, w = im.width * sc, h = im.height * sc;
     c.drawImage(im, A[0] + (A[2] - w) / 2 + (TP.art.x || 0) * 10, A[1] + (A[3] - h) / 2 + (TP.art.y || 0) * 10, w, h); c.restore() } else { c.fillStyle = '#5a5f6a'; c.fillRect(...A) }
+  mtgLayer(c, W, H, 'Art');
   if(img) c.drawImage(img, 0, 0, W, H);
   if(extImg){ const b = ext.bounds; c.drawImage(extImg, b.x * W, b.y * H, b.width * W, b.height * H) }
+  mtgLayer(c, W, H, 'Frame');
   const fitW = (txt, fam, px, maxW) => { let s = px; c.font = `${s}px ${fam}`; while(s > 8 && c.measureText(txt).width > maxW){ s -= 1; c.font = `${s}px ${fam}` } return s };
   const col = o => o.color || 'black', val = {title:S.name, type:S.type, pt:S.pt}; c.textBaseline = 'middle';
   const shadowed = (o, fn) => { const sx = (o.shadowX || 0) * W, sy = (o.shadowY || 0) * H; if(sx || sy){ c.save(); c.fillStyle = o.shadowColor || 'black'; c.translate(sx, sy); fn(); c.restore() } c.fillStyle = col(o); fn() };
-  for(const k of Object.keys(T)){ const o = T[k], B = mtgBox(o, W, H), fam = fams[k], al = o.align || 'left', ax = al === 'right' ? B.x + B.w : al === 'center' ? B.x + B.w / 2 : B.x; c.textAlign = al;
+  let prevName = null; for(const k of Object.keys(T)){ mtgLayer(c, W, H, prevName); const o = T[k]; prevName = o.name || k; const B = mtgBox(o, W, H), fam = fams[k], al = o.align || 'left', ax = al === 'right' ? B.x + B.w : al === 'center' ? B.x + B.w / 2 : B.x; c.textAlign = al;
     if(o.manaCost || k === 'mana' || k === 'mana2'){ const toks = k === 'mana' ? mtgCostToks(S.cost) : mtgCostToks((S.ex || {})[k]), pre = o.manaPrefix || '', sym = t => MTG.sym[pre + '|' + mtgKey(t)] || MTG.sym[mtgKey(t)]; if(!toks.length) continue;
       if(o.manaPlacement || o.manaLayout){ let pos, sz = (o.size || 0.0434) * H;   // styles that put every pip at its own spot
         if(o.manaPlacement){ pos = toks.map((t, i) => [o.manaPlacement.x[i], o.manaPlacement.y[i]]) } else { const L = o.manaLayout.find(l => l.max >= toks.length) || o.manaLayout[o.manaLayout.length - 1]; pos = L.pos; sz *= L.size || 1 }
@@ -2724,7 +2738,8 @@ async function mtgStyleDraw(cv, my, S){
     else { c.textBaseline = 'alphabetic'; let p2 = px, ls; const Fm = {BOLD:'700 @ ' + fam, COND:'400 @ ' + fam, ITALR:'400 @ ' + fam}; for(;;){ ls = wowRich(c, mtgText(t), B.w, p2, Fm, MTGR); if(ls.length * p2 * 1.18 <= B.h || p2 <= 14) break; p2 -= 2 }
       let y = B.y + (B.h - ls.length * p2 * 1.18) / 2 + p2 * 0.9; c.fillStyle = col(o); ls.forEach(l => { wowRichDraw(c, l, al === 'center' ? B.x + B.w / 2 : B.x, y, p2, Fm, al === 'center' ? 'c' : 'l', MTGR); y += p2 * 1.18 }); c.textBaseline = 'middle' }
     c.textAlign = 'left' }
-  const sb = cd.setSymbolBounds; if(sb){ const sg = await mtgSymMeasure(c, W, H, S, sb); const right = sb.horizontal === 'left' ? sb.x * W + (sg ? sg.w : 0) : sb.horizontal === 'center' ? sb.x * W + (sg ? sg.w / 2 : 0) : sb.x * W; mtgSymDraw(c, H, S, sg, right) }
+  mtgLayer(c, W, H, prevName);
+  const sb = cd.setSymbolBounds; if(sb){ const sg = await mtgSymMeasure(c, W, H, S, sb); const right = sb.horizontal === 'left' ? sb.x * W + (sg ? sg.w : 0) : sb.horizontal === 'center' ? sb.x * W + (sg ? sg.w / 2 : 0) : sb.x * W; mtgSymDraw(c, H, S, sg, right); mtgLayer(c, W, H, 'Set symbol') }
   c.textAlign = 'left'; mtgBottom(c, W, H, S, brush, fitW, cd.bottomInfoColor === 'black' ? '#000' : '#fff');
 }
 // style picker + download button for the panel
@@ -2752,24 +2767,29 @@ async function mtgDraw(){
   await mtgFonts(); const [fr, ptb] = await Promise.all([mtgImg(MTG_DIR + fk.f), S.pt ? mtgImg(MTG_DIR + fk.p) : null]); await mtgSyms([S.cost, S.rules, S.flavor]); const brush = S.artist ? await mtgImg('img/manaSymbols/artistbrush.svg') : null;
   if(my !== MTG.token || !fr) return;
   const W = fr.width, H = fr.height; cv.width = W; cv.height = H; const c = cv.getContext('2d'); c.clearRect(0, 0, W, H);
-  const A = [0.0767 * W, 0.1129 * H, 0.8476 * W, 0.4429 * H];
+  const A = [0.0767 * W, 0.1129 * H, 0.8476 * W, 0.4429 * H]; mtgArtFull(W, H, A);
   if(TP.art && TP.art.img){ const im = TP.art.img, z = TP.art.zoom || 1; c.save(); c.beginPath(); c.rect(...A); c.clip(); const sc = Math.max(A[2] / im.width, A[3] / im.height) * z, w = im.width * sc, h = im.height * sc;
     c.drawImage(im, A[0] + (A[2] - w) / 2 + (TP.art.x || 0) * 10, A[1] + (A[3] - h) / 2 + (TP.art.y || 0) * 10, w, h); c.restore() }
   else { c.fillStyle = '#5a5f6a'; c.fillRect(...A) }
+  mtgLayer(c, W, H, 'Art');
   c.drawImage(fr, 0, 0, W, H);
   if(ptb && S.pt) c.drawImage(ptb, 0.7573 * W, 0.8848 * H, 0.188 * W, 0.0733 * H);
+  mtgLayer(c, W, H, 'Frame');
   c.textBaseline = 'alphabetic'; c.fillStyle = '#000';
   // mana cost (right aligned, from the right edge of the title bar)
   const toks = mtgCostToks(S.cost), pip = 71 / 1638 * H * 0.78 * 1.097; let costLeft = 0.9266 * W;
   if(toks.length){ let x = 0.9266 * W; for(let k = toks.length - 1; k >= 0; k--){ x -= pip; const im = MTG.sym[mtgKey(toks[k])]; if(im){ c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowOffsetX = -0.001 * W; c.shadowOffsetY = 0.0029 * H; c.drawImage(im, x, 0.0742 * H - pip / 2, pip, pip); c.restore() } } costLeft = x }
+  mtgLayer(c, W, H, 'Mana cost');
   const fitW = (txt, fam, px, maxW) => { let s = px; c.font = `${s}px ${fam}`; while(s > 8 && c.measureText(txt).width > maxW){ s -= 1; c.font = `${s}px ${fam}` } return s };
   const mid = (y, h) => y * H + h * H / 2;
   c.textAlign = 'left'; c.textBaseline = 'middle';
   { const mw = Math.min(0.8292 * W, costLeft - 0.0854 * W - 0.012 * W); fitW(S.name, 'NVBeleren, serif', 0.0381 * H, mw); c.fillText(S.name, 0.0854 * W, mid(0.0522, 0.0543) + 0.002 * H) }
+  mtgLayer(c, W, H, 'Title');
   const sg = await mtgSymMeasure(c, W, H, S, {x:0.9213, y:0.591, width:0.12, height:0.041});
   { fitW(S.type, 'NVBeleren, serif', 0.0324 * H, sg ? 0.9213 * W - sg.w - 0.0854 * W - 0.02 * W : 0.8292 * W - 0.06 * W); c.fillText(S.type, 0.0854 * W, mid(0.5664, 0.0543) + 0.002 * H) }
-  mtgSymDraw(c, H, S, sg, 0.9213 * W); c.textBaseline = 'middle';
+  mtgSymDraw(c, H, S, sg, 0.9213 * W); c.textBaseline = 'middle'; mtgLayer(c, W, H, 'Type line and set symbol');
   if(S.pt){ c.textAlign = 'center'; fitW(S.pt, 'NVBelerenSC, NVBeleren, serif', 0.0372 * H, 0.1367 * W); c.fillText(S.pt, (0.7928 + 0.1367 / 2) * W, mid(0.902, 0.0372) + 0.002 * H); c.textAlign = 'left' }
+  mtgLayer(c, W, H, 'Power and toughness');
   // rules + flavour, centred in the text box
   { c.textBaseline = 'alphabetic'; const bx = 0.086 * W, by = 0.6303 * H, bw = 0.828 * W, bh = 0.2875 * H, rt = mtgText(S.rules), ft = S.flavor ? '<i>' + mtgText(S.flavor) + '</i>' : '';
     let px = 0.0362 * H * (+S.tsize || 1), rl, fl, tot; const lhk = 1.18;
@@ -2777,6 +2797,7 @@ async function mtgDraw(){
     const gap = rl.length && fl.length ? px * 0.55 : 0; let y = by + (bh - tot) / 2 + px * 0.9;
     rl.forEach(l => { wowRichDraw(c, l, bx, y, px, MTGF, 'l', MTGR); y += px * lhk }); y += gap - 0; if(gap && S.flavor){ c.save(); c.globalAlpha = 0.5; c.fillRect(bx + bw * 0.2, y - px * lhk * 0.55 - gap * 0.35, bw * 0.6, Math.max(2, H * 0.0007)); c.restore() }
     fl.forEach(l => { wowRichDraw(c, l, bx, y, px, MTGF, 'l', MTGR); y += px * lhk }) }
+  mtgLayer(c, W, H, 'Rules text');
   mtgBottom(c, W, H, S, brush, fitW);
 }
 // ---- Scryfall: load a real card into the maker, pick the matching frame style, and compare our drawing with the real picture
@@ -2898,6 +2919,7 @@ function mtgBind(){
   c('mgartf').onchange = e => { const f = e.target.files[0]; if(!f) return; const im = new Image(); im.onload = () => { nvArtSet('mtg', im, f); viewTemplate() }; im.src = URL.createObjectURL(f) };
   c('mgpng').onclick = () => c('tpcv').toBlob(b => nvSave(b, ((S.name || 'magic-card').replace(/[^\w\- ]+/g, '').trim() || 'magic-card') + '.png'), 'image/png');
   c('nvlbtn').onclick = () => nvlOpen('mtg');
+  c('mgpsd').onclick = async () => { const m = $('#mgscmsg') || {}; try{ await mtgSavePsd(t => { toast(t) }) }catch(e){ toast(e.message, true) } };
   mtgSets().then(m => { if(m && $('#mgsyml')) $('#mgsyml').innerHTML = Object.keys(m).sort().map(k => `<option value="${k}">`).join('') }); { const si = $('[data-mgt="sym"]'); if(si) si.setAttribute('list', 'mgsyml') } mtgDownloadBind();
   c('mgex').onclick = () => { const o = TP.mtg; TP.mtg = Object.assign(mtgNew('G'), MTG_EXAMPLE, {style:o.style, sframe:o.sframe}); viewTemplate() };
   c('mgback').onclick = () => { TP.view = 'presets'; TP.game = null; viewTemplate() };
@@ -2908,7 +2930,7 @@ function mtgViewHTML(){
       <div class="bar" style="gap:8px"><button class="btn primary" id="mgget"><i class="ti ti-download"></i>Download the frames (about 37 MB)</button><button class="btn" id="mgback">Back</button></div><p class="hint" id="mgmsg">${d.error ? '<b style="color:#e55">' + esc(d.error) + '</b>' : ''}</p></div>` }
   return `<div class="cols2" style="grid-template-columns:minmax(300px,520px) 1fr;align-items:start">
     <div class="panel" style="position:sticky;top:12px;align-self:start"><canvas id="tpcv" style="display:block;max-width:100%;max-height:calc(100vh - 110px);width:auto;height:auto;margin:0 auto;background:#444;border-radius:8px"></canvas></div>
-    <div class="panel"><datalist id="mgsyml"></datalist>${mtgPanel()}<div class="bar" style="margin-top:14px"><button class="btn primary" id="mgpng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="nvlbtn"><i class="ti ti-list-details"></i>Card list…</button><button class="btn" id="mgex" title="Fill in an example card, to see how a finished card looks"><i class="ti ti-wand"></i>Example card</button><button class="btn" id="mgback">Back to all templates</button></div>
+    <div class="panel"><datalist id="mgsyml"></datalist>${mtgPanel()}<div class="bar" style="margin-top:14px"><button class="btn primary" id="mgpng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="mgpsd" title="Layered PSD: art, frame, text and symbols on their own layers, plus the full-size art (hidden) so it can overlap the frame"><i class="ti ti-layers-subtract"></i>Save PSD</button><button class="btn" id="nvlbtn"><i class="ti ti-list-details"></i>Card list…</button><button class="btn" id="mgex" title="Fill in an example card, to see how a finished card looks"><i class="ti ti-wand"></i>Example card</button><button class="btn" id="mgback">Back to all templates</button></div>
     <p class="hint">Fan-made frames for your own proxies. Magic: The Gathering is a trademark of Wizards of the Coast; this tool is not affiliated with them.</p></div></div>`;
 }
 function mtgDownloadBind(){
