@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n48";
+const UI_BUILD = "20261116-n49";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2020,7 +2020,7 @@ function wowPanelCea(sel){
   const S = wowS(), T = S.t, ty = S.type.slice(4), G = 'display:grid;grid-template-columns:minmax(110px,auto) 1fr;gap:8px 12px;align-items:center;margin-top:8px';
   const tx = (k, label, ph, rows) => `<label>${label}</label>` + (rows ? `<textarea data-wt="${k}" rows="${rows}" placeholder="${esc(ph || '')}">${esc(T[k])}</textarea>` : `<input type="text" data-wt="${k}" value="${esc(T[k])}" placeholder="${esc(ph || '')}">`);
   const sec = (title, body) => `<details open class="tpsec" style="margin-top:14px"><summary><b>${title}</b></summary><div style="${G}">${body}</div></details>`;
-  let look = sel('type', 'Card type', wowTypeList());
+  let look = sel('type', 'Card type', wowTypeList()) + wowEaCk(S);
   if(ty === 'ally') look += sel('faction', 'Faction', [['alliance', 'Alliance'], ['horde', 'Horde'], ['monster', 'Monster'], ['neutral', 'Neutral']]);
   if(ty !== 'ability') look += sel('dmg', 'Damage type', [['', '- none -'], ...WOW_DMG.filter(d => WM_BI[d]).map(d => [d, d])]);
   if(ty === 'equipment') look += sel('equip', 'Number badge', [['Armor', 'Armor'], ['Strike', 'Strike']]) + `<label>Classes</label><span style="display:flex;flex-wrap:wrap;gap:4px 14px">${Object.keys(WM_EQY).map(c => `<label><input type="checkbox" data-wc="${c}" ${(S.eqcls || []).includes(c) ? 'checked' : ''}> ${c}</label>`).join('')}</span>`;
@@ -2036,6 +2036,10 @@ function wowPanelCea(sel){
         <label>Up/down <input type="range" id="tpa_y" min="-700" max="700" value="${TP.art.y}"></label></div></details>`;
   return h;
 }
+const WOW_EA = {ally:'cea_ally', equipment:'cea_equipment', ability:'cea_ability'};
+function wowEaMap(){ return wowVar() === 'wb' ? {ally:'ea'} : (WM.on ? WOW_EA : {}) }
+function wowEaCk(S){ const m = wowEaMap(), on = Object.values(m).includes(S.type); if(!on && !m[S.type]) return '';
+  return `<label>Layout</label><span><label><input type="checkbox" data-wea ${on ? 'checked' : ''}> Extended art (picture fills the card)</label></span>` }
 function wowTypeList(){ return (wowVar() === 'wb' ? WB_TYPES : WOW_TYPES.concat(WM.on ? [['cea_ally', 'Extended art - Ally'], ['cea_equipment', 'Extended art - Equipment'], ['cea_ability', 'Extended art - Ability']] : [])).concat(WM.on ? [['heroback', 'Hero back']] : []) }
 /* ---------------------------------------------------------------- WoW card maker (the complete WoWTCGMaker set, no PSD needed)
    Every card type, drawn from the pictures and fonts of the owner's own WoWTCGMaker download (templates/wowtcgmaker). */
@@ -2177,9 +2181,10 @@ function wmcBind(){
   $$('[data-mb]').forEach(el => el.onchange = () => { S[el.dataset.mb] = el.checked; wmcDraw() });
   $$('[data-mc]').forEach(el => el.onchange = () => { S[el.dataset.mc] = el.value; if(el.dataset.mc === 'type'){ S.variant = ''; S.classes = []; const f = wmcFactions(S); if(f.length && !f.includes(S.faction)) S.faction = f[0] } if(['type', 'variant', 'faction'].includes(el.dataset.mc)) viewTemplate(); else wmcDraw() });
   $$('[data-mcl]').forEach(el => el.onchange = () => { const hero = S.type === 'Hero', ab = S.type === 'Ability' && false; if(hero || S.type === 'Master Hero'){ S.classes = el.checked ? [el.dataset.mcl] : []; $$('[data-mcl]').forEach(x => { if(x !== el) x.checked = false }) } else S.classes = $$('[data-mcl]').filter(x => x.checked).map(x => x.dataset.mcl); wmcDraw() });
-  const ar = (id, key) => { if(c(id)) c(id).oninput = () => { TP.art[key] = +c(id).value; wmcDraw() } }; ar('wmca_zoom', 'zoom'); ar('wmca_x', 'x'); ar('wmca_y', 'y');
+  const ar = (id, key) => { if(c(id)) c(id).oninput = () => { TP.art[key] = +c(id).value; nvCropSave('wmc'); wmcDraw() } }; ar('wmca_zoom', 'zoom'); ar('wmca_x', 'x'); ar('wmca_y', 'y');
   c('wmcartb').onclick = () => c('wmcartf').click();
-  c('wmcartf').onchange = e => { const f = e.target.files[0]; if(!f) return; const im = new Image(); im.onload = () => { TP.art.img = im; TP.art.zoom = 1; TP.art.x = 0; TP.art.y = 0; viewTemplate() }; im.src = URL.createObjectURL(f) };
+  c('wmcartf').onchange = e => { const f = e.target.files[0]; if(!f) return; const im = new Image(); im.onload = () => { nvArtSet('wmc', im, f); viewTemplate() }; im.src = URL.createObjectURL(f) };
+  c('nvlbtn').onclick = () => nvlOpen('wmc');
   c('wmcpng').onclick = () => c('tpcv').toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = ((S.name || 'wow-card').replace(/[^\w\- ]+/g, '').trim() || 'wow-card') + '.png'; document.body.appendChild(a); a.click(); a.remove() }, 'image/png');
   c('wmcback').onclick = () => { TP.view = 'presets'; TP.game = null; viewTemplate() };
   c('tpcv').onclick = null;
@@ -2188,7 +2193,7 @@ function wmcViewHTML(){
   if(!WM.on) return `<div class="panel"><h3>WoW card maker</h3><p class="hint">Not set up yet. Copy the <b>Template</b> folder of your WoWTCGMaker download into this folder, so that it ends up as <code>${esc(WM.stat ? WM.stat.folder : '')}/Template</code>, then reload this page.</p><button class="btn" id="wmcback">Back</button></div>`;
   return `<div class="cols2" style="grid-template-columns:minmax(300px,520px) 1fr;align-items:start">
     <div class="panel" style="position:sticky;top:12px;align-self:start"><canvas id="tpcv" style="display:block;max-width:100%;max-height:calc(100vh - 110px);width:auto;height:auto;margin:0 auto;background:#444;border-radius:8px"></canvas></div>
-    <div class="panel">${wmcPanel()}<div class="bar" style="margin-top:14px"><button class="btn primary" id="wmcpng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="wmcback">Back to all templates</button></div></div></div>`;
+    <div class="panel">${wmcPanel()}<div class="bar" style="margin-top:14px"><button class="btn primary" id="wmcpng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="nvlbtn"><i class="ti ti-list-details"></i>Card list…</button><button class="btn" id="wmcback">Back to all templates</button></div></div></div>`;
 }
 function wowArt(ctx){
   const A = TP.art; if(!A.img) return; const a = wowItem(['Art', 'Parvink Art']), S = wowS(), R = wowVar() === 'wb' ? ({ea:[28, 32, 722, 805], rare:[28, 110, 722, 915]}[S.type] || [28, 100, 722, 660]) : (a ? a.rect : [5, -14, 734, 803]);
@@ -2314,7 +2319,7 @@ function wowPanelWb(){
   const cls = WB_CLASSES.map(c => [c, c]), fac = wowFactions(S);
   let h = `<p class="hint">Pick the card type, then fill in the text. The frames come from your own PSD file and stay on this PC. Save PNG gives the finished card, Save PSD keeps the frame, art and text as separate layers.</p>`;
   if(ty === 'heroback') return wowPanelBack(sel);
-  let look = sel('type', 'Card type', wowTypeList());
+  let look = sel('type', 'Card type', wowTypeList()) + wowEaCk(S);
   if(fac.length) look += sel('faction', 'Faction', fac);
   if(ty === 'ability') look += sel('cls', 'Class icon', [['', '- none -'], ...cls]) + (WM.on ? `<label>Overlay</label><span><label><input type="checkbox" data-wb="instant" ${S.instant ? 'checked' : ''}> Instant</label> &nbsp; <label><input type="checkbox" data-wb="basic" ${S.basic ? 'checked' : ''}> Basic</label></span>` : '');
   if(ty === 'hero') look += sel('cls', 'Class', cls) + `<label>Faction banner</label><label><input type="checkbox" data-wb="banner" ${S.banner ? 'checked' : ''}> small banner top right</label>`;
@@ -2344,7 +2349,7 @@ function wowPanel(){
   let h = `<p class="hint">Pick the card type, then fill in the text. The frames come from your own PSD file and stay on this PC. Save PNG gives the finished card, Save PSD keeps the frame, art and text as separate layers.</p>`;
   if(ty === 'heroback') return wowPanelBack(sel);
   if(ty.startsWith('cea_')) return wowPanelCea(sel);
-  let look = sel('type', 'Card type', wowTypeList());
+  let look = sel('type', 'Card type', wowTypeList()) + wowEaCk(S);
   if(ty === 'ally') look += sel('faction', 'Faction', [['alliance', 'Alliance'], ['horde', 'Horde'], ['neutral', 'Neutral']]) + sel('cls', 'Class needed', [['', 'Any class'], ...cls]);
   if(ty === 'hero') look += sel('faction', 'Faction', [['alliance', 'Alliance'], ['horde', 'Horde']]) + sel('cls', 'Class', cls) + `<label>Faction banner</label><label><input type="checkbox" data-wb="banner" ${S.banner ? 'checked' : ''}> small banner top right</label>`;
   if(ty === 'equipment') look += sel('equip', 'Number badge', [['Armor', 'Armor'], ['Strike', 'Strike']]) + `<label>Classes</label><span style="display:flex;flex-wrap:wrap;gap:4px 14px">${WOW_CLASSES.filter(c => c !== 'Death Knight').map(c => `<label><input type="checkbox" data-wc="${c}" ${(S.eqcls || []).includes(c) ? 'checked' : ''}> ${c}</label>`).join('')}</span>`;
@@ -2372,6 +2377,7 @@ function wowBind(){
   const S = wowS();
   $$('[data-w]').forEach(el => el.onchange = () => { S[el.dataset.w] = el.value; if(el.dataset.w === 'type' || el.dataset.w === 'faction'){ wowFix(S); viewTemplate() } else tpDraw() });
   $$('[data-wb]').forEach(el => el.onchange = () => { S[el.dataset.wb] = el.checked; tpDraw() });
+  $$('[data-wea]').forEach(el => el.onchange = () => { const m = wowEaMap(), back = Object.keys(m).find(k => m[k] === S.type); S.type = el.checked ? (m[S.type] || S.type) : (back || S.type); wowFix(S); viewTemplate() });
   $$('[data-wt]').forEach(el => el.oninput = () => { S.t[el.dataset.wt] = el.value; tpDraw() });
   $$('[data-wc]').forEach(el => el.onchange = () => { S.eqcls = $$('[data-wc]').filter(x => x.checked).map(x => x.dataset.wc); tpDraw() });
 }
@@ -2384,9 +2390,8 @@ async function wowUsePreset(type, faction, v){
 function wowPresetsHTML(only){
   const B = '#1f6fa8', R = '#b02a2a', N = '#8a8f98', G = '#2f8f5b', M = '#6b8f2f', Y = '#c9a227', P = '#6b3fa0', O = '#e8812e';
   const sets = {cl:['WoW - Classic Border', [['ally', 'alliance', 'Ally - Alliance', B], ['ally', 'horde', 'Ally - Horde', R], ['ally', 'neutral', 'Ally - Neutral', N], ['hero', 'alliance', 'Hero - Alliance', B], ['hero', 'horde', 'Hero - Horde', R],
-      ['equipment', 'neutral', 'Equipment', Y], ['ability', 'neutral', 'Ability', P], ['quest', 'neutral', 'Quest', G], ['questns', 'neutral', 'Quest (no symbol)', G], ['event', 'neutral', 'Event', O]].concat(WM.on ? [['cea_ally', 'alliance', 'Extended art - Alliance', B], ['cea_ally', 'horde', 'Extended art - Horde', R], ['cea_ally', 'monster', 'Extended art - Monster', M], ['cea_ally', 'neutral', 'Extended art - Neutral', N], ['cea_equipment', 'neutral', 'Extended art - Equipment', Y], ['cea_ability', 'neutral', 'Extended art - Ability', P], ['heroback', 'alliance', 'Hero back - Alliance', B], ['heroback', 'horde', 'Hero back - Horde', R], ['heroback', 'monster', 'Hero back - Monster', M]] : [])],
+      ['equipment', 'neutral', 'Equipment', Y], ['ability', 'neutral', 'Ability', P], ['quest', 'neutral', 'Quest', G], ['questns', 'neutral', 'Quest (no symbol)', G], ['event', 'neutral', 'Event', O]].concat(WM.on ? [['heroback', 'alliance', 'Hero back - Alliance', B], ['heroback', 'horde', 'Hero back - Horde', R], ['heroback', 'monster', 'Hero back - Monster', M]] : [])],
     wb:['WoW - Worldbreak Border', [['ally', 'alliance', 'Ally - Alliance', B], ['ally', 'horde', 'Ally - Horde', R], ['ally', 'monster', 'Ally - Monster', M], ['ally', 'neutral', 'Ally - Neutral', N],
-      ['ea', 'alliance', 'Extended art - Alliance', B], ['ea', 'horde', 'Extended art - Horde', R], ['ea', 'monster', 'Extended art - Monster', M], ['ea', 'neutral', 'Extended art - Neutral', N],
       ['rare', 'alliance', 'Full art - Alliance', B], ['rare', 'horde', 'Full art - Horde', R], ['hero', 'alliance', 'Hero - Alliance', B], ['hero', 'horde', 'Hero - Horde', R], ['hero', 'monster', 'Hero - Monster', M], ['hero', 'neutral', 'Hero - Neutral', N],
       ['equipment', 'neutral', 'Equipment', Y], ['ability', 'neutral', 'Ability', P], ['location', 'neutral', 'Location', G], ['quest', 'neutral', 'Quest', G], ['questns', 'neutral', 'Quest (no symbol)', G]].concat(WM.on ? [['heroback', 'alliance', 'Hero back - Alliance', B], ['heroback', 'horde', 'Hero back - Horde', R], ['heroback', 'monster', 'Hero back - Monster', M]] : [])]};
   return Object.keys(sets).filter(v => !only || v === only).map(v => { const t = wowTemplate(v); if(!t) return ''; const [title, tiles] = sets[v];
@@ -2429,12 +2434,134 @@ function nvPalInsert(ta, tok, wrap){
 (function(){
   let timer = 0;
   const scan = () => { timer = 0; document.querySelectorAll(NVPAL_SEL).forEach(ta => {
+    if(!ta.parentElement.classList.contains('nvwrap')){ const w = document.createElement('div'); w.className = 'nvwrap'; w.style.cssText = 'min-width:0;width:100%;flex:1 1 auto'; ta.parentElement.insertBefore(w, ta); w.appendChild(ta); ta.style.width = '100%'; ta.style.boxSizing = 'border-box' }
     const nx = ta.nextElementSibling; if(nx && nx.classList.contains('nvpal') && nx.dataset.pk === String(!!(typeof WM !== 'undefined' && WM.on)) + (PK.fontsOn ? 'p' : '')) return; if(nx && nx.classList.contains('nvpal')) nx.remove();
     ta.insertAdjacentHTML('afterend', nvPalHTML(ta)); const pal = ta.nextElementSibling; pal.dataset.pk = String(!!WM.on) + (PK.fontsOn ? 'p' : '');
     pal.addEventListener('mousedown', e => { if(e.target.closest('button')) e.preventDefault() });
     pal.addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; if(b.dataset.wrap) nvPalInsert(ta, '', b.dataset.wrap); else nvPalInsert(ta, b.dataset.tok) }) }) };
   new MutationObserver(() => { if(!timer) timer = setTimeout(scan, 60) }).observe(document.documentElement, {childList:true, subtree:true});
 })();
+/* ---------------------------------------------------------------- Card list, batch making, saved art crop (WoW card maker + Pokemon)
+   A list of cards (pasted table, CSV/TSV or JSON file). Click a card = its text fills the editor, you add your own art.
+   "Make all" turns the whole list into PNGs in one zip. Art pictures are matched on the "art" column (or the card name). */
+const NVL = {rows:{}, art:{}};
+const NVL_COLS = {
+  wmc:'type, faction, class, name, cost, subtypes, tags, rules, flavor, damage, health, artist, copy, setname, setnum, setmax, extended, gold, rarity, art',
+  pk:'stage, type, name, hp, evo, dex, a1cost, a1name, a1dmg, a1text, a2cost, a2name, a2dmg, a2text, a3cost, a3name, a3dmg, a3text, weakness, resistance, retreat, flavor, illus, copy, num, rarity, rules, art'};
+const NVL_EX = {
+  wmc:'Ally\tAlliance\t\tExample Footman\t3\tHuman Warrior\t\t[Armor] Protector\tFor the Alliance!\t3\t4\tYour name\t\tMYSET\t001\t100\tno\tno\tCommon\texample.png',
+  pk:'Stage 1\tfire\tExample\t90\tCharmander\tNO. 005 Flame Pokémon\tRC\tSlash\t30\t\tRRC\tFlamethrower\t90\tDiscard a [R] Energy.\t\t\t\t\tfighting ×2\t\t1\tShort flavour text\tYour name\tFan made\t005/100\tcommon\t\texample.png'};
+const NVL_ALIAS = {text:'rules', effect:'rules', description:'rules', 'rules text':'rules', copyright:'copy', 'copyright line':'copy', illustrator:'illus', image:'art', picture:'art', file:'art', filename:'art', 'extended art':'extended', ea:'extended', classes:'class', 'set name':'setname', set:'setname', 'set number':'setnum', 'set total':'setmax', 'card name':'name', title:'name', subtype:'subtypes', tag:'tags', dmg:'damage', life:'health', flavour:'flavor', 'flavour text':'flavor', 'flavor text':'flavor', 'evolves from':'evo', pokedex:'dex', 'dex line':'dex', 'card number':'num', energy:'type', 'attack 1 cost':'a1cost', 'attack 1 name':'a1name', 'attack 1 damage':'a1dmg', 'attack 1 text':'a1text', 'attack 2 cost':'a2cost', 'attack 2 name':'a2name', 'attack 2 damage':'a2dmg', 'attack 2 text':'a2text', 'attack 3 cost':'a3cost', 'attack 3 name':'a3name', 'attack 3 damage':'a3dmg', 'attack 3 text':'a3text', a1damage:'a1dmg', a2damage:'a2dmg', a3damage:'a3dmg'};
+const nvlKey = k => { k = String(k).trim().toLowerCase(); return NVL_ALIAS[k] || k };
+function nvParseTable(txt){
+  txt = String(txt || '').replace(/^﻿/, ''); const t = txt.trim(); if(!t) return [];
+  if(/^[\[{]/.test(t)){ try{ let j = JSON.parse(t); if(!Array.isArray(j)) j = j.cards || j.data || Object.values(j).find(Array.isArray) || []; return j.map(o => { const r = {}; Object.keys(o).forEach(k => { r[nvlKey(k)] = o[k] == null ? '' : String(o[k]) }); return r }) }catch(e){} }
+  const first = t.split(/\r?\n/)[0], d = first.includes('\t') ? '\t' : (first.split(';').length > first.split(',').length ? ';' : ',');
+  const rows = []; let row = [], cur = '', q = false;
+  for(let i = 0; i < txt.length; i++){ const ch = txt[i];
+    if(q){ if(ch === '"'){ if(txt[i + 1] === '"'){ cur += '"'; i++ } else q = false } else cur += ch }
+    else if(ch === '"') q = true;
+    else if(ch === d){ row.push(cur); cur = '' }
+    else if(ch === '\n' || ch === '\r'){ if(ch === '\r' && txt[i + 1] === '\n') i++; row.push(cur); cur = ''; if(row.some(x => x.trim())) rows.push(row); row = [] }
+    else cur += ch }
+  row.push(cur); if(row.some(x => x.trim())) rows.push(row);
+  if(!rows.length) return []; const head = rows.shift().map(nvlKey);
+  return rows.map(r => { const o = {}; head.forEach((h, i) => { o[h] = (r[i] || '').trim() }); return o });
+}
+const nvlLow = x => String(x == null ? '' : x).trim().toLowerCase();
+const nvlYes = x => /^(1|y|yes|true|x|ea|extended|gold)/i.test(String(x == null ? '' : x).trim());
+const nvlTxt = x => String(x == null ? '' : x).replace(/\\n/g, '\n');
+function nvlApplyWmc(r){
+  const type = WMC_TYPES.find(t => nvlLow(t) === nvlLow(r.type)) || 'Ally', S = wmcNew(type), fs = wmcFactions(S);
+  if(fs.length) S.faction = fs.find(x => nvlLow(x) === nvlLow(r.faction)) || fs[0];
+  ['name', 'cost', 'subtypes', 'tags', 'rules', 'flavor', 'damage', 'health', 'artist', 'copy', 'setname', 'setnum', 'setmax', 'block', 'strike', 'armor', 'capacity'].forEach(k => { if(r[k] != null && r[k] !== '') S[k] = nvlTxt(r[k]) });
+  S.classes = String(r.class || '').split(/[,\/;|]/).map(x => WMC_CLASSES.find(c => nvlLow(c) === nvlLow(x))).filter(Boolean); if(type === 'Hero' || type === 'Master Hero') S.classes = S.classes.slice(0, 1);
+  S.ea = nvlYes(r.extended); S.gold = nvlYes(r.gold); if(r.rarity) S.rarity = r.rarity;
+  return S;
+}
+function nvlApplyPk(r){
+  const TR = ['item', 'supporter', 'stadium'], ST = ['basic', 'stage 1', 'stage 2'], stg = nvlLow(r.stage).replace(/^stage\s*(\d)/, 'stage $1'), ty = nvlLow(r.type);
+  const trainer = nvlLow(r.kind) === 'trainer' || TR.includes(stg) || TR.includes(ty); let S;
+  if(trainer) S = pkNew('trainer', TR.find(t => t === stg || t === ty) || 'item');
+  else S = pkNew('pokemon', ST.includes(stg) ? stg : 'basic', PK_TYPES.includes(ty) ? ty : (PK_CODE[String(r.type || '').toUpperCase()] || 'colorless'));
+  const T = S.t; ['name', 'hp', 'evo', 'dex', 'flavor', 'copy', 'num', 'rules'].forEach(k => { if(r[k] != null && r[k] !== '') T[k] = nvlTxt(r[k]) });
+  T.illus = r.illus || r.artist || ''; if(!T.num && r.setnum) T.num = r.setnum;
+  let n = 0; for(let k = 1; k <= 3; k++){ const a = {cost:r['a' + k + 'cost'] || '', name:r['a' + k + 'name'] || '', dmg:r['a' + k + 'dmg'] || '', text:nvlTxt(r['a' + k + 'text'])}; if(a.cost || a.name || a.dmg || a.text){ S.atk[k - 1] = a; n = k } }
+  if(n) S.natk = n;
+  const wr = (v, d) => { const m = String(v || '').trim().split(/\s+/); const t = PK_TYPES.find(x => x === nvlLow(m[0])) || PK_CODE[String(m[0] || '').toUpperCase()] || ''; return {type:t, val:t ? (m[1] || d) : ''} };
+  if(r.weakness) S.weak = wr(r.weakness, '×2'); if(r.resistance) S.res = wr(r.resistance, '-30');
+  if(r.retreat !== undefined && r.retreat !== '') S.retreat = Math.max(0, Math.min(5, parseInt(r.retreat) || 0));
+  if(r.rarity) S.rarity = ['common', 'uncommon', 'rare'].includes(nvlLow(r.rarity)) ? nvlLow(r.rarity) : '';
+  return S;
+}
+const NVG = {
+  wmc:{label:'WoW card', apply:nvlApplyWmc, get:() => TP.wmc, set:S => { TP.wmc = S }, draw:() => wmcDraw(), name:S => S.name, shape:() => TP.wmc ? TP.wmc.type + (TP.wmc.ea ? '-ea' : '') : ''},
+  pk:{label:'Pokémon card', apply:nvlApplyPk, get:() => TP.pk, set:S => { TP.pk = S }, draw:() => pkDraw(), name:S => S.t.name, shape:() => TP.pk ? TP.pk.kind + (TP.pk.kind === 'trainer' ? TP.pk.trainer : '') : ''}};
+/* saved art crop: remembers zoom / position per picture (and card shape) in this browser */
+const nvSig = f => f.name + '|' + f.size + '|' + f.lastModified;
+function nvCropGet(k){ try{ return JSON.parse(localStorage.getItem('nv_crop') || '{}')[k] }catch(e){ return null } }
+function nvCropSave(game){ const A = TP.art; if(!A || !A.fid) return; try{ const o = JSON.parse(localStorage.getItem('nv_crop') || '{}'); o[A.fid + '|' + game + '|' + NVG[game].shape()] = {zoom:A.zoom, x:A.x, y:A.y}; localStorage.setItem('nv_crop', JSON.stringify(o)) }catch(e){} }
+function nvArtSet(game, im, file){ const sv = nvCropGet(nvSig(file) + '|' + game + '|' + NVG[game].shape()); TP.art = {img:im, zoom:sv ? sv.zoom : 1, x:sv ? sv.x : 0, y:sv ? sv.y : 0, fid:nvSig(file), saved:!!sv} }
+const nvImgFile = f => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = URL.createObjectURL(f) });
+function nvArtFor(game, r){ const base = x => nvLowName(x), m = NVL.art[game] || {}; return m[base(r.art)] || m[base(NVG[game].name(NVG[game].apply(r)))] || null }
+const nvLowName = x => String(x || '').trim().toLowerCase().replace(/\.[a-z0-9]{2,5}$/, '');
+/* zip (stored, no compression) */
+function nvCrc(b){ if(!nvCrc.t){ nvCrc.t = []; for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; nvCrc.t[n] = c >>> 0 } } let c = -1; for(let i = 0; i < b.length; i++) c = nvCrc.t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0 }
+function nvZip(files){
+  const enc = new TextEncoder(), parts = [], cen = []; let off = 0, csz = 0;
+  files.forEach(f => { const nm = enc.encode(f.name), crc = nvCrc(f.data), sz = f.data.length;
+    const lh = new DataView(new ArrayBuffer(30)); lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint32(14, crc, true); lh.setUint32(18, sz, true); lh.setUint32(22, sz, true); lh.setUint16(26, nm.length, true);
+    parts.push(lh.buffer, nm, f.data);
+    const ch = new DataView(new ArrayBuffer(46)); ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint32(16, crc, true); ch.setUint32(20, sz, true); ch.setUint32(24, sz, true); ch.setUint16(28, nm.length, true); ch.setUint32(42, off, true);
+    cen.push(ch.buffer, nm); csz += 46 + nm.length; off += 30 + nm.length + sz });
+  const e = new DataView(new ArrayBuffer(22)); e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csz, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...cen, e.buffer], {type:'application/zip'});
+}
+const nvSave = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove() };
+function nvlStore(game){ try{ localStorage.setItem('nv_list_' + game, JSON.stringify(NVL.rows[game] || [])) }catch(e){} }
+function nvlRestore(game){ if(!NVL.rows[game]){ try{ NVL.rows[game] = JSON.parse(localStorage.getItem('nv_list_' + game) || '[]') }catch(e){ NVL.rows[game] = [] } } return NVL.rows[game] }
+async function nvlLoad(game, i){
+  const g = NVG[game], r = NVL.rows[game][i]; if(!r) return; g.set(g.apply(r));
+  const f = nvArtFor(game, r); if(f){ const im = await nvImgFile(f); if(im) nvArtSet(game, im, f) }
+  closeModal(); viewTemplate();
+}
+async function nvlMakeAll(game, say){
+  const g = NVG[game], rows = NVL.rows[game] || [], keepS = g.get(), keepA = TP.art, files = [];
+  for(let i = 0; i < rows.length; i++){
+    say('Making card ' + (i + 1) + ' of ' + rows.length + '…'); const r = rows[i], S = g.apply(r); g.set(S);
+    const f = nvArtFor(game, r); if(f){ const im = await nvImgFile(f); if(im) nvArtSet(game, im, f) } else TP.art = Object.assign({}, keepA);
+    await g.draw(); const b = await new Promise(res => $('#tpcv').toBlob(res, 'image/png'));
+    files.push({name:String(i + 1).padStart(3, '0') + '-' + ((g.name(S) || 'card').replace(/[^\w\- ]+/g, '').trim() || 'card') + '.png', data:new Uint8Array(await b.arrayBuffer())}) }
+  g.set(keepS); TP.art = keepA; await g.draw();
+  if(files.length) nvSave(nvZip(files), game === 'pk' ? 'pokemon-cards.zip' : 'wow-cards.zip');
+  say(files.length + ' cards saved in one zip.');
+}
+function nvlOpen(game){
+  const g = NVG[game]; nvlRestore(game); NVL.art[game] = NVL.art[game] || {};
+  modal(`<h3>Card list - ${g.label}s</h3>
+    <p class="hint">Fill a list once, then click a card to load its text into the editor (you only add your own art), or make them all at once. Paste a table here (copy from Excel / Google Sheets, or CSV / JSON), or load a file. The first line holds the column names.</p>
+    <textarea id="nvlt" rows="5" style="width:100%" placeholder="name&#9;cost&#9;rules ..."></textarea>
+    <div class="bar" style="gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn primary" id="nvlgo">Use this table</button><button class="btn" id="nvlfb"><i class="ti ti-file-import"></i>Load a file…</button><input type="file" id="nvlff" accept=".csv,.tsv,.txt,.json" hidden>
+      <button class="btn" id="nvlab"><i class="ti ti-photo-up"></i>Art pictures…</button><input type="file" id="nvlaf" accept="image/*" multiple hidden><button class="btn" id="nvltb"><i class="ti ti-download"></i>Empty list (CSV)</button></div>
+    <details style="margin-top:8px"><summary>Column names</summary><p class="hint"><code>${esc(NVL_COLS[game])}</code><br>Only the columns you use are needed. In text columns write <code>\\n</code> for a new line. The <b>art</b> column is the file name of a picture you add with "Art pictures…" (if it is empty, the card name is used).</p></details>
+    <div class="bar" style="gap:8px;margin-top:10px"><input type="text" id="nvlq" placeholder="Search the list" style="flex:1"><span class="hint" id="nvlinfo"></span></div>
+    <div id="nvlbox" style="max-height:240px;overflow:auto;margin-top:6px"></div>
+    <div class="bar" style="gap:8px;margin-top:10px"><button class="btn primary" id="nvlall"><i class="ti ti-files"></i>Make all PNGs (zip)</button><button class="btn" id="nvlclr">Clear list</button><button class="btn" id="nvlx">Close</button></div><div class="hint" id="nvlsay"></div>`);
+  const $m = id => $('#' + id), say = t => { $m('nvlsay').textContent = t };
+  const show = () => { const rows = NVL.rows[game], q = nvlLow($m('nvlq').value), art = Object.keys(NVL.art[game]).length;
+    $m('nvlinfo').textContent = rows.length + ' cards' + (art ? ', ' + art + ' pictures' : '');
+    $m('nvlbox').innerHTML = rows.map((r, i) => ({r, i})).filter(({r}) => !q || nvlLow(Object.values(r).join(' ')).includes(q)).slice(0, 300).map(({r, i}) => `<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line,#2a3142)"><button class="btn" data-nvl="${i}">Load</button><span><b>${esc(r.name || '(no name)')}</b> <span class="hint">${esc([r.type, r.stage, r.faction, r.cost || r.hp].filter(Boolean).join(' · '))}${nvArtFor(game, r) ? ' · art ✓' : ''}</span></span></div>`).join('') || '<p class="hint">The list is empty.</p>';
+    $$('[data-nvl]').forEach(b => b.onclick = () => nvlLoad(game, +b.dataset.nvl)) };
+  const take = txt => { const rows = nvParseTable(txt); if(!rows.length){ say('No cards found. The first line must hold the column names.'); return } NVL.rows[game] = rows; nvlStore(game); say(rows.length + ' cards loaded.'); show() };
+  $m('nvlgo').onclick = () => take($m('nvlt').value);
+  $m('nvlfb').onclick = () => $m('nvlff').click(); $m('nvlff').onchange = async e => { const f = e.target.files[0]; if(f){ $m('nvlt').value = await f.text(); take($m('nvlt').value) } };
+  $m('nvlab').onclick = () => $m('nvlaf').click(); $m('nvlaf').onchange = e => { [...e.target.files].forEach(f => { NVL.art[game][nvLowName(f.name)] = f }); show() };
+  $m('nvltb').onclick = () => nvSave(new Blob(['﻿' + NVL_COLS[game].replace(/, /g, '\t') + '\n' + NVL_EX[game] + '\n'], {type:'text/tab-separated-values'}), game + '-card-list.tsv');
+  $m('nvlq').oninput = show; $m('nvlx').onclick = closeModal;
+  $m('nvlclr').onclick = () => { NVL.rows[game] = []; nvlStore(game); show() };
+  $m('nvlall').onclick = async () => { if(!NVL.rows[game].length){ say('Load a list first.'); return } $m('nvlall').disabled = true; try{ await nvlMakeAll(game, say) }catch(e){ say('Stopped: ' + e.message) } $m('nvlall').disabled = false };
+  show();
+}
 const pkOn = () => TP.view === 'pk' && !!TP.pk;
 const pkSt = 'data/pokemon-r-sunmoon.mse-style/', pkCom = 'data/pokemon-b-common.mse-include/', pkEn = 'data/pokemon-a-energy.mse-symbol-font/';
 function pkNew(kind, a, b){
@@ -2526,7 +2653,7 @@ function pkPanel(){
     h += `<div class="bar" style="margin-top:8px">${f('dex', 'Pokédex line (e.g. "NO. 025  Mouse Pokémon  HT: 1\'04\"  WT: 13.2 lbs.")', 1)}</div>`;
     h += `<div style="margin-top:10px"><b>Attacks</b> <select data-pks="natk">${pkOpt([1,2,3], S.natk)}</select> <span class="hint">Cost letters: R fire, W water, G grass, L lightning, P psychic, F fighting, D dark, M metal, Y fairy, N dragon, C colourless. In the effect text write a symbol as [R] or [C].</span></div>`;
     S.atk.slice(0, S.natk).forEach((a, k) => { h += `<div style="border:1px solid var(--line,#2a3142);border-radius:8px;padding:8px;margin-top:6px"><div class="bar" style="gap:6px;flex-wrap:wrap">
-      <input type="text" data-pka="${k}:cost" value="${esc(a.cost)}" placeholder="Cost, e.g. LLC" style="width:110px"><input type="text" data-pka="${k}:name" value="${esc(a.name)}" placeholder="Attack name" style="flex:1 1 140px"><input type="text" data-pka="${k}:dmg" value="${esc(a.dmg)}" placeholder="Damage" style="width:80px"></div>
+      <input type="text" data-pka="${k}:cost" value="${esc(a.cost)}" placeholder="Cost, e.g. LLC" style="width:140px"><input type="text" data-pka="${k}:name" value="${esc(a.name)}" placeholder="Attack name" style="flex:1 1 140px"><input type="text" data-pka="${k}:dmg" value="${esc(a.dmg)}" placeholder="Damage" style="width:80px"></div>
       <textarea data-pka="${k}:text" rows="2" placeholder="Effect text (optional)" style="width:100%;margin-top:6px">${esc(a.text)}</textarea></div>` });
     h += `<div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:10px"><label>Weakness ${typeSel('weakt', S.weak.type, true)}</label><input type="text" data-pks="weakv" value="${esc(S.weak.val)}" style="width:60px"><label>Resistance ${typeSel('rest', S.res.type, true)}</label><input type="text" data-pks="resv" value="${esc(S.res.val)}" style="width:60px"><label>Retreat <select data-pks="retreat">${pkOpt([0,1,2,3,4,5], +S.retreat)}</select></label></div>`;
     h += `<div class="bar" style="margin-top:8px">${f('flavor', 'Flavour text', 1)}</div>`;
@@ -2543,9 +2670,10 @@ function pkBind(){
   $$('[data-pks]').forEach(el => el.onchange = () => { const k = el.dataset.pks, v = el.value;
     if(k === 'weakt') S.weak.type = v; else if(k === 'weakv') S.weak.val = v; else if(k === 'rest') S.res.type = v; else if(k === 'resv') S.res.val = v; else if(k === 'natk' || k === 'retreat') S[k] = +v; else S[k] = v;
     if(['stage','type','trainer','natk'].includes(k)) viewTemplate(); else pkDraw() });
-  const ar = (id, key) => { if(c(id)) c(id).oninput = () => { TP.art[key] = +c(id).value; pkDraw() } }; ar('pka_zoom', 'zoom'); ar('pka_x', 'x'); ar('pka_y', 'y');
+  const ar = (id, key) => { if(c(id)) c(id).oninput = () => { TP.art[key] = +c(id).value; nvCropSave('pk'); pkDraw() } }; ar('pka_zoom', 'zoom'); ar('pka_x', 'x'); ar('pka_y', 'y');
   c('pkartb').onclick = () => c('pkartf').click();
-  c('pkartf').onchange = e => { const f = e.target.files[0]; if(!f) return; const im = new Image(); im.onload = () => { TP.art.img = im; TP.art.zoom = 1; TP.art.x = 0; TP.art.y = 0; viewTemplate() }; im.src = URL.createObjectURL(f) };
+  c('pkartf').onchange = e => { const f = e.target.files[0]; if(!f) return; const im = new Image(); im.onload = () => { nvArtSet('pk', im, f); viewTemplate() }; im.src = URL.createObjectURL(f) };
+  c('nvlbtn').onclick = () => nvlOpen('pk');
   c('pkpng').onclick = () => c('tpcv').toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = ((S.t.name || 'pokemon-card').replace(/[^\w\- ]+/g, '').trim() || 'pokemon-card') + '.png'; document.body.appendChild(a); a.click(); a.remove() }, 'image/png');
   c('tpcv').onclick = null; c('tpcv').style.cursor = 'default';
   c('pkback').onclick = () => { TP.view = 'presets'; viewTemplate() };
@@ -2553,7 +2681,7 @@ function pkBind(){
 function pkViewHTML(){
   return `<div class="cols2" style="grid-template-columns:minmax(300px,520px) 1fr;align-items:start">
     <div class="panel" style="position:sticky;top:12px;align-self:start"><canvas id="tpcv" style="display:block;max-width:100%;max-height:calc(100vh - 110px);width:auto;height:auto;margin:0 auto;background:#444;border-radius:8px"></canvas></div>
-    <div class="panel">${pkPanel()}<div class="bar" style="margin-top:14px"><button class="btn primary" id="pkpng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="pkback">Back to Pokémon cards</button></div>
+    <div class="panel">${pkPanel()}<div class="bar" style="margin-top:14px"><button class="btn primary" id="pkpng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="nvlbtn"><i class="ti ti-list-details"></i>Card list…</button><button class="btn" id="pkback">Back to Pokémon cards</button></div>
     <p class="hint">Test version: the frames and fonts come from the Pokémon pack in your own templates folder and are only used on this PC. Please keep what you make for personal use.</p></div></div>`;
 }
 function pkPresetsHTML(){

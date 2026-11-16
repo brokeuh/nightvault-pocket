@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 12:05",
+ "version": "2026-11-16 12:15",
  "notes": [
-  "symbol palette"
+  "card list, batch, art crop"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "0cf83a00c4f3092ed58bf8821d141d4008fc6863769ba22b90b6670ba6df5562"
+   "sha256": "2874db102604058f74bc997b4174c50b5dc20b478d318ad2bd9080b392a06aec"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "083a3e89a09e71467f65b75b469f639bd186d5260ddaa727a41e9f8af7652858"
+   "sha256": "d3e907c71bde32637528051ae62b36e5ec3ad9b7799b19c6ad12e1383f76d239"
   },
   {
    "name": "fonts/OFL.txt",

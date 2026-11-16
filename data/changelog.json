@@ -3,6 +3,24 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 217,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Card templates: card list, batch making, saved art crop",
+   "items": [
+    "New \"Card list…\" button in the WoW card maker and the Pokémon editor: paste a table or load a CSV/JSON file, click a card to load its text into the editor and add only your own art.",
+    "\"Make all PNGs\" turns the whole list into one zip of finished cards. Pictures are matched by the art column or the card name.",
+    "Zoom and position of a picture are remembered for the next time you use the same picture.",
+    "Extended art is now a switch in the WoW editor instead of separate templates.",
+    "Fixed the symbol palette squeezing the text boxes."
+   ]
+  },
+  {
    "id": 216,
    "date": "2026-11-16",
    "where": [
