@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 226,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: load from Scryfall, compare with the real card, test bench",
+   "items": [
+    "New row in the Magic editor: type a set code and card number (like \"gvl 6\") and \"Load from Scryfall\" fills the whole card (text, cost, type, power/toughness, artist, set symbol, art) and picks the matching frame style and colour by itself, downloading the style if needed.",
+    "\"Compare with the real card\" shows ours, the real Scryfall picture and a difference picture side by side, with a rough match score (the art window is ignored).",
+    "\"Test bench\" builds one sample of about 35 card types (1993 frame, 1997, 2003, modern, extended art, borderless, showcase, planeswalker, saga, adventure, split, flip, transform, modal, class, leveler, mutate, snow, nyx, devoid, future, token, emblem, plane, vanguard, case, battle, attraction…), compares them all and can copy a report. Needs internet for Scryfall."
+   ]
+  },
+  {
    "id": 225,
    "date": "2026-11-16",
    "where": [

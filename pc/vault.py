@@ -192,7 +192,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261116-n57"   # the page and the program must carry the same build id
+BUILD = "20261116-n58"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -5032,6 +5032,41 @@ def mtg_download(root):
     finally:
         st['busy'] = False
 
+SCRY_BASE = os.environ.get("NIGHTVAULT_SCRY_BASE") or "https://api.scryfall.com"
+
+
+def scry_card(set_code="", num="", q=""):
+    """One Magic card from Scryfall, trimmed to what the card maker needs (front face merged; the back face in `back`)."""
+    if q:
+        j = json.loads(_fetch(SCRY_BASE + "/cards/search?unique=prints&order=released&q=" + urllib.parse.quote(q), 20))
+        data = j.get("data") or []
+        if not data:
+            raise ValueError("Scryfall found no card for: " + q)
+        c = data[0]
+    else:
+        c = json.loads(_fetch(SCRY_BASE + "/cards/" + urllib.parse.quote(set_code.lower()) + "/" + urllib.parse.quote(str(num)), 20))
+
+    def face(f, top):
+        im = (f.get("image_uris") or top.get("image_uris") or {})
+        return dict(name=f.get("name", ""), mana_cost=f.get("mana_cost", ""), type_line=f.get("type_line", ""), oracle_text=f.get("oracle_text", ""), flavor_text=f.get("flavor_text", ""),
+                    power=f.get("power", ""), toughness=f.get("toughness", ""), loyalty=f.get("loyalty", ""), defense=f.get("defense", ""), artist=f.get("artist", ""), art=im.get("art_crop", ""), image=im.get("large") or im.get("normal") or "")
+    faces = c.get("card_faces") or []
+    f0 = face(faces[0], c) if faces else face(c, c)
+    out = dict(f0, set=c.get("set", ""), num=c.get("collector_number", ""), rarity=c.get("rarity", ""), lang=c.get("lang", "en"), released=c.get("released_at", ""), layout=c.get("layout", ""), frame=c.get("frame", ""),
+               frame_effects=c.get("frame_effects") or [], border=c.get("border_color", ""), colors=c.get("colors") or (faces[0].get("colors") if faces else []) or [], color_identity=c.get("color_identity") or [],
+               produced=c.get("produced_mana") or [], full_art=bool(c.get("full_art")), promo=bool(c.get("promo")), set_name=c.get("set_name", ""), uri=c.get("scryfall_uri", ""))
+    if len(faces) > 1:
+        out["back"] = face(faces[1], c)
+    return out
+
+
+def scry_image(url):
+    host = urllib.parse.urlparse(url).hostname or ""
+    if not (host.endswith("scryfall.io") or host.endswith("scryfall.com") or url.startswith(SCRY_BASE)):
+        raise ValueError("Only Scryfall pictures can be loaded here")
+    return _fetch(url, 30)
+
+
 MTG_GROUPS = ['Standard:groupStandard-3', 'Accurate:groupAccurate', 'Showcase:groupShowcase-5', 'Promo:groupPromo-2', 'Textless:groupTextless-4', 'Margin:groupMargin', 'Token:groupToken-2', 'Misc:groupMisc-2',
               'Modal / double-faced:groupModal-1', 'Double-faced:groupDFC', 'Planeswalker:groupPlaneswalker', 'Saga:groupSaga-1', 'Universes Beyond:groupUniversesBeyond', 'Flesh and Blood:groupFleshAndBlood', 'Custom:groupCustom']
 MTG_STY = {'busy': False, 'done': 0, 'total': 0, 'error': '', 'finished': False, 'pack': ''}
@@ -6359,6 +6394,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self._error(404, "Not a picture or font")
             ct = {".png": "image/png", ".ttf": "font/ttf", ".otf": "font/otf"}[cur.suffix.lower()]
             return self._send(200, cur.read_bytes(), ct, {"Cache-Control": "private, max-age=86400"})
+        if path == "/api/template/mtg_scry":
+            try:
+                return self._send(200, scry_card(q.get("set", ""), q.get("num", ""), q.get("q", "")))
+            except Exception as e:
+                return self._error(502, "Scryfall: " + str(e))
+        if path == "/api/template/mtg_scry_img":
+            try:
+                return self._send(200, scry_image(q.get("u", "")), "image/jpeg", {"Cache-Control": "private, max-age=3600"})
+            except Exception as e:
+                return self._error(502, "Scryfall picture: " + str(e))
         if path == "/api/template/mtg_file":
             r = TEMPLATE_DIR / "magic"
             if not r.is_dir():
