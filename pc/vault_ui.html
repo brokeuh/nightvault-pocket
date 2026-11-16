@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n44";
+const UI_BUILD = "20261116-n45";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2099,7 +2099,7 @@ async function wmcDraw(){
     if(rich.length){ c.fillStyle = '#000'; let y = 975 - off + 19; rich.forEach(l => { wowRichDraw(c, l, 104, y, 21, F, 'l'); y += lh }) }
   } else if(ea){
     frame(); const yo = ab || eq ? 148 : 0; const wide = ally && (fac === 'Alliance' || fac === 'Horde') ? 55 : 0;
-    if(eq){ Object.keys(eico).forEach(n => { const im = eico[n], y = WMC_EQHI[n]; if(im && y !== undefined) c.drawImage(im, 646, y, 76, 53) }) }
+    if(eq){ Object.keys(eico).forEach(n => { const im = eico[n], y = WMC_EQHI[n]; if(im && y !== undefined) c.drawImage(im, 646, y, 76, 53) }) } else classes();
     const cp = ab ? [78, 605] : eq ? [80, 605] : ({Alliance:[103, 740], Horde:[83, 740], Monster:[83, 744]}[fac] || [84, 746]); cost(55, cp[0], cp[1]);
     stroke(S.name, 375, (ab ? 615 : 764 - yo) + 26, 30, F.SERIF, 'center', 520, 4);
     typeline(160, 682 - wide, ab ? 670 : 818 - yo);

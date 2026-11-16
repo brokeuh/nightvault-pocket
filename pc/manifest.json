@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 11:39",
+ "version": "2026-11-16 11:44",
  "notes": [
-  "WoW TCG: all card types"
+  "Class icons on extended art"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "ae265da6fde83d5beae8024af3535dca7beca91c0f6de6abefce453e3acef86a"
+   "sha256": "bc6924178ee7c1c6da79d648fa494f7633adf4f75253ab461845399bbcb5e529"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "52655bcec1dfbba22fddaaba0421cc9a8d9c00dfac26436eedff371bcc2d2125"
+   "sha256": "8fe0009aba5ef0ef280aa4a6d6e30940a16e1fbf917a1f838853cbc4c33d9e93"
   },
   {
    "name": "fonts/OFL.txt",

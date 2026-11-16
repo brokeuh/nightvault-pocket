@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 213,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "WoW TCG: class icons on extended art",
+   "items": [
+    "Class icons now show on extended art Ally and Ability cards (top right, like on the normal frames)."
+   ]
+  },
+  {
    "id": 212,
    "date": "2026-11-16",
    "where": [
