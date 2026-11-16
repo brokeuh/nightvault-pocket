@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n60";
+const UI_BUILD = "20261116-n61";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2782,10 +2782,11 @@ async function mtgDraw(){
 // ---- Scryfall: load a real card into the maker, pick the matching frame style, and compare our drawing with the real picture
 const MTG_PROBES = [['Alpha / Beta / Unlimited (1993)', 'set:lea t:creature'], ['Fourth Edition (1997)', 'set:4ed t:creature'], ['Seventh Edition', 'set:7ed t:creature'], ['Eighth Edition (2003)', 'set:8ed t:creature'], ['Mirrodin (2003 frame)', 'set:mrd t:creature'],
   ['Modern frame creature', 'set:m19 t:creature -is:extended -is:fullart'], ['Modern frame, gold', 'set:m19 t:creature id>=2 -is:extended'], ['Modern frame artifact', 'set:m19 t:artifact -t:creature'], ['Modern frame land', 'set:m19 t:land -is:basic'], ['Modern frame instant', 'set:m19 t:instant'],
-  ['Legendary (crown)', 'set:m19 t:legendary t:creature'], ['Extended art', 'frame:extendedart t:creature set:m21'], ['Borderless', 'is:borderless t:creature set:eld'], ['Showcase', 'is:showcase t:creature'], ['Planeswalker', 'set:war t:planeswalker -is:extended'],
+  ['Legendary (crown)', 'set:m19 t:legendary t:creature'], ['Extended art', 'frame:extendedart t:creature set:m21'], ['Borderless', 'border:borderless t:creature'], ['Showcase', 'is:showcase t:creature'], ['Planeswalker', 'set:war t:planeswalker -is:extended'],
   ['Saga', 'set:dom t:saga'], ['Adventure', 'layout:adventure set:eld'], ['Split card', 'layout:split set:grn'], ['Flip card', 'layout:flip'], ['Transform (front)', 'layout:transform set:isd'], ['Modal double-faced', 'layout:modal_dfc set:znr'],
   ['Class', 'set:afr t:class'], ['Leveler', 'is:leveler'], ['Mutate', 'set:iko is:mutate'], ['Snow', 'set:khm t:snow t:creature'], ['Nyx / enchantment creature', 'set:ths t:enchantment t:creature'], ['Devoid', 'set:bfz frame:devoid'],
   ['Future shifted', 'frame:future'], ['Colorshifted', 'set:plc is:colorshifted'], ['Token', 'set:tm19 layout:token'], ['Emblem', 'layout:emblem'], ['Planechase plane', 'layout:planar'], ['Vanguard', 'layout:vanguard'], ['Case', 'set:mkm t:case'], ['Battle', 'set:mom t:battle'], ['Attraction', 'is:attraction']];
+const MTG_SHOWCASE = {otp:'BreakingNews', big:'Vault', otj:'Wanted', mkm:'Dossier', ltr:'Scroll', wot:'EnchantingTales', woe:'StorybookWOE', who:'TARDIS', one:'OilSlick', dmu:'DMUStainedGlass', vow:'Fang', afr:'DNDSourcebook', mh2:'MH2', sta:'MysticalArchive', khm:'Kaldheim-2', cmr:'CommanderLegends', znr:'ZendikarRising', m21:'M21', eld:'Storybook', snc:'SNCGilded', neo:'NeoNinja', pip:'Pipboy'};
 function mtgStyleFor(c){
   const fx = c.frame_effects || [], L = c.layout, t = String(c.type_line || '').toLowerCase(), fr = String(c.frame || '');
   if(L === 'token' || L === 'double_faced_token') return 'TokenRegular-1'; if(L === 'emblem') return 'Emblem'; if(L === 'planar') return 'Planechase'; if(L === 'vanguard') return 'Vanguard'; if(L === 'attraction' || t.includes('attraction')) return 'Attraction';
@@ -2793,7 +2794,8 @@ function mtgStyleFor(c){
   if(t.includes('saga')) return 'SagaRegular'; if(t.includes('class')) return 'Class'; if(t.includes(' case') || t.startsWith('enchantment — case')) return 'Case'; if(t.includes('battle')) return 'Battle';
   if(L === 'adventure') return 'Adventure'; if(L === 'split') return 'Split'; if(L === 'flip') return 'Flip'; if(L === 'leveler') return 'Levelers'; if(L === 'mutate' || fx.includes('mutate')) return 'M15Mutate';
   if(L === 'transform') return 'M15TransformFront'; if(L === 'modal_dfc') return 'ModalRegular';
-  if(fr === '1993') return 'ABU'; if(fr === '1997') return 'Seventh'; if(fr === '2003') return c.border === 'black' || !fx.includes('colorshifted') ? '8th' : '8thColorshifted'; if(fr === 'future') return 'FutureRegular';
+  if(fr === '1993') return c.border === 'white' && !['lea', 'leb', '2ed'].includes(c.set) ? 'Fourth' : 'ABU'; if(fr === '1997') return c.border === 'white' ? 'SeventhButFifth' : 'Seventh'; if(fr === '2003') return c.border === 'black' || !fx.includes('colorshifted') ? '8th' : '8thColorshifted'; if(fr === 'future') return 'FutureRegular';
+  if(fx.includes('showcase') && MTG_SHOWCASE[c.set]) return MTG_SHOWCASE[c.set];
   if(fx.includes('colorshifted')) return '8thColorshifted'; if(fx.includes('devoid')) return 'M15Devoid'; if(fx.includes('nyxtouched')) return 'M15Nyx'; if(/^snow|snow /.test(t) && fx.includes('snow')) return 'M15Snow';
   if(fx.includes('extendedart')) return 'M15ExtendedArtNew'; if(c.border === 'borderless') return 'PromoRegular-1'; if(t.includes('land') && !/basic/.test(t)) return 'M15Lands';
   return '';
@@ -2815,6 +2817,13 @@ async function mtgFromScry(c, tick){
   S.ex = {}; if(c.loyalty) S.ex.loyalty = c.loyalty; if(c.defense) S.ex.defense = c.defense; const word = mtgFrameWord(c);
   const W = {white:'W', blue:'U', black:'B', red:'R', green:'G', multi:'M', artifact:'A', land:'L', colorless:'E'}; S.frame = W[word] || 'W'; S.style = style; S.sframe = 0;
   if(style){ const inf = await mtgEnsureStyle(style, tick); if(!inf || inf.bad){ S.style = ''; S.styleFail = style } else S.sframe = mtgPickFrame(inf.main.map(f => f.name), word) }
+  const b = c.back, lines = String(c.oracle_text || '').split('\n').filter(Boolean);
+  if(S.style && b){ if(c.layout === 'adventure'){ S.ex.rules2 = S.rules; S.rules = b.oracle_text || ''; S.ex.mana2 = b.mana_cost || ''; S.ex.title2 = b.name || ''; S.ex.type2 = b.type_line || '' }
+    else if(c.layout === 'split'){ S.ex.title2 = S.name; S.ex.mana2 = S.cost; S.ex.type2 = S.type; S.ex.rules2 = S.rules; S.name = b.name || ''; S.cost = b.mana_cost || ''; S.type = b.type_line || ''; S.rules = b.oracle_text || '' }   // Card Conjurer: main = right half
+    else if(c.layout === 'flip'){ S.ex.title2 = b.name || ''; S.ex.type2 = b.type_line || ''; S.ex.rules2 = b.oracle_text || ''; S.ex.pt2 = b.power ? b.power + '/' + b.toughness : '' }
+    else if(c.layout === 'modal_dfc'){ S.ex.flipsideType = b.type_line || ''; S.ex.flipSideReminder = b.oracle_text || '' } }
+  if(S.style && (style === 'PlaneswalkerRegular' || style === 'PlaneswalkerBorderless' || style === 'PlaneswalkerBoxTopper' || style === 'SagaRegular')){ lines.slice(0, 4).forEach((l, i) => { S.ex['ability' + i] = style === 'SagaRegular' ? l.replace(/^[IVX, ]+\s*[—-]\s*/, '') : l }); S.rules = '' }
+  if(S.style && style === 'Case') S.ex.case = S.rules; if(S.style && style === 'Battle' && c.defense) S.ex.defense = c.defense;
   S.want = style; return S }
 async function mtgLoadArt(c){ if(!c.art) return; const im = await mtgScryImg(c.art); if(im) TP.art = {img:im, zoom:1, x:0, y:0, fid:'scry', saved:false} }
 const mtgLoadImg = src => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src });

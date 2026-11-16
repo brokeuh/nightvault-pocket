@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 14:12",
+ "version": "2026-11-16 14:13",
  "notes": [
-  "Magic bench report zip"
+  "Magic: style picks"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "5abde0d02e5c720caf3397da1c71a8ea701e8211be83275dee969311e99d43e2"
+   "sha256": "cb01ee4b2d574cabd3de1c6ca0e929cef0a5ca5bfdaf1a04dabbba72c2d249a8"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "54ffc7b4a3e7f86474d33d5cc855b523a02900831c51bdd6dfc2b1f9f1a898ee"
+   "sha256": "3d700c0b23e89f04e22fc6c2963c2aa717d5d91f570910b81634ed709425e502"
   },
   {
    "name": "fonts/OFL.txt",

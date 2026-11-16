@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 229,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic loader: better style picks",
+   "items": [
+    "White-bordered old cards (Fourth, Fifth Edition) now use the right old frame instead of the black-bordered one (that was the 7% score).",
+    "Showcase cards use their set's own showcase style where one exists.",
+    "Adventure, split, flip and double-faced cards now fill in both halves; planeswalker and saga text goes into the ability boxes.",
+    "The \"Borderless\" test query was fixed (it found no card)."
+   ]
+  },
+  {
    "id": 228,
    "date": "2026-11-16",
    "where": [
