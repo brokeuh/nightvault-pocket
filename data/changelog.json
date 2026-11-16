@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 214,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "WoW TCG: hero class emblem swaps properly",
+   "items": [
+    "On Hero cards the class emblem now fully replaces the default emblem that is part of the Alliance and Horde hero frames, instead of a small icon sitting on top of it."
+   ]
+  },
+  {
    "id": 213,
    "date": "2026-11-16",
    "where": [

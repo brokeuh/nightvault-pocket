@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n45";
+const UI_BUILD = "20261116-n46";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2123,7 +2123,7 @@ async function wmcDraw(){
     else if(ty === 'Location'){ name(38, 187, 550, 36); typeline(89, 682, 670); faction(); let h = 220; if(S.capacity){ h = 150; if(imgs.cap) c.drawImage(imgs.cap, 605, 905, 110, 115); stroke(S.capacity, 658, 923 + 51, 60, F.SERIF, 'center', 90, 4) } const o = flavour(900); effect(735, h - o) }
     else { name(38, 187, 550, 36); typeline(89, 682, 670); faction(); const o = flavour(900); effect(735, 220 - o) }
   }
-  function classes2(){ const m = {'Monk Alt':[584, 38, 78, 82], 'Demon Hunter':[589, 38, 73, 73]}; const n = cls[0]; if(!n || !cico[n]) return; const [x, y, w, h] = m[n] || [591, 39, 73, 73]; c.drawImage(cico[n], x, y, w, h) }
+  function classes2(){ const n = cls[0]; if(!n || !cico[n]) return; const alt = n === 'Monk Alt'; c.drawImage(cico[n], alt ? 586 : 589, 35, alt ? 114 : 120, 120) }       // big enough to cover the default emblem that is part of the Alliance / Horde hero frames
   if(!back){   // credits + set line
     stroke(S.artist ? 'Artist: ' + S.artist : '', 404, 978 + 15, 18, F.CRED, 'left', 260, 2); stroke(S.copy, 404, 998 + 11, 13, F.CRED, 'left', 290, 2);
     if(imgs.seticon && (S.setnum || ty === 'Token Ally')){ const col = WMC_RAR[S.rarity] || WMC_RAR.Common, txt = ty === 'Token Ally' && !S.setnum ? ' TOKEN' : ' ' + S.setname + ' ' + S.setnum + (S.setmax ? ' / ' + S.setmax : ''); let px = 20; c.font = F.SET.replace('@', px + 'px'); while(c.measureText(txt).width > 175 && px > 9){ px -= 1; c.font = F.SET.replace('@', px + 'px') }

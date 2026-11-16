@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 11:44",
+ "version": "2026-11-16 11:52",
  "notes": [
-  "Class icons on extended art"
+  "Hero class emblem fix"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "bc6924178ee7c1c6da79d648fa494f7633adf4f75253ab461845399bbcb5e529"
+   "sha256": "ddb66da6373baafbc1a4787365fc9441fe71f4abba2c44a77ba82f1d926f0e50"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "8fe0009aba5ef0ef280aa4a6d6e30940a16e1fbf917a1f838853cbc4c33d9e93"
+   "sha256": "88b8b5d71566235142f77ab3c053a7d274f90f7619174ce6414ef153c826324f"
   },
   {
    "name": "fonts/OFL.txt",
