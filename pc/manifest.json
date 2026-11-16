@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 14:38",
+ "version": "2026-11-16 14:46",
  "notes": [
-  "Saga chapters fix (n65)"
+  "Battle/Planechase landscape fix (n66)"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "9ea98fec46bc12d17790838ffebb02e0baa1f2d50af146db2d170802c9fd1732"
+   "sha256": "3fbcf035677d0fa335518fd373e84c7b0f640c5ad389324f03b06f86136bd898"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "a45b9f57d738664abb2286a86dd515cbe523ee3a537304feacb23287d7003633"
+   "sha256": "49cfc90481e50cd9992e090f45fc87c71e19d0fc15373aefff7e5aecc64f6e40"
   },
   {
    "name": "fonts/OFL.txt",

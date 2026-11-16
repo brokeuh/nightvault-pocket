@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n65";
+const UI_BUILD = "20261116-n66";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2657,7 +2657,7 @@ async function nvMtgExtract(code){
   const stub = () => { const f = function(){ return f }; return new Proxy(f, {get:(t, k) => k === Symbol.toPrimitive ? () => 0 : (k === 'then' ? undefined : stub()), apply:() => stub(), set:() => true, has:() => true}) };
   const document = {querySelector:s => /loadFrameVersion/.test(s) ? el : stub(), querySelectorAll:() => [], createElement:() => stub(), getElementById:() => stub(), body:stub()};
   Object.assign(defs, {card, document, loadedVersions:[], availableFrames:[], loadFramePack:() => { out.frames = JSON.parse(JSON.stringify(defs.availableFrames || [])) }, loadTextOptions:o => { out.text = JSON.parse(JSON.stringify(o)) },
-    autoFitArt(){}, resetSetSymbol(){}, resetWatermark(){}, resetCardIrregularities:async () => {}, loadScript:async () => {}, sizeCanvas(){}, notify(){}, fixUri:x => x,
+    autoFitArt(){}, resetSetSymbol(){}, resetWatermark(){}, resetCardIrregularities:async o => { if(o && o.canvas && o.canvas[0] > 0 && o.canvas[1] > 0){ card.width = o.canvas[0]; card.height = o.canvas[1] } }, loadScript:async () => {}, sizeCanvas(){}, notify(){}, fixUri:x => x,
     scaleWidth:x => Math.round(x * 2010), scaleHeight:x => Math.round(x * 2814), scaleX:x => Math.round(x * 2010), scaleY:x => Math.round(x * 2814), getStandardWidth:() => 2010, getStandardHeight:() => 2814, console:{log(){}, warn(){}, error(){}}});
   const G = new Proxy(defs, {has:(t, k) => k in t || !(k in globalThis) || k === 'document', get:(t, k) => k === Symbol.unscopables ? undefined : (k in t ? t[k] : (k in globalThis ? globalThis[k] : stub())), set:(t, k, v) => { t[k] = v; return true }});
   try{ new Function('G', 'with(G){' + code + '\n}')(G);
@@ -2752,6 +2752,7 @@ async function mtgStyleDraw(cv, my, S){
   if(rotated) c.restore(); mtgLayer(c, W, H, prevName);
   const sb = cd.setSymbolBounds; if(sb && sb.x < 1){ const sg = await mtgSymMeasure(c, W, H, S, sb); const right = sb.horizontal === 'left' ? sb.x * W + (sg ? sg.w : 0) : sb.horizontal === 'center' ? sb.x * W + (sg ? sg.w / 2 : 0) : sb.x * W; mtgSymDraw(c, H, S, sg, right); mtgLayer(c, W, H, 'Set symbol') }
   c.textAlign = 'left'; mtgBottom(c, W, H, S, brush, fitW, cd.bottomInfoColor === 'black' ? '#000' : '#fff');
+  if(cd.landscape && W > H && cd.version === 'battle'){ const q = document.createElement('canvas'); q.width = W; q.height = H; q.getContext('2d').drawImage(cv, 0, 0); cv.width = H; cv.height = W; const c2 = cv.getContext('2d'); c2.translate(0, W); c2.rotate(-Math.PI / 2); c2.drawImage(q, 0, 0) }   // battles are drawn sideways and shown turned like the real card; planes stay landscape
 }
 // style picker + download button for the panel
 function mtgStylePanel(){

@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 234,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: Battle and Planechase fixed",
+   "items": [
+    "Battle cards are now drawn sideways like the real ones (they were squashed into an upright card before).",
+    "Planechase planes are drawn as a proper landscape card instead of a squashed upright one.",
+    "If you already downloaded the Battle or Planechase style, it will be re-read automatically."
+   ]
+  },
+  {
    "id": 233,
    "date": "2026-11-16",
    "where": [
