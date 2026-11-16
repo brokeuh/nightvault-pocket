@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 12:15",
+ "version": "2026-11-16 12:20",
  "notes": [
-  "card list, batch, art crop"
+  "pokemon variants"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "2874db102604058f74bc997b4174c50b5dc20b478d318ad2bd9080b392a06aec"
+   "sha256": "868f2810f2c271d9014b74fe4da5c11eb9f71cb7834752b96efd7bf232181d11"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "d3e907c71bde32637528051ae62b36e5ec3ad9b7799b19c6ad12e1383f76d239"
+   "sha256": "9559b6ee383c59156760cc289b185e4f869b45f76b250194122e417010266c51"
   },
   {
    "name": "fonts/OFL.txt",

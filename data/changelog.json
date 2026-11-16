@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 218,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Pokémon card maker: GX, Prism Star, gold, rainbow, full art, Tool and Special Energy",
+   "items": [
+    "Pokémon editor: new Finish switch (standard, gold, rainbow, Prism Star), plus GX, Ultra Beast and Full art switches.",
+    "New tiles: Tool trainer and Special Energy (all types).",
+    "The card list also understands finish, gx, ub and fa columns, and Energy / Tool rows."
+   ]
+  },
+  {
    "id": 217,
    "date": "2026-11-16",
    "where": [

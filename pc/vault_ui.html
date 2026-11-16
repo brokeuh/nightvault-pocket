@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n49";
+const UI_BUILD = "20261116-n50";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2447,10 +2447,10 @@ function nvPalInsert(ta, tok, wrap){
 const NVL = {rows:{}, art:{}};
 const NVL_COLS = {
   wmc:'type, faction, class, name, cost, subtypes, tags, rules, flavor, damage, health, artist, copy, setname, setnum, setmax, extended, gold, rarity, art',
-  pk:'stage, type, name, hp, evo, dex, a1cost, a1name, a1dmg, a1text, a2cost, a2name, a2dmg, a2text, a3cost, a3name, a3dmg, a3text, weakness, resistance, retreat, flavor, illus, copy, num, rarity, rules, art'};
+  pk:'stage, type, name, hp, evo, dex, a1cost, a1name, a1dmg, a1text, a2cost, a2name, a2dmg, a2text, a3cost, a3name, a3dmg, a3text, weakness, resistance, retreat, flavor, illus, copy, num, rarity, finish, gx, ub, fa, rules, art'};
 const NVL_EX = {
   wmc:'Ally\tAlliance\t\tExample Footman\t3\tHuman Warrior\t\t[Armor] Protector\tFor the Alliance!\t3\t4\tYour name\t\tMYSET\t001\t100\tno\tno\tCommon\texample.png',
-  pk:'Stage 1\tfire\tExample\t90\tCharmander\tNO. 005 Flame Pokémon\tRC\tSlash\t30\t\tRRC\tFlamethrower\t90\tDiscard a [R] Energy.\t\t\t\t\tfighting ×2\t\t1\tShort flavour text\tYour name\tFan made\t005/100\tcommon\t\texample.png'};
+  pk:'Stage 1\tfire\tExample\t90\tCharmander\tNO. 005 Flame Pokémon\tRC\tSlash\t30\t\tRRC\tFlamethrower\t90\tDiscard a [R] Energy.\t\t\t\t\tfighting ×2\t\t1\tShort flavour text\tYour name\tFan made\t005/100\tcommon\t\t\t\t\t\texample.png'};
 const NVL_ALIAS = {text:'rules', effect:'rules', description:'rules', 'rules text':'rules', copyright:'copy', 'copyright line':'copy', illustrator:'illus', image:'art', picture:'art', file:'art', filename:'art', 'extended art':'extended', ea:'extended', classes:'class', 'set name':'setname', set:'setname', 'set number':'setnum', 'set total':'setmax', 'card name':'name', title:'name', subtype:'subtypes', tag:'tags', dmg:'damage', life:'health', flavour:'flavor', 'flavour text':'flavor', 'flavor text':'flavor', 'evolves from':'evo', pokedex:'dex', 'dex line':'dex', 'card number':'num', energy:'type', 'attack 1 cost':'a1cost', 'attack 1 name':'a1name', 'attack 1 damage':'a1dmg', 'attack 1 text':'a1text', 'attack 2 cost':'a2cost', 'attack 2 name':'a2name', 'attack 2 damage':'a2dmg', 'attack 2 text':'a2text', 'attack 3 cost':'a3cost', 'attack 3 name':'a3name', 'attack 3 damage':'a3dmg', 'attack 3 text':'a3text', a1damage:'a1dmg', a2damage:'a2dmg', a3damage:'a3dmg'};
 const nvlKey = k => { k = String(k).trim().toLowerCase(); return NVL_ALIAS[k] || k };
 function nvParseTable(txt){
@@ -2480,9 +2480,10 @@ function nvlApplyWmc(r){
   return S;
 }
 function nvlApplyPk(r){
-  const TR = ['item', 'supporter', 'stadium'], ST = ['basic', 'stage 1', 'stage 2'], stg = nvlLow(r.stage).replace(/^stage\s*(\d)/, 'stage $1'), ty = nvlLow(r.type);
-  const trainer = nvlLow(r.kind) === 'trainer' || TR.includes(stg) || TR.includes(ty); let S;
-  if(trainer) S = pkNew('trainer', TR.find(t => t === stg || t === ty) || 'item');
+  const TR = ['item', 'tool', 'supporter', 'stadium'], ST = ['basic', 'stage 1', 'stage 2'], stg = nvlLow(r.stage).replace(/^stage\s*(\d)/, 'stage $1'), ty = nvlLow(r.type);
+  const energy = nvlLow(r.kind) === 'energy' || stg === 'energy' || stg === 'special energy'; const trainer = !energy && (nvlLow(r.kind) === 'trainer' || TR.includes(stg) || TR.includes(ty)); let S;
+  if(energy) S = pkNew('energy', 'special', PK_TYPES.includes(ty) ? ty : (PK_CODE[String(r.type || '').toUpperCase()] || 'colorless'));
+  else if(trainer) S = pkNew('trainer', TR.includes(stg) ? stg : TR.includes(ty) ? ty : 'item');
   else S = pkNew('pokemon', ST.includes(stg) ? stg : 'basic', PK_TYPES.includes(ty) ? ty : (PK_CODE[String(r.type || '').toUpperCase()] || 'colorless'));
   const T = S.t; ['name', 'hp', 'evo', 'dex', 'flavor', 'copy', 'num', 'rules'].forEach(k => { if(r[k] != null && r[k] !== '') T[k] = nvlTxt(r[k]) });
   T.illus = r.illus || r.artist || ''; if(!T.num && r.setnum) T.num = r.setnum;
@@ -2492,6 +2493,8 @@ function nvlApplyPk(r){
   if(r.weakness) S.weak = wr(r.weakness, '×2'); if(r.resistance) S.res = wr(r.resistance, '-30');
   if(r.retreat !== undefined && r.retreat !== '') S.retreat = Math.max(0, Math.min(5, parseInt(r.retreat) || 0));
   if(r.rarity) S.rarity = ['common', 'uncommon', 'rare'].includes(nvlLow(r.rarity)) ? nvlLow(r.rarity) : '';
+  const fn = nvlLow(r.finish); S.finish = fn.startsWith('gold') ? 'gold' : fn.startsWith('rainbow') ? 'rainbow' : fn.startsWith('prism') ? 'prism' : '';
+  S.gx = !trainer && !energy && nvlYes(r.gx); S.ub = !trainer && !energy && nvlYes(r.ub); S.fa = nvlYes(r.fa) || nvlYes(r['full art']);
   return S;
 }
 const NVG = {
@@ -2567,7 +2570,7 @@ const pkSt = 'data/pokemon-r-sunmoon.mse-style/', pkCom = 'data/pokemon-b-common
 function pkNew(kind, a, b){
   const t = {name:'', hp:'', dex:'', evo:'', flavor:'', illus:'', copy:'', num:'', rules:''};
   const atk = () => ({cost:'', name:'', dmg:'', text:''});
-  return {kind, stage: kind === 'pokemon' ? a : 'basic', type: kind === 'pokemon' ? b : 'colorless', trainer: kind === 'trainer' ? a : 'item', t, atk:[atk(), atk(), atk()], natk:2,
+  return {kind, stage: kind === 'pokemon' ? a : 'basic', type: kind === 'pokemon' || kind === 'energy' ? (b || 'colorless') : 'colorless', trainer: kind === 'trainer' ? a : 'item', finish:'', gx:false, ub:false, fa:false, t, atk:[atk(), atk(), atk()], natk:2,
     weak:{type:'fighting', val:'×2'}, res:{type:'', val:''}, retreat:1, rarity:''}
 }
 function pkUrl(p){ return '/api/template/pk_file?p=' + enc(p) + '&t=' + enc(TOKEN) }
@@ -2585,25 +2588,41 @@ async function pkDraw(){
   const cv = $('#tpcv'); if(!cv || !TP.pk) return; const my = ++PK.token; const S = TP.pk;
   await pkFonts(); await Promise.all(PK_TYPES.map(async t => { PK.sym[t] = await pkImg(pkEn + t + '.png') }));
   const c = cv.getContext('2d'); cv.width = 736; cv.height = 1026;
-  const pk = S.kind === 'pokemon', tr = S.kind === 'trainer';
+  const pk = S.kind === 'pokemon', tr = S.kind === 'trainer', en = S.kind === 'energy', tool = tr && S.trainer === 'tool';
   const ty = S.type === 'metal' ? 'Metal' : S.type;
-  const [back, win, fr, bor] = await Promise.all([
-    pkImg(pk ? pkCom + 'back-p-sunmoon-' + ty + '.png' : pkSt + 'back-t-sm.png'), pkImg(pkSt + (pk ? 'window-p.png' : 'window-t-sm.png')),
-    pkImg(pkSt + (pk ? 'frame-p-' + S.stage + '.png' : 'frame-t-sm.png')), pkImg(pkSt + 'border-sun-moon.png')]);
+  const fin = S.finish || '', gold = fin === 'gold', prism = fin === 'prism', ft = gold ? '-gold' : '', fa = !!S.fa, gx = pk && !!S.gx, ub = pk && !!S.ub;
+  const bf = fin === 'rainbow' ? '-rainbow' : gold ? '-gold' : prism ? '-prism' : '';
+  const backF = pk ? pkCom + 'back-p-sunmoon-' + ty + '.png' : pkSt + (en ? 'back-e-sm' + (prism ? '-prism' : '') : tool && prism ? 'back-t-sm-tool-prism' : 'back-t-sm' + (prism ? '-prism' : '')) + '.png';
+  const winF = fa ? null : pk ? (prism ? 'window-p-prism' : 'window-p' + ft) : tr ? (prism ? 'window-t-sm-prism' : 'window-t-sm' + ft) : (prism ? 'window-e-sm-prism' : null);
+  const frF = pk ? 'frame-p-' + S.stage + (gx ? '-gx' : '') + ft : tr ? (tool ? 'frame-t-sm-tool' + ft + (fa ? '-fa' : '') : 'frame-t-sm' + ft) : 'frame-e-sm' + ft;
+  const borF = pk && gx ? 'border-gx' + bf : (!bf && fa && tr ? 'border-sun-moon-fatrainer' : 'border-sun-moon' + bf);
+  const ovF = pk && (gx || ub) ? 'overlay-p' + (gx ? '-gx' : '') + (ub ? '-ub' : '') + ft : (prism && fa ? 'overlay-prism-' + (pk ? 'p' : tr ? (tool ? 't-tool' : 't') : 'e') : null);
+  const maskF = fa || !prism ? null : 'mask-image-' + (pk ? 'p' : tr ? 't' : 'e') + '-prism';
+  const [back, win, fr, bor, gxo, pov, pmk, pmb, tov] = await Promise.all([
+    pkImg(backF), winF ? pkImg(pkSt + winF + '.png') : null, pkImg(pkSt + frF + '.png'), pkImg(pkSt + borF + '.png'), ovF ? pkImg(pkSt + ovF + '.png') : null,
+    prism ? pkImg(pkSt + 'overlay-sm-prism.png') : null, maskF ? pkImg(pkSt + maskF + '.png') : null, prism ? pkImg(pkSt + 'mask-sm-prism.png') : null, tr ? pkImg(pkSt + 'overlay-t-colored.png') : null]);
   if(my !== PK.token) return;
+  const luma = (im, inv, w, h) => { const q = document.createElement('canvas'); q.width = w || im.width; q.height = h || im.height; const x = q.getContext('2d'); x.drawImage(im, 0, 0, q.width, q.height); const d = x.getImageData(0, 0, q.width, q.height), a = d.data; for(let k = 0; k < a.length; k += 4){ const l = a[k]; a[k + 3] = inv ? 255 - l : l; a[k] = a[k + 1] = a[k + 2] = 0 } x.putImageData(d, 0, 0); return q };
   c.clearRect(0, 0, 736, 1026); c.fillStyle = '#fff'; c.fillRect(0, 0, 736, 1026);
   if(back) c.drawImage(back, 16, 18);
-  const R = pk ? [58, 102, 616, 382] : [56, 148, 616, 384];                 // art window (x, y, w, h)
-  const oc = document.createElement('canvas'); oc.width = 736; oc.height = 1026; const o = oc.getContext('2d');   // art goes here first, so trainer cards can be cut by the window mask
+  if(pov && pmb){ const q = document.createElement('canvas'); q.width = pov.width; q.height = pov.height; const x = q.getContext('2d'); x.drawImage(pov, 0, 0); x.globalCompositeOperation = 'destination-in'; x.drawImage(luma(pmb, true), 0, 0); c.drawImage(q, 16, 18) }     // prism star shine
+  const R = fa ? [26, 26, 678, 972] : en ? [30, 132, 674, 540] : pk ? [58, 102, 616, 382] : [56, 148, 616, 384];                 // art window (x, y, w, h)
+  const oc = document.createElement('canvas'); oc.width = 736; oc.height = 1026; const o = oc.getContext('2d');   // art goes here first, so it can be cut by the window mask
   if(TP.art && TP.art.img){ const im = TP.art.img, z = TP.art.zoom || 1; o.save(); o.beginPath(); o.rect(...R); o.clip();
     const sc = Math.max(R[2] / im.width, R[3] / im.height) * z, w = im.width * sc, h = im.height * sc;
     o.drawImage(im, R[0] + (R[2] - w) / 2 + (TP.art.x || 0) * 4, R[1] + (R[3] - h) / 2 + (TP.art.y || 0) * 4, w, h); o.restore() }
   else { o.fillStyle = 'rgba(0,0,0,.12)'; o.fillRect(...R) }
-  if(!pk && win){ o.globalCompositeOperation = 'destination-in'; o.drawImage(win, 16, 18) }
+  if(pmk){ o.globalCompositeOperation = 'destination-in'; o.drawImage(luma(pmk, false, R[2], R[3]), R[0], R[1]) }
+  else if(tr && !fa && win){ o.globalCompositeOperation = 'destination-in'; o.drawImage(win, 16, 18) }
   c.drawImage(oc, 0, 0);
-  if(win && pk) c.drawImage(win, 16, 18); if(fr) c.drawImage(fr, 16, 18); if(bor) c.drawImage(bor, 0, 0);
+  if(win && (pk || en)) c.drawImage(win, 16, 18);
+  if(gxo) c.drawImage(gxo, 16, 18);
+  if(tov){ const tc = {item:[74, 190, 239], tool:[74, 190, 239], stadium:[125, 195, 96], supporter:[244, 128, 55]}[S.trainer] || [74, 190, 239];       // coloured strip at the bottom of trainer cards
+    const q = document.createElement('canvas'); q.width = tov.width; q.height = tov.height; const x = q.getContext('2d'); x.drawImage(tov, 0, 0); const d = x.getImageData(0, 0, q.width, q.height), a = d.data;
+    for(let k = 0; k < a.length; k += 4){ const w = a[k + 1] / 255; a[k] = tc[0] + (255 - tc[0]) * w; a[k + 1] = tc[1] + (255 - tc[1]) * w; a[k + 2] = tc[2] + (255 - tc[2]) * w } x.putImageData(d, 0, 0); c.drawImage(q, 16, 18) }
+  if(fr) c.drawImage(fr, 16, 18); if(bor) c.drawImage(bor, 0, 0);
   if(pk){ const ov = await pkImg(pkSt + 'overlay-p-' + S.stage + '.png'); if(my !== PK.token) return; if(ov) c.drawImage(ov, 16, 18) }
-  else { const ov = await pkImg(pkSt + 'overlay-title-' + S.trainer + '.png'); if(my !== PK.token) return; if(ov) c.drawImage(ov, 506, 18) }
+  else if(tr){ const ov = await pkImg(pkSt + 'overlay-title-' + (tool ? 'item' : S.trainer) + '.png'); if(my !== PK.token) return; if(ov) c.drawImage(ov, 506, 18) }
   const ink = pk && S.type === 'dark' ? '#fff' : '#111', T = S.t;
   c.textBaseline = 'alphabetic'; c.fillStyle = ink;
   if(pk){
@@ -2630,10 +2649,13 @@ async function pkDraw(){
     // bottom
     c.fillStyle = ink; { const ft = nvFit(c, T.flavor, {w:364, h:68, px:15, min:8, lh:1.15, F:PKF, R:PKR}); nvDraw(c, ft, 332, 922, 'l', PKF, PKR) }
   } else {
-    c.textAlign = 'left'; const px = pkFit(c, T.name, 'PkCdnB', 40, 540); c.font = `${px}px PkCdnB`; c.fillText(T.name, 44, 118);
-    { const ft = nvFit(c, T.rules, {w:570, h:330, px:22, min:11, lh:1.22, F:PKF, R:PKR}); nvDraw(c, ft, 82, 556, 'l', PKF, PKR) }
+    c.textAlign = 'left'; const px = pkFit(c, T.name, 'PkCdnB', 40, en ? 500 : 540); c.font = `${px}px PkCdnB`; c.fillText(T.name, 44, 118);
+    if(en) await pkSym(c, S.type, 656, 24, 42);
+    if(tool){ c.save(); c.fillStyle = 'rgb(8,109,179)'; c.font = '14px PkHumBI'; c.fillText('Pokémon Tool', fa ? 44 : 58, fa ? 168 : 550); if(!fa){ const rt = 'Attach a Pokémon Tool to 1 of your Pokémon that doesn\'t already have a Pokémon Tool attached to it.'; pkFit(c, rt, 'PkHumBI', 13, 560); c.fillText(rt, 64, 586) } c.restore() }
+    { const L = en ? {x:64, y:678, w:614, h:254, px:20} : tool ? {x:82, y:606, w:570, h:222, px:22} : {x:82, y:556, w:570, h:330, px:22};
+      const ft2 = nvFit(c, T.rules, {w:L.w, h:L.h, px:L.px, min:11, lh:1.22, F:PKF, R:PKR}); nvDraw(c, ft2, L.x, L.y, 'l', PKF, PKR) }
   }
-  c.fillStyle = '#111'; c.textAlign = 'left'; pkFit(c, T.illus ? 'Illus. ' + T.illus : '', 'PkGill', 11, 270); c.fillText(T.illus ? 'Illus. ' + T.illus : '', 50, 936);
+  c.fillStyle = '#111'; c.textAlign = en ? 'right' : 'left'; pkFit(c, T.illus ? 'Illus. ' + T.illus : '', 'PkGill', 11, 270); c.fillText(T.illus ? 'Illus. ' + T.illus : '', en ? 688 : 50, en ? 986 : 936); c.textAlign = 'left';
   pkFit(c, T.copy, 'PkGill', 10, 290); c.fillText(T.copy, 46, 982);
   c.textAlign = 'right'; pkFit(c, T.num, 'PkGill', 14, 100); c.fillText(T.num, 148, 952);
   if(S.rarity){ const rx = 162, ry = 954; c.fillStyle = '#111'; c.beginPath();       // rarity mark: circle / diamond / star
@@ -2645,9 +2667,12 @@ function pkPanel(){
   const S = TP.pk, T = S.t, pk = S.kind === 'pokemon';
   const f = (k, lab, w) => `<label style="display:flex;flex-direction:column;gap:3px;font-size:12px;flex:${w || 1} 1 120px">${lab}<input type="text" data-pkt="${k}" value="${esc(T[k])}"></label>`;
   const typeSel = (id, cur, blank) => `<select data-pks="${id}">${blank ? '<option value="">(none)</option>' : ''}${pkOpt(PK_TYPES, cur)}</select>`;
-  let h = `<h3>${pk ? 'Pokémon card' : 'Trainer card'} <span class="muted" style="font-weight:400;font-size:12px">Sun &amp; Moon test</span></h3><div class="bar" style="flex-wrap:wrap;gap:8px">`;
+  let h = `<h3>${pk ? 'Pokémon card' : S.kind === 'energy' ? 'Special Energy card' : 'Trainer card'} <span class="muted" style="font-weight:400;font-size:12px">Sun &amp; Moon test</span></h3><div class="bar" style="flex-wrap:wrap;gap:8px">`;
   if(pk) h += `<label>Stage <select data-pks="stage">${pkOpt(['basic','stage 1','stage 2'], S.stage, x => x[0].toUpperCase() + x.slice(1))}</select></label><label>Type <select data-pks="type">${pkOpt(PK_TYPES, S.type)}</select></label>`;
-  else h += `<label>Kind <select data-pks="trainer">${pkOpt(['item','supporter','stadium'], S.trainer, x => x[0].toUpperCase() + x.slice(1))}</select></label>`;
+  else if(S.kind === 'energy') h += `<label>Type <select data-pks="type">${pkOpt(PK_TYPES, S.type)}</select></label>`;
+  else h += `<label>Kind <select data-pks="trainer">${pkOpt(['item','tool','supporter','stadium'], S.trainer, x => x[0].toUpperCase() + x.slice(1))}</select></label>`;
+  h += `<label>Finish <select data-pks="finish">${pkOpt(['', 'gold', 'rainbow', 'prism'], S.finish || '', x => ({'':'Standard', gold:'Gold (secret rare)', rainbow:'Rainbow (secret rare)', prism:'Prism Star'})[x])}</select></label>`
+    + `<label><input type="checkbox" data-pkb="fa" ${S.fa ? 'checked' : ''}> Full art</label>` + (pk ? `<label><input type="checkbox" data-pkb="gx" ${S.gx ? 'checked' : ''}> GX</label><label><input type="checkbox" data-pkb="ub" ${S.ub ? 'checked' : ''}> Ultra Beast</label>` : '');
   h += `</div><div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('name', 'Name', 3)}${pk ? f('hp', 'HP') : ''}${pk && S.stage !== 'basic' ? f('evo', 'Evolves from', 2) : ''}</div>`;
   if(pk){
     h += `<div class="bar" style="margin-top:8px">${f('dex', 'Pokédex line (e.g. "NO. 025  Mouse Pokémon  HT: 1\'04\"  WT: 13.2 lbs.")', 1)}</div>`;
@@ -2666,6 +2691,7 @@ function pkPanel(){
 function pkBind(){
   const S = TP.pk, c = id => $('#' + id);
   $$('[data-pkt]').forEach(el => el.oninput = () => { S.t[el.dataset.pkt] = el.value; pkDraw() });
+  $$('[data-pkb]').forEach(el => el.onchange = () => { S[el.dataset.pkb] = el.checked; if(el.dataset.pkb === 'gx' && el.checked && S.stage === undefined) S.stage = 'basic'; pkDraw() });
   $$('[data-pka]').forEach(el => el.oninput = () => { const [k, f] = el.dataset.pka.split(':'); S.atk[+k][f] = el.value; pkDraw() });
   $$('[data-pks]').forEach(el => el.onchange = () => { const k = el.dataset.pks, v = el.value;
     if(k === 'weakt') S.weak.type = v; else if(k === 'weakv') S.weak.val = v; else if(k === 'rest') S.res.type = v; else if(k === 'resv') S.res.val = v; else if(k === 'natk' || k === 'retreat') S[k] = +v; else S[k] = v;
@@ -2691,7 +2717,8 @@ function pkPresetsHTML(){
   const cap = x => x[0].toUpperCase() + x.slice(1);
   let h = `<div class="panel"><h3>Pokémon (Sun &amp; Moon test)</h3><p class="hint">Click a tile: the frame opens with every field empty. Built from your own pack; nothing of it is stored or shared.</p>`;
   ['basic','stage 1','stage 2'].forEach(s => { h += `<div style="margin:8px 0 4px"><b>${cap(s)}</b></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px">${PK_TYPES.map(t => tile('pokemon:' + s + ':' + t, cap(t), PK_COL[t])).join('')}</div>` });
-  h += `<div style="margin:12px 0 4px"><b>Trainer</b></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px">${['item','supporter','stadium'].map(t => tile('trainer:' + t, cap(t), '#8a8f98')).join('')}</div></div>`;
+  h += `<div style="margin:12px 0 4px"><b>Trainer</b></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px">${['item','tool','supporter','stadium'].map(t => tile('trainer:' + t, cap(t), '#8a8f98')).join('')}</div>
+    <div style="margin:12px 0 4px"><b>Special Energy</b></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px">${PK_TYPES.map(t => tile('energy:special:' + t, cap(t), PK_COL[t])).join('')}</div></div>`;
   return h;
 }
 
