@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 14:46",
+ "version": "2026-11-16 14:48",
  "notes": [
-  "Battle/Planechase landscape fix (n66)"
+  "Bench probe fixes (n67)"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "3fbcf035677d0fa335518fd373e84c7b0f640c5ad389324f03b06f86136bd898"
+   "sha256": "5a436efb0c5876f9ccbfb5fb996912eff34f311db304dffccd0a83c22b7e4ace"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "49cfc90481e50cd9992e090f45fc87c71e19d0fc15373aefff7e5aecc64f6e40"
+   "sha256": "3971f048b5d571a83fe4d8a9b2214b10430b17a0fc9fda5ba8a2f55d31ab30b3"
   },
   {
    "name": "fonts/OFL.txt",

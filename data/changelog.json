@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 235,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic test bench: better test cards for planes, vanguards, attractions",
+   "items": [
+    "The Planechase and Vanguard test cards were odd playtest cards that Scryfall shows in a plain white frame; they are now a real plane and a real vanguard.",
+    "The Attraction test card search no longer fails."
+   ]
+  },
+  {
    "id": 234,
    "date": "2026-11-16",
    "where": [
