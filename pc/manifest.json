@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 13:17",
+ "version": "2026-11-16 13:21",
  "notes": [
-  "magic polish"
+  "magic set symbols"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "d8aad37af8dd5cdfe212cf08934ff141f992270fded8a0b9f014f183226074c3"
+   "sha256": "6116485650d391610c64acdf891e4fc8e87e0323319d5aba9947382b8dac537e"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "3c445efd5f9575db82fc9b2bf7cd71ad47e462c7305ad8b84ac5cb640705d907"
+   "sha256": "fe54f24b0580d03b92662185eab3f077e334a65f6c5d3b851692765c28aa4038"
   },
   {
    "name": "fonts/OFL.txt",

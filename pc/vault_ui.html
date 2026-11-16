@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n52";
+const UI_BUILD = "20261116-n53";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2503,7 +2503,7 @@ function nvlApplyPk(r){
   return S;
 }
 function nvlApplyMtg(r){
-  const S = mtgNew('W'); ['name', 'cost', 'type', 'rules', 'flavor', 'pt', 'set', 'lang', 'artist', 'num', 'rarity', 'legal', 'tsize'].forEach(k => { if(r[k] != null && r[k] !== '') S[k] = nvlTxt(r[k]) });
+  const S = mtgNew('W'); ['name', 'cost', 'type', 'rules', 'flavor', 'pt', 'set', 'lang', 'artist', 'num', 'rarity', 'legal', 'tsize', 'sym'].forEach(k => { if(r[k] != null && r[k] !== '') S[k] = nvlTxt(r[k]) });
   const fl = nvlLow(r.frame); let fk = fl ? Object.keys(MTG_FR).find(k => k.toLowerCase() === fl || nvlLow(MTG_FR[k].n).startsWith(fl)) : '';
   if(!fk){ const cols = new Set(); mtgCostToks(S.cost).forEach(t => String(t).toUpperCase().replace(/[^WUBRG]/g, '').split('').forEach(x => cols.add(x))); const ty = nvlLow(S.type);
     fk = /\bland\b/.test(ty) ? 'L' : /vehicle/.test(ty) ? 'V' : cols.size > 1 ? 'M' : cols.size === 1 ? [...cols][0] : /artifact/.test(ty) ? 'A' : 'E' }
@@ -2588,6 +2588,9 @@ const MTG_FR = {W:{n:'White', f:'m15FrameW.png', p:'m15PTW.png'}, U:{n:'Blue', f
 const mtgUrl = p => '/api/template/mtg_file?p=' + enc(p) + '&t=' + enc(TOKEN);
 const mtgImg = p => (MTG.imgs[p] = MTG.imgs[p] || new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = mtgUrl(p) }));
 async function mtgInit(force){ if(MTG.on === null || force){ try{ MTG.stat = await api('/api/template/mtg_status') }catch(e){ MTG.stat = {have:false, dl:{}} } MTG.on = !!MTG.stat.have } return MTG.on }
+function mtgSets(){ if(!MTG.setsP) MTG.setsP = (async () => { try{ const r = await fetch(mtgUrl('keyrune/keyrune.css')); if(!r.ok) return null; const css = await r.text(), map = {};
+    css.split('}').forEach(b => { const m = b.match(/content:\s*"\\([0-9a-fA-F]+)"/); if(!m) return; (b.match(/\.ss-([a-z0-9_]+):before/g) || []).forEach(x => { map[x.slice(4, -7)] = m[1] }) });
+    const ff = new FontFace('NVKeyrune', `url(${mtgUrl('keyrune/keyrune.ttf')})`); await ff.load(); document.fonts.add(ff); return map }catch(e){ return null } })(); return MTG.setsP }
 function mtgFonts(){ if(!MTG.fonts) MTG.fonts = (async () => { const F = [['NVBeleren', 'fonts/beleren-b.ttf'], ['NVBelerenSC', 'fonts/beleren-bsc.ttf'], ['NVMPlantin', 'fonts/mplantin.ttf'], ['NVMPlantinI', 'fonts/mplantin-i.ttf'], ['NVGotham', 'fonts/gotham-medium.ttf']];
   await Promise.all(F.map(async ([n, p]) => { try{ const ff = new FontFace(n, `url(${mtgUrl(p)})`); await ff.load(); document.fonts.add(ff) }catch(e){} })) })(); return MTG.fonts }
 const MTGF = {BOLD:'700 @ NVMPlantin, serif', COND:'400 @ NVMPlantin, serif', ITALR:'400 @ NVMPlantinI, NVMPlantin, serif', NUM:'400 @ NVMPlantin, serif'};
@@ -2602,8 +2605,8 @@ const mtgText = t => String(t || '').replace(/\{([^}]+)\}/g, '[$1]');
 const MTGR = {
   w(k, px){ return MTG.sym[mtgKey(k)] ? px * 0.8 : px * 0.5 },
   draw(ctx, k, cx, y, px){ const im = MTG.sym[mtgKey(k)]; if(!im) return; const d = px * 0.78; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowOffsetX = -px * 0.03; ctx.shadowOffsetY = px * 0.05; ctx.drawImage(im, cx + px * 0.02, y - px * 0.74, d, d); ctx.restore() } };
-function mtgNew(frame){ return {frame:frame || 'W', name:'', cost:'', type:'', rules:'', flavor:'', pt:'', set:'', lang:'EN', artist:'', num:'', rarity:'', legal:'', tsize:'1'} }
-const MTG_EXAMPLE = {frame:'G', name:'Wirewood Savage', cost:'{2}{G}', type:'Creature — Elf', pt:'2/2', rules:'Whenever a Beast enters the battlefield, you may draw a card.', flavor:'“She is truly Wirewood’s child now.”\n—Elvish refugee', artist:'DiTerlizzi', set:'GVL', lang:'EN', num:'006/063', rarity:'C', legal:'™ & © 2014 Wizards of the Coast', tsize:'0.9'};
+function mtgNew(frame){ return {frame:frame || 'W', name:'', cost:'', type:'', rules:'', flavor:'', pt:'', set:'', lang:'EN', artist:'', num:'', rarity:'', legal:'', tsize:'1', sym:''} }
+const MTG_EXAMPLE = {frame:'G', name:'Wirewood Savage', cost:'{2}{G}', type:'Creature — Elf', pt:'2/2', rules:'Whenever a Beast enters the battlefield, you may draw a card.', flavor:'“She is truly Wirewood’s child now.”\n—Elvish refugee', artist:'DiTerlizzi', set:'GVL', lang:'EN', num:'006/063', rarity:'C', legal:'™ & © 2014 Wizards of the Coast', tsize:'0.9', sym:'ddd'};
 async function mtgDraw(){
   const cv = $('#tpcv'); if(!cv || !TP.mtg) return; const my = ++MTG.token, S = TP.mtg, fk = MTG_FR[S.frame] || MTG_FR.W;
   await mtgFonts(); const [fr, ptb] = await Promise.all([mtgImg(MTG_DIR + fk.f), S.pt ? mtgImg(MTG_DIR + fk.p) : null]); await mtgSyms([S.cost, S.rules, S.flavor]); const brush = S.artist ? await mtgImg('img/manaSymbols/artistbrush.svg') : null;
@@ -2623,7 +2626,13 @@ async function mtgDraw(){
   const mid = (y, h) => y * H + h * H / 2;
   c.textAlign = 'left'; c.textBaseline = 'middle';
   { const mw = Math.min(0.8292 * W, costLeft - 0.0854 * W - 0.012 * W); fitW(S.name, 'NVBeleren, serif', 0.0381 * H, mw); c.fillText(S.name, 0.0854 * W, mid(0.0522, 0.0543) + 0.002 * H) }
-  { fitW(S.type, 'NVBeleren, serif', 0.0324 * H, 0.8292 * W - 0.06 * W); c.fillText(S.type, 0.0854 * W, mid(0.5664, 0.0543) + 0.002 * H) }
+  const sets = await mtgSets(), code = String(S.sym || S.set || '').trim().toLowerCase(); let sg = null;
+  if(sets && sets[code]){ const g = String.fromCodePoint(parseInt(sets[code], 16)); c.save(); c.textBaseline = 'alphabetic'; c.textAlign = 'left'; c.font = '200px NVKeyrune'; const m = c.measureText(g); c.restore(), asc = m.actualBoundingBoxAscent, desc = m.actualBoundingBoxDescent, wid = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
+    if(wid > 0) { const k = Math.min(0.041 * H / (asc + desc), 0.12 * W / wid) * 200; const f = k / 200; sg = {g, size:k, w:wid * f, left:m.actualBoundingBoxLeft * f, base:0.591 * H + (asc - desc) / 2 * f} } }
+  { fitW(S.type, 'NVBeleren, serif', 0.0324 * H, sg ? 0.9213 * W - sg.w - 0.0854 * W - 0.02 * W : 0.8292 * W - 0.06 * W); c.fillText(S.type, 0.0854 * W, mid(0.5664, 0.0543) + 0.002 * H) }
+  if(sg){ const rc = {c:['#1a1718', '#474040'], u:['#5a6572', '#9e9e9e'], r:['#876a3b', '#dfbd6b'], m:['#b21f0f', '#f38300']}[String(S.rarity || 'c').trim().toLowerCase()[0]] || ['#1a1718', '#474040'], x0 = 0.9213 * W - sg.w + sg.left;
+    c.save(); c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.font = sg.size + 'px NVKeyrune'; c.lineJoin = 'round'; c.lineWidth = 0.0035 * H; c.strokeStyle = '#fff'; c.strokeText(sg.g, x0, sg.base);
+    const gr = c.createLinearGradient(x0 - sg.left, 0, x0 - sg.left + sg.w, 0); gr.addColorStop(0, rc[0]); gr.addColorStop(0.5, rc[1]); gr.addColorStop(1, rc[0]); c.fillStyle = gr; c.fillText(sg.g, x0, sg.base); c.restore(); c.textBaseline = 'middle' }
   if(S.pt){ c.textAlign = 'center'; fitW(S.pt, 'NVBelerenSC, NVBeleren, serif', 0.0372 * H, 0.1367 * W); c.fillText(S.pt, (0.7928 + 0.1367 / 2) * W, mid(0.902, 0.0372) + 0.002 * H); c.textAlign = 'left' }
   // rules + flavour, centred in the text box
   { c.textBaseline = 'alphabetic'; const bx = 0.086 * W, by = 0.6303 * H, bw = 0.828 * W, bh = 0.2875 * H, rt = mtgText(S.rules), ft = S.flavor ? '<i>' + mtgText(S.flavor) + '</i>' : '';
@@ -2644,12 +2653,12 @@ async function mtgDraw(){
 }
 function mtgPanel(){
   const S = TP.mtg, f = (k, lab, w, ph) => `<label style="display:flex;flex-direction:column;gap:3px;font-size:12px;flex:${w || 1} 1 120px">${lab}<input type="text" data-mgt="${k}" value="${esc(S[k])}" ${ph ? `placeholder="${esc(ph)}"` : ''}></label>`;
-  let h = `<h3>Magic card <span class="muted" style="font-weight:400;font-size:12px">modern frame</span></h3><div class="bar" style="flex-wrap:wrap;gap:8px"><label>Frame <select data-mgs="frame">${Object.keys(MTG_FR).map(k => `<option value="${k}" ${k === S.frame ? 'selected' : ''}>${MTG_FR[k].n}</option>`).join('')}</select></label></div>`;
+  let h = (MTG.stat && !MTG.stat.keyrune ? `<div class="bar" style="gap:8px;flex-wrap:wrap;margin-bottom:8px"><span class="hint" id="mgmsg">Set symbols are not downloaded yet (a small extra, about 0.3 MB).</span><button class="btn" id="mgget"><i class="ti ti-download"></i>Download set symbols</button></div>` : '') + `<h3>Magic card <span class="muted" style="font-weight:400;font-size:12px">modern frame</span></h3><div class="bar" style="flex-wrap:wrap;gap:8px"><label>Frame <select data-mgs="frame">${Object.keys(MTG_FR).map(k => `<option value="${k}" ${k === S.frame ? 'selected' : ''}>${MTG_FR[k].n}</option>`).join('')}</select></label></div>`;
   h += `<div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('name', 'Name', 3)}${f('cost', 'Mana cost', 2, '{2}{W}{U} or 2WU')}</div>`;
   h += `<div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('type', 'Type line', 3, 'Legendary Creature - Human Wizard')}${f('pt', 'Power / toughness', 1, '2/3')}</div>`;
   h += `<div style="margin-top:8px"><label style="font-size:12px">Rules text<textarea data-mgt="rules" rows="6" style="width:100%" placeholder="{T}: Add {G}. Write a new line for a new ability."></textarea></label></div>`;
   h += `<div style="margin-top:8px"><label style="font-size:12px">Flavour text<textarea data-mgt="flavor" rows="2" style="width:100%"></textarea></label></div>`;
-  h += `<div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('artist', 'Artist', 2)}${f('set', 'Set code')}${f('lang', 'Language')}${f('num', 'Number', 1, '045/280')}${f('rarity', 'Rarity', 1, 'R')}</div>
+  h += `<div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('artist', 'Artist', 2)}${f('set', 'Set code')}${f('lang', 'Language')}${f('num', 'Number', 1, '045/280')}${f('rarity', 'Rarity (C U R M)', 1, 'R')}${f('sym', 'Set symbol code', 1, 'like the set code')}</div>
     <div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('legal', 'Legal line (bottom right, optional)', 3)}<label style="display:flex;flex-direction:column;gap:3px;font-size:12px">Rules text size<select data-mgs="tsize">${[['1', 'Standard (Card Conjurer)'], ['0.9', 'Smaller (like printed cards)'], ['0.8', 'Small']].map(([v, t]) => `<option value="${v}" ${String(S.tsize) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>`;
   h += `<div class="bar" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button class="btn" id="mgartb"><i class="ti ti-photo-up"></i>Choose art</button><input type="file" id="mgartf" accept="image/*" hidden>
     <label>Zoom <input type="range" id="mga_zoom" min="1" max="3" step="0.02" value="${TP.art.zoom}"></label><label>Left/right <input type="range" id="mga_x" min="-100" max="100" step="1" value="${TP.art.x}"></label><label>Up/down <input type="range" id="mga_y" min="-100" max="100" step="1" value="${TP.art.y}"></label></div>`;
@@ -2664,6 +2673,7 @@ function mtgBind(){
   c('mgartf').onchange = e => { const f = e.target.files[0]; if(!f) return; const im = new Image(); im.onload = () => { nvArtSet('mtg', im, f); viewTemplate() }; im.src = URL.createObjectURL(f) };
   c('mgpng').onclick = () => c('tpcv').toBlob(b => nvSave(b, ((S.name || 'magic-card').replace(/[^\w\- ]+/g, '').trim() || 'magic-card') + '.png'), 'image/png');
   c('nvlbtn').onclick = () => nvlOpen('mtg');
+  mtgSets().then(m => { if(m && $('#mgsyml')) $('#mgsyml').innerHTML = Object.keys(m).sort().map(k => `<option value="${k}">`).join('') }); { const si = $('[data-mgt="sym"]'); if(si) si.setAttribute('list', 'mgsyml') } mtgDownloadBind();
   c('mgex').onclick = () => { TP.mtg = Object.assign(mtgNew('G'), MTG_EXAMPLE); viewTemplate() };
   c('mgback').onclick = () => { TP.view = 'presets'; TP.game = null; viewTemplate() };
 }
@@ -2673,7 +2683,7 @@ function mtgViewHTML(){
       <div class="bar" style="gap:8px"><button class="btn primary" id="mgget"><i class="ti ti-download"></i>Download the frames (about 37 MB)</button><button class="btn" id="mgback">Back</button></div><p class="hint" id="mgmsg">${d.error ? '<b style="color:#e55">' + esc(d.error) + '</b>' : ''}</p></div>` }
   return `<div class="cols2" style="grid-template-columns:minmax(300px,520px) 1fr;align-items:start">
     <div class="panel" style="position:sticky;top:12px;align-self:start"><canvas id="tpcv" style="display:block;max-width:100%;max-height:calc(100vh - 110px);width:auto;height:auto;margin:0 auto;background:#444;border-radius:8px"></canvas></div>
-    <div class="panel">${mtgPanel()}<div class="bar" style="margin-top:14px"><button class="btn primary" id="mgpng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="nvlbtn"><i class="ti ti-list-details"></i>Card list…</button><button class="btn" id="mgex" title="Fill in an example card, to see how a finished card looks"><i class="ti ti-wand"></i>Example card</button><button class="btn" id="mgback">Back to all templates</button></div>
+    <div class="panel"><datalist id="mgsyml"></datalist>${mtgPanel()}<div class="bar" style="margin-top:14px"><button class="btn primary" id="mgpng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="nvlbtn"><i class="ti ti-list-details"></i>Card list…</button><button class="btn" id="mgex" title="Fill in an example card, to see how a finished card looks"><i class="ti ti-wand"></i>Example card</button><button class="btn" id="mgback">Back to all templates</button></div>
     <p class="hint">Fan-made frames for your own proxies. Magic: The Gathering is a trademark of Wizards of the Coast; this tool is not affiliated with them.</p></div></div>`;
 }
 function mtgDownloadBind(){
@@ -2681,7 +2691,7 @@ function mtgDownloadBind(){
   b.onclick = async () => { b.disabled = true; try{ await api('/api/template/mtg_get', {}) }catch(e){ $('#mgmsg').textContent = e.message; b.disabled = false; return }
     const tick = async () => { let st; try{ st = (await api('/api/template/mtg_status')).dl }catch(e){ st = {error:e.message} }
       if(!$('#mgmsg')) return; if(st.error){ $('#mgmsg').innerHTML = '<b style="color:#e55">' + esc(st.error) + '</b>'; b.disabled = false; return }
-      if(st.finished || (!st.busy && st.done >= st.total)){ await mtgInit(true); viewTemplate(); return }
+      if(st.finished || (!st.busy && st.done >= st.total)){ await mtgInit(true); MTG.setsP = null; viewTemplate(); return }
       $('#mgmsg').textContent = 'Downloading… ' + st.done + ' of ' + st.total + ' files'; setTimeout(tick, 700) };
     tick() };
 }

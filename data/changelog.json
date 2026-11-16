@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 221,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: set symbols",
+   "items": [
+    "Set symbols from the Keyrune project (a 0.3 MB download next to the frames, with its own button if you already downloaded the frames). Type the set code in \"Set symbol code\"; the symbol is drawn in the rarity colour at the end of the type line."
+   ]
+  },
+  {
    "id": 220,
    "date": "2026-11-16",
    "where": [
