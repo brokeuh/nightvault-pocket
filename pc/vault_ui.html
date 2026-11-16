@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n59";
+const UI_BUILD = "20261116-n60";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2834,12 +2834,17 @@ function mtgCompareModal(c, S, r){
   $('#mcA').appendChild(r.ours); $('#mcB').appendChild(r.real); $('#mcC').appendChild(r.diff) }
 async function mtgBench(){
   const rows = []; let stop = false;
-  modal(`<h3>Test bench</h3><p class="hint" id="mbst">Starting…</p><div class="bar" style="gap:8px"><button class="btn" id="mbstop">Stop</button><button class="btn" id="mbcopy">Copy report</button><button class="btn" onclick="closeModal()">Close</button></div><div id="mbrows" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-top:10px;max-height:60vh;overflow:auto"></div>`);
+  modal(`<h3>Test bench</h3><p class="hint" id="mbst">Starting…</p><div class="bar" style="gap:8px"><button class="btn" id="mbstop">Stop</button><button class="btn" id="mbcopy">Copy report</button><button class="btn primary" id="mbsave">Save report (zip)</button><button class="btn" onclick="closeModal()">Close</button></div><div id="mbrows" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-top:10px;max-height:60vh;overflow:auto"></div>`);
   $('#mbstop').onclick = () => { stop = true }; $('#mbcopy').onclick = () => { const t = rows.map(r => `${r.score == null ? '--' : r.score + '%'}\t${r.label}\t${r.name}\t${r.style || 'modern'}${r.err ? '\t' + r.err : ''}`).join('\n'); try{ navigator.clipboard.writeText(t) }catch(e){} $('#mbst').textContent = 'Report copied.' };
+  $('#mbsave').onclick = async () => { $('#mbst').textContent = 'Packing the report…'; const files = [], enc8 = new TextEncoder(), sorted = rows.filter(r => r.r).sort((a, b) => a.score - b.score);
+    files.push({name:'report.tsv', data:enc8.encode('score\tprobe\tcard\tstyle\terror\n' + rows.map(r => `${r.score == null ? '' : r.score}\t${r.label}\t${r.name || ''}\t${r.style || ''}\t${r.err || ''}`).join('\n') + '\n')});
+    for(let i = 0; i < Math.min(40, sorted.length); i++){ const r = sorted[i], cv = document.createElement('canvas'); cv.width = 252 * 3; cv.height = 352; const c = cv.getContext('2d'); [r.r.ours, r.r.real, r.r.diff].forEach((x, k) => c.drawImage(x, k * 252, 0));
+      const b = await new Promise(res => cv.toBlob(res, 'image/png')); files.push({name:String(i + 1).padStart(2, '0') + '-' + r.score + 'pct-' + r.label.replace(/[^\w]+/g, '_') + '.png', data:new Uint8Array(await b.arrayBuffer())}) }
+    nvSave(nvZip(files), 'magic-bench-report.zip'); $('#mbst').textContent = 'Saved magic-bench-report.zip (report + the 40 worst cards: ours | real | difference). Drop it in the chat.' };
   const keep = TP.mtg, keepArt = TP.art;
   for(let i = 0; i < MTG_PROBES.length && !stop; i++){ const [label, q] = MTG_PROBES[i], row = {label}; rows.push(row); if(!$('#mbst')) break; $('#mbst').textContent = `${i + 1} of ${MTG_PROBES.length}: ${label}…`;
     try{ const c = await api('/api/template/mtg_scry?t=' + enc(TOKEN) + '&q=' + enc(q)); row.name = c.name; const S = await mtgFromScry(c, st => { if($('#mbst')) $('#mbst').textContent = `${i + 1} of ${MTG_PROBES.length}: ${label} – downloading style ${st.done}/${st.total}` }); row.style = S.style || 'modern' + (S.styleFail ? ' (failed: ' + S.styleFail + ')' : '');
-      const r = await mtgCompareCard(c, S); if(r){ row.score = r.score } else row.err = 'no picture' ; if(r && $('#mbrows')){ const d = document.createElement('div'); d.style.cssText = 'border:1px solid #333;border-radius:8px;padding:6px;font-size:12px';
+      const r = await mtgCompareCard(c, S); if(r){ row.score = r.score; row.r = r } else row.err = 'no picture' ; if(r && $('#mbrows')){ const d = document.createElement('div'); d.style.cssText = 'border:1px solid #333;border-radius:8px;padding:6px;font-size:12px';
         d.innerHTML = `<b>${r.score}%</b> ${esc(label)}<br><span class="hint">${esc(c.name)} · ${esc(row.style)}</span><div style="display:flex;gap:4px;margin-top:4px"></div>`; const f = d.lastChild; [r.ours, r.real].forEach(x => { x.style.width = '50%'; x.style.height = 'auto'; f.appendChild(x) }); $('#mbrows').appendChild(d) }
     }catch(e){ row.err = e.message; if($('#mbrows')){ const d = document.createElement('div'); d.style.cssText = 'border:1px solid #533;border-radius:8px;padding:6px;font-size:12px'; d.innerHTML = `<b>—</b> ${esc(label)}<br><span class="hint">${esc(e.message)}</span>`; $('#mbrows').appendChild(d) } } }
   TP.mtg = keep; TP.art = keepArt; if($('#mbst')){ const ok = rows.filter(r => r.score != null); $('#mbst').textContent = `Done: ${ok.length} of ${rows.length} compared, average match ${ok.length ? Math.round(ok.reduce((a, r) => a + r.score, 0) / ok.length) : 0}%.` } mtgDraw() }

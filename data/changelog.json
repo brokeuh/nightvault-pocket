@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 228,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic test bench: save the report as one zip",
+   "items": [
+    "\"Save report (zip)\" in the test bench: a report with every score and style, plus the 40 worst cards as pictures (ours | real | difference), ready to drop into the chat."
+   ]
+  },
+  {
    "id": 227,
    "date": "2026-11-16",
    "where": [
