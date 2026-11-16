@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 13:02",
+ "version": "2026-11-16 13:17",
  "notes": [
-  "magic card maker"
+  "magic polish"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "16c800d364b099440286c16dc529dba0bc9e730d40c006752478e6ef82ee0ec1"
+   "sha256": "d8aad37af8dd5cdfe212cf08934ff141f992270fded8a0b9f014f183226074c3"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "266353ef3173ea6a7ea52dcd5df2e8126072a6248f79dbc81181e158296dfb7c"
+   "sha256": "3c445efd5f9575db82fc9b2bf7cd71ad47e462c7305ad8b84ac5cb640705d907"
   },
   {
    "name": "fonts/OFL.txt",

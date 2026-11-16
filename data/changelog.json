@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 220,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: mana symbols lined up, artist icon, legal line, example card",
+   "items": [
+    "The mana cost is now the same size and height as in Card Conjurer, centred in the title bar.",
+    "New: brush icon before the artist, an optional legal line at the bottom right, a rules text size choice (Standard or Smaller, like printed cards) and an \"Example card\" button."
+   ]
+  },
+  {
    "id": 219,
    "date": "2026-11-16",
    "where": [
