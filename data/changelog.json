@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 224,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: Class levels laid out properly",
+   "items": [
+    "Class (D&D) cards: the levels now share the card height in order (level 1, 2, 3, 4) instead of piling up at the top, and unused levels are left out.",
+    "Mana symbols typed in small one-line fields such as a level cost now show as symbols.",
+    "Planeswalker / saga boxes that had no position are no longer drawn in the wrong place."
+   ]
+  },
+  {
    "id": 223,
    "date": "2026-11-16",
    "where": [

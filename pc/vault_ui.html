@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n55";
+const UI_BUILD = "20261116-n56";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2671,7 +2671,11 @@ const mtgBox = (o, W, H) => ({x:(o.x || 0) * W, y:(o.y || 0) * H, w:(o.width || 
 async function mtgStyleDraw(cv, my, S){
   const inf = await mtgStyleInfo(S.style), c = cv.getContext('2d');
   if(!inf || inf.bad){ cv.width = 600; cv.height = 840; c.fillStyle = '#555'; c.fillRect(0, 0, 600, 840); c.fillStyle = '#fff'; c.font = '26px sans-serif'; c.textAlign = 'center'; c.fillText(inf ? 'This style could not be read.' : 'Download this style first.', 300, 420); return }
-  const cd = inf.card, W = cd.width || 2010, H = cd.height || 2814, fr = inf.main[Math.min(S.sframe | 0, inf.main.length - 1)], T = inf.text;
+  const cd = inf.card, W = cd.width || 2010, H = cd.height || 2814, fr = inf.main[Math.min(S.sframe | 0, inf.main.length - 1)], T = JSON.parse(JSON.stringify(inf.text));
+  if(T.level0c){ const ex = S.ex || {}, used = [0, 1, 2, 3].filter(i => i === 0 || ['a', 'b', 'c'].some(l => ex['level' + i + l])), top = inf.text.level0c.y, bottom = 0.8368, hh = (bottom - top) / used.length;   // Class: the script shares the card height between the levels in use
+    [0, 1, 2, 3].forEach(i => { const k = used.indexOf(i), a = T['level' + i + 'a'], b = T['level' + i + 'b'], c = T['level' + i + 'c']; if(k < 0){ [a, b, c].forEach(o => { if(o) o.y = 2 }); return }
+      const y0 = top + k * hh; if(k === 0){ c.y = y0; c.height = hh } else { if(a) a.y = y0; if(b) b.y = y0; c.y = y0 + 0.0361; c.height = hh - 0.0361 } }) }
+  Object.keys(T).forEach(k => { if(/^(level|ability)/.test(k) && !(T[k].y > 0 && T[k].y < 1)) delete T[k] });
   await mtgFonts(); const img = await mtgImg(fr.src.replace(/^\//, '')); if(my !== MTG.token) return;
   const ext = S.pt ? (() => { const w1 = (fr.name || '').split(' ')[0].toLowerCase(), l = inf.frames.filter(f => f.bounds && /power|toughness|\bpt\b/i.test(f.name || '')); return l.find(f => (f.name || '').toLowerCase().startsWith(w1)) || l[0] })() : null;
   const extImg = ext ? await mtgImg(ext.src.replace(/^\//, '')) : null; const fams = {}; for(const k of Object.keys(T)) fams[k] = await mtgFam(T[k].font);
@@ -2697,7 +2701,9 @@ async function mtgStyleDraw(cv, my, S){
       fl.forEach(l => { put(l); y += px * lhk }); c.textBaseline = 'middle'; c.textAlign = 'left'; continue }
     let t = k === 'title' || k === 'type' || k === 'pt' ? val[k] : (S.ex || {})[k]; if(!t) continue; if(o.allCaps) t = String(t).toUpperCase();
     const px = (o.size || 0.03) * H, my2 = B.y + B.h / 2 + 0.002 * H;
-    if(o.oneLine || B.h < px * 1.8){ fitW(t, fam, px, B.w); shadowed(o, () => c.fillText(t, ax, my2)) }
+    if((o.oneLine || B.h < px * 1.8) && /\{[^}]+\}/.test(t)){ const Fm = {BOLD:'700 @ ' + fam, COND:'400 @ ' + fam, ITALR:'400 @ ' + fam}; let p2 = px, l1; c.textBaseline = 'alphabetic'; for(;;){ l1 = wowRich(c, mtgText(t), 1e6, p2, Fm, MTGR)[0]; if(!l1 || l1.w <= B.w || p2 <= 10) break; p2 -= 1 }
+      if(l1){ c.fillStyle = col(o); const x1 = al === 'right' ? B.x + B.w - l1.w : al === 'center' ? B.x + B.w / 2 - l1.w / 2 : B.x; wowRichDraw(c, l1, x1, B.y + B.h / 2 + p2 * 0.33, p2, Fm, 'l', MTGR) } c.textBaseline = 'middle' }
+    else if(o.oneLine || B.h < px * 1.8){ fitW(t, fam, px, B.w); shadowed(o, () => c.fillText(t, ax, my2)) }
     else { c.textBaseline = 'alphabetic'; let p2 = px, ls; const Fm = {BOLD:'700 @ ' + fam, COND:'400 @ ' + fam, ITALR:'400 @ ' + fam}; for(;;){ ls = wowRich(c, mtgText(t), B.w, p2, Fm, MTGR); if(ls.length * p2 * 1.18 <= B.h || p2 <= 14) break; p2 -= 2 }
       let y = B.y + (B.h - ls.length * p2 * 1.18) / 2 + p2 * 0.9; c.fillStyle = col(o); ls.forEach(l => { wowRichDraw(c, l, al === 'center' ? B.x + B.w / 2 : B.x, y, p2, Fm, al === 'center' ? 'c' : 'l', MTGR); y += p2 * 1.18 }); c.textBaseline = 'middle' }
     c.textAlign = 'left' }

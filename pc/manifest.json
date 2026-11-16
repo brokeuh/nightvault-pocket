@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 13:50",
+ "version": "2026-11-16 13:54",
  "notes": [
-  "Magic: swap style keeps card"
+  "Magic: class levels"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "60058e9edfb79cf8d6690eaadf7eae12472fc35be24a681250997e550f184c09"
+   "sha256": "73d54a414f539e46825ececa612c57828db16eed19ea4fed2a01a0dc55b7bac5"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "be7ee7e53b928ac4bf88d57d502121c44dfca017cdb0fdafb1f6dde4396b3957"
+   "sha256": "c84a15cb3821f8130874b0b13f69a524ad2b201e59de808c05726ec150d0831e"
   },
   {
    "name": "fonts/OFL.txt",
