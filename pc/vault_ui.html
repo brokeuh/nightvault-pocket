@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n54";
+const UI_BUILD = "20261116-n55";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2772,7 +2772,9 @@ function mtgPanel(){
 function mtgBind(){
   const S = TP.mtg, c = id => $('#' + id);
   $$('[data-mgt]').forEach(el => { el.value = S[el.dataset.mgt]; el.oninput = () => { S[el.dataset.mgt] = el.value; mtgDraw() } });
-  $$('[data-mgs]').forEach(el => el.onchange = () => { S[el.dataset.mgs] = el.value; if(el.dataset.mgs === 'style'){ S.sframe = 0; S.ex = {}; viewTemplate() } else mtgDraw() }); mtgStyleBind();
+  $$('[data-mgs]').forEach(el => { el._old = S.style; el.onchange = async () => { S[el.dataset.mgs] = el.value; if(el.dataset.mgs === 'style'){ const oi = MTGS.info[el._old !== undefined ? el._old : ''], word = oi && oi.main && oi.main[S.sframe | 0] ? String(oi.main[S.sframe | 0].name || '').split(' ')[0].toLowerCase() : (MTG_FR[S.frame] ? MTG_FR[S.frame].n.split(' ')[0].toLowerCase() : '');
+      const ni = el.value ? await mtgStyleInfo(el.value) : null, idx = ni && ni.main ? ni.main.findIndex(f => word && String(f.name || '').toLowerCase().startsWith(word)) : -1; S.sframe = idx > 0 ? idx : 0;
+      if(ni && ni.text) Object.keys(S.ex || {}).forEach(k => { if(!(k in ni.text)) delete S.ex[k] }); else S.ex = {}; viewTemplate() } else mtgDraw() } }); mtgStyleBind();
   const ar = (id, key) => { if(c(id)) c(id).oninput = () => { TP.art[key] = +c(id).value; nvCropSave('mtg'); mtgDraw() } }; ar('mga_zoom', 'zoom'); ar('mga_x', 'x'); ar('mga_y', 'y');
   c('mgartb').onclick = () => c('mgartf').click();
   c('mgartf').onchange = e => { const f = e.target.files[0]; if(!f) return; const im = new Image(); im.onload = () => { nvArtSet('mtg', im, f); viewTemplate() }; im.src = URL.createObjectURL(f) };

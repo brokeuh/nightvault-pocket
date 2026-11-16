@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 223,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: swap frame style, keep your card",
+   "items": [
+    "Switching to another frame style keeps all your text, set info and art, picks the same colour in the new style when it has one, and keeps extra fields (abilities, loyalty…) that the new style also has."
+   ]
+  },
+  {
    "id": 222,
    "date": "2026-11-16",
    "where": [

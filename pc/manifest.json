@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 13:34",
+ "version": "2026-11-16 13:50",
  "notes": [
-  "Magic: all Card Conjurer frame styles"
+  "Magic: swap style keeps card"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "294a496d7fa05749815ce8570cc5bf613cde50c87ad4d153664697292ecce0e2"
+   "sha256": "60058e9edfb79cf8d6690eaadf7eae12472fc35be24a681250997e550f184c09"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "545ae4139f03c4cbce1cc3b0d449ce4b75b75d3b87faac0737548ddb567348b0"
+   "sha256": "be7ee7e53b928ac4bf88d57d502121c44dfca017cdb0fdafb1f6dde4396b3957"
   },
   {
    "name": "fonts/OFL.txt",
