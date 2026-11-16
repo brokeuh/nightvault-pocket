@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 12:20",
+ "version": "2026-11-16 13:02",
  "notes": [
-  "pokemon variants"
+  "magic card maker"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "868f2810f2c271d9014b74fe4da5c11eb9f71cb7834752b96efd7bf232181d11"
+   "sha256": "16c800d364b099440286c16dc529dba0bc9e730d40c006752478e6ef82ee0ec1"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "9559b6ee383c59156760cc289b185e4f869b45f76b250194122e417010266c51"
+   "sha256": "266353ef3173ea6a7ea52dcd5df2e8126072a6248f79dbc81181e158296dfb7c"
   },
   {
    "name": "fonts/OFL.txt",

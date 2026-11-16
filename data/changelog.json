@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 219,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker (modern frame)",
+   "items": [
+    "New game tile \"Magic: The Gathering\" in Card templates. The first time, one button downloads the modern frame set (about 37 MB: frames, mana symbols, fonts) from the Card Conjurer project into your own templates folder. Nothing of it is added to Nightvault itself.",
+    "Name, mana cost, type line, rules and flavour text, power/toughness, art with zoom, set line and save as PNG. The symbol palette types {W}, {U}, {T} and so on for you.",
+    "Card list and batch making work here too; the frame colour is picked from the cost and type when you leave it empty.",
+    "Restart Nightvault after updating (the download needs the new server part)."
+   ]
+  },
+  {
    "id": 218,
    "date": "2026-11-16",
    "where": [

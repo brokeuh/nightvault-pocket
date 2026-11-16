@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n50";
+const UI_BUILD = "20261116-n51";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2412,15 +2412,18 @@ const PKR = {       // energy symbols inside text: [R] [W] [C] ... or [fire] [wa
   draw(ctx, k, cx, y, px){ const t = PKR.key(k), im = t && PK.sym[t]; if(im) ctx.drawImage(im, cx, y - px * 0.95, px * 1.1, px * 1.1) } };
 /* Symbol palette under every text box that understands symbols (WoW rules, Pokemon attack/rules text):
    click a symbol and it is typed at the cursor; Bold / Italic wrap the selected words. The preview redraws through the field's own input handler. */
-const NVPAL_SEL = 'textarea[data-wt="rules"],textarea[data-mt="rules"],textarea[data-pkt="rules"],textarea[data-pka$=":text"]';
+const NVPAL_SEL = 'textarea[data-mgt="rules"],input[data-mgt="cost"],textarea[data-wt="rules"],textarea[data-mt="rules"],textarea[data-pkt="rules"],textarea[data-pka$=":text"]';
 function nvPalHTML(ta){
-  const pk = ta.hasAttribute('data-pkt') || ta.hasAttribute('data-pka'); let b = '';
+  const pk = ta.hasAttribute('data-pkt') || ta.hasAttribute('data-pka'), mg = ta.hasAttribute('data-mgt'); let b = '';
   const btn = (tok, img, tip, lbl) => `<button type="button" class="nvsymb" data-tok="${esc(tok)}" title="${esc(tip)}" style="display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 5px;margin:2px;border:1px solid var(--line,#444);border-radius:6px;background:var(--panel2,#222);color:inherit;cursor:pointer;font-size:12px">${img ? `<img src="${img}" style="height:18px;width:18px;object-fit:contain">` : esc(lbl || tok)}</button>`;
-  if(pk){ if(PK.fontsOn || (typeof TP !== 'undefined' && TP.pk)) PK_TYPES.forEach(t => { const c = Object.keys(PK_CODE).find(k => PK_CODE[k] === t); b += btn('[' + c + ']', pkUrl(pkEn + t + '.png'), t + '  ->  [' + c + ']') }) }
+  if(mg){ const T = ['W', 'U', 'B', 'R', 'G', 'C', 'X', 'S', 'T', 'Q', 'E', '0', '1', '2', '3', '4', '5', '6', 'W/U', 'U/B', 'B/R', 'R/G', 'G/W', 'W/B', 'U/R', 'B/G', 'R/W', 'G/U', 'W/P', 'U/P', 'B/P', 'R/P', 'G/P', '2/W', '2/U', '2/B', '2/R', '2/G'];
+    (ta.tagName === 'INPUT' ? T.filter(x => !'TQE'.includes(x)) : T).forEach(k => { b += btn('{' + k + '}', MTG.on ? mtgUrl('img/manaSymbols/' + (mtgKey(k) === 'q' ? 'untap' : mtgKey(k)) + '.svg') : '', '{' + k + '}', k) }) }
+  else if(pk){ if(PK.fontsOn || (typeof TP !== 'undefined' && TP.pk)) PK_TYPES.forEach(t => { const c = Object.keys(PK_CODE).find(k => PK_CODE[k] === t); b += btn('[' + c + ']', pkUrl(pkEn + t + '.png'), t + '  ->  [' + c + ']') }) }
   else {
     if(WM.on) WM_ICONS.filter(n => !/^Numeric|Invert$/.test(n)).forEach(n => { b += btn('[' + n + ']', wmUrl('Template/Text Box Icons/' + n + '.png'), n + '  ->  [' + n + ']') });
     b += btn('[3]', '', 'Number icon: [3] (change the number)', '(3)') + btn('[!3]', '', 'Dark number icon: [!3]', '(!3)');
   }
+  if(ta.tagName === 'INPUT') return `<div class="nvpal" style="display:flex;flex-wrap:wrap;align-items:center;margin:3px 0 6px"><span style="font-size:11px;opacity:.65;margin-right:4px">Click to type:</span>${b}</div>`;
   const sty = 'min-width:26px;height:26px;margin:2px;border:1px solid var(--line,#444);border-radius:6px;background:var(--panel2,#222);color:inherit;cursor:pointer';
   b += `<button type="button" data-wrap="b" title="Bold: select words first, then click" style="font-weight:700;${sty}">B</button><button type="button" data-wrap="i" title="Italic: select words first, then click" style="font-style:italic;${sty}">I</button>`;
   return `<div class="nvpal" style="display:flex;flex-wrap:wrap;align-items:center;margin:3px 0 6px"><span style="font-size:11px;opacity:.65;margin-right:4px">Click to type:</span>${b}</div>`;
@@ -2435,8 +2438,8 @@ function nvPalInsert(ta, tok, wrap){
   let timer = 0;
   const scan = () => { timer = 0; document.querySelectorAll(NVPAL_SEL).forEach(ta => {
     if(!ta.parentElement.classList.contains('nvwrap')){ const w = document.createElement('div'); w.className = 'nvwrap'; w.style.cssText = 'min-width:0;width:100%;flex:1 1 auto'; ta.parentElement.insertBefore(w, ta); w.appendChild(ta); ta.style.width = '100%'; ta.style.boxSizing = 'border-box' }
-    const nx = ta.nextElementSibling; if(nx && nx.classList.contains('nvpal') && nx.dataset.pk === String(!!(typeof WM !== 'undefined' && WM.on)) + (PK.fontsOn ? 'p' : '')) return; if(nx && nx.classList.contains('nvpal')) nx.remove();
-    ta.insertAdjacentHTML('afterend', nvPalHTML(ta)); const pal = ta.nextElementSibling; pal.dataset.pk = String(!!WM.on) + (PK.fontsOn ? 'p' : '');
+    const nx = ta.nextElementSibling; if(nx && nx.classList.contains('nvpal') && nx.dataset.pk === String(!!(typeof WM !== 'undefined' && WM.on)) + (PK.fontsOn ? 'p' : '') + (MTG.on ? 'm' : '')) return; if(nx && nx.classList.contains('nvpal')) nx.remove();
+    ta.insertAdjacentHTML('afterend', nvPalHTML(ta)); const pal = ta.nextElementSibling; pal.dataset.pk = String(!!WM.on) + (PK.fontsOn ? 'p' : '') + (MTG.on ? 'm' : '');
     pal.addEventListener('mousedown', e => { if(e.target.closest('button')) e.preventDefault() });
     pal.addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; if(b.dataset.wrap) nvPalInsert(ta, '', b.dataset.wrap); else nvPalInsert(ta, b.dataset.tok) }) }) };
   new MutationObserver(() => { if(!timer) timer = setTimeout(scan, 60) }).observe(document.documentElement, {childList:true, subtree:true});
@@ -2446,12 +2449,14 @@ function nvPalInsert(ta, tok, wrap){
    "Make all" turns the whole list into PNGs in one zip. Art pictures are matched on the "art" column (or the card name). */
 const NVL = {rows:{}, art:{}};
 const NVL_COLS = {
+  mtg:'frame, name, cost, type, pt, rules, flavor, artist, set, lang, num, rarity, art',
   wmc:'type, faction, class, name, cost, subtypes, tags, rules, flavor, damage, health, artist, copy, setname, setnum, setmax, extended, gold, rarity, art',
   pk:'stage, type, name, hp, evo, dex, a1cost, a1name, a1dmg, a1text, a2cost, a2name, a2dmg, a2text, a3cost, a3name, a3dmg, a3text, weakness, resistance, retreat, flavor, illus, copy, num, rarity, finish, gx, ub, fa, rules, art'};
 const NVL_EX = {
+  mtg:'U\tExample Mage\t{1}{U}\tCreature - Human Wizard\t1/2\t{T}: Draw a card, then discard a card.\tShort flavour text\tYour name\tMYS\tEN\t045/280\tR\texample.png',
   wmc:'Ally\tAlliance\t\tExample Footman\t3\tHuman Warrior\t\t[Armor] Protector\tFor the Alliance!\t3\t4\tYour name\t\tMYSET\t001\t100\tno\tno\tCommon\texample.png',
   pk:'Stage 1\tfire\tExample\t90\tCharmander\tNO. 005 Flame Pokémon\tRC\tSlash\t30\t\tRRC\tFlamethrower\t90\tDiscard a [R] Energy.\t\t\t\t\tfighting ×2\t\t1\tShort flavour text\tYour name\tFan made\t005/100\tcommon\t\t\t\t\t\texample.png'};
-const NVL_ALIAS = {text:'rules', effect:'rules', description:'rules', 'rules text':'rules', copyright:'copy', 'copyright line':'copy', illustrator:'illus', image:'art', picture:'art', file:'art', filename:'art', 'extended art':'extended', ea:'extended', classes:'class', 'set name':'setname', set:'setname', 'set number':'setnum', 'set total':'setmax', 'card name':'name', title:'name', subtype:'subtypes', tag:'tags', dmg:'damage', life:'health', flavour:'flavor', 'flavour text':'flavor', 'flavor text':'flavor', 'evolves from':'evo', pokedex:'dex', 'dex line':'dex', 'card number':'num', energy:'type', 'attack 1 cost':'a1cost', 'attack 1 name':'a1name', 'attack 1 damage':'a1dmg', 'attack 1 text':'a1text', 'attack 2 cost':'a2cost', 'attack 2 name':'a2name', 'attack 2 damage':'a2dmg', 'attack 2 text':'a2text', 'attack 3 cost':'a3cost', 'attack 3 name':'a3name', 'attack 3 damage':'a3dmg', 'attack 3 text':'a3text', a1damage:'a1dmg', a2damage:'a2dmg', a3damage:'a3dmg'};
+const NVL_ALIAS = {'mana cost':'cost', mana:'cost', 'type line':'type', typeline:'type', 'power/toughness':'pt', 'p/t':'pt', power_toughness:'pt', colour:'frame', color:'frame', 'set code':'set', language:'lang', 'collector number':'num', number:'num', text:'rules', effect:'rules', description:'rules', 'rules text':'rules', copyright:'copy', 'copyright line':'copy', illustrator:'illus', image:'art', picture:'art', file:'art', filename:'art', 'extended art':'extended', ea:'extended', classes:'class', 'set name':'setname', set:'setname', 'set number':'setnum', 'set total':'setmax', 'card name':'name', title:'name', subtype:'subtypes', tag:'tags', dmg:'damage', life:'health', flavour:'flavor', 'flavour text':'flavor', 'flavor text':'flavor', 'evolves from':'evo', pokedex:'dex', 'dex line':'dex', 'card number':'num', energy:'type', 'attack 1 cost':'a1cost', 'attack 1 name':'a1name', 'attack 1 damage':'a1dmg', 'attack 1 text':'a1text', 'attack 2 cost':'a2cost', 'attack 2 name':'a2name', 'attack 2 damage':'a2dmg', 'attack 2 text':'a2text', 'attack 3 cost':'a3cost', 'attack 3 name':'a3name', 'attack 3 damage':'a3dmg', 'attack 3 text':'a3text', a1damage:'a1dmg', a2damage:'a2dmg', a3damage:'a3dmg'};
 const nvlKey = k => { k = String(k).trim().toLowerCase(); return NVL_ALIAS[k] || k };
 function nvParseTable(txt){
   txt = String(txt || '').replace(/^﻿/, ''); const t = txt.trim(); if(!t) return [];
@@ -2497,7 +2502,15 @@ function nvlApplyPk(r){
   S.gx = !trainer && !energy && nvlYes(r.gx); S.ub = !trainer && !energy && nvlYes(r.ub); S.fa = nvlYes(r.fa) || nvlYes(r['full art']);
   return S;
 }
+function nvlApplyMtg(r){
+  const S = mtgNew('W'); ['name', 'cost', 'type', 'rules', 'flavor', 'pt', 'set', 'lang', 'artist', 'num', 'rarity'].forEach(k => { if(r[k] != null && r[k] !== '') S[k] = nvlTxt(r[k]) });
+  const fl = nvlLow(r.frame); let fk = fl ? Object.keys(MTG_FR).find(k => k.toLowerCase() === fl || nvlLow(MTG_FR[k].n).startsWith(fl)) : '';
+  if(!fk){ const cols = new Set(); mtgCostToks(S.cost).forEach(t => String(t).toUpperCase().replace(/[^WUBRG]/g, '').split('').forEach(x => cols.add(x))); const ty = nvlLow(S.type);
+    fk = /\bland\b/.test(ty) ? 'L' : /vehicle/.test(ty) ? 'V' : cols.size > 1 ? 'M' : cols.size === 1 ? [...cols][0] : /artifact/.test(ty) ? 'A' : 'E' }
+  S.frame = fk; return S;
+}
 const NVG = {
+  mtg:{label:'Magic card', apply:nvlApplyMtg, get:() => TP.mtg, set:S => { TP.mtg = S }, draw:() => mtgDraw(), name:S => S.name, shape:() => 'm15'},
   wmc:{label:'WoW card', apply:nvlApplyWmc, get:() => TP.wmc, set:S => { TP.wmc = S }, draw:() => wmcDraw(), name:S => S.name, shape:() => TP.wmc ? TP.wmc.type + (TP.wmc.ea ? '-ea' : '') : ''},
   pk:{label:'Pokémon card', apply:nvlApplyPk, get:() => TP.pk, set:S => { TP.pk = S }, draw:() => pkDraw(), name:S => S.t.name, shape:() => TP.pk ? TP.pk.kind + (TP.pk.kind === 'trainer' ? TP.pk.trainer : '') : ''}};
 /* saved art crop: remembers zoom / position per picture (and card shape) in this browser */
@@ -2536,7 +2549,7 @@ async function nvlMakeAll(game, say){
     await g.draw(); const b = await new Promise(res => $('#tpcv').toBlob(res, 'image/png'));
     files.push({name:String(i + 1).padStart(3, '0') + '-' + ((g.name(S) || 'card').replace(/[^\w\- ]+/g, '').trim() || 'card') + '.png', data:new Uint8Array(await b.arrayBuffer())}) }
   g.set(keepS); TP.art = keepA; await g.draw();
-  if(files.length) nvSave(nvZip(files), game === 'pk' ? 'pokemon-cards.zip' : 'wow-cards.zip');
+  if(files.length) nvSave(nvZip(files), {pk:'pokemon-cards.zip', mtg:'magic-cards.zip'}[game] || 'wow-cards.zip');
   say(files.length + ' cards saved in one zip.');
 }
 function nvlOpen(game){
@@ -2564,6 +2577,106 @@ function nvlOpen(game){
   $m('nvlclr').onclick = () => { NVL.rows[game] = []; nvlStore(game); show() };
   $m('nvlall').onclick = async () => { if(!NVL.rows[game].length){ say('Load a list first.'); return } $m('nvlall').disabled = true; try{ await nvlMakeAll(game, say) }catch(e){ say('Stopped: ' + e.message) } $m('nvlall').disabled = false };
   show();
+}
+/* ---------------------------------------------------------------- Magic card maker (modern frame set)
+   Frames, mana symbols and fonts are downloaded by the owner's own PC from the Card Conjurer repository into templates/magic (about 37 MB).
+   Positions are the ones of Card Conjurer's "M15 regular" frame (fractions of the card), so the result matches it. Nothing of this is stored in the Nightvault repos. */
+const MTG = {on:null, stat:null, imgs:{}, fonts:null, sym:{}, token:0, poll:0};
+const MTG_DIR = 'img/frames/m15/regular/';
+const MTG_FR = {W:{n:'White', f:'m15FrameW.png', p:'m15PTW.png'}, U:{n:'Blue', f:'m15FrameU.png', p:'m15PTU.png'}, B:{n:'Black', f:'m15FrameB.png', p:'m15PTB.png'}, R:{n:'Red', f:'m15FrameR.png', p:'m15PTR.png'}, G:{n:'Green', f:'m15FrameG.png', p:'m15PTG.png'},
+  M:{n:'Multicolored (gold)', f:'m15FrameM.png', p:'m15PTM.png'}, A:{n:'Artifact', f:'m15FrameA.png', p:'m15PTA.png'}, L:{n:'Land', f:'m15FrameL.png', p:'m15PTC.png'}, E:{n:'Eldrazi (colourless)', f:'eldrazi.png', p:'m15PTC.png'}, V:{n:'Vehicle', f:'m15FrameV.png', p:'m15PTV.png'}};
+const mtgUrl = p => '/api/template/mtg_file?p=' + enc(p) + '&t=' + enc(TOKEN);
+const mtgImg = p => (MTG.imgs[p] = MTG.imgs[p] || new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = mtgUrl(p) }));
+async function mtgInit(force){ if(MTG.on === null || force){ try{ MTG.stat = await api('/api/template/mtg_status') }catch(e){ MTG.stat = {have:false, dl:{}} } MTG.on = !!MTG.stat.have } return MTG.on }
+function mtgFonts(){ if(!MTG.fonts) MTG.fonts = (async () => { const F = [['NVBeleren', 'fonts/beleren-b.ttf'], ['NVBelerenSC', 'fonts/beleren-bsc.ttf'], ['NVMPlantin', 'fonts/mplantin.ttf'], ['NVMPlantinI', 'fonts/mplantin-i.ttf'], ['NVGotham', 'fonts/gotham-medium.ttf']];
+  await Promise.all(F.map(async ([n, p]) => { try{ const ff = new FontFace(n, `url(${mtgUrl(p)})`); await ff.load(); document.fonts.add(ff) }catch(e){} })) })(); return MTG.fonts }
+const MTGF = {BOLD:'700 @ NVMPlantin, serif', COND:'400 @ NVMPlantin, serif', ITALR:'400 @ NVMPlantinI, NVMPlantin, serif', NUM:'400 @ NVMPlantin, serif'};
+const mtgKey = k => String(k).trim().toLowerCase().replace(/\//g, '').replace(/^tap$/, 't').replace(/^untap$/, 'q');
+async function mtgSymLoad(k){ const key = mtgKey(k); if(key in MTG.sym) return MTG.sym[key];
+  const file = {q:'untap'}[key] || key; let im = await mtgImg('img/manaSymbols/' + file + '.svg'); if(!im && file.length === 2) im = await mtgImg('img/manaSymbols/' + file[1] + file[0] + '.svg');
+  if(!im && file.length === 3) im = await mtgImg('img/manaSymbols/' + file[1] + file[0] + file[2] + '.svg'); return (MTG.sym[key] = im) }
+async function mtgSyms(texts){ const want = new Set(); texts.forEach(t => String(t || '').replace(/\{([^}]+)\}/g, (m, k) => want.add(k))); await Promise.all([...want].map(mtgSymLoad)) }
+const mtgCostToks = cost => { const s = String(cost || '').trim(); if(!s) return []; if(s.includes('{')) return (s.match(/\{[^}]+\}/g) || []).map(x => x.slice(1, -1));
+  return (s.replace(/\s+/g, '').toUpperCase().match(/\d+|[A-Z]/g) || []) };
+const mtgText = t => String(t || '').replace(/\{([^}]+)\}/g, '[$1]');
+const MTGR = {
+  w(k, px){ return MTG.sym[mtgKey(k)] ? px * 0.8 : px * 0.5 },
+  draw(ctx, k, cx, y, px){ const im = MTG.sym[mtgKey(k)]; if(!im) return; const d = px * 0.78; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowOffsetX = -px * 0.03; ctx.shadowOffsetY = px * 0.05; ctx.drawImage(im, cx + px * 0.02, y - px * 0.74, d, d); ctx.restore() } };
+function mtgNew(frame){ return {frame:frame || 'W', name:'', cost:'', type:'', rules:'', flavor:'', pt:'', set:'', lang:'EN', artist:'', num:'', rarity:''} }
+async function mtgDraw(){
+  const cv = $('#tpcv'); if(!cv || !TP.mtg) return; const my = ++MTG.token, S = TP.mtg, fk = MTG_FR[S.frame] || MTG_FR.W;
+  await mtgFonts(); const [fr, ptb] = await Promise.all([mtgImg(MTG_DIR + fk.f), S.pt ? mtgImg(MTG_DIR + fk.p) : null]); await mtgSyms([S.cost, S.rules, S.flavor]);
+  if(my !== MTG.token || !fr) return;
+  const W = fr.width, H = fr.height; cv.width = W; cv.height = H; const c = cv.getContext('2d'); c.clearRect(0, 0, W, H);
+  const A = [0.0767 * W, 0.1129 * H, 0.8476 * W, 0.4429 * H];
+  if(TP.art && TP.art.img){ const im = TP.art.img, z = TP.art.zoom || 1; c.save(); c.beginPath(); c.rect(...A); c.clip(); const sc = Math.max(A[2] / im.width, A[3] / im.height) * z, w = im.width * sc, h = im.height * sc;
+    c.drawImage(im, A[0] + (A[2] - w) / 2 + (TP.art.x || 0) * 10, A[1] + (A[3] - h) / 2 + (TP.art.y || 0) * 10, w, h); c.restore() }
+  else { c.fillStyle = '#5a5f6a'; c.fillRect(...A) }
+  c.drawImage(fr, 0, 0, W, H);
+  if(ptb && S.pt) c.drawImage(ptb, 0.7573 * W, 0.8848 * H, 0.188 * W, 0.0733 * H);
+  c.textBaseline = 'alphabetic'; c.fillStyle = '#000';
+  // mana cost (right aligned, from the right edge of the title bar)
+  const toks = mtgCostToks(S.cost), pip = 71 / 1638 * H * 0.78; let costLeft = 0.9292 * W;
+  if(toks.length){ let x = 0.9292 * W; for(let k = toks.length - 1; k >= 0; k--){ x -= pip; const im = MTG.sym[mtgKey(toks[k])]; if(im){ c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowOffsetX = -0.001 * W; c.shadowOffsetY = 0.0029 * H; c.drawImage(im, x, 0.0613 * H + (71 / 2100 * H - pip) / 2 + 0.0019 * H, pip, pip); c.restore() } } costLeft = x }
+  const fitW = (txt, fam, px, maxW) => { let s = px; c.font = `${s}px ${fam}`; while(s > 8 && c.measureText(txt).width > maxW){ s -= 1; c.font = `${s}px ${fam}` } return s };
+  const mid = (y, h) => y * H + h * H / 2;
+  c.textAlign = 'left'; c.textBaseline = 'middle';
+  { const mw = Math.min(0.8292 * W, costLeft - 0.0854 * W - 0.012 * W); fitW(S.name, 'NVBeleren, serif', 0.0381 * H, mw); c.fillText(S.name, 0.0854 * W, mid(0.0522, 0.0543) + 0.002 * H) }
+  { fitW(S.type, 'NVBeleren, serif', 0.0324 * H, 0.8292 * W - 0.06 * W); c.fillText(S.type, 0.0854 * W, mid(0.5664, 0.0543) + 0.002 * H) }
+  if(S.pt){ c.textAlign = 'center'; fitW(S.pt, 'NVBelerenSC, NVBeleren, serif', 0.0372 * H, 0.1367 * W); c.fillText(S.pt, (0.7928 + 0.1367 / 2) * W, mid(0.902, 0.0372) + 0.002 * H); c.textAlign = 'left' }
+  // rules + flavour, centred in the text box
+  { c.textBaseline = 'alphabetic'; const bx = 0.086 * W, by = 0.6303 * H, bw = 0.828 * W, bh = 0.2875 * H, rt = mtgText(S.rules), ft = S.flavor ? '<i>' + mtgText(S.flavor) + '</i>' : '';
+    let px = 0.0362 * H, rl, fl, tot; const lhk = 1.18;
+    for(;;){ rl = rt ? wowRich(c, rt, bw, px, MTGF, MTGR) : []; fl = ft ? wowRich(c, ft, bw, px, MTGF, MTGR) : []; const gap = rl.length && fl.length ? px * 0.55 : 0; tot = (rl.length + fl.length) * px * lhk + gap; if(tot <= bh || px <= 18) break; px -= 2 }
+    const gap = rl.length && fl.length ? px * 0.55 : 0; let y = by + (bh - tot) / 2 + px * 0.9;
+    rl.forEach(l => { wowRichDraw(c, l, bx, y, px, MTGF, 'l', MTGR); y += px * lhk }); y += gap - 0; if(gap && S.flavor){ c.save(); c.globalAlpha = 0.5; c.fillRect(bx + bw * 0.2, y - px * lhk * 0.55 - gap * 0.35, bw * 0.6, Math.max(2, H * 0.0007)); c.restore() }
+    fl.forEach(l => { wowRichDraw(c, l, bx, y, px, MTGF, 'l', MTGR); y += px * lhk }) }
+  // bottom line (white on the black border)
+  c.fillStyle = '#fff'; c.textBaseline = 'middle';
+  const bot = (txt, y) => { if(!txt) return; fitW(txt, 'NVGotham, sans-serif', 0.0171 * H, 0.87 * W); c.lineWidth = 0.003 * H; c.strokeStyle = '#000'; c.strokeText(txt, 0.0647 * W, y * H + 0.0085 * H); c.fillText(txt, 0.0647 * W, y * H + 0.0085 * H) };
+  bot([S.num, (S.rarity || '').toUpperCase()].filter(Boolean).join('  '), 0.9377);
+  bot([[S.set, S.lang].filter(Boolean).join(' • '), S.artist].filter(Boolean).join('   '), 0.9548);
+}
+function mtgPanel(){
+  const S = TP.mtg, f = (k, lab, w, ph) => `<label style="display:flex;flex-direction:column;gap:3px;font-size:12px;flex:${w || 1} 1 120px">${lab}<input type="text" data-mgt="${k}" value="${esc(S[k])}" ${ph ? `placeholder="${esc(ph)}"` : ''}></label>`;
+  let h = `<h3>Magic card <span class="muted" style="font-weight:400;font-size:12px">modern frame</span></h3><div class="bar" style="flex-wrap:wrap;gap:8px"><label>Frame <select data-mgs="frame">${Object.keys(MTG_FR).map(k => `<option value="${k}" ${k === S.frame ? 'selected' : ''}>${MTG_FR[k].n}</option>`).join('')}</select></label></div>`;
+  h += `<div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('name', 'Name', 3)}${f('cost', 'Mana cost', 2, '{2}{W}{U} or 2WU')}</div>`;
+  h += `<div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('type', 'Type line', 3, 'Legendary Creature - Human Wizard')}${f('pt', 'Power / toughness', 1, '2/3')}</div>`;
+  h += `<div style="margin-top:8px"><label style="font-size:12px">Rules text<textarea data-mgt="rules" rows="6" style="width:100%" placeholder="{T}: Add {G}. Write a new line for a new ability."></textarea></label></div>`;
+  h += `<div style="margin-top:8px"><label style="font-size:12px">Flavour text<textarea data-mgt="flavor" rows="2" style="width:100%"></textarea></label></div>`;
+  h += `<div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('artist', 'Artist', 2)}${f('set', 'Set code')}${f('lang', 'Language')}${f('num', 'Number', 1, '045/280')}${f('rarity', 'Rarity', 1, 'R')}</div>`;
+  h += `<div class="bar" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button class="btn" id="mgartb"><i class="ti ti-photo-up"></i>Choose art</button><input type="file" id="mgartf" accept="image/*" hidden>
+    <label>Zoom <input type="range" id="mga_zoom" min="1" max="3" step="0.02" value="${TP.art.zoom}"></label><label>Left/right <input type="range" id="mga_x" min="-100" max="100" step="1" value="${TP.art.x}"></label><label>Up/down <input type="range" id="mga_y" min="-100" max="100" step="1" value="${TP.art.y}"></label></div>`;
+  return h;
+}
+function mtgBind(){
+  const S = TP.mtg, c = id => $('#' + id);
+  $$('[data-mgt]').forEach(el => { el.value = S[el.dataset.mgt]; el.oninput = () => { S[el.dataset.mgt] = el.value; mtgDraw() } });
+  $$('[data-mgs]').forEach(el => el.onchange = () => { S[el.dataset.mgs] = el.value; mtgDraw() });
+  const ar = (id, key) => { if(c(id)) c(id).oninput = () => { TP.art[key] = +c(id).value; nvCropSave('mtg'); mtgDraw() } }; ar('mga_zoom', 'zoom'); ar('mga_x', 'x'); ar('mga_y', 'y');
+  c('mgartb').onclick = () => c('mgartf').click();
+  c('mgartf').onchange = e => { const f = e.target.files[0]; if(!f) return; const im = new Image(); im.onload = () => { nvArtSet('mtg', im, f); viewTemplate() }; im.src = URL.createObjectURL(f) };
+  c('mgpng').onclick = () => c('tpcv').toBlob(b => nvSave(b, ((S.name || 'magic-card').replace(/[^\w\- ]+/g, '').trim() || 'magic-card') + '.png'), 'image/png');
+  c('nvlbtn').onclick = () => nvlOpen('mtg');
+  c('mgback').onclick = () => { TP.view = 'presets'; TP.game = null; viewTemplate() };
+}
+function mtgViewHTML(){
+  if(!MTG.on){ const d = (MTG.stat && MTG.stat.dl) || {};
+    return `<div class="panel"><h3>Magic card maker</h3><p class="hint">This needs the modern Magic frame set. Nightvault can download just that part (about 37 MB: the frames, the mana symbols and four fonts) from the Card Conjurer project straight into your own templates folder:<br><code>${esc(MTG.stat ? MTG.stat.folder : '')}</code><br>They stay on this PC and are for your own proxies. Nothing is added to Nightvault itself.</p>
+      <div class="bar" style="gap:8px"><button class="btn primary" id="mgget"><i class="ti ti-download"></i>Download the frames (about 37 MB)</button><button class="btn" id="mgback">Back</button></div><p class="hint" id="mgmsg">${d.error ? '<b style="color:#e55">' + esc(d.error) + '</b>' : ''}</p></div>` }
+  return `<div class="cols2" style="grid-template-columns:minmax(300px,520px) 1fr;align-items:start">
+    <div class="panel" style="position:sticky;top:12px;align-self:start"><canvas id="tpcv" style="display:block;max-width:100%;max-height:calc(100vh - 110px);width:auto;height:auto;margin:0 auto;background:#444;border-radius:8px"></canvas></div>
+    <div class="panel">${mtgPanel()}<div class="bar" style="margin-top:14px"><button class="btn primary" id="mgpng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="nvlbtn"><i class="ti ti-list-details"></i>Card list…</button><button class="btn" id="mgback">Back to all templates</button></div>
+    <p class="hint">Fan-made frames for your own proxies. Magic: The Gathering is a trademark of Wizards of the Coast; this tool is not affiliated with them.</p></div></div>`;
+}
+function mtgDownloadBind(){
+  const b = $('#mgget'); if(!b) return;
+  b.onclick = async () => { b.disabled = true; try{ await api('/api/template/mtg_get', {}) }catch(e){ $('#mgmsg').textContent = e.message; b.disabled = false; return }
+    const tick = async () => { let st; try{ st = (await api('/api/template/mtg_status')).dl }catch(e){ st = {error:e.message} }
+      if(!$('#mgmsg')) return; if(st.error){ $('#mgmsg').innerHTML = '<b style="color:#e55">' + esc(st.error) + '</b>'; b.disabled = false; return }
+      if(st.finished || (!st.busy && st.done >= st.total)){ await mtgInit(true); viewTemplate(); return }
+      $('#mgmsg').textContent = 'Downloading… ' + st.done + ' of ' + st.total + ' files'; setTimeout(tick, 700) };
+    tick() };
 }
 const pkOn = () => TP.view === 'pk' && !!TP.pk;
 const pkSt = 'data/pokemon-r-sunmoon.mse-style/', pkCom = 'data/pokemon-b-common.mse-include/', pkEn = 'data/pokemon-a-energy.mse-symbol-font/';
@@ -2953,7 +3066,7 @@ function tpPresetsHTML(){
       ${tiles.map(x => `<button class="tptile" data-t="${type}" data-id="${esc(x.id)}"><div class="tpth">${x.thumb ? `<img src="${x.thumb}" alt="">` : ''}</div><div class="tpl">${(x.dots || []).map(c => `<i class="tpdot" style="background:${c}"></i>`).join('')}${esc(x.label)}</div></button>`).join('')}</div></div>`; });
   const opH = h; h = h0;
   if(!TP.game){
-    const G = [['op', 'One Piece', 'Leader, Character, Event, Stage, Don', '#d9534f', true], ['wowcl', 'WoW TCG', 'Classic Border', '#1f6fa8', !!wowTemplate('cl')], ['wowwb', 'WoW TCG', 'Worldbreak Border', '#6b3fa0', !!wowTemplate('wb')], ['wmc', 'WoW TCG', 'All card types (WoWTCGMaker set)', '#c0802a', true], ['pk', 'Pokémon', 'Sun & Moon (test)', '#e8b923', true]];
+    const G = [['op', 'One Piece', 'Leader, Character, Event, Stage, Don', '#d9534f', true], ['wowcl', 'WoW TCG', 'Classic Border', '#1f6fa8', !!wowTemplate('cl')], ['wowwb', 'WoW TCG', 'Worldbreak Border', '#6b3fa0', !!wowTemplate('wb')], ['wmc', 'WoW TCG', 'All card types (WoWTCGMaker set)', '#c0802a', true], ['pk', 'Pokémon', 'Sun & Moon (test)', '#e8b923', true], ['mtg', 'Magic: The Gathering', 'Modern frame (one-time download)', '#2a6f97', true]];
     h += `<div class="panel"><h3>Choose a game</h3><p class="hint">Pick the card game you want to make a card for.</p><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px">${G.filter(g => g[4]).map(g => `<button class="tptile" data-game="${g[0]}" style="padding:18px 12px"><div style="height:64px;border-radius:10px;background:${g[3]}33;display:flex;align-items:center;justify-content:center;margin-bottom:8px"><i style="width:38px;height:38px;border-radius:50%;background:${g[3]};display:block"></i></div><div class="tpl" style="font-size:16px"><b>${g[1]}</b></div><div class="muted" style="font-size:12px;margin-top:2px">${g[2]}</div></button>`).join('')}</div></div>`;
   } else {
     h += `<div class="bar" style="margin:4px 0 10px"><button class="btn" data-gameback="1"><i class="ti ti-arrow-left"></i>All games</button></div>`;
@@ -2982,12 +3095,13 @@ async function viewTemplate(){
       ${have ? `<span style="margin-left:auto;display:flex;gap:6px;align-items:center"><input type="text" id="tplk" placeholder="Card lookup, e.g. OP12-034" style="width:210px"><button class="btn" id="tplkgo"><i class="ti ti-search"></i>Find card</button><select id="tplkpick" style="display:none;max-width:260px"></select></span>` : ''}
     </div>${have ? '' : '<p class="hint">Pick the merged template PSD (for example OnePiece_Character_template.psd). It is copied into Nightvault\'s own folder; the original is not touched. Only 8-bit RGB PSD files work.</p>'}</div>`;
   if(TP.view === 'wmc' && TP.wmc){ $('#main').innerHTML = h + wmcViewHTML(); bindTp(); if($('#wmcpng')) { wmcBind(); wmcDraw() } else if($('#wmcback')) $('#wmcback').onclick = () => { TP.view = 'presets'; TP.game = null; viewTemplate() }; return }
+  if(TP.view === 'mtg' && TP.mtg){ await mtgInit(); $('#main').innerHTML = h + mtgViewHTML(); bindTp(); if(MTG.on){ mtgBind(); mtgDraw() } else { mtgDownloadBind(); $('#mgback').onclick = () => { TP.view = 'presets'; TP.game = null; viewTemplate() } } return }
   if(TP.view === 'pk' && TP.pk){ $('#main').innerHTML = h + pkViewHTML(); bindTp(); pkBind(); pkDraw(); return }
   if(TP.view === 'presets' && showPres){ if(!TP.mineLoaded){ TP.mineLoaded = true; await tpMineList() }
     $('#main').innerHTML = h + tpPresetsHTML(); bindTp(); $$('[data-minedel]').forEach(b => b.onclick = async e => { e.stopPropagation(); if(!confirm('Delete this saved card?')) return; try{ await api('/api/template/mine_delete', {id:b.dataset.minedel}) }catch(x){ return toast(x.message, true) } await tpMineList(); viewTemplate() });
     $$('.tptile[data-mine]').forEach(b => b.onclick = () => tpMineLoad(b.dataset.mine));
     $$('[data-wow]').forEach(b => b.onclick = () => { const [ty, f, v] = b.dataset.wow.split(':'); wowUsePreset(ty, f, v) });
-    $$('[data-game]').forEach(b => b.onclick = () => { if(b.dataset.game === 'wmc'){ TP.wmc = TP.wmc || wmcNew('Ally'); TP.art = TP.art && TP.art.img ? TP.art : {img:null, zoom:1, x:0, y:0}; TP.view = 'wmc'; viewTemplate(); return } TP.game = b.dataset.game; viewTemplate() });
+    $$('[data-game]').forEach(b => b.onclick = () => { if(b.dataset.game === 'mtg'){ TP.mtg = TP.mtg || mtgNew('W'); TP.art = TP.art && TP.art.img ? TP.art : {img:null, zoom:1, x:0, y:0}; TP.view = 'mtg'; viewTemplate(); return } if(b.dataset.game === 'wmc'){ TP.wmc = TP.wmc || wmcNew('Ally'); TP.art = TP.art && TP.art.img ? TP.art : {img:null, zoom:1, x:0, y:0}; TP.view = 'wmc'; viewTemplate(); return } TP.game = b.dataset.game; viewTemplate() });
     $$('[data-gameback]').forEach(b => b.onclick = () => { TP.game = null; viewTemplate() });
     $$('[data-pk]').forEach(b => b.onclick = () => { const [k, a, t] = b.dataset.pk.split(':'); TP.pk = pkNew(k, a, t); TP.art = {img:null, zoom:1, x:0, y:0}; TP.view = 'pk'; viewTemplate() });
     $$('.tptile:not([data-mine]):not([data-wow]):not([data-pk]):not([data-game])').forEach(b => b.onclick = () => { if(b.dataset.id === '__custom'){ const t = tpTemplateFor(b.dataset.t); TP.view = 'edit'; if(t && t.name !== TP.name) tpOpen(t.name); else viewTemplate() } else tpUsePreset(b.dataset.t, b.dataset.id) }); return }

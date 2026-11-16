@@ -192,7 +192,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261116-n50"   # the page and the program must carry the same build id
+BUILD = "20261116-n51"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -4986,6 +4986,49 @@ def card_release_entries(conn, days):
     return out
 
 
+MTG_FILES = ["img/frames/m15/regular/eldrazi.png","img/frames/m15/regular/lb.png","img/frames/m15/regular/lg.png","img/frames/m15/regular/ll.png","img/frames/m15/regular/lm.png","img/frames/m15/regular/lr.png","img/frames/m15/regular/lu.png","img/frames/m15/regular/lw.png","img/frames/m15/regular/m15FrameA.png","img/frames/m15/regular/m15FrameB.png","img/frames/m15/regular/m15FrameG.png","img/frames/m15/regular/m15FrameL.png","img/frames/m15/regular/m15FrameM.png","img/frames/m15/regular/m15FrameR.png","img/frames/m15/regular/m15FrameU.png","img/frames/m15/regular/m15FrameV.png","img/frames/m15/regular/m15FrameW.png","img/frames/m15/regular/m15MaskBorder.png","img/frames/m15/regular/m15MaskFrame.png","img/frames/m15/regular/m15MaskPinline.png","img/frames/m15/regular/m15MaskPinlineSuper.png","img/frames/m15/regular/m15MaskRules.png","img/frames/m15/regular/m15MaskTitle.png","img/frames/m15/regular/m15MaskType.png","img/frames/m15/regular/m15PTA.png","img/frames/m15/regular/m15PTB.png","img/frames/m15/regular/m15PTC.png","img/frames/m15/regular/m15PTG.png","img/frames/m15/regular/m15PTM.png","img/frames/m15/regular/m15PTR.png","img/frames/m15/regular/m15PTU.png","img/frames/m15/regular/m15PTV.png","img/frames/m15/regular/m15PTW.png","img/manaSymbols/+0.svg","img/manaSymbols/+1.svg","img/manaSymbols/+2.svg","img/manaSymbols/+3.svg","img/manaSymbols/+4.svg","img/manaSymbols/+5.svg","img/manaSymbols/+6.svg","img/manaSymbols/+7.svg","img/manaSymbols/+8.svg","img/manaSymbols/+9.svg","img/manaSymbols/-1.svg","img/manaSymbols/-2.svg","img/manaSymbols/-3.svg","img/manaSymbols/-4.svg","img/manaSymbols/-5.svg","img/manaSymbols/-6.svg","img/manaSymbols/-7.svg","img/manaSymbols/-8.svg","img/manaSymbols/-9.svg","img/manaSymbols/0.svg","img/manaSymbols/1.svg","img/manaSymbols/10.svg","img/manaSymbols/11.svg","img/manaSymbols/12.svg","img/manaSymbols/13.svg","img/manaSymbols/14.svg","img/manaSymbols/15.svg","img/manaSymbols/16.svg","img/manaSymbols/17.svg","img/manaSymbols/18.svg","img/manaSymbols/19.svg","img/manaSymbols/2.svg","img/manaSymbols/20.svg","img/manaSymbols/2b.svg","img/manaSymbols/2g.svg","img/manaSymbols/2purple.svg","img/manaSymbols/2r.svg","img/manaSymbols/2u.svg","img/manaSymbols/2w.svg","img/manaSymbols/3.svg","img/manaSymbols/4.svg","img/manaSymbols/5.svg","img/manaSymbols/6.svg","img/manaSymbols/7.svg","img/manaSymbols/8.svg","img/manaSymbols/9.svg","img/manaSymbols/a.svg","img/manaSymbols/alchemy.svg","img/manaSymbols/artistbrush.svg","img/manaSymbols/b.svg","img/manaSymbols/bg.svg","img/manaSymbols/bgp.svg","img/manaSymbols/bp.svg","img/manaSymbols/br.svg","img/manaSymbols/brp.svg","img/manaSymbols/c.svg","img/manaSymbols/cb.svg","img/manaSymbols/cg.svg","img/manaSymbols/chaos.svg","img/manaSymbols/cr.svg","img/manaSymbols/cu.svg","img/manaSymbols/cw.svg","img/manaSymbols/e.svg","img/manaSymbols/g.svg","img/manaSymbols/gp.svg","img/manaSymbols/gu.svg","img/manaSymbols/gup.svg","img/manaSymbols/gw.svg","img/manaSymbols/gwp.svg","img/manaSymbols/half.svg","img/manaSymbols/inf.svg","img/manaSymbols/oldtap.svg","img/manaSymbols/originaltap.svg","img/manaSymbols/p.svg","img/manaSymbols/planeswalker.svg","img/manaSymbols/purple.svg","img/manaSymbols/purpleb.svg","img/manaSymbols/purpleg.svg","img/manaSymbols/purplep.svg","img/manaSymbols/purpler.svg","img/manaSymbols/purpleu.svg","img/manaSymbols/purplew.svg","img/manaSymbols/r.svg","img/manaSymbols/rg.svg","img/manaSymbols/rgp.svg","img/manaSymbols/rp.svg","img/manaSymbols/rw.svg","img/manaSymbols/rwp.svg","img/manaSymbols/s.svg","img/manaSymbols/snow.svg","img/manaSymbols/star.svg","img/manaSymbols/t.svg","img/manaSymbols/tk.svg","img/manaSymbols/u.svg","img/manaSymbols/ub.svg","img/manaSymbols/ubp.svg","img/manaSymbols/untap.svg","img/manaSymbols/up.svg","img/manaSymbols/ur.svg","img/manaSymbols/urp.svg","img/manaSymbols/w.svg","img/manaSymbols/wb.svg","img/manaSymbols/wbp.svg","img/manaSymbols/wp.svg","img/manaSymbols/wu.svg","img/manaSymbols/wup.svg","img/manaSymbols/x.svg","img/manaSymbols/y.svg","img/manaSymbols/z.svg","fonts/beleren-b.ttf","fonts/beleren-bsc.ttf","fonts/mplantin.ttf","fonts/mplantin-i.ttf","fonts/gotham-medium.ttf"]
+MTG_DL = {'busy': False, 'done': 0, 'total': len(MTG_FILES), 'error': '', 'finished': False}
+MTG_BASES = ['https://raw.githubusercontent.com/Investigamer/cardconjurer/master/', 'https://github.com/Investigamer/cardconjurer/raw/master/']
+
+
+def mtg_download(root):
+    """Fetch the modern Magic frame set (about 37 MB) from the Card Conjurer repository into templates/magic. Runs in a thread; MTG_DL holds the progress."""
+    import urllib.request
+    st = MTG_DL
+    st.update(busy=True, done=0, error='', finished=False)
+    try:
+        for rel in MTG_FILES:
+            dest = root / rel
+            if dest.exists() and dest.stat().st_size > 0:
+                st['done'] += 1
+                continue
+            data, err = None, ''
+            for base in MTG_BASES:
+                for _try in range(2):
+                    try:
+                        req = urllib.request.Request(base + urllib.request.quote(rel, safe='/+'), headers={'User-Agent': 'Nightvault'})
+                        with urllib.request.urlopen(req, timeout=60) as r:
+                            data = r.read()
+                        break
+                    except Exception as e:
+                        err = str(e)
+                if data:
+                    break
+            if not data:
+                st['error'] = 'Could not download ' + rel + ' (' + err + '). Check your internet connection and try again.'
+                return
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            tmp = dest.with_suffix(dest.suffix + '.part')
+            tmp.write_bytes(data)
+            tmp.replace(dest)
+            st['done'] += 1
+        st['finished'] = True
+    except Exception as e:
+        st['error'] = str(e)
+    finally:
+        st['busy'] = False
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "Nightvault/0.1"
 
@@ -5283,6 +5326,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, res)
         if path == "/api/template/upload":
             return self.template_upload(q)
+        if path == "/api/template/mtg_get":
+            if not MTG_DL["busy"]:
+                root = TEMPLATE_DIR / "magic"
+                root.mkdir(parents=True, exist_ok=True)
+                threading.Thread(target=mtg_download, args=(root,), daemon=True).start()
+            return self._send(200, dict(ok=True))
         if path == "/api/update/zip":
             n = int(self.headers.get("Content-Length") or 0)
             if n < 100 or n > 60 << 20:
@@ -6149,6 +6198,11 @@ class Handler(BaseHTTPRequestHandler):
                 return c
         return None
 
+    def _mtg_root(self):
+        """templates/magic: the modern Magic frame set downloaded from the Card Conjurer repository (frames, symbols, fonts)."""
+        base = TEMPLATE_DIR / "magic"
+        return base if (base / "img" / "frames" / "m15" / "regular" / "m15FrameW.png").is_file() else None
+
     def _wm_root(self):
         """Folder that holds `Template/` of the owner's WoWTCGMaker download (fonts + icons + frames): templates/wowtcgmaker, up to two folders below it."""
         base = TEMPLATE_DIR / "wowtcgmaker"
@@ -6195,6 +6249,8 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/template/wm_status":
             r = self._wm_root()
             return self._send(200, dict(have=bool(r), folder=str(TEMPLATE_DIR / "wowtcgmaker")))
+        if path == "/api/template/mtg_status":
+            return self._send(200, dict(have=bool(self._mtg_root()), folder=str(TEMPLATE_DIR / "magic"), dl=dict(MTG_DL)))
         if path == "/api/template/pk_status":
             r = self._pk_root()
             return self._send(200, dict(have=bool(r), root=str(r or ""), folder=str(TEMPLATE_DIR / "pokemon")))
@@ -6225,6 +6281,20 @@ class Handler(BaseHTTPRequestHandler):
             if not cur.is_file() or cur.suffix.lower() not in (".png", ".ttf", ".otf"):
                 return self._error(404, "Not a picture or font")
             ct = {".png": "image/png", ".ttf": "font/ttf", ".otf": "font/otf"}[cur.suffix.lower()]
+            return self._send(200, cur.read_bytes(), ct, {"Cache-Control": "private, max-age=86400"})
+        if path == "/api/template/mtg_file":
+            r = self._mtg_root()
+            if not r:
+                return self._error(404, "The Magic frames are not downloaded yet")
+            cur = r
+            for part in [x for x in q.get("p", "").replace("\\", "/").split("/") if x and x != ".."]:
+                hit = next((c for c in cur.iterdir() if c.name.lower() == part.lower()), None) if cur.is_dir() else None
+                if hit is None:
+                    return self._error(404, "Not in the folder: " + q.get("p", ""))
+                cur = hit
+            if not cur.is_file() or cur.suffix.lower() not in (".png", ".svg", ".ttf", ".otf"):
+                return self._error(404, "Not a picture or font")
+            ct = {".png": "image/png", ".svg": "image/svg+xml", ".ttf": "font/ttf", ".otf": "font/otf"}[cur.suffix.lower()]
             return self._send(200, cur.read_bytes(), ct, {"Cache-Control": "private, max-age=86400"})
         if path == "/api/template/pk_file":
             r = self._pk_root()
