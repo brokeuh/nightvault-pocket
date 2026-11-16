@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 215,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Card templates: shared text engine, auto-fit and rarity mark",
+   "items": [
+    "Text on WoW and Pokémon cards now shrinks automatically to fit its box (attacks, flavour text, rules, dex line, illustrator, copyright, number).",
+    "Pokémon attack text can show energy symbols: write [R], [W], [C] and so on.",
+    "Pokémon cards get a rarity mark in the footer (circle, diamond or star)."
+   ]
+  },
+  {
    "id": 214,
    "date": "2026-11-16",
    "where": [

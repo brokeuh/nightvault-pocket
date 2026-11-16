@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 11:52",
+ "version": "2026-11-16 12:00",
  "notes": [
-  "Hero class emblem fix"
+  "shared text engine + auto-fit + rarity mark"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "ddb66da6373baafbc1a4787365fc9441fe71f4abba2c44a77ba82f1d926f0e50"
+   "sha256": "218fae2dae088238446218cda38b266cda8a50d9dd278050fb128ae475ae4fb3"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "88b8b5d71566235142f77ab3c053a7d274f90f7619174ce6414ef153c826324f"
+   "sha256": "966e6f54baeb80b20d4fbc7c019c02f75d7e7e438bf7a4d359c581035d471379"
   },
   {
    "name": "fonts/OFL.txt",

@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n46";
+const UI_BUILD = "20261116-n47";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1904,7 +1904,21 @@ function wowF(){       // font strings: the real card fonts when the WoWTCGMaker
 /* Rules text with inline icons.  <b>bold</b> <i>italic</i> [Fire] [Armor] [Exhaust] [Power] [!Power] [Basic] [3] (number in a dark circle) [!3] (light circle) ; or a new line = new paragraph */
 function wmIconDims(k, px){ const l = k.toLowerCase();
   if(l === 'exhaust') return [px * 1.25, px * 0.94]; if(l === 'power' || l === '!power') return [px * 1.9, px * 0.94]; if(l === 'basic') return [px * 3.1, px * 1.25]; return [px * 1.12, px * 1.12] }
-function wowRich(ctx, text, maxW, px, F){        // -> lines [{items, w}]
+const WMR = {       // icon resolver of the WoW pictures: w(key, px) -> width (0 = not an icon), draw(ctx, key, x, baselineY, px, F)
+  w(k, px){ const lk = k.toLowerCase().replace(/^!(?!power)/, ''); return WM.tb[lk] && lk !== 'numeric cost' ? wmIconDims(k, px)[0] : px * 1.12 },
+  draw(ctx, raw, cx, y, px, F){ const inv = raw[0] === '!' && raw.toLowerCase() !== '!power', key = (inv ? raw.slice(1) : raw).toLowerCase();
+    if(WM.tb[key] && key !== 'numeric cost'){ const im = WM.tb[key], [w, h] = wmIconDims(raw, px); ctx.drawImage(im, cx, y - h * 0.85, w, h) }
+    else { const s = px * 1.12, circ = WM.tb[inv ? 'numeric cost invert' : 'numeric cost']; if(circ) ctx.drawImage(circ, cx, y - s * 0.86, s, s);
+      ctx.save(); ctx.fillStyle = inv ? '#000' : '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; let fs = px * 0.8; ctx.font = F.NUM.replace('@', fs + 'px'); const t = inv ? raw.slice(1) : raw; while(ctx.measureText(t).width > s * 0.8 && fs > 6){ fs -= 1; ctx.font = F.NUM.replace('@', fs + 'px') } ctx.fillText(t, cx + s / 2, y - s * 0.34); ctx.restore() } }
+};
+/* Shared text engine (used by WoW and Pokemon): rich text with inline icons, wrapped in a box and shrunk until it fits.
+   nvFit(ctx, text, {w, h, px, min, lh, F, R}) -> {px, lh, lines}; nvDraw(ctx, fit, x, top, align, F, R) draws it (top = top of the first line). */
+function nvFit(ctx, text, o){ let px = o.px, lines, lh; const F = o.F, R = o.R || WMR, min = o.min || 9;
+  for(;;){ lines = wowRich(ctx, text, o.w, px, F, R); lh = px * (o.lh || 1.2); if(lines.length * lh <= o.h || px <= min) break; px -= 1 }
+  return {px, lh, lines, h:lines.length * lh} }
+function nvDraw(ctx, fit, x, top, align, F, R){ let y = top + fit.px * 0.85; fit.lines.forEach(l => { wowRichDraw(ctx, l, x, y, fit.px, F, align, R); y += fit.lh }) }
+function wowRich(ctx, text, maxW, px, F, R){        // -> lines [{items, w}]
+  R = R || WMR;
   const items = []; let mode = 'n'; const re = /<(\/?)(b|i)>|\[([^\]]*)\]|\n|[^\s\[<]+|[ \t]+/g; let m;
   const fnt = f => (f === 'b' ? F.BOLD : f === 'i' ? F.ITALR : F.COND).replace('@', px + 'px');
   while((m = re.exec(String(text || '')))){
@@ -1920,22 +1934,19 @@ function wowRich(ctx, text, maxW, px, F){        // -> lines [{items, w}]
   items.forEach(it => {
     if(it.nl){ flush(); push(); return }
     if(it.sp){ flush(); ctx.font = fnt(it.f); it.w = ctx.measureText(' ').width; if(!cur.items.length) return; cur.items.push(it); cur.w += it.w; return }
-    if(it.ico){ const lk = it.k.toLowerCase().replace(/^!(?!power)/, ''), named = WM.tb[lk] && lk !== 'numeric cost'; it.w = named ? wmIconDims(it.k, px)[0] : px * 1.12 }
+    if(it.ico) it.w = R.w(it.k, px);
     else { ctx.font = fnt(it.f); it.w = ctx.measureText(it.s).width }
     chunk.push(it); cw += it.w;
   });
   flush(); if(cur.items.length || !lines.length) push();
   return lines;
 }
-function wowRichDraw(ctx, line, x, y, px, F, align){       // y = baseline; x = centre (align 'c') or left edge
-  let cx = align === 'l' ? x : x - line.w / 2;
+function wowRichDraw(ctx, line, x, y, px, F, align, R){       // y = baseline; x = centre (align 'c') or left edge
+  R = R || WMR; let cx = align === 'l' ? x : x - line.w / 2;
   line.items.forEach(it => {
     if(it.sp){ cx += it.w; return }
-    if(it.ico){ const raw = it.k, inv = raw[0] === '!' && raw.toLowerCase() !== '!power', key = (inv ? raw.slice(1) : raw).toLowerCase();
-      if(WM.tb[key] && key !== 'numeric cost'){ const im = WM.tb[key], [w, h] = wmIconDims(raw, px); ctx.drawImage(im, cx, y - h * 0.85, w, h) }
-      else { const s = px * 1.12, circ = WM.tb[inv ? 'numeric cost invert' : 'numeric cost']; if(circ) ctx.drawImage(circ, cx, y - s * 0.86, s, s);
-        ctx.save(); ctx.fillStyle = inv ? '#000' : '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; let fs = px * 0.8; ctx.font = F.NUM.replace('@', fs + 'px'); const t = inv ? raw.slice(1) : raw; while(ctx.measureText(t).width > s * 0.8 && fs > 6){ fs -= 1; ctx.font = F.NUM.replace('@', fs + 'px') } ctx.fillText(t, cx + s / 2, y - s * 0.34); ctx.restore() }
-    } else { ctx.save(); ctx.font = (it.f === 'b' ? F.BOLD : it.f === 'i' ? F.ITALR : F.COND).replace('@', px + 'px'); ctx.textAlign = 'left'; ctx.fillText(it.s, cx, y); ctx.restore() }
+    if(it.ico) R.draw(ctx, it.k, cx, y, px, F);
+    else { ctx.save(); ctx.font = (it.f === 'b' ? F.BOLD : it.f === 'i' ? F.ITALR : F.COND).replace('@', px + 'px'); ctx.textAlign = 'left'; ctx.fillText(it.s, cx, y); ctx.restore() }
     cx += it.w;
   });
 }
@@ -2388,14 +2399,19 @@ function wowPresetsHTML(only){
 const PK_TYPES = ['colorless','dark','dragon','fairy','fighting','fire','grass','lightning','metal','psychic','water'];
 const PK_CODE = {C:'colorless', D:'dark', N:'dragon', Y:'fairy', F:'fighting', R:'fire', G:'grass', L:'lightning', M:'metal', P:'psychic', W:'water'};
 const PK_COL = {colorless:'#c8c3b8', dark:'#3a3a48', dragon:'#c9a227', fairy:'#e58bb8', fighting:'#b0602e', fire:'#e0572b', grass:'#4caf50', lightning:'#f2c80f', metal:'#9aa3ad', psychic:'#a45fb4', water:'#3b8fd9'};
-const PK = {imgs:{}, fontsOn:null, token:0};
+const PK = {imgs:{}, fontsOn:null, token:0, sym:{}};
+const PKF = {BOLD:'700 @ PkGillB, PkHum, sans-serif', COND:'400 @ PkHum, sans-serif', ITALR:'400 @ PkHumBI, PkHum, sans-serif', NUM:'700 @ PkCdnB, sans-serif'};
+const PKR = {       // energy symbols inside text: [R] [W] [C] ... or [fire] [water] ...
+  key(k){ const t = PK_CODE[k.toUpperCase()] || (PK_TYPES.includes(k.toLowerCase()) ? k.toLowerCase() : ''); return t },
+  w(k, px){ return PKR.key(k) ? px * 1.15 : px * 0.6 },
+  draw(ctx, k, cx, y, px){ const t = PKR.key(k), im = t && PK.sym[t]; if(im) ctx.drawImage(im, cx, y - px * 0.95, px * 1.1, px * 1.1) } };
 const pkOn = () => TP.view === 'pk' && !!TP.pk;
 const pkSt = 'data/pokemon-r-sunmoon.mse-style/', pkCom = 'data/pokemon-b-common.mse-include/', pkEn = 'data/pokemon-a-energy.mse-symbol-font/';
 function pkNew(kind, a, b){
   const t = {name:'', hp:'', dex:'', evo:'', flavor:'', illus:'', copy:'', num:'', rules:''};
   const atk = () => ({cost:'', name:'', dmg:'', text:''});
   return {kind, stage: kind === 'pokemon' ? a : 'basic', type: kind === 'pokemon' ? b : 'colorless', trainer: kind === 'trainer' ? a : 'item', t, atk:[atk(), atk(), atk()], natk:2,
-    weak:{type:'fighting', val:'×2'}, res:{type:'', val:''}, retreat:1}
+    weak:{type:'fighting', val:'×2'}, res:{type:'', val:''}, retreat:1, rarity:''}
 }
 function pkUrl(p){ return '/api/template/pk_file?p=' + enc(p) + '&t=' + enc(TOKEN) }
 function pkImg(p){ if(!PK.imgs[p]) PK.imgs[p] = new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = pkUrl(p) }); return PK.imgs[p] }
@@ -2410,7 +2426,7 @@ function pkWrap(c, txt, maxW){ const out = []; String(txt || '').split('\n').for
 function pkSym(c, type, x, y, s){ return pkImg(pkEn + type + '.png').then(i => { if(i) c.drawImage(i, x, y, s, s) }) }
 async function pkDraw(){
   const cv = $('#tpcv'); if(!cv || !TP.pk) return; const my = ++PK.token; const S = TP.pk;
-  await pkFonts();
+  await pkFonts(); await Promise.all(PK_TYPES.map(async t => { PK.sym[t] = await pkImg(pkEn + t + '.png') }));
   const c = cv.getContext('2d'); cv.width = 736; cv.height = 1026;
   const pk = S.kind === 'pokemon', tr = S.kind === 'trainer';
   const ty = S.type === 'metal' ? 'Metal' : S.type;
@@ -2439,7 +2455,7 @@ async function pkDraw(){
     if(hp){ const w = c.measureText(hp).width; c.font = '16px PkNeo'; c.fillText('HP', 636 - w - 4, 92) }
     await pkSym(c, S.type, 646, 40, 48);
     if(S.stage !== 'basic' && T.evo){ c.textAlign = 'left'; c.font = '14px PkHumBI'; c.fillText('Evolves from ' + T.evo, 126, 112) }
-    c.textAlign = 'center'; c.font = '13px PkHum'; c.fillText(T.dex, 368, 508);
+    c.textAlign = 'center'; pkFit(c, T.dex, 'PkHum', 13, 600); c.fillText(T.dex, 368, 508);
     // attacks
     const A = S.atk.slice(0, S.natk), n = A.length, H = Math.min(340 / Math.max(n, 1), 156), top = 524 + (340 - n * H) / 2;
     for(let k = 0; k < n; k++){ const a = A[k], y0 = top + k * H, cy = y0 + 30;
@@ -2448,21 +2464,24 @@ async function pkDraw(){
       const nx = hasCost ? Math.max(306, 48 + codes.length * 44 + 150) : 306; const w = 590 - 306 > 0 ? 300 : 300;
       const npx = pkFit(c, a.name, 'PkGillB', 26, 300); c.font = `${npx}px PkGillB`; c.fillText(a.name, hasCost ? Math.max(380, 56 + codes.length * 44 + 150) : 306 + 150, cy + 9);
       c.textAlign = 'right'; c.font = '40px PkGill'; c.fillText(a.dmg || '', 690, cy + 12);
-      if(a.text){ c.textAlign = 'left'; c.font = '17px PkHum'; pkWrap(c, a.text, 590).slice(0, 5).forEach((l, i) => c.fillText(l, 72, y0 + 74 + i * 21)) } }
+      if(a.text){ c.fillStyle = ink; const ft = nvFit(c, a.text, {w:590, h:Math.max(30, H - 66), px:19, min:10, lh:1.2, F:PKF, R:PKR}); nvDraw(c, ft, 72, y0 + 60, 'l', PKF, PKR) } }
     // weakness / resistance / retreat
     c.fillStyle = '#111'; c.textAlign = 'left'; c.font = '14px PkCdnB'; c.fillText('weakness', 40, 903); c.fillText('resistance', 244, 903); c.fillText('retreat cost', 474, 903);
     if(S.weak.type){ await pkSym(c, S.weak.type, 136, 880, 30); c.font = '20px PkCdnB'; c.fillText(S.weak.val || '', 170, 904) }
     if(S.res.type){ await pkSym(c, S.res.type, 346, 880, 30); c.font = '20px PkCdnB'; c.fillText(S.res.val || '', 380, 904) }
     for(let j = 0; j < (+S.retreat || 0); j++) await pkSym(c, 'colorless', 590 + j * 32, 880, 30);
     // bottom
-    c.fillStyle = ink; c.font = '14px PkHum'; c.textAlign = 'left'; pkWrap(c, T.flavor, 364).slice(0, 3).forEach((l, i) => c.fillText(l, 332, 934 + i * 17));
+    c.fillStyle = ink; { const ft = nvFit(c, T.flavor, {w:364, h:68, px:15, min:8, lh:1.15, F:PKF, R:PKR}); nvDraw(c, ft, 332, 922, 'l', PKF, PKR) }
   } else {
     c.textAlign = 'left'; const px = pkFit(c, T.name, 'PkCdnB', 40, 540); c.font = `${px}px PkCdnB`; c.fillText(T.name, 44, 118);
-    c.font = '20px PkHum'; pkWrap(c, T.rules, 570).slice(0, 14).forEach((l, i) => c.fillText(l, 82, 574 + i * 25));
+    { const ft = nvFit(c, T.rules, {w:570, h:330, px:22, min:11, lh:1.22, F:PKF, R:PKR}); nvDraw(c, ft, 82, 556, 'l', PKF, PKR) }
   }
-  c.fillStyle = '#111'; c.textAlign = 'left'; c.font = '11px PkGill'; c.fillText(T.illus ? 'Illus. ' + T.illus : '', 50, 936);
-  c.font = '10px PkGill'; c.fillText(T.copy, 46, 982);
-  c.textAlign = 'right'; c.font = '14px PkGill'; c.fillText(T.num, 148, 952);
+  c.fillStyle = '#111'; c.textAlign = 'left'; pkFit(c, T.illus ? 'Illus. ' + T.illus : '', 'PkGill', 11, 270); c.fillText(T.illus ? 'Illus. ' + T.illus : '', 50, 936);
+  pkFit(c, T.copy, 'PkGill', 10, 290); c.fillText(T.copy, 46, 982);
+  c.textAlign = 'right'; pkFit(c, T.num, 'PkGill', 14, 100); c.fillText(T.num, 148, 952);
+  if(S.rarity){ const rx = 162, ry = 954; c.fillStyle = '#111'; c.beginPath();       // rarity mark: circle / diamond / star
+    if(S.rarity === 'common') c.arc(rx, ry, 6, 0, 7); else if(S.rarity === 'uncommon'){ c.moveTo(rx, ry - 8); c.lineTo(rx + 6, ry); c.lineTo(rx, ry + 8); c.lineTo(rx - 6, ry) } else { for(let k = 0; k < 10; k++){ const r = k % 2 ? 4 : 9, a = -Math.PI / 2 + k * Math.PI / 5; c.lineTo(rx + r * Math.cos(a), ry + r * Math.sin(a)) } }
+    c.closePath(); c.fill() }
 }
 function pkOpt(list, cur, lab){ return list.map(x => `<option value="${x}" ${x === cur ? 'selected' : ''}>${lab ? lab(x) : x}</option>`).join('') }
 function pkPanel(){
@@ -2475,14 +2494,14 @@ function pkPanel(){
   h += `</div><div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('name', 'Name', 3)}${pk ? f('hp', 'HP') : ''}${pk && S.stage !== 'basic' ? f('evo', 'Evolves from', 2) : ''}</div>`;
   if(pk){
     h += `<div class="bar" style="margin-top:8px">${f('dex', 'Pokédex line (e.g. "NO. 025  Mouse Pokémon  HT: 1\'04\"  WT: 13.2 lbs.")', 1)}</div>`;
-    h += `<div style="margin-top:10px"><b>Attacks</b> <select data-pks="natk">${pkOpt([1,2,3], S.natk)}</select> <span class="hint">Cost letters: R fire, W water, G grass, L lightning, P psychic, F fighting, D dark, M metal, Y fairy, N dragon, C colourless.</span></div>`;
+    h += `<div style="margin-top:10px"><b>Attacks</b> <select data-pks="natk">${pkOpt([1,2,3], S.natk)}</select> <span class="hint">Cost letters: R fire, W water, G grass, L lightning, P psychic, F fighting, D dark, M metal, Y fairy, N dragon, C colourless. In the effect text write a symbol as [R] or [C].</span></div>`;
     S.atk.slice(0, S.natk).forEach((a, k) => { h += `<div style="border:1px solid var(--line,#2a3142);border-radius:8px;padding:8px;margin-top:6px"><div class="bar" style="gap:6px;flex-wrap:wrap">
       <input type="text" data-pka="${k}:cost" value="${esc(a.cost)}" placeholder="Cost, e.g. LLC" style="width:110px"><input type="text" data-pka="${k}:name" value="${esc(a.name)}" placeholder="Attack name" style="flex:1 1 140px"><input type="text" data-pka="${k}:dmg" value="${esc(a.dmg)}" placeholder="Damage" style="width:80px"></div>
       <textarea data-pka="${k}:text" rows="2" placeholder="Effect text (optional)" style="width:100%;margin-top:6px">${esc(a.text)}</textarea></div>` });
     h += `<div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:10px"><label>Weakness ${typeSel('weakt', S.weak.type, true)}</label><input type="text" data-pks="weakv" value="${esc(S.weak.val)}" style="width:60px"><label>Resistance ${typeSel('rest', S.res.type, true)}</label><input type="text" data-pks="resv" value="${esc(S.res.val)}" style="width:60px"><label>Retreat <select data-pks="retreat">${pkOpt([0,1,2,3,4,5], +S.retreat)}</select></label></div>`;
     h += `<div class="bar" style="margin-top:8px">${f('flavor', 'Flavour text', 1)}</div>`;
   } else h += `<div style="margin-top:8px"><label style="font-size:12px">Rules text<textarea data-pkt="rules" rows="6" style="width:100%">${esc(T.rules)}</textarea></label></div>`;
-  h += `<div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('illus', 'Illustrator')}${f('num', 'Card number')}${f('copy', 'Copyright line', 2)}</div>`;
+  h += `<div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('illus', 'Illustrator')}${f('num', 'Card number')}<label style="display:flex;flex-direction:column;gap:3px;font-size:12px">Rarity mark<select data-pks="rarity">${pkOpt(['', 'common', 'uncommon', 'rare'], S.rarity || '', x => x || '(none)')}</select></label>${f('copy', 'Copyright line', 2)}</div>`;
   h += `<div class="bar" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button class="btn" id="pkartb"><i class="ti ti-photo-up"></i>Choose art</button><input type="file" id="pkartf" accept="image/*" hidden>
     <label>Zoom <input type="range" id="pka_zoom" min="1" max="3" step="0.02" value="${TP.art.zoom}"></label><label>Left/right <input type="range" id="pka_x" min="-100" max="100" step="1" value="${TP.art.x}"></label><label>Up/down <input type="range" id="pka_y" min="-100" max="100" step="1" value="${TP.art.y}"></label></div>`;
   return h;
