@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 238,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: advanced text options",
+   "items": [
+    "New 'Advanced text: size, font, position' section under the frame style. For every text box (title, type, rules, chapters…) you can change the size in %, pick another font, change the alignment, and move or grow/shrink the box.",
+    "'Reset all text tweaks' puts everything back as the style says."
+   ]
+  },
+  {
    "id": 237,
    "date": "2026-11-16",
    "where": [

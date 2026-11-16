@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 14:53",
+ "version": "2026-11-16 15:45",
  "notes": [
-  "Frame colour logic (n69)"
+  "Advanced text options (n70)"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "54872c0761708d0ece484ad07045bed57449272d94a42de72e34edbc8c9ff23c"
+   "sha256": "a3f21ee4beecfb4f2477a17a64576d95fb69975aa37732c71c60ad4f0b0f10fd"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "67847789ea80e8a38c392e7473bb16a7c0b00e80392c9d5c67ff420644e742f1"
+   "sha256": "397a6c3a7c4897c4523715bf83398dc22fda172b4b4c8064ab474f4b4e19f41e"
   },
   {
    "name": "fonts/OFL.txt",
