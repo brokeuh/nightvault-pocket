@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n56";
+const UI_BUILD = "20261116-n57";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2649,6 +2649,8 @@ async function nvMtgExtract(code){
   try{ out.card = JSON.parse(JSON.stringify(card, (k, v) => typeof v === 'function' ? undefined : v)) }catch(e){}
   if(!out.frames && defs.availableFrames && defs.availableFrames.length) out.frames = JSON.parse(JSON.stringify(defs.availableFrames));
   delete out.click; return out; }
+const MTG_TEXT0 = {mana:{name:'Mana Cost', x:0.0854, y:0.0522, width:0.8412, height:0.0543, size:0.0434, align:'right', manaCost:true, oneLine:true}, title:{name:'Title', x:0.0854, y:0.0522, width:0.8292, height:0.0543, size:0.0381, font:'belerenb', oneLine:true},
+  type:{name:'Type', x:0.0854, y:0.5664, width:0.8292, height:0.0543, size:0.0324, font:'belerenb', oneLine:true}, rules:{name:'Rules Text', x:0.086, y:0.6303, width:0.828, height:0.2875, size:0.0362, font:'mplantin'}, pt:{name:'Power/Toughness', x:0.7928, y:0.902, width:0.1367, height:0.0372, size:0.0372, font:'belerenbsc', oneLine:true, align:'center'}};
 function mtgSandbox(code){
   if(!MTGS.ifr){ const f = document.createElement('iframe'); f.setAttribute('sandbox', 'allow-scripts'); f.style.display = 'none';
     f.srcdoc = '<script>' + nvMtgExtract.toString() + ';addEventListener("message",async e=>{let r;try{r=await nvMtgExtract(e.data.code)}catch(x){r={err:String(x)}}parent.postMessage({id:e.data.id,r:r},"*")})<\/script>';
@@ -2661,7 +2663,9 @@ function mtgGroups(force){ if(force) MTGS.gp = null; if(!MTGS.gp) MTGS.gp = (asy
     return out.length ? out : null })(); return MTGS.gp }
 async function mtgStyleInfo(v){ if(v in MTGS.info) return MTGS.info[v]; const t = await mtgText1('js/frames/pack' + v + '.js'); if(!t) return null;   // not downloaded: not cached, so a later download works
   const r = await mtgSandbox(t); if(!r || !r.frames || !r.frames.length){ return (MTGS.info[v] = {bad:true, err:(r && r.err) || 'no frames'}) }
-  r.main = r.frames.filter(f => !f.bounds); if(!r.main.length) r.main = r.frames; r.text = r.text || {}; r.card = r.card || {};
+  r.main = r.frames.filter(f => !f.bounds); r.addon = !r.main.length; if(r.addon) r.main = r.frames; r.text = r.text || {}; r.card = r.card || {};
+  if(!Object.keys(r.text).length){ r.text = JSON.parse(JSON.stringify(MTG_TEXT0)); r.fallback = true }    // add-on / colour-only packs bring no text boxes: use the modern layout
+  if(r.fallback) r.card = Object.assign({artBounds:{x:0.0767, y:0.1129, width:0.8476, height:0.4429}, setSymbolBounds:{x:0.9213, y:0.591, width:0.12, height:0.041, vertical:'center', horizontal:'right'}}, r.card);
   { let prev = null; Object.keys(r.text).filter(k => /^ability\d$/.test(k)).sort().forEach(k => { const o = r.text[k]; if(prev && !o.y) o.y = prev.y + prev.height; if(prev && !o.height) o.height = prev.height; prev = o }) }   // planeswalker / saga: the script stacks the abilities, here they simply follow each other
   return (MTGS.info[v] = r) }
 function mtgFamilies(){ if(!MTGS.famP) MTGS.famP = (async () => { const css = await mtgText1('css/style-9.css'); const m = {}; if(css) css.replace(/@font-face\s*\{([^}]*)\}/g, (a, b) => { const n = (b.match(/font-family\s*:\s*['"]?([^;'"]+)/) || [])[1], u = (b.match(/url\(["']?\.\.\/([^"')]+)/) || [])[1]; if(n && u) m[n.trim()] = u }); return m })(); return MTGS.famP }
@@ -2671,6 +2675,8 @@ const mtgBox = (o, W, H) => ({x:(o.x || 0) * W, y:(o.y || 0) * H, w:(o.width || 
 async function mtgStyleDraw(cv, my, S){
   const inf = await mtgStyleInfo(S.style), c = cv.getContext('2d');
   if(!inf || inf.bad){ cv.width = 600; cv.height = 840; c.fillStyle = '#555'; c.fillRect(0, 0, 600, 840); c.fillStyle = '#fff'; c.font = '26px sans-serif'; c.textAlign = 'center'; c.fillText(inf ? 'This style could not be read.' : 'Download this style first.', 300, 420); return }
+  if(inf.addon){ const keep = S.style; S.style = ''; try{ await mtgDraw() } finally{ S.style = keep } if(TP.mtg !== S) return; const f = inf.main[Math.min(S.sframe | 0, inf.main.length - 1)], im = f && await mtgImg(f.src.replace(/^\//, '')), b = f && f.bounds;
+    if(im && b){ const W0 = cv.width, H0 = cv.height; cv.getContext('2d').drawImage(im, b.x * W0, b.y * H0, b.width * W0, b.height * H0) } return }
   const cd = inf.card, W = cd.width || 2010, H = cd.height || 2814, fr = inf.main[Math.min(S.sframe | 0, inf.main.length - 1)], T = JSON.parse(JSON.stringify(inf.text));
   if(T.level0c){ const ex = S.ex || {}, used = [0, 1, 2, 3].filter(i => i === 0 || ['a', 'b', 'c'].some(l => ex['level' + i + l])), top = inf.text.level0c.y, bottom = 0.8368, hh = (bottom - top) / used.length;   // Class: the script shares the card height between the levels in use
     [0, 1, 2, 3].forEach(i => { const k = used.indexOf(i), a = T['level' + i + 'a'], b = T['level' + i + 'b'], c = T['level' + i + 'c']; if(k < 0){ [a, b, c].forEach(o => { if(o) o.y = 2 }); return }
@@ -2679,7 +2685,7 @@ async function mtgStyleDraw(cv, my, S){
   await mtgFonts(); const img = await mtgImg(fr.src.replace(/^\//, '')); if(my !== MTG.token) return;
   const ext = S.pt ? (() => { const w1 = (fr.name || '').split(' ')[0].toLowerCase(), l = inf.frames.filter(f => f.bounds && /power|toughness|\bpt\b/i.test(f.name || '')); return l.find(f => (f.name || '').toLowerCase().startsWith(w1)) || l[0] })() : null;
   const extImg = ext ? await mtgImg(ext.src.replace(/^\//, '')) : null; const fams = {}; for(const k of Object.keys(T)) fams[k] = await mtgFam(T[k].font);
-  await mtgSyms([S.cost, S.rules, S.flavor, ...Object.values(S.ex || {})]); const brush = S.artist ? await mtgImg('img/manaSymbols/artistbrush.svg') : null; if(my !== MTG.token) return;
+  await mtgSyms([S.cost, S.rules, S.flavor, ...Object.values(S.ex || {})]); { const pre = (T.mana && T.mana.manaPrefix) || ''; if(pre) await Promise.all(mtgCostToks(S.cost).map(async t => { const key = mtgKey(t); if(!MTG.sym[pre + '|' + key]) MTG.sym[pre + '|' + key] = await mtgImg('img/manaSymbols/' + pre + key + '.svg') })) } const brush = S.artist ? await mtgImg('img/manaSymbols/artistbrush.svg') : null; if(my !== MTG.token) return;
   cv.width = W; cv.height = H; c.clearRect(0, 0, W, H);
   const ab = cd.artBounds || {x:0.0767, y:0.1129, width:0.8476, height:0.4429}, A = [ab.x * W, ab.y * H, ab.width * W, ab.height * H];
   if(TP.art && TP.art.img){ const im = TP.art.img, z = TP.art.zoom || 1; c.save(); c.beginPath(); c.rect(...A); c.clip(); const sc = Math.max(A[2] / im.width, A[3] / im.height) * z, w = im.width * sc, h = im.height * sc;
@@ -2690,9 +2696,13 @@ async function mtgStyleDraw(cv, my, S){
   const col = o => o.color || 'black', val = {title:S.name, type:S.type, pt:S.pt}; c.textBaseline = 'middle';
   const shadowed = (o, fn) => { const sx = (o.shadowX || 0) * W, sy = (o.shadowY || 0) * H; if(sx || sy){ c.save(); c.fillStyle = o.shadowColor || 'black'; c.translate(sx, sy); fn(); c.restore() } c.fillStyle = col(o); fn() };
   for(const k of Object.keys(T)){ const o = T[k], B = mtgBox(o, W, H), fam = fams[k], al = o.align || 'left', ax = al === 'right' ? B.x + B.w : al === 'center' ? B.x + B.w / 2 : B.x; c.textAlign = al;
-    if(o.manaCost || k === 'mana' || k === 'mana2'){ const toks = k === 'mana' ? mtgCostToks(S.cost) : mtgCostToks((S.ex || {})[k]), pip = (o.size || 0.0434) * H * 0.856 * (o.manaImageScale || 1), gap = (o.manaSpacing || 0) * W; if(!toks.length) continue;
+    if(o.manaCost || k === 'mana' || k === 'mana2'){ const toks = k === 'mana' ? mtgCostToks(S.cost) : mtgCostToks((S.ex || {})[k]), pre = o.manaPrefix || '', sym = t => MTG.sym[pre + '|' + mtgKey(t)] || MTG.sym[mtgKey(t)]; if(!toks.length) continue;
+      if(o.manaPlacement || o.manaLayout){ let pos, sz = (o.size || 0.0434) * H;   // styles that put every pip at its own spot
+        if(o.manaPlacement){ pos = toks.map((t, i) => [o.manaPlacement.x[i], o.manaPlacement.y[i]]) } else { const L = o.manaLayout.find(l => l.max >= toks.length) || o.manaLayout[o.manaLayout.length - 1]; pos = L.pos; sz *= L.size || 1 }
+        toks.forEach((t, i) => { const im = sym(t), q = pos[i]; if(im && q) c.drawImage(im, q[0] * W, q[1] * H, sz, sz) }); continue }
+      const pip = (o.size || 0.0434) * H * 0.856 * (o.manaImageScale || 1), gap = (o.manaSpacing || 0) * W;
       const total = toks.length * pip + (toks.length - 1) * gap; let x = al === 'right' ? B.x + B.w - total : al === 'center' ? B.x + B.w / 2 - total / 2 : B.x;
-      toks.forEach(t => { const im = MTG.sym[mtgKey(t)]; if(im){ c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowOffsetX = -0.001 * W; c.shadowOffsetY = 0.0029 * H; c.drawImage(im, x, B.y + B.h / 2 - pip / 2, pip, pip); c.restore() } x += pip + gap }); continue }
+      toks.forEach(t => { const im = sym(t); if(im){ c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowOffsetX = -0.001 * W; c.shadowOffsetY = 0.0029 * H; c.drawImage(im, x, B.y + B.h / 2 - pip / 2, pip, pip); c.restore() } x += pip + gap }); continue }
     if(k === 'rules'){ const rt = mtgText(S.rules), ft = S.flavor ? '<i>' + mtgText(S.flavor) + '</i>' : '', Fm = {BOLD:'700 @ ' + fam, COND:'400 @ ' + fam, ITALR:'400 @ NVMPlantinI, ' + fam}; let px = (o.size || 0.0362) * H * (+S.tsize || 1), rl, fl, tot; const lhk = 1.18; c.textBaseline = 'alphabetic';
       for(;;){ rl = rt ? wowRich(c, rt, B.w, px, Fm, MTGR) : []; fl = ft ? wowRich(c, ft, B.w, px, Fm, MTGR) : []; const gp = rl.length && fl.length ? px * 0.55 : 0; tot = (rl.length + fl.length) * px * lhk + gp; if(tot <= B.h || px <= 18) break; px -= 2 }
       const gp = rl.length && fl.length ? px * 0.55 : 0; let y = B.y + (o.noVerticalCenter ? 0 : (B.h - tot) / 2) + px * 0.9; c.fillStyle = col(o);

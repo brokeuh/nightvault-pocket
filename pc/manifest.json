@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 13:54",
+ "version": "2026-11-16 13:57",
  "notes": [
-  "Magic: class levels"
+  "Magic: style audit"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "73d54a414f539e46825ececa612c57828db16eed19ea4fed2a01a0dc55b7bac5"
+   "sha256": "5e5d1633017681e2fd27c3e89a9cfa1f607cc47005bc18d82c9d593bbd6dcbd0"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "c84a15cb3821f8130874b0b13f69a524ad2b201e59de808c05726ec150d0831e"
+   "sha256": "2c0dcc6d4be9db6377ccfbc321b47d92f4cc23aa283b0947eb05dfb0ab1a7481"
   },
   {
    "name": "fonts/OFL.txt",

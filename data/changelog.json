@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 225,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: checked all frame styles",
+   "items": [
+    "I checked all 260 styles for layout problems. Add-on styles (legend crowns, holo stamps, margins, nicknames, transform icons) now draw on top of the modern card instead of showing nothing; styles without their own text boxes (lands, nyx, devoid, brawl…) use the modern text layout.",
+    "Styles that place every mana symbol on its own spot (Wanted, Future, Cartoony) now show the cost, with their own symbol set.",
+    "Planeswalker, saga and class styles were already fixed (abilities and levels follow each other)."
+   ]
+  },
+  {
    "id": 224,
    "date": "2026-11-16",
    "where": [
