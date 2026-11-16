@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 222,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: all Card Conjurer frame styles",
+   "items": [
+    "New button \"More frame styles…\" in the Magic editor: pick any of the ~260 Card Conjurer styles (old frames, showcase, borderless, tokens, planeswalker, saga, class…), grouped like in Card Conjurer. Each style downloads on demand to your own PC (with its fonts); nothing is added to Nightvault itself.",
+    "Every style brings its own text boxes, art window and set-symbol spot; extra boxes (planeswalker abilities, loyalty, class levels…) show up as extra fields under the style picker. Colour / frame is a second select.",
+    "Approximated for now: two-colour split frames, crowns and stamps, loyalty cost badges, watermarks and double-faced flips."
+   ]
+  },
+  {
    "id": 221,
    "date": "2026-11-16",
    "where": [

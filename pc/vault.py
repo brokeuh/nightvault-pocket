@@ -192,7 +192,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261116-n53"   # the page and the program must carry the same build id
+BUILD = "20261116-n54"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -5032,6 +5032,69 @@ def mtg_download(root):
     finally:
         st['busy'] = False
 
+MTG_GROUPS = ['Standard:groupStandard-3', 'Accurate:groupAccurate', 'Showcase:groupShowcase-5', 'Promo:groupPromo-2', 'Textless:groupTextless-4', 'Margin:groupMargin', 'Token:groupToken-2', 'Misc:groupMisc-2',
+              'Modal / double-faced:groupModal-1', 'Double-faced:groupDFC', 'Planeswalker:groupPlaneswalker', 'Saga:groupSaga-1', 'Universes Beyond:groupUniversesBeyond', 'Flesh and Blood:groupFleshAndBlood', 'Custom:groupCustom']
+MTG_STY = {'busy': False, 'done': 0, 'total': 0, 'error': '', 'finished': False, 'pack': ''}
+
+
+def _mtg_fetch(rel, root, tries=2):
+    """Download one file of the Card Conjurer repository into templates/magic (skips files that are already there). Returns '' or an error text."""
+    import urllib.request
+    dest = root / rel
+    if dest.exists() and dest.stat().st_size > 0:
+        return ''
+    err = ''
+    for b in MTG_BASES:
+        for _t in range(tries):
+            try:
+                req = urllib.request.Request(b + urllib.request.quote(rel, safe='/+'), headers={'User-Agent': 'Nightvault'})
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    data = r.read()
+                if data:
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    tmp = dest.with_suffix(dest.suffix + '.part')
+                    tmp.write_bytes(data)
+                    tmp.replace(dest)
+                    return ''
+            except Exception as e:
+                err = str(e)
+    return 'Could not download ' + rel + ' (' + err + '). Check your internet connection and try again.'
+
+
+def mtg_style_download(root, pack):
+    """All the files of one Card Conjurer frame style: its pack script, the pictures it names, the group lists, the font list and the fonts."""
+    st = MTG_STY
+    st.update(busy=True, done=0, total=1, error='', finished=False, pack=pack)
+    try:
+        first = [('js/frames/' + g.split(':')[1] + '.js') for g in MTG_GROUPS] + ['css/style-9.css']
+        if pack:
+            first.append('js/frames/pack' + pack + '.js')
+        st['total'] = len(first)
+        for rel in first:
+            e = _mtg_fetch(rel, root)
+            if e and (pack and rel.endswith('pack' + pack + '.js') or rel == 'css/style-9.css'):
+                st['error'] = e
+                return
+            st['done'] += 1
+        css = (root / 'css' / 'style-9.css')
+        fonts = sorted(set(re.findall(r'url\(["\']?\.\./(fonts/[^"\')]+)', css.read_text('utf-8', 'ignore')))) if css.is_file() else []
+        imgs = []
+        if pack:
+            code = (root / 'js' / 'frames' / ('pack' + pack + '.js')).read_text('utf-8', 'ignore')
+            imgs = sorted(set(x.lstrip('/') for x in re.findall(r'[\'"`](/img/[^\'"`\s$]+?\.(?:png|svg|jpg|jpeg|webp))', code, re.I)))
+        jobs = fonts + imgs
+        st['total'] += len(jobs)
+        for rel in jobs:
+            e = _mtg_fetch(rel, root)
+            if e and rel in imgs and 'masks' not in rel:      # a missing picture is tolerated unless it is the whole style; fonts and masks never stop the style
+                st.setdefault('missing', []).append(rel)
+            st['done'] += 1
+        st['finished'] = True
+    except Exception as e:
+        st['error'] = str(e)
+    finally:
+        st['busy'] = False
+
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "Nightvault/0.1"
@@ -5335,6 +5398,16 @@ class Handler(BaseHTTPRequestHandler):
                 root = TEMPLATE_DIR / "magic"
                 root.mkdir(parents=True, exist_ok=True)
                 threading.Thread(target=mtg_download, args=(root,), daemon=True).start()
+            return self._send(200, dict(ok=True))
+        if path == "/api/template/mtg_style_get":
+            pack = str(q.get("pack") or "")
+            if pack and not re.fullmatch(r"[A-Za-z0-9_\-]{1,60}", pack):
+                return self._error(400, "Bad style name")
+            if not MTG_STY["busy"]:
+                root = TEMPLATE_DIR / "magic"
+                root.mkdir(parents=True, exist_ok=True)
+                MTG_STY.pop("missing", None)
+                threading.Thread(target=mtg_style_download, args=(root, pack), daemon=True).start()
             return self._send(200, dict(ok=True))
         if path == "/api/update/zip":
             n = int(self.headers.get("Content-Length") or 0)
@@ -6254,7 +6327,7 @@ class Handler(BaseHTTPRequestHandler):
             r = self._wm_root()
             return self._send(200, dict(have=bool(r), folder=str(TEMPLATE_DIR / "wowtcgmaker")))
         if path == "/api/template/mtg_status":
-            return self._send(200, dict(have=bool(self._mtg_root()), keyrune=(TEMPLATE_DIR / "magic" / "keyrune" / "keyrune.ttf").is_file(), folder=str(TEMPLATE_DIR / "magic"), dl=dict(MTG_DL)))
+            return self._send(200, dict(have=bool(self._mtg_root()), keyrune=(TEMPLATE_DIR / "magic" / "keyrune" / "keyrune.ttf").is_file(), folder=str(TEMPLATE_DIR / "magic"), dl=dict(MTG_DL), sty=dict(MTG_STY)))
         if path == "/api/template/pk_status":
             r = self._pk_root()
             return self._send(200, dict(have=bool(r), root=str(r or ""), folder=str(TEMPLATE_DIR / "pokemon")))
@@ -6287,8 +6360,8 @@ class Handler(BaseHTTPRequestHandler):
             ct = {".png": "image/png", ".ttf": "font/ttf", ".otf": "font/otf"}[cur.suffix.lower()]
             return self._send(200, cur.read_bytes(), ct, {"Cache-Control": "private, max-age=86400"})
         if path == "/api/template/mtg_file":
-            r = self._mtg_root()
-            if not r:
+            r = TEMPLATE_DIR / "magic"
+            if not r.is_dir():
                 return self._error(404, "The Magic frames are not downloaded yet")
             cur = r
             for part in [x for x in q.get("p", "").replace("\\", "/").split("/") if x and x != ".."]:
@@ -6296,9 +6369,9 @@ class Handler(BaseHTTPRequestHandler):
                 if hit is None:
                     return self._error(404, "Not in the folder: " + q.get("p", ""))
                 cur = hit
-            if not cur.is_file() or cur.suffix.lower() not in (".png", ".svg", ".ttf", ".otf", ".css"):
+            if not cur.is_file() or cur.suffix.lower() not in (".png", ".svg", ".ttf", ".otf", ".css", ".js", ".jpg", ".jpeg", ".webp"):
                 return self._error(404, "Not a picture or font")
-            ct = {".png": "image/png", ".svg": "image/svg+xml", ".ttf": "font/ttf", ".otf": "font/otf", ".css": "text/css"}[cur.suffix.lower()]
+            ct = {".png": "image/png", ".svg": "image/svg+xml", ".ttf": "font/ttf", ".otf": "font/otf", ".css": "text/css", ".js": "text/plain", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}[cur.suffix.lower()]
             return self._send(200, cur.read_bytes(), ct, {"Cache-Control": "private, max-age=86400"})
         if path == "/api/template/pk_file":
             r = self._pk_root()

@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 13:21",
+ "version": "2026-11-16 13:34",
  "notes": [
-  "magic set symbols"
+  "Magic: all Card Conjurer frame styles"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "6116485650d391610c64acdf891e4fc8e87e0323319d5aba9947382b8dac537e"
+   "sha256": "294a496d7fa05749815ce8570cc5bf613cde50c87ad4d153664697292ecce0e2"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "fe54f24b0580d03b92662185eab3f077e334a65f6c5d3b851692765c28aa4038"
+   "sha256": "545ae4139f03c4cbce1cc3b0d449ce4b75b75d3b87faac0737548ddb567348b0"
   },
   {
    "name": "fonts/OFL.txt",
