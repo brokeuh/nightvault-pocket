@@ -3,6 +3,23 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 231,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: fixes from the first test-bench report",
+   "items": [
+    "Rules text now follows what the card really prints: older cards get their card name back instead of \"this creature\" and \"enters the battlefield\" instead of \"enters\" (Scryfall's newer wording), and the text size matches the real card.",
+    "Legend crowns and holo stamps are drawn on cards that have them. Basic lands get their big mana symbol in the text box.",
+    "Rotated text boxes work (split cards, battles…). Class levels, saga reminder text and planeswalker abilities are laid out properly.",
+    "White-bordered old frames (Fourth Edition) get the white border."
+   ]
+  },
+  {
    "id": 230,
    "date": "2026-11-16",
    "where": [

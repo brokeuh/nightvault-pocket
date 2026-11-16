@@ -192,7 +192,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261116-n62"   # the page and the program must carry the same build id
+BUILD = "20261116-n63"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -5054,7 +5054,7 @@ def scry_card(set_code="", num="", q=""):
     f0 = face(faces[0], c) if faces else face(c, c)
     out = dict(f0, set=c.get("set", ""), num=c.get("collector_number", ""), rarity=c.get("rarity", ""), lang=c.get("lang", "en"), released=c.get("released_at", ""), layout=c.get("layout", ""), frame=c.get("frame", ""),
                frame_effects=c.get("frame_effects") or [], border=c.get("border_color", ""), colors=c.get("colors") or (faces[0].get("colors") if faces else []) or [], color_identity=c.get("color_identity") or [],
-               produced=c.get("produced_mana") or [], full_art=bool(c.get("full_art")), promo=bool(c.get("promo")), set_name=c.get("set_name", ""), uri=c.get("scryfall_uri", ""))
+               produced=c.get("produced_mana") or [], security_stamp=c.get("security_stamp", ""), full_art=bool(c.get("full_art")), promo=bool(c.get("promo")), set_name=c.get("set_name", ""), uri=c.get("scryfall_uri", ""))
     if len(faces) > 1:
         out["back"] = face(faces[1], c)
     return out

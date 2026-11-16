@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n62";
+const UI_BUILD = "20261116-n63";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2699,6 +2699,8 @@ async function mtgStyleDraw(cv, my, S){
   if(T.level0c){ const ex = S.ex || {}, used = [0, 1, 2, 3].filter(i => i === 0 || ['a', 'b', 'c'].some(l => ex['level' + i + l])), top = inf.text.level0c.y, bottom = 0.8368, hh = (bottom - top) / used.length;   // Class: the script shares the card height between the levels in use
     [0, 1, 2, 3].forEach(i => { const k = used.indexOf(i), a = T['level' + i + 'a'], b = T['level' + i + 'b'], c = T['level' + i + 'c']; if(k < 0){ [a, b, c].forEach(o => { if(o) o.y = 2 }); return }
       const y0 = top + k * hh; if(k === 0){ c.y = y0; c.height = hh } else { if(a) a.y = y0; if(b) b.y = y0; c.y = y0 + 0.0361; c.height = hh - 0.0361 } }) }
+  if(T.loyalty && T.ability0){ const ex = S.ex || {}, used = [0, 1, 2, 3].filter(i => ex['ability' + i]), top = T.ability0.y, total = 0.2796, n = Math.max(1, used.length);   // planeswalker: abilities share the text area
+    [0, 1, 2, 3].forEach(i => { const o = T['ability' + i], k = used.indexOf(i); if(!o) return; if(k < 0){ o.y = 2; return } o.y = top + k * total / n; o.height = total / n }) }
   Object.keys(T).forEach(k => { if(/^(level|ability)/.test(k) && !(T[k].y > 0 && T[k].y < 1)) delete T[k] });
   await mtgFonts(); const img = await mtgImg(fr.src.replace(/^\//, '')); if(my !== MTG.token) return;
   const ext = S.pt ? (() => { const w1 = (fr.name || '').split(' ')[0].toLowerCase(), l = inf.frames.filter(f => f.bounds && /power|toughness|\bpt\b/i.test(f.name || '')); return l.find(f => (f.name || '').toLowerCase().startsWith(w1)) || l[0] })() : null;
@@ -2711,12 +2713,13 @@ async function mtgStyleDraw(cv, my, S){
     c.drawImage(im, A[0] + (A[2] - w) / 2 + (TP.art.x || 0) * 10, A[1] + (A[3] - h) / 2 + (TP.art.y || 0) * 10, w, h); c.restore() } else { c.fillStyle = '#5a5f6a'; c.fillRect(...A) }
   mtgLayer(c, W, H, 'Art');
   if(img) c.drawImage(img, 0, 0, W, H);
+  { const bn = String(S.border || '').toLowerCase(), bf = bn && inf.main.find(f => /border$/i.test(f.name || '') && String(f.name).toLowerCase().startsWith(bn)), bi = bf && bf !== fr ? await mtgImg(bf.src.replace(/^\//, '')) : null; if(bi) c.drawImage(bi, 0, 0, W, H) }
   if(extImg){ const b = ext.bounds; c.drawImage(extImg, b.x * W, b.y * H, b.width * W, b.height * H) }
   mtgLayer(c, W, H, 'Frame');
   const fitW = (txt, fam, px, maxW) => { let s = px; c.font = `${s}px ${fam}`; while(s > 8 && c.measureText(txt).width > maxW){ s -= 1; c.font = `${s}px ${fam}` } return s };
   const col = o => o.color || 'black', val = {title:S.name, type:S.type, pt:S.pt}; c.textBaseline = 'middle';
   const shadowed = (o, fn) => { const sx = (o.shadowX || 0) * W, sy = (o.shadowY || 0) * H; if(sx || sy){ c.save(); c.fillStyle = o.shadowColor || 'black'; c.translate(sx, sy); fn(); c.restore() } c.fillStyle = col(o); fn() };
-  let prevName = null; for(const k of Object.keys(T)){ mtgLayer(c, W, H, prevName); const o = T[k]; prevName = o.name || k; const B = mtgBox(o, W, H), fam = fams[k], al = o.align || 'left', ax = al === 'right' ? B.x + B.w : al === 'center' ? B.x + B.w / 2 : B.x; c.textAlign = al;
+  let prevName = null, rotated = false; for(const k of Object.keys(T)){ if(rotated){ c.restore(); rotated = false } mtgLayer(c, W, H, prevName); const o = T[k]; prevName = o.name || k; const B = mtgBox(o, W, H); if(o.rotation){ c.save(); c.translate(B.x, B.y); c.rotate(o.rotation * Math.PI / 180); B.x = 0; B.y = 0; rotated = true } const fam = fams[k], al = o.align || 'left', ax = al === 'right' ? B.x + B.w : al === 'center' ? B.x + B.w / 2 : B.x; c.textAlign = al;
     if(o.manaCost || k === 'mana' || k === 'mana2'){ const toks = k === 'mana' ? mtgCostToks(S.cost) : mtgCostToks((S.ex || {})[k]), pre = o.manaPrefix || '', sym = t => MTG.sym[pre + '|' + mtgKey(t)] || MTG.sym[mtgKey(t)]; if(!toks.length) continue;
       if(o.manaPlacement || o.manaLayout){ let pos, sz = (o.size || 0.0434) * H;   // styles that put every pip at its own spot
         if(o.manaPlacement){ pos = toks.map((t, i) => [o.manaPlacement.x[i], o.manaPlacement.y[i]]) } else { const L = o.manaLayout.find(l => l.max >= toks.length) || o.manaLayout[o.manaLayout.length - 1]; pos = L.pos; sz *= L.size || 1 }
@@ -2738,8 +2741,8 @@ async function mtgStyleDraw(cv, my, S){
     else { c.textBaseline = 'alphabetic'; let p2 = px, ls; const Fm = {BOLD:'700 @ ' + fam, COND:'400 @ ' + fam, ITALR:'400 @ ' + fam}; for(;;){ ls = wowRich(c, mtgText(t), B.w, p2, Fm, MTGR); if(ls.length * p2 * 1.18 <= B.h || p2 <= 14) break; p2 -= 2 }
       let y = B.y + (B.h - ls.length * p2 * 1.18) / 2 + p2 * 0.9; c.fillStyle = col(o); ls.forEach(l => { wowRichDraw(c, l, al === 'center' ? B.x + B.w / 2 : B.x, y, p2, Fm, al === 'center' ? 'c' : 'l', MTGR); y += p2 * 1.18 }); c.textBaseline = 'middle' }
     c.textAlign = 'left' }
-  mtgLayer(c, W, H, prevName);
-  const sb = cd.setSymbolBounds; if(sb){ const sg = await mtgSymMeasure(c, W, H, S, sb); const right = sb.horizontal === 'left' ? sb.x * W + (sg ? sg.w : 0) : sb.horizontal === 'center' ? sb.x * W + (sg ? sg.w / 2 : 0) : sb.x * W; mtgSymDraw(c, H, S, sg, right); mtgLayer(c, W, H, 'Set symbol') }
+  if(rotated) c.restore(); mtgLayer(c, W, H, prevName);
+  const sb = cd.setSymbolBounds; if(sb && sb.x < 1){ const sg = await mtgSymMeasure(c, W, H, S, sb); const right = sb.horizontal === 'left' ? sb.x * W + (sg ? sg.w : 0) : sb.horizontal === 'center' ? sb.x * W + (sg ? sg.w / 2 : 0) : sb.x * W; mtgSymDraw(c, H, S, sg, right); mtgLayer(c, W, H, 'Set symbol') }
   c.textAlign = 'left'; mtgBottom(c, W, H, S, brush, fitW, cd.bottomInfoColor === 'black' ? '#000' : '#fff');
 }
 // style picker + download button for the panel
@@ -2764,7 +2767,7 @@ function mtgStyleBind(){
 async function mtgDraw(){
   const cv = $('#tpcv'); if(!cv || !TP.mtg) return; const my = ++MTG.token, S = TP.mtg, fk = MTG_FR[S.frame] || MTG_FR.W;
   if(S.style) return mtgStyleDraw(cv, my, S);
-  await mtgFonts(); const [fr, ptb] = await Promise.all([mtgImg(MTG_DIR + fk.f), S.pt ? mtgImg(MTG_DIR + fk.p) : null]); await mtgSyms([S.cost, S.rules, S.flavor]); const brush = S.artist ? await mtgImg('img/manaSymbols/artistbrush.svg') : null;
+  await mtgFonts(); const [fr, ptb] = await Promise.all([mtgImg(MTG_DIR + fk.f), S.pt ? mtgImg(MTG_DIR + fk.p) : null]); await mtgSyms([S.cost, S.rules, S.flavor, S.big ? '{' + S.big + '}' : '']); for(const o of S.over || []) await mtgStyleInfo(o.pack); const brush = S.artist ? await mtgImg('img/manaSymbols/artistbrush.svg') : null;
   if(my !== MTG.token || !fr) return;
   const W = fr.width, H = fr.height; cv.width = W; cv.height = H; const c = cv.getContext('2d'); c.clearRect(0, 0, W, H);
   const A = [0.0767 * W, 0.1129 * H, 0.8476 * W, 0.4429 * H]; mtgArtFull(W, H, A);
@@ -2774,7 +2777,7 @@ async function mtgDraw(){
   mtgLayer(c, W, H, 'Art');
   c.drawImage(fr, 0, 0, W, H);
   if(ptb && S.pt) c.drawImage(ptb, 0.7573 * W, 0.8848 * H, 0.188 * W, 0.0733 * H);
-  mtgLayer(c, W, H, 'Frame');
+  await mtgDrawOver(c, W, H, S); mtgLayer(c, W, H, 'Frame');
   c.textBaseline = 'alphabetic'; c.fillStyle = '#000';
   // mana cost (right aligned, from the right edge of the title bar)
   const toks = mtgCostToks(S.cost), pip = 71 / 1638 * H * 0.78 * 1.097; let costLeft = 0.9266 * W;
@@ -2791,7 +2794,8 @@ async function mtgDraw(){
   if(S.pt){ c.textAlign = 'center'; fitW(S.pt, 'NVBelerenSC, NVBeleren, serif', 0.0372 * H, 0.1367 * W); c.fillText(S.pt, (0.7928 + 0.1367 / 2) * W, mid(0.902, 0.0372) + 0.002 * H); c.textAlign = 'left' }
   mtgLayer(c, W, H, 'Power and toughness');
   // rules + flavour, centred in the text box
-  { c.textBaseline = 'alphabetic'; const bx = 0.086 * W, by = 0.6303 * H, bw = 0.828 * W, bh = 0.2875 * H, rt = mtgText(S.rules), ft = S.flavor ? '<i>' + mtgText(S.flavor) + '</i>' : '';
+  if(S.big){ const im = MTG.sym[mtgKey(S.big)]; if(im){ const d = 0.19 * H; c.drawImage(im, 0.5 * W - d / 2, 0.7741 * H - d / 2, d, d) } }
+  else { c.textBaseline = 'alphabetic'; const bx = 0.086 * W, by = 0.6303 * H, bw = 0.828 * W, bh = 0.2875 * H, rt = mtgText(S.rules), ft = S.flavor ? '<i>' + mtgText(S.flavor) + '</i>' : '';
     let px = 0.0362 * H * (+S.tsize || 1), rl, fl, tot; const lhk = 1.18;
     for(;;){ rl = rt ? wowRich(c, rt, bw, px, MTGF, MTGR) : []; fl = ft ? wowRich(c, ft, bw, px, MTGF, MTGR) : []; const gap = rl.length && fl.length ? px * 0.55 : 0; tot = (rl.length + fl.length) * px * lhk + gap; if(tot <= bh || px <= 18) break; px -= 2 }
     const gap = rl.length && fl.length ? px * 0.55 : 0; let y = by + (bh - tot) / 2 + px * 0.9;
@@ -2832,20 +2836,30 @@ async function mtgEnsureStyle(v, tick){
   for(let i = 0; i < 900; i++){ await new Promise(r => setTimeout(r, 600)); let st; try{ st = (await api('/api/template/mtg_status')).sty }catch(e){ return null } if(st.error) return null; if(tick) tick(st); if(st.finished) break }
   Object.keys(MTG.imgs).forEach(k => { if(!MTG.imgs[k]) delete MTG.imgs[k] }); MTGS.fam = {}; delete MTGS.info[v]; return mtgStyleInfo(v) }
 const mtgScryImg = u => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = '/api/template/mtg_scry_img?u=' + enc(u) + '&t=' + enc(TOKEN) });
+function mtgPrinted(c, f){      // Scryfall's Oracle wording (since 2024: "this creature", "enters") differs from what older cards print: bring back the card name and "enters the battlefield"
+  f = f || c; let t = String(f.oracle_text || ''); const old = String(c.released || '9999') < '2024-11';
+  if(old){ const nm = String(f.name || '').split(' // ')[0]; t = t.replace(/\bthis (creature|artifact|enchantment|land|permanent|spell|Aura|Equipment|Vehicle|Saga|planeswalker|Siege|Case|Class|battle|card)\b/g, nm).replace(/\benters\b(?! the battlefield)/g, 'enters the battlefield') }
+  return t }
+async function mtgOverlays(S, c){      // legend crown and holo stamp are separate Card Conjurer add-on packs drawn on top of the frame
+  S.over = []; const word = mtgFrameWord(c), fx = c.frame_effects || [];
+  if(String(c.frame) === '2015' && fx.includes('legendary') && !S.style){ const inf = await mtgEnsureStyle('M15LegendCrowns'); if(inf && !inf.bad) S.over.push({pack:'M15LegendCrowns', i:mtgPickFrame(inf.main.map(f => f.name), word)}) }
+  if(String(c.frame) === '2015' && c.security_stamp === 'oval' && !S.style){ const inf = await mtgEnsureStyle('M15HoloStamps'); if(inf && !inf.bad) S.over.push({pack:'M15HoloStamps', i:mtgPickFrame(inf.main.map(f => f.name), word)}) } }
+async function mtgDrawOver(c, W, H, S){ for(const o of S.over || []){ const inf = MTGS.info[o.pack]; if(!inf || !inf.main) continue; const f = inf.main[o.i]; if(!f || !f.bounds) continue; const im = await mtgImg(f.src.replace(/^\//, '')); if(im) c.drawImage(im, f.bounds.x * W, f.bounds.y * H, f.bounds.width * W, f.bounds.height * H) } }
 async function mtgFromScry(c, tick){
-  const style = mtgStyleFor(c), S = mtgNew('W'); S.name = c.name; S.cost = c.mana_cost || ''; S.type = c.type_line || ''; S.rules = c.oracle_text || ''; S.flavor = c.flavor_text || ''; S.pt = c.power ? c.power + '/' + c.toughness : '';
-  S.artist = c.artist || ''; S.set = String(c.set || '').toUpperCase(); S.sym = c.set || ''; S.lang = String(c.lang || 'en').toUpperCase(); S.num = c.num || ''; S.rarity = ({mythic:'M', rare:'R', uncommon:'U', common:'C'})[c.rarity] || ''; S.legal = c.released ? '™ & © ' + c.released.slice(0, 4) + ' Wizards of the Coast' : ''; S.tsize = '0.9';
-  S.ex = {}; if(c.loyalty) S.ex.loyalty = c.loyalty; if(c.defense) S.ex.defense = c.defense; const word = mtgFrameWord(c);
+  const style = mtgStyleFor(c), S = mtgNew('W'); S.name = c.name; S.cost = c.mana_cost || ''; S.type = c.type_line || ''; S.rules = mtgPrinted(c); S.flavor = c.flavor_text || ''; S.pt = c.power ? c.power + '/' + c.toughness : '';
+  S.artist = c.artist || ''; S.set = String(c.set || '').toUpperCase(); S.sym = c.set || ''; S.lang = String(c.lang || 'en').toUpperCase(); S.num = c.num || ''; S.rarity = ({mythic:'M', rare:'R', uncommon:'U', common:'C'})[c.rarity] || ''; S.legal = c.released ? '™ & © ' + c.released.slice(0, 4) + ' Wizards of the Coast' : ''; S.tsize = '1'; S.border = c.border || '';
+  S.ex = {}; S.big = /^basic land/i.test(c.type_line || '') ? (c.produced && c.produced[0]) || '' : ''; if(S.big) S.rules = ''; if(c.loyalty) S.ex.loyalty = c.loyalty; if(c.defense) S.ex.defense = c.defense; const word = mtgFrameWord(c);
   const W = {white:'W', blue:'U', black:'B', red:'R', green:'G', multi:'M', artifact:'A', land:'L', colorless:'E'}; S.frame = W[word] || 'W'; S.style = style; S.sframe = 0;
   if(style){ const inf = await mtgEnsureStyle(style, tick); if(!inf || inf.bad){ S.style = ''; S.styleFail = style } else S.sframe = mtgPickFrame(inf.main.map(f => f.name), word) }
   const b = c.back, lines = String(c.oracle_text || '').split('\n').filter(Boolean);
-  if(S.style && b){ if(c.layout === 'adventure'){ S.ex.rules2 = S.rules; S.rules = b.oracle_text || ''; S.ex.mana2 = b.mana_cost || ''; S.ex.title2 = b.name || ''; S.ex.type2 = b.type_line || '' }
-    else if(c.layout === 'split'){ S.ex.title2 = S.name; S.ex.mana2 = S.cost; S.ex.type2 = S.type; S.ex.rules2 = S.rules; S.name = b.name || ''; S.cost = b.mana_cost || ''; S.type = b.type_line || ''; S.rules = b.oracle_text || '' }   // Card Conjurer: main = right half
+  if(S.style && b){ if(c.layout === 'adventure'){ S.ex.rules2 = S.rules; S.rules = mtgPrinted(c, b); S.ex.mana2 = b.mana_cost || ''; S.ex.title2 = b.name || ''; S.ex.type2 = b.type_line || '' }
+    else if(c.layout === 'split'){ S.ex.title2 = S.name; S.ex.mana2 = S.cost; S.ex.type2 = S.type; S.ex.rules2 = S.rules; S.name = b.name || ''; S.cost = b.mana_cost || ''; S.type = b.type_line || ''; S.rules = mtgPrinted(c, b) }   // Card Conjurer: main = right half
     else if(c.layout === 'flip'){ S.ex.title2 = b.name || ''; S.ex.type2 = b.type_line || ''; S.ex.rules2 = b.oracle_text || ''; S.ex.pt2 = b.power ? b.power + '/' + b.toughness : '' }
     else if(c.layout === 'modal_dfc'){ S.ex.flipsideType = b.type_line || ''; S.ex.flipSideReminder = b.oracle_text || '' } }
-  if(S.style && (style === 'PlaneswalkerRegular' || style === 'PlaneswalkerBorderless' || style === 'PlaneswalkerBoxTopper' || style === 'SagaRegular')){ lines.slice(0, 4).forEach((l, i) => { S.ex['ability' + i] = style === 'SagaRegular' ? l.replace(/^[IVX, ]+\s*[—-]\s*/, '') : l }); S.rules = '' }
+  if(S.style && (style === 'PlaneswalkerRegular' || style === 'PlaneswalkerBorderless' || style === 'PlaneswalkerBoxTopper' || style === 'SagaRegular')){ let ls = lines.map(l => mtgPrinted(c, {oracle_text:l, name:c.name})); if(style === 'SagaRegular' && ls[0] && ls[0][0] === '('){ S.ex.reminder = ls.shift() } ls.slice(0, 4).forEach((l, i) => { S.ex['ability' + i] = style === 'SagaRegular' ? l.replace(/^[IVX, ]+\s*[—-]\s*/, '') : l }); S.rules = '' }
+  if(S.style && style === 'Class'){ let lv = 0; const body = [[]]; lines.forEach(l => { const m = l.match(/^(.*):\s*Level (\d)$/); if(m){ lv = +m[2] - 1; body[lv] = []; S.ex['level' + lv + 'a'] = m[1]; S.ex['level' + lv + 'b'] = 'Level ' + m[2] } else (body[lv] = body[lv] || []).push(mtgPrinted(c, {oracle_text:l, name:c.name})) }); body.forEach((b, i) => { S.ex['level' + i + 'c'] = b.join('\n') }); S.rules = '' }
   if(S.style && style === 'Case') S.ex.case = S.rules; if(S.style && style === 'Battle' && c.defense) S.ex.defense = c.defense;
-  S.want = style; return S }
+  await mtgOverlays(S, c); S.want = style; return S }
 async function mtgLoadArt(c){ if(!c.art) return; const im = await mtgScryImg(c.art); if(im) TP.art = {img:im, zoom:1, x:0, y:0, fid:'scry', saved:false} }
 const mtgLoadImg = src => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src });
 async function mtgCompareCard(c, S){        // draws S in the editor canvas, returns {ours, real, diff, score}

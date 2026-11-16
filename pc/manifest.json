@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 14:20",
+ "version": "2026-11-16 14:32",
  "notes": [
-  "Magic: Save PSD"
+  "Magic: bench report fixes"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "9cc8b1cad22401b4a50dbc0fc08128147e421d73a14a559415fc300496ef40b1"
+   "sha256": "3d50957dbb4213f1bddd46c9062f59a646c884b25fb629dff439602258a29c13"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "bcef92ecd935465df791af2dc74f6f7670eb94811ae7cb814340a81d1e049dce"
+   "sha256": "700b7096f5b1d3f6c6b5906ec7d424f6c73241a7df45a3f181be6a7b4e07be33"
   },
   {
    "name": "fonts/OFL.txt",
