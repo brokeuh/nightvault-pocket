@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n63";
+const UI_BUILD = "20261116-n64";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2701,6 +2701,9 @@ async function mtgStyleDraw(cv, my, S){
       const y0 = top + k * hh; if(k === 0){ c.y = y0; c.height = hh } else { if(a) a.y = y0; if(b) b.y = y0; c.y = y0 + 0.0361; c.height = hh - 0.0361 } }) }
   if(T.loyalty && T.ability0){ const ex = S.ex || {}, used = [0, 1, 2, 3].filter(i => ex['ability' + i]), top = T.ability0.y, total = 0.2796, n = Math.max(1, used.length);   // planeswalker: abilities share the text area
     [0, 1, 2, 3].forEach(i => { const o = T['ability' + i], k = used.indexOf(i); if(!o) return; if(k < 0){ o.y = 2; return } o.y = top + k * total / n; o.height = total / n }) }
+  let sagaDraw = null;
+  if(T.reminder && T.ability0 && /saga/i.test(cd.version || '')){ const ex = S.ex || {}, used = [0, 1, 2, 3].filter(i => ex['ability' + i]), ch = used.map((i, k) => (S.saga && S.saga[k]) || 1), sum = ch.reduce((a, b) => a + b, 0) || 1, top = T.ability0.y, per = (0.8368 - top) / Math.max(sum, 3);
+    let y = top; const slots = []; [0, 1, 2, 3].forEach(i => { const o = T['ability' + i], k = used.indexOf(i); if(!o) return; if(k < 0){ o.y = 2; return } o.y = y; o.height = per * ch[k]; slots.push({y, h:o.height, n:ch[k]}); y += o.height }); sagaDraw = slots }
   Object.keys(T).forEach(k => { if(/^(level|ability)/.test(k) && !(T[k].y > 0 && T[k].y < 1)) delete T[k] });
   await mtgFonts(); const img = await mtgImg(fr.src.replace(/^\//, '')); if(my !== MTG.token) return;
   const ext = S.pt ? (() => { const w1 = (fr.name || '').split(' ')[0].toLowerCase(), l = inf.frames.filter(f => f.bounds && /power|toughness|\bpt\b/i.test(f.name || '')); return l.find(f => (f.name || '').toLowerCase().startsWith(w1)) || l[0] })() : null;
@@ -2719,6 +2722,10 @@ async function mtgStyleDraw(cv, my, S){
   const fitW = (txt, fam, px, maxW) => { let s = px; c.font = `${s}px ${fam}`; while(s > 8 && c.measureText(txt).width > maxW){ s -= 1; c.font = `${s}px ${fam}` } return s };
   const col = o => o.color || 'black', val = {title:S.name, type:S.type, pt:S.pt}; c.textBaseline = 'middle';
   const shadowed = (o, fn) => { const sx = (o.shadowX || 0) * W, sy = (o.shadowY || 0) * H; if(sx || sy){ c.save(); c.fillStyle = o.shadowColor || 'black'; c.translate(sx, sy); fn(); c.restore() } c.fillStyle = col(o); fn() };
+  if(sagaDraw){ const [chI, divI] = await Promise.all([mtgImg('img/frames/saga/sagaChapter.png'), mtgImg('img/frames/saga/sagaDivider.png')]), ff = await mtgFam('plantinsemibold'), sx = (/oldsaga/i.test(cd.version) ? 0.1114 : 0.1) * W, sw = (/oldsaga/i.test(cd.version) ? 0.3727 : 0.3947) * W, ROM = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+    let cnt = 0; c.save(); c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillStyle = '#000'; c.font = `550 ${0.0324 * H}px ${ff}`;
+    sagaDraw.forEach(sl => { const yy = sl.y * H, hh = sl.h * H; if(divI) c.drawImage(divI, sx, yy - 0.0029 * H / 2, sw, 0.0029 * H); const nx = sx - 0.0614 * W, nw = 0.0787 * W, nh = 0.0629 * H, ny = yy + (hh - nh) / 2, spread = 0.0358 * H;
+      for(let j = 0; j < sl.n; j++){ const off = (j - (sl.n - 1) / 2) * 2 * spread; if(chI) c.drawImage(chI, nx, ny + off, nw, nh); c.fillText(ROM[cnt++] || '', nx + 0.0394 * W, ny + off + 0.0429 * H) } }); c.restore() }
   let prevName = null, rotated = false; for(const k of Object.keys(T)){ if(rotated){ c.restore(); rotated = false } mtgLayer(c, W, H, prevName); const o = T[k]; prevName = o.name || k; const B = mtgBox(o, W, H); if(o.rotation){ c.save(); c.translate(B.x, B.y); c.rotate(o.rotation * Math.PI / 180); B.x = 0; B.y = 0; rotated = true } const fam = fams[k], al = o.align || 'left', ax = al === 'right' ? B.x + B.w : al === 'center' ? B.x + B.w / 2 : B.x; c.textAlign = al;
     if(o.manaCost || k === 'mana' || k === 'mana2'){ const toks = k === 'mana' ? mtgCostToks(S.cost) : mtgCostToks((S.ex || {})[k]), pre = o.manaPrefix || '', sym = t => MTG.sym[pre + '|' + mtgKey(t)] || MTG.sym[mtgKey(t)]; if(!toks.length) continue;
       if(o.manaPlacement || o.manaLayout){ let pos, sz = (o.size || 0.0434) * H;   // styles that put every pip at its own spot
@@ -2838,7 +2845,7 @@ async function mtgEnsureStyle(v, tick){
 const mtgScryImg = u => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = '/api/template/mtg_scry_img?u=' + enc(u) + '&t=' + enc(TOKEN) });
 function mtgPrinted(c, f){      // Scryfall's Oracle wording (since 2024: "this creature", "enters") differs from what older cards print: bring back the card name and "enters the battlefield"
   f = f || c; let t = String(f.oracle_text || ''); const old = String(c.released || '9999') < '2024-11';
-  if(old){ const nm = String(f.name || '').split(' // ')[0]; t = t.replace(/\bthis (creature|artifact|enchantment|land|permanent|spell|Aura|Equipment|Vehicle|Saga|planeswalker|Siege|Case|Class|battle|card)\b/g, nm).replace(/\benters\b(?! the battlefield)/g, 'enters the battlefield') }
+  if(old){ const nm = String(f.name || '').split(' // ')[0]; t = t.split(/(\([^)]*\))/).map(seg => seg[0] === '(' ? seg : seg.replace(/\bthis (creature|artifact|enchantment|land|permanent|spell|Aura|Equipment|Vehicle|Saga|planeswalker|Siege|Case|Class|battle|card)\b/g, nm).replace(/\benters\b(?! the battlefield)/g, 'enters the battlefield')).join('') }
   return t }
 async function mtgOverlays(S, c){      // legend crown and holo stamp are separate Card Conjurer add-on packs drawn on top of the frame
   S.over = []; const word = mtgFrameWord(c), fx = c.frame_effects || [];
@@ -2856,7 +2863,7 @@ async function mtgFromScry(c, tick){
     else if(c.layout === 'split'){ S.ex.title2 = S.name; S.ex.mana2 = S.cost; S.ex.type2 = S.type; S.ex.rules2 = S.rules; S.name = b.name || ''; S.cost = b.mana_cost || ''; S.type = b.type_line || ''; S.rules = mtgPrinted(c, b) }   // Card Conjurer: main = right half
     else if(c.layout === 'flip'){ S.ex.title2 = b.name || ''; S.ex.type2 = b.type_line || ''; S.ex.rules2 = b.oracle_text || ''; S.ex.pt2 = b.power ? b.power + '/' + b.toughness : '' }
     else if(c.layout === 'modal_dfc'){ S.ex.flipsideType = b.type_line || ''; S.ex.flipSideReminder = b.oracle_text || '' } }
-  if(S.style && (style === 'PlaneswalkerRegular' || style === 'PlaneswalkerBorderless' || style === 'PlaneswalkerBoxTopper' || style === 'SagaRegular')){ let ls = lines.map(l => mtgPrinted(c, {oracle_text:l, name:c.name})); if(style === 'SagaRegular' && ls[0] && ls[0][0] === '('){ S.ex.reminder = ls.shift() } ls.slice(0, 4).forEach((l, i) => { S.ex['ability' + i] = style === 'SagaRegular' ? l.replace(/^[IVX, ]+\s*[—-]\s*/, '') : l }); S.rules = '' }
+  if(S.style && (style === 'PlaneswalkerRegular' || style === 'PlaneswalkerBorderless' || style === 'PlaneswalkerBoxTopper' || style === 'SagaRegular')){ let ls = lines.map(l => mtgPrinted(c, {oracle_text:l, name:c.name})); if(style === 'SagaRegular' && ls[0] && ls[0][0] === '('){ S.ex.reminder = ls.shift(); S.saga = ls.slice(0, 4).map(l => Math.min(3, Math.max(1, (l.split(/\s*[—-]\s*/)[0].match(/[IVX]+/g) || []).length))) } ls.slice(0, 4).forEach((l, i) => { S.ex['ability' + i] = style === 'SagaRegular' ? l.replace(/^[IVX, ]+\s*[—-]\s*/, '') : l }); S.rules = '' }
   if(S.style && style === 'Class'){ let lv = 0; const body = [[]]; lines.forEach(l => { const m = l.match(/^(.*):\s*Level (\d)$/); if(m){ lv = +m[2] - 1; body[lv] = []; S.ex['level' + lv + 'a'] = m[1]; S.ex['level' + lv + 'b'] = 'Level ' + m[2] } else (body[lv] = body[lv] || []).push(mtgPrinted(c, {oracle_text:l, name:c.name})) }); body.forEach((b, i) => { S.ex['level' + i + 'c'] = b.join('\n') }); S.rules = '' }
   if(S.style && style === 'Case') S.ex.case = S.rules; if(S.style && style === 'Battle' && c.defense) S.ex.defense = c.defense;
   await mtgOverlays(S, c); S.want = style; return S }

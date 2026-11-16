@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 14:32",
+ "version": "2026-11-16 14:35",
  "notes": [
-  "Magic: bench report fixes"
+  "Magic: sagas"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "3d50957dbb4213f1bddd46c9062f59a646c884b25fb629dff439602258a29c13"
+   "sha256": "398afe42c1a4aec924a3d262416c74dfc7231f928cc66eca5cf800fa03ce1fe8"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "700b7096f5b1d3f6c6b5906ec7d424f6c73241a7df45a3f181be6a7b4e07be33"
+   "sha256": "eea242e96089603e3e275093302fbd52bb6c0aa153e28e36f0730d560e794dfb"
   },
   {
    "name": "fonts/OFL.txt",

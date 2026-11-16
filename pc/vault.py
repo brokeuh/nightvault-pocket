@@ -192,7 +192,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261116-n63"   # the page and the program must carry the same build id
+BUILD = "20261116-n64"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -5161,6 +5161,9 @@ def mtg_style_download(root, pack):
         imgs = []
         if pack:
             code = (root / 'js' / 'frames' / ('pack' + pack + '.js')).read_text('utf-8', 'ignore')
+            for vf in sorted(set(re.findall(r'/js/frames/(version[A-Za-z0-9_\-]+\.js)', code))):      # layout scripts of special frames (saga, planeswalker, class...) bring pictures of their own
+                if not _mtg_fetch('js/frames/' + vf, root):
+                    code += '\n' + (root / 'js' / 'frames' / vf).read_text('utf-8', 'ignore')
             imgs = sorted(set(x.lstrip('/') for x in re.findall(r'[\'"`](/img/[^\'"`\s$]+?\.(?:png|svg|jpg|jpeg|webp))', code, re.I)))
         jobs = fonts + imgs
         st['total'] += len(jobs)

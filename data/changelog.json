@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 232,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: sagas with chapter badges",
+   "items": [
+    "Saga cards now get the chapter badges (I, II, III, IV) and divider lines, with each chapter text getting room by how many chapters it covers (\"I, II, III — …\" is one tall box). The \"As this Saga enters…\" reminder goes in its own box at the top.",
+    "Special frame styles (saga, planeswalker, class…) now download the extra pictures their layout script uses.",
+    "Reminder text in brackets keeps Scryfall's wording (\"this Saga\")."
+   ]
+  },
+  {
    "id": 231,
    "date": "2026-11-16",
    "where": [
