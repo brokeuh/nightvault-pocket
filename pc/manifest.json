@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 14:48",
+ "version": "2026-11-16 14:49",
  "notes": [
-  "Bench probe fixes (n67)"
+  "Colorshifted mapping (n68)"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "5a436efb0c5876f9ccbfb5fb996912eff34f311db304dffccd0a83c22b7e4ace"
+   "sha256": "536334e5393ed2ab7be0032ff544e9d6b90820211b8e1bc2fbf10bad2851d3d4"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "3971f048b5d571a83fe4d8a9b2214b10430b17a0fc9fda5ba8a2f55d31ab30b3"
+   "sha256": "e8d1cf6f467cabd86a6cc036a9700a7ad8713ad6532415dbdc0ff36877a55b6a"
   },
   {
    "name": "fonts/OFL.txt",

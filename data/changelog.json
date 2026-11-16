@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 236,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: Planar Chaos colourshifted frame",
+   "items": [
+    "Colourshifted cards from Planar Chaos now use their own frame style (tinted text box) instead of the plain 2003 frame. Press 'Download this style' once if it asks."
+   ]
+  },
+  {
    "id": 235,
    "date": "2026-11-16",
    "where": [
