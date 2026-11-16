@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n42";
+const UI_BUILD = "20261116-n43";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1848,6 +1848,7 @@ const WB_TYPES = [['ally', 'Ally'], ['ea', 'Ally - extended art'], ['rare', 'All
 const WB_CLASSES = ['Death Knight', 'Demon Hunter', 'Druid', 'Hunter', 'Mage', 'Monk', 'Paladin', 'Priest', 'Rogue', 'Shaman', 'Warlock', 'Warrior'];
 const WB_DMG = ['Melee', 'Ranged', 'Nature', 'Shadow', 'Arcane', 'Fire', 'Frost', 'Holy'];
 function wowFactions(S){
+  if(S.type === 'cea_ally') return [['alliance', 'Alliance'], ['horde', 'Horde'], ['monster', 'Monster'], ['neutral', 'Neutral']];
   if(S.type === 'heroback') return [['alliance', 'Alliance'], ['horde', 'Horde'], ['monster', 'Monster']];
   const all = [['alliance', 'Alliance'], ['horde', 'Horde'], ['neutral', 'Neutral']];
   if(wowVar() === 'cl') return S.type === 'ally' ? all : S.type === 'hero' ? all.slice(0, 2) : [];
@@ -1962,6 +1963,69 @@ async function wowDrawBack(my, cv){        // Hero back: drawn entirely from the
   body(ctx); if(rec) rec.push({type:'png', name:'Hero back bar and text', data:snap(body)});
   if(fgb) ctx.drawImage(fgb, 0, 0); if(rec) rec.push({type:'png', name:'Border', data:snap(c => { if(fgb) c.drawImage(fgb, 0, 0) })});
 }
+const WM_BI = {Arcane:[106, 111, 16, 920], Chaos:[160, 140, 12, 915], Fire:[105, 108, 27, 914], Frost:[88, 95, 27, 928], Holy:[88, 106, 29, 915], Melee:[95, 103, 28, 917], Nature:[100, 112, 29, 913], Ranged:[95, 100, 28, 921], Shadow:[88, 106, 28, 917]};
+const WM_EQY = {'Death Knight':35, 'Demon Hunter':87, 'Druid':139, 'Hunter':191, 'Mage':244, 'Monk':294, 'Paladin':346, 'Priest':397, 'Rogue':448, 'Shaman':500, 'Warlock':552, 'Warrior':604};
+async function wowDrawCea(my, cv){        // Classic extended art: full-card picture, drawn from the WoWTCGMaker frames
+  const [W, H] = TP.st.size; cv.width = W; cv.height = H; await tpFonts(); await wmReady(); if(my !== TP.token) return;
+  const S = wowS(), T = S.t, F = wowF(), ctx = cv.getContext('2d'), rec = TP.rec || null; ctx.clearRect(0, 0, W, H);
+  if(!WM.on){ ctx.fillStyle = '#333'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#fff'; ctx.font = '28px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Extended art needs the WoWTCGMaker files', W / 2, H / 2); return }
+  const kind = S.type.slice(4), ab = kind === 'ability', eq = kind === 'equipment', I = p => wmImg('Template/' + p);
+  const fac = {alliance:'Alliance', horde:'Horde', monster:'Monster', neutral:'Neutral'}[S.faction] || 'Neutral';
+  const fr = ab ? 'Extended Art/Ability EA Frame.png' : eq ? 'Extended Art/Equipment EA Frame.png' : 'Extended Art/' + fac + ' Ally EA Frame.png';
+  const bi = S.dmg && WM_BI[S.dmg] ? I('Bottom Icons/' + S.dmg + '.png') : null, bn = eq ? I('Bottom Icons/' + S.equip + '.png') : null;
+  const [bgb, fgb, frame, dmgIco, numIco] = await Promise.all([I('Border/Border Background.png'), I('Border/Border Foreground.png'), I(fr), bi, bn]);
+  const eqi = eq ? await Promise.all((S.eqcls || []).filter(c => WM_EQY[c] !== undefined).map(async c => [c, await I('Equipment/Equipment Class Icons/' + (c === 'Monk' ? 'Monk Alt' : c) + '.png')])) : [];
+  if(my !== TP.token) return;
+  const snap = fn => { const c = document.createElement('canvas'); c.width = W; c.height = H; fn(c.getContext('2d')); return c.toDataURL('image/png') };
+  const art = c => { const A = TP.art; if(!A.img) return; const R = [30, 30, 720, 1020], rw = R[2] - R[0], rh = R[3] - R[1], sc = Math.max(rw / A.img.width, rh / A.img.height) * A.zoom, w = A.img.width * sc, h = A.img.height * sc;
+    c.save(); c.beginPath(); c.rect(R[0], R[1], rw, rh); c.clip(); c.drawImage(A.img, R[0] + rw / 2 - w / 2 + A.x, R[1] + rh / 2 - h / 2 + A.y, w, h); c.restore() };
+  const stroke = (c, txt, x, y, px, font, align, maxW, w) => { if(txt === '' || txt == null) return; txt = String(txt); c.font = font.replace('@', px + 'px'); while(maxW && px > 9 && c.measureText(txt).width > maxW){ px -= 1; c.font = font.replace('@', px + 'px') }
+    c.textAlign = align; c.textBaseline = 'alphabetic'; c.lineJoin = 'round'; c.lineWidth = w || Math.max(3, px * 0.16); c.strokeStyle = '#000'; c.strokeText(txt, x, y); c.fillStyle = '#fff'; c.fillText(txt, x, y) };
+  const cost = {alliance:[103, 740], horde:[83, 740], monster:[83, 744], neutral:[84, 746]}[S.faction] || [84, 746], yo = ab || eq ? 148 : 0, big = eq || ab ? [ab ? 78 : 80, 605] : cost;
+  const wide = !ab && !eq && (S.faction === 'alliance' || S.faction === 'horde') ? 55 : 0;
+  const body = c => {
+    if(frame) c.drawImage(frame, 30, 30, 690, 990);
+    eqi.forEach(([n, im]) => { if(im) c.drawImage(im, 646, WM_EQY[n], 76, 53) });
+    stroke(c, T.cost, big[0], big[1] + 47, 55, F.SERIF, 'center', 80);
+    stroke(c, T.name, 375, (ab ? 615 : 764 - yo) + 26, 30, F.SERIF, 'center', 520);
+    stroke(c, T.typeline, 160, (ab ? 670 : 818 - yo) + 21, 25, F.SERIF, 'left', 682 - wide - 160 - (T.eqtype ? 130 : 0), 3);
+    if(T.eqtype) stroke(c, T.eqtype, 682 - wide, (ab ? 670 : 818 - yo) + 21, 25, F.SERIF, 'right', 130, 3);
+    if(!ab && !eq || eq){ if(dmgIco && S.dmg && T.damage && !eq){ const [w, h, x, y] = WM_BI[S.dmg]; if(S.dmg === 'Chaos'){ const k = dmgIco.width / 160; c.drawImage(dmgIco, 17 * k, 0, dmgIco.width - 17 * k, dmgIco.height, x, y, 143, 140) } else c.drawImage(dmgIco, x, y, w, h) } }
+    if(!ab && !eq){ stroke(c, T.damage, 67, 942 + 47, 55, F.SERIF, 'center', 90); stroke(c, T.health, 680, 942 + 47, 55, F.SERIF, 'center', 90) }
+    if(eq){ if(numIco) S.equip === 'Strike' ? c.drawImage(numIco, 632, 933, 98, 98) : c.drawImage(numIco, 633, 932, 91, 98); stroke(c, T.health, 677, 940 + 47, 55, F.SERIF, 'center', 80) }
+    // rules text
+    const top = ab ? 725 : 872, hgt = ab ? 220 : 80; let px = ab ? 38 : 28, rich, lh;
+    for(;;){ rich = wowRich(c, T.rules, 600, px, F); lh = px * 1.2; if(rich.length * lh <= hgt || px <= 12) break; px -= 1 }
+    if(rich.length){ c.fillStyle = ab ? '#000' : '#000'; let y = top + px * 0.85; rich.forEach(l => { wowRichDraw(c, l, 60, y, px, F, 'l'); y += lh }) }
+    // credits
+    stroke(c, T.artist ? 'Artist: ' + T.artist : '', 404, 978 + 15, 18, F.CRED, 'left', 260, 2); stroke(c, T.copy, 404, 998 + 11, 13, F.CRED, 'left', 280, 2); stroke(c, T.setnum, 375, 982 + 16, 20, F.SET, 'right', 175, 3);
+  };
+  if(bgb) ctx.drawImage(bgb, 0, 0); art(ctx);
+  if(rec){ rec.push({type:'png', name:'Border background', data:snap(c => { if(bgb) c.drawImage(bgb, 0, 0) })}); if(TP.art.img) rec.push({type:'png', name:'Your art', data:snap(art)}) }
+  body(ctx); if(rec) rec.push({type:'png', name:'Frame and text', data:snap(body)});
+  if(fgb) ctx.drawImage(fgb, 0, 0); if(rec) rec.push({type:'png', name:'Border', data:snap(c => { if(fgb) c.drawImage(fgb, 0, 0) })});
+}
+function wowPanelCea(sel){
+  const S = wowS(), T = S.t, ty = S.type.slice(4), G = 'display:grid;grid-template-columns:minmax(110px,auto) 1fr;gap:8px 12px;align-items:center;margin-top:8px';
+  const tx = (k, label, ph, rows) => `<label>${label}</label>` + (rows ? `<textarea data-wt="${k}" rows="${rows}" placeholder="${esc(ph || '')}">${esc(T[k])}</textarea>` : `<input type="text" data-wt="${k}" value="${esc(T[k])}" placeholder="${esc(ph || '')}">`);
+  const sec = (title, body) => `<details open class="tpsec" style="margin-top:14px"><summary><b>${title}</b></summary><div style="${G}">${body}</div></details>`;
+  let look = sel('type', 'Card type', wowTypeList());
+  if(ty === 'ally') look += sel('faction', 'Faction', [['alliance', 'Alliance'], ['horde', 'Horde'], ['monster', 'Monster'], ['neutral', 'Neutral']]);
+  if(ty !== 'ability') look += sel('dmg', 'Damage type', [['', '- none -'], ...WOW_DMG.filter(d => WM_BI[d]).map(d => [d, d])]);
+  if(ty === 'equipment') look += sel('equip', 'Number badge', [['Armor', 'Armor'], ['Strike', 'Strike']]) + `<label>Classes</label><span style="display:flex;flex-wrap:wrap;gap:4px 14px">${Object.keys(WM_EQY).map(c => `<label><input type="checkbox" data-wc="${c}" ${(S.eqcls || []).includes(c) ? 'checked' : ''}> ${c}</label>`).join('')}</span>`;
+  let h = `<p class="hint">Extended art: the picture fills the whole card. Drawn from your WoWTCGMaker files. Rules text is short on this layout (about two lines on Ally and Equipment).</p>` + sec('Card look', look);
+  h += sec('Name & cost', tx('name', 'Name', 'Card name') + tx('cost', 'Cost', '0-10'));
+  h += sec('Type line', tx('typeline', 'Type line', 'e.g. Ally - Human Warrior') + tx('eqtype', 'Tags (right side)', 'optional'));
+  h += sec('Rules', tx('rules', 'Rules text', 'Icons: [Fire] [Armor] [Exhaust] [Power] [3]   Style: <b>bold</b> <i>italic</i>', 3));
+  h += sec('Numbers & credits', (ty === 'ally' ? tx('damage', 'Damage', '') : '') + (ty !== 'ability' ? tx('health', ty === 'equipment' ? 'Badge number' : 'Health', '') : '') + tx('setnum', 'Set & number', 'e.g. MYSET 012/100') + tx('artist', 'Artist', '') + tx('copy', 'Copyright line', ''));
+  h += `<details open class="tpsec" style="margin-top:14px"><summary><b>Art</b> <span class="muted">(fills the whole card)</span></summary>
+      <div class="bar" id="tpartbar" style="margin-top:8px"><button class="btn sm" id="tpartb"><i class="ti ti-photo-up"></i>Choose art</button><input type="file" id="tpartf" accept="image/*" hidden>
+        <label>Zoom <input type="range" id="tpa_zoom" min="0.5" max="3" step="0.01" value="${TP.art.zoom}"></label>
+        <label>Left/right <input type="range" id="tpa_x" min="-500" max="500" value="${TP.art.x}"></label>
+        <label>Up/down <input type="range" id="tpa_y" min="-700" max="700" value="${TP.art.y}"></label></div></details>`;
+  return h;
+}
+function wowTypeList(){ return (wowVar() === 'wb' ? WB_TYPES : WOW_TYPES.concat(WM.on ? [['cea_ally', 'Extended art - Ally'], ['cea_equipment', 'Extended art - Equipment'], ['cea_ability', 'Extended art - Ability']] : [])).concat(WM.on ? [['heroback', 'Hero back']] : []) }
 function wowArt(ctx){
   const A = TP.art; if(!A.img) return; const a = wowItem(['Art', 'Parvink Art']), S = wowS(), R = wowVar() === 'wb' ? ({ea:[28, 32, 722, 805], rare:[28, 110, 722, 915]}[S.type] || [28, 100, 722, 660]) : (a ? a.rect : [5, -14, 734, 803]);
   const rw = R[2] - R[0], rh = R[3] - R[1], sc = Math.max(rw / A.img.width, rh / A.img.height) * A.zoom, w = A.img.width * sc, h = A.img.height * sc;
@@ -2046,6 +2110,7 @@ function wowTextCl(ctx, part){
 async function wowDraw(my, cv){
   const [W, H] = TP.st.size; cv.width = W; cv.height = H;
   const S = wowS(); if(S.type === 'heroback') return wowDrawBack(my, cv);
+  if(S.type.startsWith('cea_')) return wowDrawCea(my, cv);
   const L = wowLayers(S); await tpFonts(); await wmReady(); if(my !== TP.token) return;
   tpBusy('Loading layers ...'); let pre, post;
   try{ pre = await Promise.all(L.pre.map(l => tpImg(l.i))); post = await Promise.all(L.post.map(l => tpImg(l.i))) }catch(e){ if(my === TP.token) tpBusy('Could not load a layer: ' + e.message); return }
@@ -2065,7 +2130,7 @@ function wowPanelBack(sel){
   const S = wowS(), T = S.t, G = 'display:grid;grid-template-columns:minmax(110px,auto) 1fr;gap:8px 12px;align-items:center;margin-top:8px';
   const tx = (k, label, ph, rows) => `<label>${label}</label>` + (rows ? `<textarea data-wt="${k}" rows="${rows}" placeholder="${esc(ph || '')}">${esc(T[k])}</textarea>` : `<input type="text" data-wt="${k}" value="${esc(T[k])}" placeholder="${esc(ph || '')}">`);
   const sec = (title, body) => `<details open class="tpsec" style="margin-top:14px"><summary><b>${title}</b></summary><div style="${G}">${body}</div></details>`;
-  const types = (wowVar() === 'wb' ? WB_TYPES : WOW_TYPES).concat([['heroback', 'Hero back']]);
+  const types = wowTypeList();
   let h = `<p class="hint">The back of a Hero card: a full-card picture with the hero bar and the text underneath. It is drawn from your WoWTCGMaker files.</p>`;
   h += sec('Card look', sel('type', 'Card type', types) + sel('faction', 'Faction', [['alliance', 'Alliance'], ['horde', 'Horde'], ['monster', 'Monster']]) + sel('cls', 'Class', WB_CLASSES.concat(['Monk Alt']).map(c => [c, c])));
   h += sec('Name & health', tx('name', 'Name', 'Hero name') + tx('health', 'Health', ''));
@@ -2085,7 +2150,7 @@ function wowPanelWb(){
   const cls = WB_CLASSES.map(c => [c, c]), fac = wowFactions(S);
   let h = `<p class="hint">Pick the card type, then fill in the text. The frames come from your own PSD file and stay on this PC. Save PNG gives the finished card, Save PSD keeps the frame, art and text as separate layers.</p>`;
   if(ty === 'heroback') return wowPanelBack(sel);
-  let look = sel('type', 'Card type', WB_TYPES.concat(WM.on ? [['heroback', 'Hero back']] : []));
+  let look = sel('type', 'Card type', wowTypeList());
   if(fac.length) look += sel('faction', 'Faction', fac);
   if(ty === 'ability') look += sel('cls', 'Class icon', [['', '- none -'], ...cls]) + (WM.on ? `<label>Overlay</label><span><label><input type="checkbox" data-wb="instant" ${S.instant ? 'checked' : ''}> Instant</label> &nbsp; <label><input type="checkbox" data-wb="basic" ${S.basic ? 'checked' : ''}> Basic</label></span>` : '');
   if(ty === 'hero') look += sel('cls', 'Class', cls) + `<label>Faction banner</label><label><input type="checkbox" data-wb="banner" ${S.banner ? 'checked' : ''}> small banner top right</label>`;
@@ -2114,7 +2179,8 @@ function wowPanel(){
   const ty = S.type, cls = WOW_CLASSES.map(c => [c, c]);
   let h = `<p class="hint">Pick the card type, then fill in the text. The frames come from your own PSD file and stay on this PC. Save PNG gives the finished card, Save PSD keeps the frame, art and text as separate layers.</p>`;
   if(ty === 'heroback') return wowPanelBack(sel);
-  let look = sel('type', 'Card type', WOW_TYPES.concat(WM.on ? [['heroback', 'Hero back']] : []));
+  if(ty.startsWith('cea_')) return wowPanelCea(sel);
+  let look = sel('type', 'Card type', wowTypeList());
   if(ty === 'ally') look += sel('faction', 'Faction', [['alliance', 'Alliance'], ['horde', 'Horde'], ['neutral', 'Neutral']]) + sel('cls', 'Class needed', [['', 'Any class'], ...cls]);
   if(ty === 'hero') look += sel('faction', 'Faction', [['alliance', 'Alliance'], ['horde', 'Horde']]) + sel('cls', 'Class', cls) + `<label>Faction banner</label><label><input type="checkbox" data-wb="banner" ${S.banner ? 'checked' : ''}> small banner top right</label>`;
   if(ty === 'equipment') look += sel('equip', 'Number badge', [['Armor', 'Armor'], ['Strike', 'Strike']]) + `<label>Classes</label><span style="display:flex;flex-wrap:wrap;gap:4px 14px">${WOW_CLASSES.filter(c => c !== 'Death Knight').map(c => `<label><input type="checkbox" data-wc="${c}" ${(S.eqcls || []).includes(c) ? 'checked' : ''}> ${c}</label>`).join('')}</span>`;
@@ -2154,7 +2220,7 @@ async function wowUsePreset(type, faction, v){
 function wowPresetsHTML(only){
   const B = '#1f6fa8', R = '#b02a2a', N = '#8a8f98', G = '#2f8f5b', M = '#6b8f2f', Y = '#c9a227', P = '#6b3fa0', O = '#e8812e';
   const sets = {cl:['WoW - Classic Border', [['ally', 'alliance', 'Ally - Alliance', B], ['ally', 'horde', 'Ally - Horde', R], ['ally', 'neutral', 'Ally - Neutral', N], ['hero', 'alliance', 'Hero - Alliance', B], ['hero', 'horde', 'Hero - Horde', R],
-      ['equipment', 'neutral', 'Equipment', Y], ['ability', 'neutral', 'Ability', P], ['quest', 'neutral', 'Quest', G], ['questns', 'neutral', 'Quest (no symbol)', G], ['event', 'neutral', 'Event', O]].concat(WM.on ? [['heroback', 'alliance', 'Hero back - Alliance', B], ['heroback', 'horde', 'Hero back - Horde', R], ['heroback', 'monster', 'Hero back - Monster', M]] : [])],
+      ['equipment', 'neutral', 'Equipment', Y], ['ability', 'neutral', 'Ability', P], ['quest', 'neutral', 'Quest', G], ['questns', 'neutral', 'Quest (no symbol)', G], ['event', 'neutral', 'Event', O]].concat(WM.on ? [['cea_ally', 'alliance', 'Extended art - Alliance', B], ['cea_ally', 'horde', 'Extended art - Horde', R], ['cea_ally', 'monster', 'Extended art - Monster', M], ['cea_ally', 'neutral', 'Extended art - Neutral', N], ['cea_equipment', 'neutral', 'Extended art - Equipment', Y], ['cea_ability', 'neutral', 'Extended art - Ability', P], ['heroback', 'alliance', 'Hero back - Alliance', B], ['heroback', 'horde', 'Hero back - Horde', R], ['heroback', 'monster', 'Hero back - Monster', M]] : [])],
     wb:['WoW - Worldbreak Border', [['ally', 'alliance', 'Ally - Alliance', B], ['ally', 'horde', 'Ally - Horde', R], ['ally', 'monster', 'Ally - Monster', M], ['ally', 'neutral', 'Ally - Neutral', N],
       ['ea', 'alliance', 'Extended art - Alliance', B], ['ea', 'horde', 'Extended art - Horde', R], ['ea', 'monster', 'Extended art - Monster', M], ['ea', 'neutral', 'Extended art - Neutral', N],
       ['rare', 'alliance', 'Full art - Alliance', B], ['rare', 'horde', 'Full art - Horde', R], ['hero', 'alliance', 'Hero - Alliance', B], ['hero', 'horde', 'Hero - Horde', R], ['hero', 'monster', 'Hero - Monster', M], ['hero', 'neutral', 'Hero - Neutral', N],

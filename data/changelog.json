@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 211,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "WoW Classic: extended art cards",
+   "items": [
+    "WoW TCG Classic now has Extended art cards: Ally (Alliance, Horde, Monster, Neutral), Equipment and Ability. The picture fills the whole card. They are drawn from the WoWTCGMaker files (the wowtcgmaker folder), so they appear once that folder is in place.",
+    "The Worldbreak border already has its own extended art and full art tiles."
+   ]
+  },
+  {
    "id": 210,
    "date": "2026-11-16",
    "where": [

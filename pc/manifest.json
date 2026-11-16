@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 11:21",
+ "version": "2026-11-16 11:35",
  "notes": [
-  "Back to all templates button"
+  "WoW Classic extended art"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "004aa88c7c255591057828f74f5e18dfbc6aea74dc3550fdc4abf1ea90f0c075"
+   "sha256": "9074060e16177899152f9c8c7bc3e80ff75114e770be9edd126f7298a130f874"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "db3f16c7a5826b302444c8581b417a03dfa35b57025d4070ad583f37c91e6bd1"
+   "sha256": "74d55237c91830b161aae57125316ea6dcb7a0b45954b95b7e779e486761600d"
   },
   {
    "name": "fonts/OFL.txt",
