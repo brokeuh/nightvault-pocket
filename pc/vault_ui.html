@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n43";
+const UI_BUILD = "20261116-n44";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -1914,17 +1914,17 @@ function wowRich(ctx, text, maxW, px, F){        // -> lines [{items, w}]
     if(/^[ \t]+$/.test(m[0])){ items.push({sp:true, f:mode}); continue }
     items.push({s:m[0], f:mode });
   }
-  const lines = []; let cur = {items:[], w:0};
+  const lines = []; let cur = {items:[], w:0}, chunk = [], cw = 0;       // a chunk = words and icons with no space between them (kept together when wrapping)
   const push = () => { while(cur.items.length && cur.items[cur.items.length - 1].sp) cur.w -= cur.items.pop().w; lines.push(cur); cur = {items:[], w:0} };
+  const flush = () => { if(!chunk.length) return; if(cur.items.length && cur.w + cw > maxW) push(); chunk.forEach(x => cur.items.push(x)); cur.w += cw; chunk = []; cw = 0 };
   items.forEach(it => {
-    if(it.nl){ push(); return }
-    if(it.sp){ ctx.font = fnt(it.f); it.w = ctx.measureText(' ').width; if(!cur.items.length) return; cur.items.push(it); cur.w += it.w; return }
+    if(it.nl){ flush(); push(); return }
+    if(it.sp){ flush(); ctx.font = fnt(it.f); it.w = ctx.measureText(' ').width; if(!cur.items.length) return; cur.items.push(it); cur.w += it.w; return }
     if(it.ico){ const lk = it.k.toLowerCase().replace(/^!(?!power)/, ''), named = WM.tb[lk] && lk !== 'numeric cost'; it.w = named ? wmIconDims(it.k, px)[0] : px * 1.12 }
     else { ctx.font = fnt(it.f); it.w = ctx.measureText(it.s).width }
-    if(cur.items.length && cur.w + it.w > maxW) push();
-    cur.items.push(it); cur.w += it.w;
+    chunk.push(it); cw += it.w;
   });
-  if(cur.items.length || !lines.length) push();
+  flush(); if(cur.items.length || !lines.length) push();
   return lines;
 }
 function wowRichDraw(ctx, line, x, y, px, F, align){       // y = baseline; x = centre (align 'c') or left edge
@@ -2026,6 +2026,159 @@ function wowPanelCea(sel){
   return h;
 }
 function wowTypeList(){ return (wowVar() === 'wb' ? WB_TYPES : WOW_TYPES.concat(WM.on ? [['cea_ally', 'Extended art - Ally'], ['cea_equipment', 'Extended art - Equipment'], ['cea_ability', 'Extended art - Ability']] : [])).concat(WM.on ? [['heroback', 'Hero back']] : []) }
+/* ---------------------------------------------------------------- WoW card maker (the complete WoWTCGMaker set, no PSD needed)
+   Every card type, drawn from the pictures and fonts of the owner's own WoWTCGMaker download (templates/wowtcgmaker). */
+const WMC_TYPES = ['Ability', 'Ally', 'Ability Ally', 'Token Ally', 'Equipment', 'Hero', 'Master Hero', 'Location', 'Quest', 'Event'];
+const WMC_CLASSES = ['Death Knight', 'Demon Hunter', 'Druid', 'Hunter', 'Mage', 'Monk', 'Monk Alt', 'Paladin', 'Priest', 'Rogue', 'Shaman', 'Warlock', 'Warrior'];
+const WMC_DMG = ['Arcane', 'Chaos', 'Fire', 'Frost', 'Holy', 'Melee', 'Nature', 'Ranged', 'Shadow'];
+const WMC_BIG = {Arcane:[139, 146, 11, 888], Chaos:[210, 183, 0, 880], Fire:[138, 142, 27, 880], Frost:[115, 125, 27, 898], Holy:[116, 139, 29, 882], Melee:[125, 135, 28, 885], Nature:[131, 147, 29, 878], Ranged:[125, 131, 28, 890], Shadow:[115, 139, 28, 884]};
+const WMC_EQHI = {'Death Knight':35, 'Demon Hunter':87, 'Druid':139, 'Hunter':191, 'Mage':244, 'Monk':294, 'Monk Alt':294, 'Paladin':346, 'Priest':397, 'Rogue':448, 'Shaman':500, 'Warlock':552, 'Warrior':604};
+const WMC_EQLO = {'Death Knight':131, 'Druid':182, 'Hunter':233, 'Mage':284, 'Paladin':334, 'Priest':385, 'Rogue':436, 'Shaman':486, 'Warlock':537, 'Warrior':588};
+const WMC_RAR = {Common:['#ffffff', '#000000'], Uncommon:['#008040', '#ffffff'], Rare:['#0070dd', '#ffffff'], Epic:['#a335ee', '#ffffff']};
+function wmcNew(type){ return {type:type || 'Ally', faction:'Neutral', ea:false, instant:false, variant:'', gold:false, name:'', cost:'', dmgtype:'', damage:'', health:'', strike:'', armor:'', capacity:'', classes:[], subtypes:'', tags:'', rules:'', flavor:'', artist:'', copy:'', setname:'', setnum:'', setmax:'', block:'', rarity:'Common'} }
+function wmcFactions(S){ return S.type === 'Hero' ? ['Alliance', 'Horde', 'Neutral', 'Monster'] : ['Ability', 'Quest', 'Event', 'Location'].includes(S.type) ? ['Alliance', 'Horde', 'Both', 'Neutral'] : ['Ally', 'Ability Ally', 'Token Ally'].includes(S.type) ? ['Alliance', 'Horde', 'Neutral', 'Monster', 'Both'] : [] }
+async function wmcDraw(){
+  const cv = $('#tpcv'); if(!cv) return; const my = ++TP.token, S = TP.wmc, F = (await tpFonts(), await wmReady(), wowF());
+  cv.width = 750; cv.height = 1050; const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, 750, 1050);
+  if(!WM.on){ ctx.fillStyle = '#333'; ctx.fillRect(0, 0, 750, 1050); ctx.fillStyle = '#fff'; ctx.font = '26px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('WoWTCGMaker files not found', 375, 500); return }
+  const ty = S.type, ally = ['Ally', 'Ability Ally', 'Token Ally'].includes(ty), ab = ty === 'Ability', eq = ty === 'Equipment', hero = ty === 'Hero', back = hero && S.variant === 'Back';
+  const ea = S.ea && (ally || ab || eq), I = p => wmImg('Template/' + p), fac = S.faction, cls = S.classes || [];
+  const gold = S.gold ? ' Gold' : '';
+  const want = {bgb:'Border/Border Background' + gold + '.png', fgb:'Border/Border Foreground' + gold + '.png'};
+  if(ea) want.frame = ab ? 'Extended Art/Ability EA Frame.png' : eq ? 'Extended Art/Equipment EA Frame.png' : 'Extended Art/' + ({Alliance:'Alliance', Horde:'Horde', Monster:'Monster'}[fac] || 'Neutral') + ' Ally EA Frame.png';
+  else if(ab) want.frame = 'Ability/Ability Frame.png';
+  else if(ally) want.frame = 'Ally/' + ({Alliance:'Alliance', Horde:'Horde', Monster:'Monster'}[fac] || 'Neutral') + ' Ally Frame.png';
+  else if(eq) want.frame = S.variant === 'Low' ? 'Equipment/Equipment Frame Low.png' : S.variant === 'None' ? 'Equipment/Equipment Frame No.png' : 'Equipment/Equipment Frame High.png';
+  else if(hero && !back) want.frame = 'Hero/Front/' + ({Alliance:'Alliance', Horde:'Horde', Monster:'Monster'}[fac] || 'Neutral') + ' Hero Frame.png';
+  else if(ty === 'Master Hero') want.frame = 'Master Hero/Master Hero Frame.png';
+  else if(ty === 'Location') want.frame = 'Location/Location Frame.png';
+  else if(ty === 'Quest' || ty === 'Event') want.frame = S.variant === 'NoIcon' ? 'Quest/Quest Frame No Icon.png' : 'Quest/Quest Frame.png';
+  if(back){ want.tbg = 'Hero/Back/Text Background.png'; want.fix = 'Hero/Back/Frame Fix.png'; want.bar = 'Hero/Back/' + ({Alliance:'Alliance', Horde:'Horde'}[fac] || 'Monster') + ' Hero Back Frame.png' }
+  if(S.dmgtype && WMC_BIG[S.dmgtype]) want.dmg = 'Bottom Icons/' + S.dmgtype + '.png';
+  if(eq && (S.strike || S.armor)) want.badge = 'Bottom Icons/' + (S.strike ? 'Strike' : 'Armor') + '.png';
+  if(ty === 'Location' && S.capacity) want.cap = 'Location/Location Capacity.png';
+  if(S.setnum || S.setname || ty === 'Token Ally') want.seticon = 'Set Icons/Set Icon' + (S.rarity === 'Common' ? ' Common' : ' ' + S.rarity) + '.png';
+  const keys = Object.keys(want), imgs = {}; (await Promise.all(keys.map(k => I(want[k])))).forEach((im, i) => imgs[keys[i]] = im);
+  const bannerKeys = (['Alliance', 'Horde', 'Both'].includes(fac) && !ea && !back && !hero && !eq && ty !== 'Master Hero') ? ['Alliance', 'Horde'] : (hero && !back && ['Alliance', 'Horde'].includes(fac) ? [] : []);
+  const ban = {}; await Promise.all(['Alliance', 'Horde'].map(async n => { ban[n] = await I('Top Zone/' + n + ' Banner.png') }));
+  const cico = {}; await Promise.all(cls.map(async c => { cico[c] = await I('Class Icons/' + c + '.png') }));
+  const eico = {}; if(eq) await Promise.all(cls.map(async c => { eico[c] = await I('Equipment/Equipment Class Icons/' + (c === 'Monk' ? 'Monk Alt' : c) + '.png') }));
+  const bgcls = eq && !ea && S.variant !== 'Low' && S.variant !== 'None' ? await I('Equipment/Background Class Icons.png') : null;
+  if(my !== TP.token) return;
+  const c = ctx;
+  const stroke = (txt, x, y, px, font, align, maxW, w, fill, sc) => { if(txt === '' || txt == null) return; txt = String(txt); c.font = font.replace('@', px + 'px'); while(maxW && px > 9 && c.measureText(txt).width > maxW){ px -= 1; c.font = font.replace('@', px + 'px') }
+    c.textAlign = align; c.textBaseline = 'alphabetic'; c.lineJoin = 'round'; c.lineWidth = w || Math.max(3, px * 0.16); c.strokeStyle = sc || '#000'; c.strokeText(txt, x, y); c.fillStyle = fill || '#fff'; c.fillText(txt, x, y) };
+  const name = (px, x0, x1, top) => stroke(S.name, x0, top + px * 0.9, px, F.SERIF, 'left', x1 - x0, 4);
+  const cost = (px, cx, top) => stroke(S.cost, cx, top + px * 0.85, px, F.SERIF, 'center', 90, 4);
+  const typeline = (x0, x1, top, px) => { const t = ty + (S.subtypes ? ' — ' + S.subtypes : ''); const w = x1 - x0 - (S.tags ? 20 : 0); stroke(t, x0, top + 21, px || 25, F.SERIF, 'left', S.tags ? Math.max(120, w * 0.6) : w, 3);
+    if(S.tags) stroke(S.tags, x1, top + 21, px || 25, F.SERIF, 'right', w * 0.4, 3) };
+  const classes = () => { let off = 642; Object.keys(cico).sort().reverse().forEach(n => { const im = cico[n]; if(off < 0 || !im) return; if(n === 'Monk Alt') c.drawImage(im, off - 3, 36, 78, 82); else c.drawImage(im, off, 37, 73, 73); off -= 72 }) };
+  const faction = () => { if(fac === 'Alliance' && ban.Alliance) c.drawImage(ban.Alliance, 650, 30, 65, 80); else if(fac === 'Horde' && ban.Horde) c.drawImage(ban.Horde, 650, 30, 65, 80); else if(fac === 'Both'){ if(ban.Alliance) c.drawImage(ban.Alliance, 600, 30, 65, 80); if(ban.Horde) c.drawImage(ban.Horde, 650, 30, 65, 80) } };
+  const bigDmg = (px, cx, top) => { if(S.dmgtype && WMC_BIG[S.dmgtype] && imgs.dmg && S.damage){ const [w, h, x, y] = WMC_BIG[S.dmgtype], im = imgs.dmg;
+      if(S.dmgtype === 'Chaos'){ const k = im.width / 210; c.drawImage(im, 17 * k, 0, im.width - 17 * k, im.height, x, y, 193, 183) } else c.drawImage(im, x, y, w, h) }
+    stroke(S.damage, cx, top + px * 0.85, px, F.SERIF, 'center', 90, 4) };
+  const art = (R) => { const A = TP.art; if(!A.img){ return } const rw = R[2] - R[0], rh = R[3] - R[1], sc = Math.max(rw / A.img.width, rh / A.img.height) * A.zoom, w = A.img.width * sc, h = A.img.height * sc;
+    c.save(); c.beginPath(); c.rect(R[0], R[1], rw, rh); c.clip(); c.drawImage(A.img, R[0] + rw / 2 - w / 2 + A.x, R[1] + rh / 2 - h / 2 + A.y, w, h); c.restore() };
+  // flavour text (centred, small italic) -> returns its height
+  const flavour = (top) => { if(!S.flavor) return 0; let px = 20, lines; for(;;){ c.font = F.ITAL.replace('@', px + 'px'); lines = wowWrap(c, S.flavor.replace(/;/g, '\n'), 458); if(lines.length <= 3 || px <= 10) break; px -= 1 }
+    const lh = px + Math.ceil(px * 4 / 19) - 3; let y = top + 22 * (3 - lines.length) + px * 0.85; c.fillStyle = '#000'; c.textAlign = 'center'; lines.forEach(l => { c.fillText(l, 375, y); y += lh }); return 22 * lines.length };
+  const effect = (top, maxH, x0, x1, startPx) => { if(!S.rules) return; let px = startPx || 38, rich, lh; for(;;){ rich = wowRich(c, S.rules, (x1 || 704) - (x0 || 46), px, F); lh = px * 1.21; if(rich.length * lh <= maxH || px <= 11) break; px -= 1 }
+    c.fillStyle = '#000'; let y = top + px * 0.85; rich.forEach(l => { wowRichDraw(c, l, x0 || 46, y, px, F, 'l'); y += lh }) };
+  // ---- draw
+  if(imgs.bgb) c.drawImage(imgs.bgb, 0, 0);
+  if(back || ea) art([30, 30, 720, 1020]); else art([30, 100, 720, 665]);
+  const fr = imgs.frame; const frame = () => { if(fr) (eq && S.variant === 'None' && !ea) ? c.drawImage(fr, 0, 0) : c.drawImage(fr, 30, 30, 690, 990) };
+  let off = 0;
+  if(back){
+    const rich = S.rules ? wowRich(c, S.rules, 540, 21, F) : [], lh = 26; off = rich.length ? rich.length * lh - 21 : 0;
+    if(rich.length && imgs.tbg) c.drawImage(imgs.tbg, 30, 952 - off, 690, 1000);
+    if(imgs.fix) c.drawImage(imgs.fix, 0, 0, 99, 51, 621, 844 - off, 99, 51);
+    if(imgs.bar) c.drawImage(imgs.bar, 30, 843 - off, 690, 149);
+    const n0 = cls[0]; if(n0 && cico[n0]) n0 === 'Monk Alt' ? c.drawImage(cico[n0], 70, 852 - off, 91, 96) : c.drawImage(cico[n0], 73, 852 - off, 86, 86);
+    stroke(S.name, 310, 905 - off + 22, 25, F.SERIF, 'left', 240, 4); stroke(S.health, 213, 865 - off + 40, 45, F.SERIF, 'center', 90, 4);
+    if(rich.length){ c.fillStyle = '#000'; let y = 975 - off + 19; rich.forEach(l => { wowRichDraw(c, l, 104, y, 21, F, 'l'); y += lh }) }
+  } else if(ea){
+    frame(); const yo = ab || eq ? 148 : 0; const wide = ally && (fac === 'Alliance' || fac === 'Horde') ? 55 : 0;
+    if(eq){ Object.keys(eico).forEach(n => { const im = eico[n], y = WMC_EQHI[n]; if(im && y !== undefined) c.drawImage(im, 646, y, 76, 53) }) }
+    const cp = ab ? [78, 605] : eq ? [80, 605] : ({Alliance:[103, 740], Horde:[83, 740], Monster:[83, 744]}[fac] || [84, 746]); cost(55, cp[0], cp[1]);
+    stroke(S.name, 375, (ab ? 615 : 764 - yo) + 26, 30, F.SERIF, 'center', 520, 4);
+    typeline(160, 682 - wide, ab ? 670 : 818 - yo);
+    if(!ab){ if(S.dmgtype && imgs.dmg && S.damage && !eq){ const eaB = {Arcane:[106, 111, 16, 920], Chaos:[160, 140, 12, 915], Fire:[105, 108, 27, 914], Frost:[88, 95, 27, 928], Holy:[88, 106, 29, 915], Melee:[95, 103, 28, 917], Nature:[100, 112, 29, 913], Ranged:[95, 100, 28, 921], Shadow:[88, 106, 28, 917]}[S.dmgtype]; if(S.dmgtype === 'Chaos'){ const k = imgs.dmg.width / 160; c.drawImage(imgs.dmg, 17 * k, 0, imgs.dmg.width - 17 * k, imgs.dmg.height, 12, 915, 143, 140) } else c.drawImage(imgs.dmg, eaB[2], eaB[3], eaB[0], eaB[1]) }
+      if(!eq){ stroke(S.damage, 67, 942 + 47, 55, F.SERIF, 'center', 90, 4); stroke(S.health, 680, 942 + 47, 55, F.SERIF, 'center', 90, 4) } }
+    if(eq && imgs.badge){ S.strike ? c.drawImage(imgs.badge, 632, 933, 98, 98) : c.drawImage(imgs.badge, 633, 932, 91, 98); stroke(S.strike || S.armor, 677, 940 + 47, 55, F.SERIF, 'center', 80, 4) }
+    effect(ab ? 725 : 872, ab ? 220 : 80, 60, 660, ab ? 38 : 28);
+  } else {
+    frame();
+    if(ab){ classes(); name(38, 187, 635, 36); cost(55, 98, 51); if(['Alliance', 'Horde'].includes(fac) && !cls.length) faction(); if(fac === 'Both' && !cls.length) faction(); typeline(135, 682, 670); const o = flavour(900); effect(735, 220 - o) }
+    else if(ally){ const neutral = ['Neutral', 'Both'].includes(fac); name(38, neutral ? 223 : 200, 635, 36); cost(55, neutral ? 102 : ({Alliance:126, Horde:100, Monster:102}[fac] || 102), neutral ? 47 : ({Alliance:41, Horde:45, Monster:53}[fac] || 47)); if(neutral) faction();
+      typeline(ty === 'Ability Ally' && S.instant ? 135 : 89, 682, 670); bigDmg(60, 77, 923); stroke(S.health, 665, 923 + 51, 60, F.SERIF, 'center', 90, 4); if(['Monster', 'Neutral'].includes(fac)) classes(); const o = flavour(900); effect(735, 150 - o) }
+    else if(eq){ const lo = S.variant === 'Low', no = S.variant === 'None', tab = lo ? WMC_EQLO : WMC_EQHI;
+      if(bgcls) c.drawImage(bgcls, 653, 35, 55, 622); Object.keys(eico).forEach(n => { const im = eico[n], y = tab[n]; if(im && y !== undefined) c.drawImage(im, 646, y, 76, n === 'Monk' || n === 'Monk Alt' ? 54 : 53) });
+      name(38, 223, 635, 36); cost(55, 100, 47); typeline(89, 682, 670); let h = 220;
+      if(S.strike){ h = 150; bigDmg(60, 77, 923); if(imgs.badge) c.drawImage(imgs.badge, 605, 902, 129, 129); stroke(S.strike, 665, 923 + 51, 60, F.SERIF, 'center', 90, 4) }
+      else if(S.armor){ h = 150; if(imgs.badge) c.drawImage(imgs.badge, 607, 901, 120, 128); stroke(S.armor, 665, 923 + 51, 60, F.SERIF, 'center', 90, 4) }
+      const o = flavour(900); effect(735, h - o) }
+    else if(hero){ classes2(); name(38, 187, 550, 36); stroke(S.health, 665, 923 + 51, 60, F.SERIF, 'center', 90, 4); typeline(89, 682, 670); const o = flavour(900); effect(735, 150 - o) }
+    else if(ty === 'Master Hero'){ cost(55, 53, 53); name(38, 187, 550, 36) }
+    else if(ty === 'Location'){ name(38, 187, 550, 36); typeline(89, 682, 670); faction(); let h = 220; if(S.capacity){ h = 150; if(imgs.cap) c.drawImage(imgs.cap, 605, 905, 110, 115); stroke(S.capacity, 658, 923 + 51, 60, F.SERIF, 'center', 90, 4) } const o = flavour(900); effect(735, h - o) }
+    else { name(38, 187, 550, 36); typeline(89, 682, 670); faction(); const o = flavour(900); effect(735, 220 - o) }
+  }
+  function classes2(){ const m = {'Monk Alt':[584, 38, 78, 82], 'Demon Hunter':[589, 38, 73, 73]}; const n = cls[0]; if(!n || !cico[n]) return; const [x, y, w, h] = m[n] || [591, 39, 73, 73]; c.drawImage(cico[n], x, y, w, h) }
+  if(!back){   // credits + set line
+    stroke(S.artist ? 'Artist: ' + S.artist : '', 404, 978 + 15, 18, F.CRED, 'left', 260, 2); stroke(S.copy, 404, 998 + 11, 13, F.CRED, 'left', 290, 2);
+    if(imgs.seticon && (S.setnum || ty === 'Token Ally')){ const col = WMC_RAR[S.rarity] || WMC_RAR.Common, txt = ty === 'Token Ally' && !S.setnum ? ' TOKEN' : ' ' + S.setname + ' ' + S.setnum + (S.setmax ? ' / ' + S.setmax : ''); let px = 20; c.font = F.SET.replace('@', px + 'px'); while(c.measureText(txt).width > 175 && px > 9){ px -= 1; c.font = F.SET.replace('@', px + 'px') }
+      const w = c.measureText(txt).width; c.drawImage(imgs.seticon, 335 - w, 980, 41, 30); stroke(S.block, 355 - w, 982 + 17, 20 - 2 * Math.max(0, String(S.block).length - 1), F.SET, 'center', 34, 0, col[1], 'rgba(0,0,0,0)'); c.lineWidth = 0;
+      stroke(txt, 375, 982 + 16, px, F.SET, 'right', 175, 2, col[0], col[1]) } }
+  if(imgs.fgb) c.drawImage(imgs.fgb, 0, 0);
+  if(!back && S.instant && (ab || ty === 'Ability Ally') && !ea){ const im = await I('Ability/Instant.png'); if(my === TP.token && im) c.drawImage(im, 15, 26, 710, 999) }
+  else if(ab && !ea && !S.instant && S.variant !== 'NoBasic'){ const im = await I('Ability/Basic.png'); if(my === TP.token && im) c.drawImage(im, 14, 669, 115, 39) }
+}
+function wmcPanel(){
+  const S = TP.wmc, ty = S.type, G = 'display:grid;grid-template-columns:minmax(110px,auto) 1fr;gap:8px 12px;align-items:center;margin-top:8px';
+  const sel = (k, label, opts) => `<label>${label}</label><select data-mc="${k}">${opts.map(o => { const [v, t] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(S[k]) === v ? 'selected' : ''}>${esc(t)}</option>` }).join('')}</select>`;
+  const tx = (k, label, ph, rows) => `<label>${label}</label>` + (rows ? `<textarea data-mt="${k}" rows="${rows}" placeholder="${esc(ph || '')}">${esc(S[k])}</textarea>` : `<input type="text" data-mt="${k}" value="${esc(S[k])}" placeholder="${esc(ph || '')}">`);
+  const ck = (k, label) => `<label><input type="checkbox" data-mb="${k}" ${S[k] ? 'checked' : ''}> ${label}</label>`;
+  const sec = (title, body) => `<details open class="tpsec" style="margin-top:14px"><summary><b>${title}</b></summary><div style="${G}">${body}</div></details>`;
+  const ally = ['Ally', 'Ability Ally', 'Token Ally'].includes(ty), ab = ty === 'Ability', eq = ty === 'Equipment', hero = ty === 'Hero', facs = wmcFactions(S);
+  let look = sel('type', 'Card type', WMC_TYPES); if(facs.length) look += sel('faction', 'Faction', facs);
+  if(hero) look += sel('variant', 'Side', [['', 'Front'], ['Back', 'Back']]);
+  if(eq) look += sel('variant', 'Side bar', [['', 'High'], ['Low', 'Low'], ['None', 'None']]);
+  if(ty === 'Quest' || ty === 'Event') look += sel('variant', 'Frame', [['', 'With symbol'], ['NoIcon', 'No symbol']]);
+  if(ally || ab || eq) look += `<label>Layout</label><span>${ck('ea', 'Extended art (picture fills the card)')}${ab || ty === 'Ability Ally' ? ' &nbsp; ' + ck('instant', 'Instant') : ''}</span>`;
+  look += `<label>Border</label><span>${ck('gold', 'Gold border')}</span>`;
+  if(ally || eq || ab || hero || ty === 'Location') { const multi = !hero || S.variant === 'Back' ? false : false; look += `<label>${hero ? 'Class' : 'Classes'}</label><span style="display:flex;flex-wrap:wrap;gap:4px 12px">${(eq ? WMC_CLASSES.filter(c => c !== 'Monk Alt') : WMC_CLASSES).map(c => `<label><input type="checkbox" data-mcl="${c}" ${(S.classes || []).includes(c) ? 'checked' : ''}> ${c}</label>`).join('')}</span>` }
+  if(ally || eq) look += sel('dmgtype', 'Damage type', [['', '- none -'], ...WMC_DMG.map(d => [d, d])]);
+  let h = `<p class="hint">Every WoW card type, drawn from your WoWTCGMaker files. Pick the type, fill in the boxes, add art, save a PNG.</p>` + sec('Card look', look);
+  h += sec('Name & cost', tx('name', 'Name', 'Card name') + (ty === 'Location' || ty === 'Quest' || ty === 'Event' || hero ? '' : tx('cost', 'Cost', '0-10')) + (hero && S.variant === 'Back' ? '' : ''));
+  if(!['Master Hero'].includes(ty) && !(hero && S.variant === 'Back')) h += sec('Type line', tx('subtypes', 'Subtypes', 'e.g. Human Warrior') + tx('tags', 'Tags (right side)', 'optional'));
+  if(ty !== 'Master Hero') h += sec('Rules text', tx('rules', 'Rules', 'Icons: [Fire] [Armor] [Exhaust] [Power] [Basic] [3] [!3]   Style: <b>bold</b> <i>italic</i>   New line = new paragraph', 5) + (hero && S.variant === 'Back' || S.ea ? '' : tx('flavor', 'Flavour', 'small italic text; ; starts a new line', 2)));
+  let nums = ''; if(ally) nums += tx('damage', 'Damage', '') + tx('health', 'Health', ''); if(hero) nums += tx('health', 'Health', ''); if(eq) nums += tx('strike', 'Strike (weapon)', 'number') + tx('armor', 'Armor', 'number') + tx('damage', 'Damage (weapon)', ''); if(ty === 'Location') nums += tx('capacity', 'Capacity', '');
+  if(nums) h += sec('Numbers', nums);
+  if(!(hero && S.variant === 'Back')) h += sec('Credits & set', tx('artist', 'Artist', '') + tx('copy', 'Copyright line', '') + tx('setname', 'Set name', 'e.g. MYSET') + tx('setnum', 'Set number', 'e.g. 012') + tx('setmax', 'Set total', 'e.g. 100') + tx('block', 'Block number', '') + sel('rarity', 'Rarity', ['Common', 'Uncommon', 'Rare', 'Epic']));
+  h += `<details open class="tpsec" style="margin-top:14px"><summary><b>Art</b></summary>
+      <div class="bar" id="tpartbar" style="margin-top:8px"><button class="btn sm" id="wmcartb"><i class="ti ti-photo-up"></i>Choose art</button><input type="file" id="wmcartf" accept="image/*" hidden>
+        <label>Zoom <input type="range" id="wmca_zoom" min="0.5" max="3" step="0.01" value="${TP.art.zoom}"></label><label>Left/right <input type="range" id="wmca_x" min="-500" max="500" value="${TP.art.x}"></label><label>Up/down <input type="range" id="wmca_y" min="-700" max="700" value="${TP.art.y}"></label></div></details>`;
+  return h;
+}
+function wmcBind(){
+  const S = TP.wmc, c = id => $('#' + id);
+  $$('[data-mt]').forEach(el => el.oninput = () => { S[el.dataset.mt] = el.value; wmcDraw() });
+  $$('[data-mb]').forEach(el => el.onchange = () => { S[el.dataset.mb] = el.checked; wmcDraw() });
+  $$('[data-mc]').forEach(el => el.onchange = () => { S[el.dataset.mc] = el.value; if(el.dataset.mc === 'type'){ S.variant = ''; S.classes = []; const f = wmcFactions(S); if(f.length && !f.includes(S.faction)) S.faction = f[0] } if(['type', 'variant', 'faction'].includes(el.dataset.mc)) viewTemplate(); else wmcDraw() });
+  $$('[data-mcl]').forEach(el => el.onchange = () => { const hero = S.type === 'Hero', ab = S.type === 'Ability' && false; if(hero || S.type === 'Master Hero'){ S.classes = el.checked ? [el.dataset.mcl] : []; $$('[data-mcl]').forEach(x => { if(x !== el) x.checked = false }) } else S.classes = $$('[data-mcl]').filter(x => x.checked).map(x => x.dataset.mcl); wmcDraw() });
+  const ar = (id, key) => { if(c(id)) c(id).oninput = () => { TP.art[key] = +c(id).value; wmcDraw() } }; ar('wmca_zoom', 'zoom'); ar('wmca_x', 'x'); ar('wmca_y', 'y');
+  c('wmcartb').onclick = () => c('wmcartf').click();
+  c('wmcartf').onchange = e => { const f = e.target.files[0]; if(!f) return; const im = new Image(); im.onload = () => { TP.art.img = im; TP.art.zoom = 1; TP.art.x = 0; TP.art.y = 0; viewTemplate() }; im.src = URL.createObjectURL(f) };
+  c('wmcpng').onclick = () => c('tpcv').toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = ((S.name || 'wow-card').replace(/[^\w\- ]+/g, '').trim() || 'wow-card') + '.png'; document.body.appendChild(a); a.click(); a.remove() }, 'image/png');
+  c('wmcback').onclick = () => { TP.view = 'presets'; TP.game = null; viewTemplate() };
+  c('tpcv').onclick = null;
+}
+function wmcViewHTML(){
+  if(!WM.on) return `<div class="panel"><h3>WoW card maker</h3><p class="hint">Not set up yet. Copy the <b>Template</b> folder of your WoWTCGMaker download into this folder, so that it ends up as <code>${esc(WM.stat ? WM.stat.folder : '')}/Template</code>, then reload this page.</p><button class="btn" id="wmcback">Back</button></div>`;
+  return `<div class="cols2" style="grid-template-columns:minmax(300px,520px) 1fr;align-items:start">
+    <div class="panel" style="position:sticky;top:12px;align-self:start"><canvas id="tpcv" style="display:block;max-width:100%;max-height:calc(100vh - 110px);width:auto;height:auto;margin:0 auto;background:#444;border-radius:8px"></canvas></div>
+    <div class="panel">${wmcPanel()}<div class="bar" style="margin-top:14px"><button class="btn primary" id="wmcpng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="wmcback">Back to all templates</button></div></div></div>`;
+}
 function wowArt(ctx){
   const A = TP.art; if(!A.img) return; const a = wowItem(['Art', 'Parvink Art']), S = wowS(), R = wowVar() === 'wb' ? ({ea:[28, 32, 722, 805], rare:[28, 110, 722, 915]}[S.type] || [28, 100, 722, 660]) : (a ? a.rect : [5, -14, 734, 803]);
   const rw = R[2] - R[0], rh = R[3] - R[1], sc = Math.max(rw / A.img.width, rh / A.img.height) * A.zoom, w = A.img.width * sc, h = A.img.height * sc;
@@ -2596,7 +2749,7 @@ function tpPresetsHTML(){
       ${tiles.map(x => `<button class="tptile" data-t="${type}" data-id="${esc(x.id)}"><div class="tpth">${x.thumb ? `<img src="${x.thumb}" alt="">` : ''}</div><div class="tpl">${(x.dots || []).map(c => `<i class="tpdot" style="background:${c}"></i>`).join('')}${esc(x.label)}</div></button>`).join('')}</div></div>`; });
   const opH = h; h = h0;
   if(!TP.game){
-    const G = [['op', 'One Piece', 'Leader, Character, Event, Stage, Don', '#d9534f', true], ['wowcl', 'WoW TCG', 'Classic Border', '#1f6fa8', !!wowTemplate('cl')], ['wowwb', 'WoW TCG', 'Worldbreak Border', '#6b3fa0', !!wowTemplate('wb')], ['pk', 'Pokémon', 'Sun & Moon (test)', '#e8b923', true]];
+    const G = [['op', 'One Piece', 'Leader, Character, Event, Stage, Don', '#d9534f', true], ['wowcl', 'WoW TCG', 'Classic Border', '#1f6fa8', !!wowTemplate('cl')], ['wowwb', 'WoW TCG', 'Worldbreak Border', '#6b3fa0', !!wowTemplate('wb')], ['wmc', 'WoW TCG', 'All card types (WoWTCGMaker set)', '#c0802a', true], ['pk', 'Pokémon', 'Sun & Moon (test)', '#e8b923', true]];
     h += `<div class="panel"><h3>Choose a game</h3><p class="hint">Pick the card game you want to make a card for.</p><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px">${G.filter(g => g[4]).map(g => `<button class="tptile" data-game="${g[0]}" style="padding:18px 12px"><div style="height:64px;border-radius:10px;background:${g[3]}33;display:flex;align-items:center;justify-content:center;margin-bottom:8px"><i style="width:38px;height:38px;border-radius:50%;background:${g[3]};display:block"></i></div><div class="tpl" style="font-size:16px"><b>${g[1]}</b></div><div class="muted" style="font-size:12px;margin-top:2px">${g[2]}</div></button>`).join('')}</div></div>`;
   } else {
     h += `<div class="bar" style="margin:4px 0 10px"><button class="btn" data-gameback="1"><i class="ti ti-arrow-left"></i>All games</button></div>`;
@@ -2624,12 +2777,13 @@ async function viewTemplate(){
       <input type="file" id="tpfile" accept=".psd" hidden>
       ${have ? `<span style="margin-left:auto;display:flex;gap:6px;align-items:center"><input type="text" id="tplk" placeholder="Card lookup, e.g. OP12-034" style="width:210px"><button class="btn" id="tplkgo"><i class="ti ti-search"></i>Find card</button><select id="tplkpick" style="display:none;max-width:260px"></select></span>` : ''}
     </div>${have ? '' : '<p class="hint">Pick the merged template PSD (for example OnePiece_Character_template.psd). It is copied into Nightvault\'s own folder; the original is not touched. Only 8-bit RGB PSD files work.</p>'}</div>`;
+  if(TP.view === 'wmc' && TP.wmc){ $('#main').innerHTML = h + wmcViewHTML(); bindTp(); if($('#wmcpng')) { wmcBind(); wmcDraw() } else if($('#wmcback')) $('#wmcback').onclick = () => { TP.view = 'presets'; TP.game = null; viewTemplate() }; return }
   if(TP.view === 'pk' && TP.pk){ $('#main').innerHTML = h + pkViewHTML(); bindTp(); pkBind(); pkDraw(); return }
   if(TP.view === 'presets' && showPres){ if(!TP.mineLoaded){ TP.mineLoaded = true; await tpMineList() }
     $('#main').innerHTML = h + tpPresetsHTML(); bindTp(); $$('[data-minedel]').forEach(b => b.onclick = async e => { e.stopPropagation(); if(!confirm('Delete this saved card?')) return; try{ await api('/api/template/mine_delete', {id:b.dataset.minedel}) }catch(x){ return toast(x.message, true) } await tpMineList(); viewTemplate() });
     $$('.tptile[data-mine]').forEach(b => b.onclick = () => tpMineLoad(b.dataset.mine));
     $$('[data-wow]').forEach(b => b.onclick = () => { const [ty, f, v] = b.dataset.wow.split(':'); wowUsePreset(ty, f, v) });
-    $$('[data-game]').forEach(b => b.onclick = () => { TP.game = b.dataset.game; viewTemplate() });
+    $$('[data-game]').forEach(b => b.onclick = () => { if(b.dataset.game === 'wmc'){ TP.wmc = TP.wmc || wmcNew('Ally'); TP.art = TP.art && TP.art.img ? TP.art : {img:null, zoom:1, x:0, y:0}; TP.view = 'wmc'; viewTemplate(); return } TP.game = b.dataset.game; viewTemplate() });
     $$('[data-gameback]').forEach(b => b.onclick = () => { TP.game = null; viewTemplate() });
     $$('[data-pk]').forEach(b => b.onclick = () => { const [k, a, t] = b.dataset.pk.split(':'); TP.pk = pkNew(k, a, t); TP.art = {img:null, zoom:1, x:0, y:0}; TP.view = 'pk'; viewTemplate() });
     $$('.tptile:not([data-mine]):not([data-wow]):not([data-pk]):not([data-game])').forEach(b => b.onclick = () => { if(b.dataset.id === '__custom'){ const t = tpTemplateFor(b.dataset.t); TP.view = 'edit'; if(t && t.name !== TP.name) tpOpen(t.name); else viewTemplate() } else tpUsePreset(b.dataset.t, b.dataset.id) }); return }

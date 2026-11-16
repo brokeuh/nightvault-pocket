@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 11:35",
+ "version": "2026-11-16 11:39",
  "notes": [
-  "WoW Classic extended art"
+  "WoW TCG: all card types"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "9074060e16177899152f9c8c7bc3e80ff75114e770be9edd126f7298a130f874"
+   "sha256": "ae265da6fde83d5beae8024af3535dca7beca91c0f6de6abefce453e3acef86a"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "74d55237c91830b161aae57125316ea6dcb7a0b45954b95b7e779e486761600d"
+   "sha256": "52655bcec1dfbba22fddaaba0421cc9a8d9c00dfac26436eedff371bcc2d2125"
   },
   {
    "name": "fonts/OFL.txt",

@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 212,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "WoW TCG: the complete card set",
+   "items": [
+    "New tile in Card templates: WoW TCG - all card types. One editor for every card from the WoWTCGMaker set: Ally (also Ability Ally and Token Ally), Ability, Equipment (high, low or no side bar), Hero front and back, Master Hero, Location, Quest and Event. No PSD needed.",
+    "Extended art for Ally, Ability and Equipment, gold or black border, class icons, damage-type icons, Strike/Armor badges, Location capacity, Instant/Basic, and the set line with rarity icon.",
+    "Icons inside the rules text keep working: [Fire] [Armor] [Exhaust] [Power] [3] and <b>bold</b> / <i>italic</i>. Needs the wowtcgmaker folder (Template folder of WoWTCGMaker) in your templates folder."
+   ]
+  },
+  {
    "id": 211,
    "date": "2026-11-16",
    "where": [
