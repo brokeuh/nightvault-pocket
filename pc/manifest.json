@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 11:08",
+ "version": "2026-11-16 11:16",
  "notes": [
-  "One tile per game in Card templates"
+  "WoW: real fonts, rules icons, Hero back"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "62bb8e6ebc269b71ab4e7228ba05852116fd9d41ec8839770cadc9ac8fd1e081"
+   "sha256": "0a6f9e4bb765c33113e08efa858ef5b3ac3458a978eaec672004bebfbcbac555"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "6d8fd459348ef2ca3d0fce95c1e210faf58469591e78185ac389e5b89ebe3d9d"
+   "sha256": "39fed0a08fe0907b880b767b2df7a7461dfe8e0b2ffe9c27ac6a8b56ec6ed943"
   },
   {
    "name": "fonts/OFL.txt",

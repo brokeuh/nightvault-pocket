@@ -192,7 +192,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261116-n40"   # the page and the program must carry the same build id
+BUILD = "20261116-n41"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -6149,6 +6149,20 @@ class Handler(BaseHTTPRequestHandler):
                 return c
         return None
 
+    def _wm_root(self):
+        """Folder that holds `Template/` of the owner's WoWTCGMaker download (fonts + icons + frames): templates/wowtcgmaker, up to two folders below it."""
+        base = TEMPLATE_DIR / "wowtcgmaker"
+        if not base.is_dir():
+            return None
+        cands = [base]
+        for d1 in sorted(x for x in base.iterdir() if x.is_dir()):
+            cands.append(d1)
+            cands += sorted(x for x in d1.iterdir() if x.is_dir())
+        for c in cands:
+            if (c / "Template" / "Fonts" / "Latin").is_dir():
+                return c
+        return None
+
     def template_get(self, path, q):
         if not vtpl:
             return self._error(404, "vault_template.py is missing next to vault.py - update Nightvault")
@@ -6178,6 +6192,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, dict(template=m.get("template", ""), state=m.get("state") or {}, art=af.read_text("utf-8") if af.exists() else None))
         if path == "/api/template/open":
             return self._send(200, vtpl.structure(str(self._tpl_path(q.get("name", "")))))
+        if path == "/api/template/wm_status":
+            r = self._wm_root()
+            return self._send(200, dict(have=bool(r), folder=str(TEMPLATE_DIR / "wowtcgmaker")))
         if path == "/api/template/pk_status":
             r = self._pk_root()
             return self._send(200, dict(have=bool(r), root=str(r or ""), folder=str(TEMPLATE_DIR / "pokemon")))
@@ -6195,6 +6212,20 @@ class Handler(BaseHTTPRequestHandler):
                 cdir.mkdir(parents=True, exist_ok=True)
                 cf.write_bytes(png)
             return self._send(200, cf.read_bytes(), "image/png", {"Cache-Control": "private, max-age=86400"})
+        if path == "/api/template/wm_file":
+            r = self._wm_root()
+            if not r:
+                return self._error(404, "The WoWTCGMaker folder is not here")
+            cur = r
+            for part in [x for x in q.get("p", "").replace("\\", "/").split("/") if x and x != ".."]:
+                hit = next((c for c in cur.iterdir() if c.name.lower() == part.lower()), None) if cur.is_dir() else None
+                if hit is None:
+                    return self._error(404, "Not in the folder: " + q.get("p", ""))
+                cur = hit
+            if not cur.is_file() or cur.suffix.lower() not in (".png", ".ttf", ".otf"):
+                return self._error(404, "Not a picture or font")
+            ct = {".png": "image/png", ".ttf": "font/ttf", ".otf": "font/otf"}[cur.suffix.lower()]
+            return self._send(200, cur.read_bytes(), ct, {"Cache-Control": "private, max-age=86400"})
         if path == "/api/template/pk_file":
             r = self._pk_root()
             if not r:

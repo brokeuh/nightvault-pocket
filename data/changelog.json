@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 209,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "WoW cards: real fonts, icons in rules text, Hero back",
+   "items": [
+    "If you put the WoWTCGMaker Template folder in your templates folder (inside a folder called wowtcgmaker), the WoW cards use the real card fonts (Belwe, Trade Gothic) instead of the stand-in font.",
+    "Rules text can now hold icons: [Fire] [Frost] [Nature] [Arcane] [Shadow] [Holy] [Melee] [Ranged] [Chaos] [Armor] [Health] [Exhaust] [Power] [Basic], numbers in a circle like [3] or [!3], plus <b>bold</b> and <i>italic</i>.",
+    "New Hero back card (Alliance, Horde, Monster) with the class icon, health and text under the hero bar, and Instant / Basic overlays for Ability cards. They are saved in the PSD as separate layers too."
+   ]
+  },
+  {
    "id": 208,
    "date": "2026-11-16",
    "where": [
