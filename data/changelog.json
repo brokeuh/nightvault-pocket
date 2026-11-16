@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 237,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: smarter frame colours (ideas from Proxyshop)",
+   "items": [
+    "The frame colour now follows the mana cost like Proxyshop does (not Scryfall's colour list), so cards like Noble Hierarch get the right frame.",
+    "Hybrid-only cards use the first hybrid colour instead of the gold frame; Devoid, 'is all colors' and colourless Eldrazi cards are handled.",
+    "Cards with no mana cost use their colour indicator."
+   ]
+  },
+  {
    "id": 236,
    "date": "2026-11-16",
    "where": [

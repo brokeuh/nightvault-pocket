@@ -192,7 +192,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261116-n68"   # the page and the program must carry the same build id
+BUILD = "20261116-n69"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -5049,7 +5049,7 @@ def scry_card(set_code="", num="", q=""):
     def face(f, top):
         im = (f.get("image_uris") or top.get("image_uris") or {})
         return dict(name=f.get("name", ""), mana_cost=f.get("mana_cost", ""), type_line=f.get("type_line", ""), oracle_text=f.get("oracle_text", ""), flavor_text=f.get("flavor_text", ""),
-                    power=f.get("power", ""), toughness=f.get("toughness", ""), loyalty=f.get("loyalty", ""), defense=f.get("defense", ""), artist=f.get("artist", ""), art=im.get("art_crop", ""), image=im.get("large") or im.get("normal") or "")
+                    power=f.get("power", ""), toughness=f.get("toughness", ""), loyalty=f.get("loyalty", ""), defense=f.get("defense", ""), artist=f.get("artist", ""), color_indicator=f.get("color_indicator") or [], art=im.get("art_crop", ""), image=im.get("large") or im.get("normal") or "")
     faces = c.get("card_faces") or []
     f0 = face(faces[0], c) if faces else face(c, c)
     out = dict(f0, set=c.get("set", ""), num=c.get("collector_number", ""), rarity=c.get("rarity", ""), lang=c.get("lang", "en"), released=c.get("released_at", ""), layout=c.get("layout", ""), frame=c.get("frame", ""),

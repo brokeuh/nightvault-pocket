@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 14:49",
+ "version": "2026-11-16 14:53",
  "notes": [
-  "Colorshifted mapping (n68)"
+  "Frame colour logic (n69)"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "536334e5393ed2ab7be0032ff544e9d6b90820211b8e1bc2fbf10bad2851d3d4"
+   "sha256": "54872c0761708d0ece484ad07045bed57449272d94a42de72e34edbc8c9ff23c"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "e8d1cf6f467cabd86a6cc036a9700a7ad8713ad6532415dbdc0ff36877a55b6a"
+   "sha256": "67847789ea80e8a38c392e7473bb16a7c0b00e80392c9d5c67ff420644e742f1"
   },
   {
    "name": "fonts/OFL.txt",

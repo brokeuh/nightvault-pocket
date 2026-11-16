@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n68";
+const UI_BUILD = "20261116-n69";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2834,9 +2834,16 @@ function mtgStyleFor(c){
   if(fx.includes('extendedart')) return 'M15ExtendedArtNew'; if(c.border === 'borderless') return 'PromoRegular-1'; if(t.includes('land') && !/basic/.test(t)) return 'M15Lands';
   return '';
 }
-function mtgFrameWord(c){
-  const t = String(c.type_line || '').toLowerCase(), cols = t.includes('land') ? (c.produced || []) : (c.colors || []), W = {W:'white', U:'blue', B:'black', R:'red', G:'green'};
-  if(cols.length > 1) return 'multi'; if(cols.length === 1) return W[cols[0]] || 'white'; if(t.includes('land')) return 'land'; if(t.includes('artifact')) return 'artifact'; return 'colorless' }
+function mtgFrameWord(c){     // colour logic follows Proxyshop's frame_logic: the frame colour comes from the mana cost, not from Scryfall's colour list
+  const t = String(c.type_line || '').toLowerCase(), W = {W:'white', U:'blue', B:'black', R:'red', G:'green'}, cost = String(c.mana_cost || ''), txt = String(c.oracle_text || '');
+  if(t.includes('land')) { const cols = c.produced || []; return cols.length > 1 ? 'multi' : (cols.length === 1 ? (W[cols[0]] || 'land') : 'land') }
+  let cols = /is all colors\./.test(txt) ? ['W', 'U', 'B', 'R', 'G'] : (cost && cost !== '{0}' ? ['W', 'U', 'B', 'R', 'G'].filter(x => cost.includes(x)) : (c.color_indicator && c.color_indicator.length ? c.color_indicator : (c.colors || [])));
+  if(!cols.length && cost && !/\{[WUBRG]/.test(cost) && /\{[WUBRG]\//.test(cost)) cols = c.colors || [];
+  if(/devoid/i.test(txt) && cols.length) return cols.length > 1 ? 'multi' : (W[cols[0]] || 'colorless');
+  if(!cost && /eldrazi/i.test(t) && !(c.colors || []).length) return 'colorless';
+  const hybridOnly = cols.length === 2 && !/\{[WUBRG]\}/.test(cost) && /\{[WUBRG]\/[WUBRG]\}/.test(cost);
+  if(hybridOnly){ const m = cost.match(/\{([WUBRG])\//); return W[m ? m[1] : cols[0]] || 'white' }      // two-colour hybrid: no split frame yet, use the first colour
+  if(cols.length > 1) return 'multi'; if(cols.length === 1) return W[cols[0]] || 'white'; if(t.includes('artifact')) return 'artifact'; return 'colorless' }
 function mtgPickFrame(names, word){ const keys = {multi:['multi', 'gold'], land:['land'], artifact:['artifact'], colorless:['colorless', 'eldrazi', 'artifact', 'land'], white:['white'], blue:['blue'], black:['black'], red:['red'], green:['green']}[word] || [word];
   for(const k of keys){ const i = names.findIndex(n => String(n || '').toLowerCase().includes(k)); if(i >= 0) return i } return 0 }
 async function mtgEnsureStyle(v, tick){
