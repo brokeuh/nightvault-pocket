@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 216,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Card templates: click-to-type symbol palette",
+   "items": [
+    "Under the WoW rules text and the Pokémon attack/rules text there is now a row of symbols (spell icons, energy types, bold, italic). Click one and it is typed at the cursor and shows in the preview."
+   ]
+  },
+  {
    "id": 215,
    "date": "2026-11-16",
    "where": [

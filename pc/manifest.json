@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 12:00",
+ "version": "2026-11-16 12:05",
  "notes": [
-  "shared text engine + auto-fit + rarity mark"
+  "symbol palette"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "218fae2dae088238446218cda38b266cda8a50d9dd278050fb128ae475ae4fb3"
+   "sha256": "0cf83a00c4f3092ed58bf8821d141d4008fc6863769ba22b90b6670ba6df5562"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "966e6f54baeb80b20d4fbc7c019c02f75d7e7e438bf7a4d359c581035d471379"
+   "sha256": "083a3e89a09e71467f65b75b469f639bd186d5260ddaa727a41e9f8af7652858"
   },
   {
    "name": "fonts/OFL.txt",
