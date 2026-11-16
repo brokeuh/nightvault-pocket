@@ -1,7 +1,7 @@
 {
- "version": "2026-11-13 16:35",
+ "version": "2026-11-16 10:55",
  "notes": [
-  "Phone card maker: Send frames to phone"
+  "Pok\u00e9mon (Sun & Moon) test in Card templates"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "67b1ca21051ddfaaa4e9bd09a851167ea554951d21b9ceb30c4fd4dbab696d24"
+   "sha256": "a3c99abf898e770b04978ee4591f53b797b867f49ee141e013a82dcc84967c16"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "207de9893eea35ac74de546c06595e450b66ff49725bee519cb00ee05c92ed5b"
+   "sha256": "e8e8ab85d9c0c3506fab21defb2689bbc5a2fe44c4a9c0168c460837c0ea1c62"
   },
   {
    "name": "fonts/OFL.txt",

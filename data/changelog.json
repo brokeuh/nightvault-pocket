@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 207,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Card templates: Pokémon (Sun & Moon) test",
+   "items": [
+    "Card templates has a new Pokémon section (test). Pick Basic, Stage 1 or Stage 2 in any energy type, or a Trainer card (Item, Supporter, Stadium), then type the name, HP, attacks, weakness, retreat and flavour text, add your art and save a PNG.",
+    "It uses the Pokémon template pack you unpack yourself: put the pack's data and fonts folders inside the templates folder, in a folder called pokemon. The pack stays on your PC and is not stored anywhere else."
+   ]
+  },
+  {
    "id": 206,
    "date": "2026-11-13",
    "where": [

@@ -192,7 +192,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261113-n38"   # the page and the program must carry the same build id
+BUILD = "20261116-n39"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -6141,6 +6141,14 @@ class Handler(BaseHTTPRequestHandler):
             raise KeyError("That template is not here any more")
         return f
 
+    def _pk_root(self):
+        """Folder that holds `data/` and `fonts/` of the unpacked Pokemon (Magic Set Editor) pack: Nightvault templates/pokemon or one folder below it."""
+        base = TEMPLATE_DIR / "pokemon"
+        for c in [base] + (sorted(x for x in base.iterdir() if x.is_dir()) if base.is_dir() else []):
+            if (c / "data").is_dir() and any(d.name.startswith("pokemon-r-sunmoon") for d in (c / "data").iterdir()):
+                return c
+        return None
+
     def template_get(self, path, q):
         if not vtpl:
             return self._error(404, "vault_template.py is missing next to vault.py - update Nightvault")
@@ -6170,6 +6178,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, dict(template=m.get("template", ""), state=m.get("state") or {}, art=af.read_text("utf-8") if af.exists() else None))
         if path == "/api/template/open":
             return self._send(200, vtpl.structure(str(self._tpl_path(q.get("name", "")))))
+        if path == "/api/template/pk_status":
+            r = self._pk_root()
+            return self._send(200, dict(have=bool(r), root=str(r or ""), folder=str(TEMPLATE_DIR / "pokemon")))
         if q.get("t") != TOKEN:
             return self._error(403, "Missing token - reload the page.")
         if path == "/api/template/layer":
@@ -6184,6 +6195,20 @@ class Handler(BaseHTTPRequestHandler):
                 cdir.mkdir(parents=True, exist_ok=True)
                 cf.write_bytes(png)
             return self._send(200, cf.read_bytes(), "image/png", {"Cache-Control": "private, max-age=86400"})
+        if path == "/api/template/pk_file":
+            r = self._pk_root()
+            if not r:
+                return self._error(404, "The Pokemon pack is not here")
+            cur = r
+            for part in [x for x in q.get("p", "").replace("\\", "/").split("/") if x and x != ".."]:
+                hit = next((c for c in cur.iterdir() if c.name.lower() == part.lower()), None) if cur.is_dir() else None
+                if hit is None:
+                    return self._error(404, "Not in the pack: " + q.get("p", ""))
+                cur = hit
+            if not cur.is_file() or cur.suffix.lower() not in (".png", ".jpg", ".ttf", ".otf"):
+                return self._error(404, "Not a picture or font")
+            ct = {".png": "image/png", ".jpg": "image/jpeg", ".ttf": "font/ttf", ".otf": "font/otf"}[cur.suffix.lower()]
+            return self._send(200, cur.read_bytes(), ct, {"Cache-Control": "private, max-age=86400"})
         if path == "/api/template/font":
             fn = os.path.basename(q.get("f", ""))
             ff = Path(__file__).resolve().parent / "fonts" / fn

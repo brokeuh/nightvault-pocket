@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261113-n38";
+const UI_BUILD = "20261116-n39";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2058,6 +2058,141 @@ function wowPresetsHTML(){
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px">${tiles.map(([ty, f, lab, col]) => `<button class="tptile" data-wow="${ty}:${f}:${v}"><div class="tpth" style="display:flex;align-items:center;justify-content:center"><i class="tpdot" style="background:${col};width:34px;height:34px"></i></div><div class="tpl">${esc(lab)}</div></button>`).join('')}</div></div>` }).join('');
 }
 
+/* ---------------------------------------------------------------- Pokemon card mode (Sun & Moon, from the MSE pack you unpack yourself)
+   Nothing of the pack is stored by Nightvault: the pictures and fonts are read from your own folder (vault_templates/pokemon). */
+const PK_TYPES = ['colorless','dark','dragon','fairy','fighting','fire','grass','lightning','metal','psychic','water'];
+const PK_CODE = {C:'colorless', D:'dark', N:'dragon', Y:'fairy', F:'fighting', R:'fire', G:'grass', L:'lightning', M:'metal', P:'psychic', W:'water'};
+const PK_COL = {colorless:'#c8c3b8', dark:'#3a3a48', dragon:'#c9a227', fairy:'#e58bb8', fighting:'#b0602e', fire:'#e0572b', grass:'#4caf50', lightning:'#f2c80f', metal:'#9aa3ad', psychic:'#a45fb4', water:'#3b8fd9'};
+const PK = {imgs:{}, fontsOn:null, token:0};
+const pkOn = () => TP.view === 'pk' && !!TP.pk;
+const pkSt = 'data/pokemon-r-sunmoon.mse-style/', pkCom = 'data/pokemon-b-common.mse-include/', pkEn = 'data/pokemon-a-energy.mse-symbol-font/';
+function pkNew(kind, a, b){
+  const t = {name:'', hp:'', dex:'', evo:'', flavor:'', illus:'', copy:'', num:'', rules:''};
+  const atk = () => ({cost:'', name:'', dmg:'', text:''});
+  return {kind, stage: kind === 'pokemon' ? a : 'basic', type: kind === 'pokemon' ? b : 'colorless', trainer: kind === 'trainer' ? a : 'item', t, atk:[atk(), atk(), atk()], natk:2,
+    weak:{type:'fighting', val:'×2'}, res:{type:'', val:''}, retreat:1}
+}
+function pkUrl(p){ return '/api/template/pk_file?p=' + enc(p) + '&t=' + enc(TOKEN) }
+function pkImg(p){ if(!PK.imgs[p]) PK.imgs[p] = new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = pkUrl(p) }); return PK.imgs[p] }
+async function pkFonts(){
+  if(PK.fontsOn) return PK.fontsOn;
+  const F = [['PkGill','00GillSans.otf'], ['PkGillB','00GillSans-Bold.otf'], ['PkCdnB','01GillSansCdn-Bold.otf'], ['PkHum','02Humanist521BT.ttf'], ['PkHumBI','02Humanist521BT-BoldItalic.ttf'], ['PkTitle','30PokeTitleXY.ttf'], ['PkNeo','32PokeTitleNeo-Bold.ttf']];
+  PK.fontsOn = Promise.all(F.map(async ([n, f]) => { try{ const ff = new FontFace(n, `url(${pkUrl('fonts/' + f)})`); await ff.load(); document.fonts.add(ff) }catch(e){} }));
+  return PK.fontsOn;
+}
+function pkFit(c, txt, font, px, maxW){ c.font = `${px}px ${font}`; while(px > 8 && c.measureText(txt).width > maxW){ px -= 1; c.font = `${px}px ${font}` } return px }
+function pkWrap(c, txt, maxW){ const out = []; String(txt || '').split('\n').forEach(par => { let line = ''; par.split(/\s+/).forEach(w => { const t = line ? line + ' ' + w : w; if(line && c.measureText(t).width > maxW){ out.push(line); line = w } else line = t }); out.push(line) }); return out }
+function pkSym(c, type, x, y, s){ return pkImg(pkEn + type + '.png').then(i => { if(i) c.drawImage(i, x, y, s, s) }) }
+async function pkDraw(){
+  const cv = $('#tpcv'); if(!cv || !TP.pk) return; const my = ++PK.token; const S = TP.pk;
+  await pkFonts();
+  const c = cv.getContext('2d'); cv.width = 736; cv.height = 1026;
+  const pk = S.kind === 'pokemon', tr = S.kind === 'trainer';
+  const ty = S.type === 'metal' ? 'Metal' : S.type;
+  const [back, win, fr, bor] = await Promise.all([
+    pkImg(pk ? pkCom + 'back-p-sunmoon-' + ty + '.png' : pkSt + 'back-t-sm.png'), pkImg(pkSt + (pk ? 'window-p.png' : 'window-t-sm.png')),
+    pkImg(pkSt + (pk ? 'frame-p-' + S.stage + '.png' : 'frame-t-sm.png')), pkImg(pkSt + 'border-sun-moon.png')]);
+  if(my !== PK.token) return;
+  c.clearRect(0, 0, 736, 1026); c.fillStyle = '#fff'; c.fillRect(0, 0, 736, 1026);
+  if(back) c.drawImage(back, 16, 18);
+  const R = pk ? [58, 102, 616, 382] : [56, 148, 616, 384];                 // art window (x, y, w, h)
+  const oc = document.createElement('canvas'); oc.width = 736; oc.height = 1026; const o = oc.getContext('2d');   // art goes here first, so trainer cards can be cut by the window mask
+  if(TP.art && TP.art.img){ const im = TP.art.img, z = TP.art.zoom || 1; o.save(); o.beginPath(); o.rect(...R); o.clip();
+    const sc = Math.max(R[2] / im.width, R[3] / im.height) * z, w = im.width * sc, h = im.height * sc;
+    o.drawImage(im, R[0] + (R[2] - w) / 2 + (TP.art.x || 0) * 4, R[1] + (R[3] - h) / 2 + (TP.art.y || 0) * 4, w, h); o.restore() }
+  else { o.fillStyle = 'rgba(0,0,0,.12)'; o.fillRect(...R) }
+  if(!pk && win){ o.globalCompositeOperation = 'destination-in'; o.drawImage(win, 16, 18) }
+  c.drawImage(oc, 0, 0);
+  if(win && pk) c.drawImage(win, 16, 18); if(fr) c.drawImage(fr, 16, 18); if(bor) c.drawImage(bor, 0, 0);
+  if(pk){ const ov = await pkImg(pkSt + 'overlay-p-' + S.stage + '.png'); if(my !== PK.token) return; if(ov) c.drawImage(ov, 16, 18) }
+  else { const ov = await pkImg(pkSt + 'overlay-title-' + S.trainer + '.png'); if(my !== PK.token) return; if(ov) c.drawImage(ov, 506, 18) }
+  const ink = pk && S.type === 'dark' ? '#fff' : '#111', T = S.t;
+  c.textBaseline = 'alphabetic'; c.fillStyle = ink;
+  if(pk){
+    c.textAlign = 'left'; const px = pkFit(c, T.name, 'PkTitle', 37, 468); c.font = `${px}px PkTitle`; c.fillText(T.name, 136, 88);
+    c.textAlign = 'right'; c.font = '33px PkNeo'; const hp = T.hp ? String(T.hp) : ''; c.fillText(hp, 636, 92);
+    if(hp){ const w = c.measureText(hp).width; c.font = '16px PkNeo'; c.fillText('HP', 636 - w - 4, 92) }
+    await pkSym(c, S.type, 646, 40, 48);
+    if(S.stage !== 'basic' && T.evo){ c.textAlign = 'left'; c.font = '14px PkHumBI'; c.fillText('Evolves from ' + T.evo, 126, 112) }
+    c.textAlign = 'center'; c.font = '13px PkHum'; c.fillText(T.dex, 368, 508);
+    // attacks
+    const A = S.atk.slice(0, S.natk), n = A.length, H = Math.min(340 / Math.max(n, 1), 156), top = 524 + (340 - n * H) / 2;
+    for(let k = 0; k < n; k++){ const a = A[k], y0 = top + k * H, cy = y0 + 30;
+      const codes = (a.cost || '').toUpperCase().split('').filter(x => PK_CODE[x]); for(let j = 0; j < codes.length; j++) await pkSym(c, PK_CODE[codes[j]], 48 + j * 44, cy - 21, 42);
+      const hasCost = codes.length; c.fillStyle = ink; c.textAlign = 'center';
+      const nx = hasCost ? Math.max(306, 48 + codes.length * 44 + 150) : 306; const w = 590 - 306 > 0 ? 300 : 300;
+      const npx = pkFit(c, a.name, 'PkGillB', 26, 300); c.font = `${npx}px PkGillB`; c.fillText(a.name, hasCost ? Math.max(380, 56 + codes.length * 44 + 150) : 306 + 150, cy + 9);
+      c.textAlign = 'right'; c.font = '40px PkGill'; c.fillText(a.dmg || '', 690, cy + 12);
+      if(a.text){ c.textAlign = 'left'; c.font = '17px PkHum'; pkWrap(c, a.text, 590).slice(0, 5).forEach((l, i) => c.fillText(l, 72, y0 + 74 + i * 21)) } }
+    // weakness / resistance / retreat
+    c.fillStyle = '#111'; c.textAlign = 'left'; c.font = '14px PkCdnB'; c.fillText('weakness', 40, 903); c.fillText('resistance', 244, 903); c.fillText('retreat cost', 474, 903);
+    if(S.weak.type){ await pkSym(c, S.weak.type, 136, 880, 30); c.font = '20px PkCdnB'; c.fillText(S.weak.val || '', 170, 904) }
+    if(S.res.type){ await pkSym(c, S.res.type, 346, 880, 30); c.font = '20px PkCdnB'; c.fillText(S.res.val || '', 380, 904) }
+    for(let j = 0; j < (+S.retreat || 0); j++) await pkSym(c, 'colorless', 590 + j * 32, 880, 30);
+    // bottom
+    c.fillStyle = ink; c.font = '14px PkHum'; c.textAlign = 'left'; pkWrap(c, T.flavor, 364).slice(0, 3).forEach((l, i) => c.fillText(l, 332, 934 + i * 17));
+  } else {
+    c.textAlign = 'left'; const px = pkFit(c, T.name, 'PkCdnB', 40, 540); c.font = `${px}px PkCdnB`; c.fillText(T.name, 44, 118);
+    c.font = '20px PkHum'; pkWrap(c, T.rules, 570).slice(0, 14).forEach((l, i) => c.fillText(l, 82, 574 + i * 25));
+  }
+  c.fillStyle = '#111'; c.textAlign = 'left'; c.font = '11px PkGill'; c.fillText(T.illus ? 'Illus. ' + T.illus : '', 50, 936);
+  c.font = '10px PkGill'; c.fillText(T.copy, 46, 982);
+  c.textAlign = 'right'; c.font = '14px PkGill'; c.fillText(T.num, 148, 952);
+}
+function pkOpt(list, cur, lab){ return list.map(x => `<option value="${x}" ${x === cur ? 'selected' : ''}>${lab ? lab(x) : x}</option>`).join('') }
+function pkPanel(){
+  const S = TP.pk, T = S.t, pk = S.kind === 'pokemon';
+  const f = (k, lab, w) => `<label style="display:flex;flex-direction:column;gap:3px;font-size:12px;flex:${w || 1} 1 120px">${lab}<input type="text" data-pkt="${k}" value="${esc(T[k])}"></label>`;
+  const typeSel = (id, cur, blank) => `<select data-pks="${id}">${blank ? '<option value="">(none)</option>' : ''}${pkOpt(PK_TYPES, cur)}</select>`;
+  let h = `<h3>${pk ? 'Pokémon card' : 'Trainer card'} <span class="muted" style="font-weight:400;font-size:12px">Sun &amp; Moon test</span></h3><div class="bar" style="flex-wrap:wrap;gap:8px">`;
+  if(pk) h += `<label>Stage <select data-pks="stage">${pkOpt(['basic','stage 1','stage 2'], S.stage, x => x[0].toUpperCase() + x.slice(1))}</select></label><label>Type <select data-pks="type">${pkOpt(PK_TYPES, S.type)}</select></label>`;
+  else h += `<label>Kind <select data-pks="trainer">${pkOpt(['item','supporter','stadium'], S.trainer, x => x[0].toUpperCase() + x.slice(1))}</select></label>`;
+  h += `</div><div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('name', 'Name', 3)}${pk ? f('hp', 'HP') : ''}${pk && S.stage !== 'basic' ? f('evo', 'Evolves from', 2) : ''}</div>`;
+  if(pk){
+    h += `<div class="bar" style="margin-top:8px">${f('dex', 'Pokédex line (e.g. "NO. 025  Mouse Pokémon  HT: 1\'04\"  WT: 13.2 lbs.")', 1)}</div>`;
+    h += `<div style="margin-top:10px"><b>Attacks</b> <select data-pks="natk">${pkOpt([1,2,3], S.natk)}</select> <span class="hint">Cost letters: R fire, W water, G grass, L lightning, P psychic, F fighting, D dark, M metal, Y fairy, N dragon, C colourless.</span></div>`;
+    S.atk.slice(0, S.natk).forEach((a, k) => { h += `<div style="border:1px solid var(--line,#2a3142);border-radius:8px;padding:8px;margin-top:6px"><div class="bar" style="gap:6px;flex-wrap:wrap">
+      <input type="text" data-pka="${k}:cost" value="${esc(a.cost)}" placeholder="Cost, e.g. LLC" style="width:110px"><input type="text" data-pka="${k}:name" value="${esc(a.name)}" placeholder="Attack name" style="flex:1 1 140px"><input type="text" data-pka="${k}:dmg" value="${esc(a.dmg)}" placeholder="Damage" style="width:80px"></div>
+      <textarea data-pka="${k}:text" rows="2" placeholder="Effect text (optional)" style="width:100%;margin-top:6px">${esc(a.text)}</textarea></div>` });
+    h += `<div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:10px"><label>Weakness ${typeSel('weakt', S.weak.type, true)}</label><input type="text" data-pks="weakv" value="${esc(S.weak.val)}" style="width:60px"><label>Resistance ${typeSel('rest', S.res.type, true)}</label><input type="text" data-pks="resv" value="${esc(S.res.val)}" style="width:60px"><label>Retreat <select data-pks="retreat">${pkOpt([0,1,2,3,4,5], +S.retreat)}</select></label></div>`;
+    h += `<div class="bar" style="margin-top:8px">${f('flavor', 'Flavour text', 1)}</div>`;
+  } else h += `<div style="margin-top:8px"><label style="font-size:12px">Rules text<textarea data-pkt="rules" rows="6" style="width:100%">${esc(T.rules)}</textarea></label></div>`;
+  h += `<div class="bar" style="flex-wrap:wrap;gap:8px;margin-top:8px">${f('illus', 'Illustrator')}${f('num', 'Card number')}${f('copy', 'Copyright line', 2)}</div>`;
+  h += `<div class="bar" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button class="btn" id="pkartb"><i class="ti ti-photo-up"></i>Choose art</button><input type="file" id="pkartf" accept="image/*" hidden>
+    <label>Zoom <input type="range" id="pka_zoom" min="1" max="3" step="0.02" value="${TP.art.zoom}"></label><label>Left/right <input type="range" id="pka_x" min="-100" max="100" step="1" value="${TP.art.x}"></label><label>Up/down <input type="range" id="pka_y" min="-100" max="100" step="1" value="${TP.art.y}"></label></div>`;
+  return h;
+}
+function pkBind(){
+  const S = TP.pk, c = id => $('#' + id);
+  $$('[data-pkt]').forEach(el => el.oninput = () => { S.t[el.dataset.pkt] = el.value; pkDraw() });
+  $$('[data-pka]').forEach(el => el.oninput = () => { const [k, f] = el.dataset.pka.split(':'); S.atk[+k][f] = el.value; pkDraw() });
+  $$('[data-pks]').forEach(el => el.onchange = () => { const k = el.dataset.pks, v = el.value;
+    if(k === 'weakt') S.weak.type = v; else if(k === 'weakv') S.weak.val = v; else if(k === 'rest') S.res.type = v; else if(k === 'resv') S.res.val = v; else if(k === 'natk' || k === 'retreat') S[k] = +v; else S[k] = v;
+    if(['stage','type','trainer','natk'].includes(k)) viewTemplate(); else pkDraw() });
+  const ar = (id, key) => { if(c(id)) c(id).oninput = () => { TP.art[key] = +c(id).value; pkDraw() } }; ar('pka_zoom', 'zoom'); ar('pka_x', 'x'); ar('pka_y', 'y');
+  c('pkartb').onclick = () => c('pkartf').click();
+  c('pkartf').onchange = e => { const f = e.target.files[0]; if(!f) return; const im = new Image(); im.onload = () => { TP.art.img = im; TP.art.zoom = 1; TP.art.x = 0; TP.art.y = 0; viewTemplate() }; im.src = URL.createObjectURL(f) };
+  c('pkpng').onclick = () => c('tpcv').toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = ((S.t.name || 'pokemon-card').replace(/[^\w\- ]+/g, '').trim() || 'pokemon-card') + '.png'; document.body.appendChild(a); a.click(); a.remove() }, 'image/png');
+  c('tpcv').onclick = null; c('tpcv').style.cursor = 'default';
+  c('pkback').onclick = () => { TP.view = 'presets'; viewTemplate() };
+}
+function pkViewHTML(){
+  return `<div class="cols2" style="grid-template-columns:minmax(300px,520px) 1fr;align-items:start">
+    <div class="panel" style="position:sticky;top:12px;align-self:start"><canvas id="tpcv" style="display:block;max-width:100%;max-height:calc(100vh - 110px);width:auto;height:auto;margin:0 auto;background:#444;border-radius:8px"></canvas></div>
+    <div class="panel">${pkPanel()}<div class="bar" style="margin-top:14px"><button class="btn primary" id="pkpng"><i class="ti ti-photo"></i>Save PNG</button><button class="btn" id="pkback">Back to presets</button></div>
+    <p class="hint">Test version: the frames and fonts come from the Pokémon pack in your own templates folder and are only used on this PC. Please keep what you make for personal use.</p></div></div>`;
+}
+function pkPresetsHTML(){
+  const st = TP.pkStat;
+  if(!st || !st.have) return `<div class="panel"><h3>Pokémon (Sun &amp; Moon test)</h3><p class="hint">Not set up yet. Unpack the Pokémon template pack (the .7z, with 7-Zip) into this folder so that the <b>data</b> and <b>fonts</b> folders sit directly inside it:<br><code>${esc(st ? st.folder : '')}</code><br>Then reload this page.</p></div>`;
+  const tile = (key, lab, col) => `<button class="tptile" data-pk="${key}"><div class="tpth" style="display:flex;align-items:center;justify-content:center;background:${col}22"><i style="width:44px;height:44px;border-radius:50%;background:${col};display:block"></i></div><div class="tpl">${lab}</div></button>`;
+  const cap = x => x[0].toUpperCase() + x.slice(1);
+  let h = `<div class="panel"><h3>Pokémon (Sun &amp; Moon test)</h3><p class="hint">Click a tile: the frame opens with every field empty. Built from your own pack; nothing of it is stored or shared.</p>`;
+  ['basic','stage 1','stage 2'].forEach(s => { h += `<div style="margin:8px 0 4px"><b>${cap(s)}</b></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px">${PK_TYPES.map(t => tile('pokemon:' + s + ':' + t, cap(t), PK_COL[t])).join('')}</div>` });
+  h += `<div style="margin:12px 0 4px"><b>Trainer</b></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px">${['item','supporter','stadium'].map(t => tile('trainer:' + t, cap(t), '#8a8f98')).join('')}</div></div>`;
+  return h;
+}
+
 const tpURL = i => '/api/template/layer?name=' + enc(TP.name) + '&i=' + i + '&t=' + enc(TOKEN);
 function tpGroups(){ return TP.st ? TP.st.items.slice().reverse() : [] }      // top of the card first
 function tpDefaults(){
@@ -2287,7 +2422,7 @@ function tpPresetsHTML(){
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px;${t ? '' : 'opacity:.45;pointer-events:none'}">
       <button class="tptile" data-t="${type}" data-id="__custom"><div class="tpth" style="display:flex;align-items:center;justify-content:center;font-size:30px;opacity:.6">✎</div><div class="tpl">Custom</div></button>
       ${tiles.map(x => `<button class="tptile" data-t="${type}" data-id="${esc(x.id)}"><div class="tpth">${x.thumb ? `<img src="${x.thumb}" alt="">` : ''}</div><div class="tpl">${(x.dots || []).map(c => `<i class="tpdot" style="background:${c}"></i>`).join('')}${esc(x.label)}</div></button>`).join('')}</div></div>`; });
-  h += wowPresetsHTML();
+  h += wowPresetsHTML(); h += pkPresetsHTML();
   return `<style>.tptile{background:var(--panel2,#1a2030);border:1px solid var(--line,#2a3142);border-radius:12px;padding:8px;cursor:pointer;color:inherit;text-align:center;font:inherit}.tptile:hover{border-color:var(--accent,#7aa2f7);transform:translateY(-2px)}.tpth{aspect-ratio:1000/1398;background:#2a2f3a;border-radius:8px;overflow:hidden}.tpth img{width:100%;height:100%;object-fit:cover;display:block}.tpl{margin-top:6px;font-size:13px}.tpdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;border:1px solid rgba(255,255,255,.4)}</style>` + h;
 }
 async function viewTemplate(){
@@ -2296,11 +2431,12 @@ async function viewTemplate(){
     try{ TP.list = (await api('/api/template/list')).templates }catch(e){ $('#main').innerHTML = `<div class="head"><h1>Card templates</h1></div><div class="panel">${esc(e.message)}</div>`; TP.list = null; return }
     if(!TP.name && TP.list.length) { TP.name = TP.list[0].name; try{ TP.st = await api('/api/template/open?name=' + enc(TP.name)); tpDefaults() }catch(e){ toast(e.message, true) } }
   }
-  const have = TP.list.length > 0;
-  if(TP.view === undefined) TP.view = have ? 'presets' : 'edit';
+  if(TP.pkStat === undefined){ try{ TP.pkStat = await api('/api/template/pk_status') }catch(e){ TP.pkStat = null } }
+  const have = TP.list.length > 0, showPres = have || !!(TP.pkStat && TP.pkStat.have);
+  if(TP.view === undefined) TP.view = showPres ? 'presets' : 'edit';
   let h = `<div class="head"><h1>Card templates</h1><span class="sub">Open a layered PSD, choose its layers with dropdowns, save a PNG or a PSD. Your file stays on this PC.</span></div>`;
   h += `<div class="panel"><div class="bar">
-      ${have ? `<button class="btn" id="tppres"><i class="ti ti-layout-grid"></i>Presets</button>` : ''}
+      ${showPres ? `<button class="btn" id="tppres"><i class="ti ti-layout-grid"></i>Presets</button>` : ''}
       ${have ? `<select id="tpsel">${TP.list.map(t => `<option value="${esc(t.name)}" ${t.name === TP.name ? 'selected' : ''}>${esc(t.name)} (${fmtSize(t.size)})</option>`).join('')}</select>` : ''}
       <button class="btn ${have ? '' : 'primary'}" id="tpadd"><i class="ti ti-upload"></i>${have ? 'Open another PSD' : 'Open a PSD template'}</button>
       ${have ? '<button class="btn sm ghost danger" id="tpdel">Remove this template</button>' : ''}
@@ -2308,11 +2444,13 @@ async function viewTemplate(){
       <input type="file" id="tpfile" accept=".psd" hidden>
       ${have ? `<span style="margin-left:auto;display:flex;gap:6px;align-items:center"><input type="text" id="tplk" placeholder="Card lookup, e.g. OP12-034" style="width:210px"><button class="btn" id="tplkgo"><i class="ti ti-search"></i>Find card</button><select id="tplkpick" style="display:none;max-width:260px"></select></span>` : ''}
     </div>${have ? '' : '<p class="hint">Pick the merged template PSD (for example OnePiece_Character_template.psd). It is copied into Nightvault\'s own folder; the original is not touched. Only 8-bit RGB PSD files work.</p>'}</div>`;
-  if(TP.view === 'presets' && have){ if(!TP.mineLoaded){ TP.mineLoaded = true; await tpMineList() }
+  if(TP.view === 'pk' && TP.pk){ $('#main').innerHTML = h + pkViewHTML(); bindTp(); pkBind(); pkDraw(); return }
+  if(TP.view === 'presets' && showPres){ if(!TP.mineLoaded){ TP.mineLoaded = true; await tpMineList() }
     $('#main').innerHTML = h + tpPresetsHTML(); bindTp(); $$('[data-minedel]').forEach(b => b.onclick = async e => { e.stopPropagation(); if(!confirm('Delete this saved card?')) return; try{ await api('/api/template/mine_delete', {id:b.dataset.minedel}) }catch(x){ return toast(x.message, true) } await tpMineList(); viewTemplate() });
     $$('.tptile[data-mine]').forEach(b => b.onclick = () => tpMineLoad(b.dataset.mine));
     $$('[data-wow]').forEach(b => b.onclick = () => { const [ty, f, v] = b.dataset.wow.split(':'); wowUsePreset(ty, f, v) });
-    $$('.tptile:not([data-mine]):not([data-wow])').forEach(b => b.onclick = () => { if(b.dataset.id === '__custom'){ const t = tpTemplateFor(b.dataset.t); TP.view = 'edit'; if(t && t.name !== TP.name) tpOpen(t.name); else viewTemplate() } else tpUsePreset(b.dataset.t, b.dataset.id) }); return }
+    $$('[data-pk]').forEach(b => b.onclick = () => { const [k, a, t] = b.dataset.pk.split(':'); TP.pk = pkNew(k, a, t); TP.art = {img:null, zoom:1, x:0, y:0}; TP.view = 'pk'; viewTemplate() });
+    $$('.tptile:not([data-mine]):not([data-wow]):not([data-pk])').forEach(b => b.onclick = () => { if(b.dataset.id === '__custom'){ const t = tpTemplateFor(b.dataset.t); TP.view = 'edit'; if(t && t.name !== TP.name) tpOpen(t.name); else viewTemplate() } else tpUsePreset(b.dataset.t, b.dataset.id) }); return }
   if(TP.name && !TP.st){ $('#main').innerHTML = h + '<div class="panel"><i class="ti ti-loader-2"></i> Reading the layers ...</div>'; bindTp(); return }
   if(TP.st){
     h += `<div class="cols2" style="grid-template-columns:minmax(300px,520px) 1fr;align-items:start">
