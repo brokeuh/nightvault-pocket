@@ -1,7 +1,7 @@
 {
- "version": "2026-11-16 14:03",
+ "version": "2026-11-16 14:07",
  "notes": [
-  "Magic: Scryfall loader and test bench"
+  "Magic: test list"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "7016be3532654dfe0d2fc975baba07c1f1f8965d2448db1abdde40b5d03c8229"
+   "sha256": "c25a1762c05681df224c056588c37bfa5d811ca28ee897e76c700aaedeaf49e8"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "86a3d6e1b2c613984242d7810109c140f91986c24cc82e2f519f0cfc28a6f07e"
+   "sha256": "660556605b073caaf4cffae6430d975498c99832d753e5e923104e89a4d483cb"
   },
   {
    "name": "fonts/OFL.txt",

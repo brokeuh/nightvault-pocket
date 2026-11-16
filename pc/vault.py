@@ -192,7 +192,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261116-n58"   # the page and the program must carry the same build id
+BUILD = "20261116-n59"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -5067,6 +5067,51 @@ def scry_image(url):
     return _fetch(url, 30)
 
 
+MTG_TL = {"busy": False, "done": 0, "total": 0, "error": "", "finished": False, "count": 0, "tsv": ""}
+
+
+def mtg_testlist(mode):
+    """Walks Scryfall set by set and writes a card list (set + number) with one example of every kind of card: mode 'types' = one per kind overall, 'sets' = one per kind in every set."""
+    st = MTG_TL
+    st.update(busy=True, done=0, total=0, error="", finished=False, count=0, tsv="")
+    try:
+        sets = json.loads(_fetch(SCRY_BASE + "/sets", 30)).get("data") or []
+        sets = [x for x in sets if x.get("set_type") not in ("memorabilia", "minigame", "art_series") and x.get("card_count", 1)]
+        sets.sort(key=lambda x: x.get("released_at") or "")
+        st["total"] = len(sets)
+        seen, rows = set(), []
+        for x in sets:
+            code = x.get("code", "")
+            url = SCRY_BASE + "/cards/search?unique=prints&order=set&q=" + urllib.parse.quote("set:" + code + " lang:en")
+            pages = 0
+            while url and pages < 4:
+                pages += 1
+                try:
+                    j = json.loads(_fetch(url, 30))
+                except Exception:
+                    break
+                for c in j.get("data") or []:
+                    f0 = (c.get("card_faces") or [c])[0]
+                    t = (c.get("type_line") or f0.get("type_line") or "").lower()
+                    kind = next((k for k in ("planeswalker", "saga", "class", "case", "battle", "land", "creature", "artifact", "enchantment", "instant", "sorcery") if k in t), "other")
+                    sig = (c.get("frame"), tuple(sorted(c.get("frame_effects") or [])), c.get("layout"), c.get("border_color"), bool(c.get("full_art")), kind, "legendary" in t)
+                    key = sig if mode == "types" else (code,) + sig
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    rows.append((code + " " + str(c.get("collector_number")), x.get("name", "") + " - " + (c.get("layout") or "") + " " + str(c.get("frame")) + " " + ",".join(c.get("frame_effects") or []) + " " + kind))
+                url = j.get("next_page") if j.get("has_more") else ""
+                time.sleep(0.11)
+            st["done"] += 1
+            st["count"] = len(rows)
+        st["tsv"] = "scry\tstyle\tlabel\n" + "\n".join(a + "\t\t" + b.replace("\t", " ") for a, b in rows) + "\n"
+        st["finished"] = True
+    except Exception as e:
+        st["error"] = str(e)
+    finally:
+        st["busy"] = False
+
+
 MTG_GROUPS = ['Standard:groupStandard-3', 'Accurate:groupAccurate', 'Showcase:groupShowcase-5', 'Promo:groupPromo-2', 'Textless:groupTextless-4', 'Margin:groupMargin', 'Token:groupToken-2', 'Misc:groupMisc-2',
               'Modal / double-faced:groupModal-1', 'Double-faced:groupDFC', 'Planeswalker:groupPlaneswalker', 'Saga:groupSaga-1', 'Universes Beyond:groupUniversesBeyond', 'Flesh and Blood:groupFleshAndBlood', 'Custom:groupCustom']
 MTG_STY = {'busy': False, 'done': 0, 'total': 0, 'error': '', 'finished': False, 'pack': ''}
@@ -5433,6 +5478,10 @@ class Handler(BaseHTTPRequestHandler):
                 root = TEMPLATE_DIR / "magic"
                 root.mkdir(parents=True, exist_ok=True)
                 threading.Thread(target=mtg_download, args=(root,), daemon=True).start()
+            return self._send(200, dict(ok=True))
+        if path == "/api/template/mtg_testlist":
+            if not MTG_TL["busy"]:
+                threading.Thread(target=mtg_testlist, args=("sets" if q.get("mode") == "sets" else "types",), daemon=True).start()
             return self._send(200, dict(ok=True))
         if path == "/api/template/mtg_style_get":
             pack = str(q.get("pack") or "")
@@ -6399,6 +6448,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, scry_card(q.get("set", ""), q.get("num", ""), q.get("q", "")))
             except Exception as e:
                 return self._error(502, "Scryfall: " + str(e))
+        if path == "/api/template/mtg_testlist_status":
+            return self._send(200, {k: v for k, v in MTG_TL.items() if k != "tsv"})
+        if path == "/api/template/mtg_testlist_tsv":
+            return self._send(200, MTG_TL["tsv"], "text/tab-separated-values; charset=utf-8")
         if path == "/api/template/mtg_scry_img":
             try:
                 return self._send(200, scry_image(q.get("u", "")), "image/jpeg", {"Cache-Control": "private, max-age=3600"})

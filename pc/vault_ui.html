@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261116-n58";
+const UI_BUILD = "20261116-n59";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2449,7 +2449,7 @@ function nvPalInsert(ta, tok, wrap){
    "Make all" turns the whole list into PNGs in one zip. Art pictures are matched on the "art" column (or the card name). */
 const NVL = {rows:{}, art:{}};
 const NVL_COLS = {
-  mtg:'frame, name, cost, type, pt, rules, flavor, artist, set, lang, num, rarity, art',
+  mtg:'frame, name, cost, type, pt, rules, flavor, artist, set, lang, num, rarity, art, scry, style',
   wmc:'type, faction, class, name, cost, subtypes, tags, rules, flavor, damage, health, artist, copy, setname, setnum, setmax, extended, gold, rarity, art',
   pk:'stage, type, name, hp, evo, dex, a1cost, a1name, a1dmg, a1text, a2cost, a2name, a2dmg, a2text, a3cost, a3name, a3dmg, a3text, weakness, resistance, retreat, flavor, illus, copy, num, rarity, finish, gx, ub, fa, rules, art'};
 const NVL_EX = {
@@ -2503,14 +2503,21 @@ function nvlApplyPk(r){
   return S;
 }
 function nvlApplyMtg(r){
-  const S = mtgNew('W'); ['name', 'cost', 'type', 'rules', 'flavor', 'pt', 'set', 'lang', 'artist', 'num', 'rarity', 'legal', 'tsize', 'sym'].forEach(k => { if(r[k] != null && r[k] !== '') S[k] = nvlTxt(r[k]) });
+  const S = r._S ? JSON.parse(JSON.stringify(r._S)) : mtgNew('W'); ['name', 'cost', 'type', 'rules', 'flavor', 'pt', 'set', 'lang', 'artist', 'num', 'rarity', 'legal', 'tsize', 'sym'].forEach(k => { if(r[k] != null && r[k] !== '') S[k] = nvlTxt(r[k]) });
+  if(r._S) return S;
   const fl = nvlLow(r.frame); let fk = fl ? Object.keys(MTG_FR).find(k => k.toLowerCase() === fl || nvlLow(MTG_FR[k].n).startsWith(fl)) : '';
   if(!fk){ const cols = new Set(); mtgCostToks(S.cost).forEach(t => String(t).toUpperCase().replace(/[^WUBRG]/g, '').split('').forEach(x => cols.add(x))); const ty = nvlLow(S.type);
     fk = /\bland\b/.test(ty) ? 'L' : /vehicle/.test(ty) ? 'V' : cols.size > 1 ? 'M' : cols.size === 1 ? [...cols][0] : /artifact/.test(ty) ? 'A' : 'E' }
   S.frame = fk; return S;
 }
+async function mtgPrepRow(r){      // a list row can say "scry = gvl 6" (card comes from Scryfall) and/or "style = Seventh" (frame style); columns you fill in yourself win
+  if(r._done) return; r._done = true; const m = String(r.scry || '').trim().match(/^([a-z0-9]{2,6})\s+(\S+)$/i);
+  if(m){ const c = await api('/api/template/mtg_scry?t=' + enc(TOKEN) + '&set=' + enc(m[1]) + '&num=' + enc(m[2])), S = await mtgFromScry(c); r._S = S; r._art = c.art;
+    if(r.style && r.style !== S.style){ S.style = r.style; const inf = await mtgEnsureStyle(r.style); if(inf && !inf.bad) S.sframe = mtgPickFrame(inf.main.map(f => f.name), mtgFrameWord(c)); else S.style = '' } return }
+  if(r.style){ const S = nvlApplyMtg(Object.assign({}, r, {style:''})), inf = await mtgEnsureStyle(r.style); if(inf && !inf.bad){ S.style = r.style; const cols = []; mtgCostToks(S.cost).forEach(t => String(t).toUpperCase().replace(/[^WUBRG]/g, '').split('').forEach(x => { if(!cols.includes(x)) cols.push(x) }));
+      S.sframe = mtgPickFrame(inf.main.map(f => f.name), mtgFrameWord({type_line:S.type, colors:cols})) } r._S = S } }
 const NVG = {
-  mtg:{label:'Magic card', apply:nvlApplyMtg, get:() => TP.mtg, set:S => { TP.mtg = S }, draw:() => mtgDraw(), name:S => S.name, shape:() => 'm15'},
+  mtg:{label:'Magic card', apply:nvlApplyMtg, prep:mtgPrepRow, get:() => TP.mtg, set:S => { TP.mtg = S }, draw:() => mtgDraw(), name:S => S.name, shape:() => 'm15'},
   wmc:{label:'WoW card', apply:nvlApplyWmc, get:() => TP.wmc, set:S => { TP.wmc = S }, draw:() => wmcDraw(), name:S => S.name, shape:() => TP.wmc ? TP.wmc.type + (TP.wmc.ea ? '-ea' : '') : ''},
   pk:{label:'Pokémon card', apply:nvlApplyPk, get:() => TP.pk, set:S => { TP.pk = S }, draw:() => pkDraw(), name:S => S.t.name, shape:() => TP.pk ? TP.pk.kind + (TP.pk.kind === 'trainer' ? TP.pk.trainer : '') : ''}};
 /* saved art crop: remembers zoom / position per picture (and card shape) in this browser */
@@ -2537,15 +2544,15 @@ const nvSave = (blob, name) => { const a = document.createElement('a'); a.href =
 function nvlStore(game){ try{ localStorage.setItem('nv_list_' + game, JSON.stringify(NVL.rows[game] || [])) }catch(e){} }
 function nvlRestore(game){ if(!NVL.rows[game]){ try{ NVL.rows[game] = JSON.parse(localStorage.getItem('nv_list_' + game) || '[]') }catch(e){ NVL.rows[game] = [] } } return NVL.rows[game] }
 async function nvlLoad(game, i){
-  const g = NVG[game], r = NVL.rows[game][i]; if(!r) return; g.set(g.apply(r));
-  const f = nvArtFor(game, r); if(f){ const im = await nvImgFile(f); if(im) nvArtSet(game, im, f) }
+  const g = NVG[game], r = NVL.rows[game][i]; if(!r) return; if(g.prep) await g.prep(r); g.set(g.apply(r));
+  const f = nvArtFor(game, r); if(f){ const im = await nvImgFile(f); if(im) nvArtSet(game, im, f) } else if(r._art){ const im = await mtgScryImg(r._art); if(im) TP.art = {img:im, zoom:1, x:0, y:0, fid:'scry', saved:false} }
   closeModal(); viewTemplate();
 }
 async function nvlMakeAll(game, say){
   const g = NVG[game], rows = NVL.rows[game] || [], keepS = g.get(), keepA = TP.art, files = [];
   for(let i = 0; i < rows.length; i++){
-    say('Making card ' + (i + 1) + ' of ' + rows.length + '…'); const r = rows[i], S = g.apply(r); g.set(S);
-    const f = nvArtFor(game, r); if(f){ const im = await nvImgFile(f); if(im) nvArtSet(game, im, f) } else TP.art = Object.assign({}, keepA);
+    say('Making card ' + (i + 1) + ' of ' + rows.length + '…'); const r = rows[i]; try{ if(g.prep) await g.prep(r) }catch(e){} const S = g.apply(r); g.set(S);
+    const f = nvArtFor(game, r); if(f){ const im = await nvImgFile(f); if(im) nvArtSet(game, im, f) } else if(r._art){ const im = await mtgScryImg(r._art); TP.art = im ? {img:im, zoom:1, x:0, y:0, fid:'scry', saved:false} : Object.assign({}, keepA) } else TP.art = Object.assign({}, keepA);
     await g.draw(); const b = await new Promise(res => $('#tpcv').toBlob(res, 'image/png'));
     files.push({name:String(i + 1).padStart(3, '0') + '-' + ((g.name(S) || 'card').replace(/[^\w\- ]+/g, '').trim() || 'card') + '.png', data:new Uint8Array(await b.arrayBuffer())}) }
   g.set(keepS); TP.art = keepA; await g.draw();
@@ -2836,13 +2843,22 @@ async function mtgBench(){
         d.innerHTML = `<b>${r.score}%</b> ${esc(label)}<br><span class="hint">${esc(c.name)} · ${esc(row.style)}</span><div style="display:flex;gap:4px;margin-top:4px"></div>`; const f = d.lastChild; [r.ours, r.real].forEach(x => { x.style.width = '50%'; x.style.height = 'auto'; f.appendChild(x) }); $('#mbrows').appendChild(d) }
     }catch(e){ row.err = e.message; if($('#mbrows')){ const d = document.createElement('div'); d.style.cssText = 'border:1px solid #533;border-radius:8px;padding:6px;font-size:12px'; d.innerHTML = `<b>—</b> ${esc(label)}<br><span class="hint">${esc(e.message)}</span>`; $('#mbrows').appendChild(d) } } }
   TP.mtg = keep; TP.art = keepArt; if($('#mbst')){ const ok = rows.filter(r => r.score != null); $('#mbst').textContent = `Done: ${ok.length} of ${rows.length} compared, average match ${ok.length ? Math.round(ok.reduce((a, r) => a + r.score, 0) / ok.length) : 0}%.` } mtgDraw() }
-function mtgScryBar(){ return `<div class="bar" style="gap:8px;flex-wrap:wrap;margin:8px 0"><input type="text" id="mgscin" placeholder="set + number, e.g. gvl 6" style="width:190px"><button class="btn" id="mgscgo"><i class="ti ti-cloud-download"></i>Load from Scryfall</button><button class="btn" id="mgsccmp" ${MTG.scry ? '' : 'disabled'}><i class="ti ti-arrows-diff"></i>Compare with the real card</button><button class="btn" id="mgbench" title="Builds a sample of every card type from Scryfall and compares them all"><i class="ti ti-flask"></i>Test bench</button><span class="hint" id="mgscmsg"></span></div>` }
+function mtgScryBar(){ return `<div class="bar" style="gap:8px;flex-wrap:wrap;margin:8px 0"><input type="text" id="mgscin" placeholder="set + number, e.g. gvl 6" style="width:190px"><button class="btn" id="mgscgo"><i class="ti ti-cloud-download"></i>Load from Scryfall</button><button class="btn" id="mgsccmp" ${MTG.scry ? '' : 'disabled'}><i class="ti ti-arrows-diff"></i>Compare with the real card</button><button class="btn" id="mgtl" title="Makes a card list (set + number) with an example of every kind of card, to load with Card list…"><i class="ti ti-list-search"></i>Make test list…</button><button class="btn" id="mgbench" title="Builds a sample of every card type from Scryfall and compares them all"><i class="ti ti-flask"></i>Test bench</button><span class="hint" id="mgscmsg"></span></div>` }
+function mtgTestList(){
+  modal(`<h3>Test list</h3><p class="hint">Nightvault asks Scryfall, set by set, for example cards of every kind (old frames, modern, extended art, borderless, showcase, planeswalker, saga, adventure, split, flip, transform, class, tokens…) and writes a list file. Then press <b>Card list…</b>, load that file, and "Make all cards" builds every card with its own frame style (it downloads the styles it needs) – or click single cards. It takes a few minutes and needs internet.</p>
+    <div class="bar" style="gap:8px;flex-wrap:wrap"><label>Which cards <select id="tlmode"><option value="types">One example of every kind of card (about 100 cards)</option><option value="sets">Every kind of card in every set (thousands of cards)</option></select></label><button class="btn primary" id="tlgo">Make the list</button><button class="btn" onclick="closeModal()">Close</button></div><p class="hint" id="tlmsg"></p>`);
+  $('#tlgo').onclick = async () => { $('#tlgo').disabled = true; try{ await api('/api/template/mtg_testlist?mode=' + $('#tlmode').value, {}) }catch(e){ $('#tlmsg').textContent = e.message; $('#tlgo').disabled = false; return }
+    const tick = async () => { let st; try{ st = await api('/api/template/mtg_testlist_status?t=' + enc(TOKEN)) }catch(e){ st = {error:e.message} } if(!$('#tlmsg')) return; if(st.error){ $('#tlmsg').innerHTML = '<b style="color:#e55">' + esc(st.error) + '</b>'; $('#tlgo').disabled = false; return }
+      if(st.finished){ const r = await fetch('/api/template/mtg_testlist_tsv?t=' + enc(TOKEN)), t = await r.text(); nvSave(new Blob(['\ufeff' + t], {type:'text/tab-separated-values'}), 'magic-test-list.tsv'); $('#tlmsg').textContent = st.count + ' cards in the list, saved as magic-test-list.tsv. Now use Card list… and load it.'; $('#tlgo').disabled = false; return }
+      $('#tlmsg').textContent = 'Looking at set ' + st.done + ' of ' + (st.total || '…') + ' – ' + st.count + ' cards so far'; setTimeout(tick, 1000) }; tick() };
+}
 function mtgScryBind(){
   const msg = t => { if($('#mgscmsg')) $('#mgscmsg').textContent = t };
   if($('#mgscgo')) $('#mgscgo').onclick = async () => { const m = String($('#mgscin').value).trim().match(/^([a-z0-9]{2,6})\s+([\w★-]+)$/i); if(!m){ msg('Type the set code and the card number, like: gvl 6'); return } msg('Asking Scryfall…');
     try{ const c = await api('/api/template/mtg_scry?t=' + enc(TOKEN) + '&set=' + enc(m[1]) + '&num=' + enc(m[2])); msg('Building the card…'); const S = await mtgFromScry(c, st => msg('Downloading the style… ' + st.done + ' of ' + st.total)); TP.mtg = S; MTG.scry = c; await mtgLoadArt(c); viewTemplate() }catch(e){ msg(e.message) } };
   if($('#mgsccmp')) $('#mgsccmp').onclick = async () => { msg('Comparing…'); const r = await mtgCompareCard(MTG.scry, TP.mtg); msg(''); if(r) mtgCompareModal(MTG.scry, TP.mtg, r); else msg('Could not get the real picture.') };
   if($('#mgbench')) $('#mgbench').onclick = () => mtgBench();
+  if($('#mgtl')) $('#mgtl').onclick = () => mtgTestList();
 }
 function mtgPanel(){
   const S = TP.mtg, f = (k, lab, w, ph) => `<label style="display:flex;flex-direction:column;gap:3px;font-size:12px;flex:${w || 1} 1 120px">${lab}<input type="text" data-mgt="${k}" value="${esc(S[k])}" ${ph ? `placeholder="${esc(ph)}"` : ''}></label>`;

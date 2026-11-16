@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 227,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: make a test list of every card type",
+   "items": [
+    "New button \"Make test list…\" in the Magic editor: Nightvault walks through Scryfall and saves a list file with one example of every kind of card (about 100 cards), or every kind in every set (thousands). Load it with Card list…",
+    "The Magic card list now understands two extra columns: \"scry\" (a set code and number like \"gvl 6\" – the whole card comes from Scryfall, with its art and the right frame style) and \"style\" (force a frame style). Columns you fill in yourself win."
+   ]
+  },
+  {
    "id": 226,
    "date": "2026-11-16",
    "where": [
