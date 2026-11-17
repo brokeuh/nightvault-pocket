@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 239,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic test bench: fairer score, real plane and vanguard cards",
+   "items": [
+    "The match score now looks at colours and layout instead of single letters (both pictures are slightly blurred first), so a card that looks right no longer scores 50%.",
+    "Planechase and Vanguard test cards: the search no longer returns 'not found'."
+   ]
+  },
+  {
    "id": 238,
    "date": "2026-11-16",
    "where": [
