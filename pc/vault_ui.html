@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261117-n78";
+const UI_BUILD = "20261117-n79";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -6038,12 +6038,28 @@ function updMenu(){
     try{ const r = await fetch('/api/update/zip', {method:'POST', headers:{'X-Vault-Token':TOKEN, 'Content-Type':'application/octet-stream'}, body:f}); const j = await r.json(); if(!r.ok) throw new Error(j.error || 'Could not use that zip');
       if(!j.updated.length){ $('#ummsg').textContent = 'Already up to date - nothing in the zip is newer.'; return }
       $('#ummsg').textContent = 'Updated ' + j.updated.length + ' files. Restarting ...'; await api('/api/update/restart', {}).catch(() => {});
-      const back = async () => { try{ await fetch('/api/state'); location.reload() }catch(e){ setTimeout(back, 1000) } }; setTimeout(back, 2500)
+      waitRestart()
     }catch(err){ $('#ummsg').textContent = err.message } };
+}
+// After "restart": wait until the NEW program answers (it has another boot id), then reload. If our window was closed by the restart, this page is simply gone and the new program opens its own window.
+function waitRestart(){
+  const old = S.state && S.state.boot, t0 = Date.now(), msg = t => { const el = $('#updbar') || $('#ummsg'); if(el) el.innerHTML = t };
+  const poll = async () => {
+    try{ const j = await (await fetch('/api/state')).json(); if(!old || (j.boot && j.boot !== old)){ location.reload(); return } }catch(e){}
+    if(Date.now() - t0 > 60000){ msg('<b>It did not restart by itself.</b> Close the black Nightvault window and start <code>python vault.py</code> again.'); return }
+    setTimeout(poll, 800) };
+  setTimeout(poll, 1500);
+}
+function restartBar(){
+  if($('#updbar')) $('#updbar').remove();
+  document.body.insertAdjacentHTML('beforeend', `<div id="updbar" style="position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9000;background:var(--panel,#151a22);border:1px solid var(--accent,#7aa2f7);border-radius:14px;padding:10px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,.4)"><i class="ti ti-refresh" style="font-size:20px;color:var(--accent,#7aa2f7)"></i><div><b>The update is installed - restart to use it</b><div class="muted" style="font-size:12.5px">The old program is still running.</div></div><button class="btn primary" id="rsgo">Restart now</button><button class="btn ghost" id="rsx" title="Not now"><i class="ti ti-x"></i></button></div>`);
+  $('#rsx').onclick = () => $('#updbar').remove();
+  $('#rsgo').onclick = async () => { $('#updbar').innerHTML = '<b>Restarting ...</b>'; await api('/api/update/restart', {}).catch(() => {}); waitRestart() };
 }
 async function checkUpdate(manual){
   try{ if(!manual){ const last = +localStorage.getItem('nvUpdChecked') || 0; if(Date.now() - last < 864e5) return } }catch(e){}
   let r; try{ r = await api('/api/update/check') }catch(e){ if(manual){ updMsg('Could not check for updates', e.message); setTimeout(() => { const b = document.querySelector('.mbox .btn.primary'); if(b) b.insertAdjacentHTML('beforebegin', '<button class="btn" onclick="closeModal();updMenu()" style="margin-right:8px">Update from a zip file</button>') }, 0) } return }
+  if(r.restart_needed){ restartBar(); return }
   if(r.error){ if(manual){ updMsg('Could not reach the update list', r.error + ' (this program is build ' + (r.build||'?') + ')'); setTimeout(() => { const b = document.querySelector('.mbox .btn.primary'); if(b) b.insertAdjacentHTML('beforebegin', '<button class="btn" onclick="closeModal();updMenu()" style="margin-right:8px">Update from a zip file</button>') }, 0) } return }
   try{ localStorage.setItem('nvUpdChecked', Date.now()) }catch(e){}
   if(!r.available){ if(manual) updMsg('Nightvault is up to date', 'Build ' + (r.build||'') + ', published version ' + (r.version||'')); return }
@@ -6054,7 +6070,7 @@ async function checkUpdate(manual){
   $('#updx').onclick = () => $('#updbar').remove();
   $('#updgo').onclick = async () => { $('#updgo').disabled = true; $('#updgo').textContent = 'Updating ...';
     try{ const u = await api('/api/update/apply', {}); $('#updbar').innerHTML = '<b>Updated. Restarting ...</b>'; await api('/api/update/restart', {}).catch(() => {});
-      const back = async () => { try{ await fetch('/api/state'); location.reload() }catch(e){ setTimeout(back, 1000) } }; setTimeout(back, 2500)
+      waitRestart()
     }catch(e){ $('#updgo').disabled = false; $('#updgo').textContent = 'Update now'; toast(e.message, true) } };
 }
 (async function init(){

@@ -1,7 +1,7 @@
 {
- "version": "2026-11-17 13:37",
+ "version": "2026-11-17 13:47",
  "notes": [
-  "Proxyshop import: read your own PSD templates (PSD / zip / 7z) on this PC"
+  "Update/restart fix: the old program and window now close properly"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "162041674a9f064b0d46eecfae9cf14907e54e17944a75a542fba8d4a96c2d14"
+   "sha256": "01939d1f1751a15a5f1be0692779cf051fec6197a6df6a3999b4ed647ad785ec"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -54,7 +54,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "2003de2f9d639e959bcbba7f79a477d72b7040d1dcf92f2180ed37919eef41e6"
+   "sha256": "8d90a62ba9d273a0c6254065b015aa47303406e1e3b5fc7a99846f5a789447cf"
   },
   {
    "name": "vault_un7z.py",

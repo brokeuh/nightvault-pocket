@@ -211,7 +211,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261117-n78"   # the page and the program must carry the same build id
+BUILD = "20261117-n79"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -3793,7 +3793,17 @@ def update_check():
         local = HERE / name
         if not local.exists() or _sha256(local) != f.get("sha256"):
             changed.append(name)
-    return dict(available=bool(changed), files=changed, version=man.get("version", ""), notes=man.get("notes", []), build=BUILD, source=base.split("/")[2])
+    return dict(available=bool(changed), files=changed, version=man.get("version", ""), notes=man.get("notes", []), build=BUILD, source=base.split("/")[2],
+                restart_needed=_disk_build() not in ("", BUILD))
+
+
+def _disk_build():
+    """Build id written in vault.py on disk - differs from BUILD when files were updated but this old program is still running."""
+    try:
+        m = re.search(r'^BUILD = "([^"]+)"', (HERE / "vault.py").read_text("utf-8", "replace"), re.M)
+        return m.group(1) if m else ""
+    except OSError:
+        return ""
 
 
 def _upd_install(new):
@@ -3873,14 +3883,55 @@ def update_zip(blob):
     return _upd_install(new)
 
 
+SERVER = None            # the running web server (set in main)
+WINDOW_PROC = None       # the browser window Nightvault opened for itself, if any
+RESTARTING = False
+RESTART_FAILED = threading.Event()
+BOOT_ID = secrets.token_hex(4)    # changes every time the program starts: the page uses it to see that the NEW program is answering
+
+
 def update_restart():
-    """Start the program again with the same arguments (the browser page reloads itself)."""
+    """Close this program completely (its window, its web server, the phone server) and start a fresh one with the same
+    settings.  The old way (os.execv) left the old window and program running on Windows and opened a second one."""
     def go():
+        global RESTARTING
         time.sleep(0.6)
         try:
-            os.execv(sys.executable, [sys.executable] + sys.argv)
+            RESTARTING = True
+            args = list(sys.argv[1:])
+            if "--port" in args:
+                args[args.index("--port") + 1] = str(PORT)
+            else:
+                args += ["--port", str(PORT)]
+            own_window = WINDOW_PROC is not None and WINDOW_PROC.poll() is None
+            if not own_window and "--no-browser" not in args:
+                args.append("--no-browser")                  # a tab / window we do not own: the page reloads itself instead
+            STOP.set()
+            if phone:
+                try:
+                    phone.stop()
+                except Exception:
+                    pass
+            if own_window:
+                try:
+                    WINDOW_PROC.terminate()                  # the new program opens its own window
+                    WINDOW_PROC.wait(5)
+                except Exception:
+                    pass
+            if SERVER is not None:
+                try:
+                    SERVER.shutdown()
+                    SERVER.server_close()
+                except Exception:
+                    pass
+            cmd = [sys.executable, str(Path(__file__).resolve())] + args
+            if os.name == "nt":
+                subprocess.Popen(cmd, cwd=str(HERE), close_fds=True)
+                os._exit(0)
+            os.execv(sys.executable, cmd)
         except Exception:
             traceback.print_exc()
+            RESTART_FAILED.set()
     threading.Thread(target=go, daemon=True).start()
 
 
@@ -5363,7 +5414,7 @@ class Handler(BaseHTTPRequestHandler):
                 try:
                     return self._send(200, update_check())
                 except Exception as e:
-                    return self._send(200, dict(available=False, error=f"{type(e).__name__}: {e}", build=BUILD))
+                    return self._send(200, dict(available=False, error=f"{type(e).__name__}: {e}", build=BUILD, restart_needed=_disk_build() not in ("", BUILD)))
             if path == "/api/ccgtrader/games":
                 if not ccgt:
                     raise ValueError("vault_ccgtrader.py must be in the same folder as vault.py.")
@@ -5571,7 +5622,7 @@ class Handler(BaseHTTPRequestHandler):
         colls = [dict(allc[i], enabled=i in enabled) for i in order]
         get = (lambda k: online.get_setting(conn, k).strip()) if online else (lambda k: "")
         return dict(
-            version=VERSION, build=BUILD, collections=colls, onboarded=self._onboarded(conn), lines=line_list(conn), pending_pics={r['cat']: r['n'] for r in conn.execute("SELECT cat, COUNT(*) n FROM manual_items WHERE pic_url IS NOT NULL AND pic_url<>'' AND ('m:'||id) NOT IN (SELECT key FROM covers) GROUP BY cat")},
+            version=VERSION, build=BUILD, boot=BOOT_ID, collections=colls, onboarded=self._onboarded(conn), lines=line_list(conn), pending_pics={r['cat']: r['n'] for r in conn.execute("SELECT cat, COUNT(*) n FROM manual_items WHERE pic_url IS NOT NULL AND pic_url<>'' AND ('m:'||id) NOT IN (SELECT key FROM covers) GROUP BY cat")},
             layout=dict(groups=saved.get("groups") or [], collapsed=saved.get("collapsed") or []),
             lookups={k: dict(type=x.get("type"), url=x.get("url"), key_header=x.get("key_header", ""), has_key=bool(x.get("key")), also_wikipedia=x.get("also_wikipedia", True))
                      for k, x in jl(get_setting(conn, "lookup_sources"), {}).items()},
@@ -7522,6 +7573,7 @@ def open_window(url, server):
     exe = find_app_browser()
     if not exe:
         return webbrowser.open(url)
+    global WINDOW_PROC
     profile = mc.DB_PATH.parent / "vault_window"          # its own profile, so it is a separate window that can be followed
     try:
         profile.mkdir(parents=True, exist_ok=True)
@@ -7531,9 +7583,12 @@ def open_window(url, server):
     except OSError:
         return webbrowser.open(url)
     started = time.time()
+    WINDOW_PROC = proc
 
     def watch():
         proc.wait()
+        if RESTARTING:                                      # we closed it ourselves for an update restart
+            return
         if time.time() - started < 5:                      # it handed over to a browser that was already open: nothing to follow
             return
         waited = False
@@ -7697,7 +7752,7 @@ def _phone_video_watch(path, pos, dur, fin):
 
 
 def main():
-    global PORT
+    global PORT, SERVER
     if not UI_FILE.exists():
         sys.exit("vault_ui.html must be in the same folder as vault.py")
     args = sys.argv[1:]
@@ -7712,6 +7767,7 @@ def main():
             continue
     if server is None:
         sys.exit("Could not find a free port.")
+    SERVER = server
     connect().close()  # create tables
     if vgames:
         vgames.init(get=_phone_get, put=_phone_put)
@@ -7753,6 +7809,8 @@ def main():
     finally:
         STOP.set()
         server.server_close()
+        if RESTARTING:                       # the restart thread is starting the new program: do not exit before it has
+            RESTART_FAILED.wait(60)
 
 
 if __name__ == "__main__":

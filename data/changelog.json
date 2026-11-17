@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 247,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "PC app: update and restart fixed",
+   "items": [
+    "Restart after an update now really closes the old program and its window first, then starts one fresh program (before, the old one kept running and a second window opened).",
+    "If the update files are installed but the old program is still running, 'Check online' now says so and offers 'Restart now' instead of 'up to date'.",
+    "After a restart the page waits for the new program before reloading."
+   ]
+  },
+  {
    "id": 246,
    "date": "2026-11-16",
    "where": [
