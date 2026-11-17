@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 241,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: frames learn the real card colours",
+   "items": [
+    "The test bench now learns how Scryfall's real pictures are coloured (they are a bit darker and different from the community frames) and draws every frame with those colours from then on.",
+    "Run the Test bench once (twice for the best result) and the match scores go up; 'Forget learned colours' next to it resets this.",
+    "Text size and position on modern frames were checked against the real card: they already match within 2-3 pixels."
+   ]
+  },
+  {
    "id": 240,
    "date": "2026-11-16",
    "where": [
