@@ -1,7 +1,7 @@
 {
- "version": "2026-11-17 14:41",
+ "version": "2026-11-17 14:56",
  "notes": [
-  "Bench colours: black borders stay black"
+  "Proxyshop frames automatic for gold; bench colour fix reverted"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "bb7fe233f9fc513209b7da968f43fbd5c02bb960bd93204ca2de3eb64ede056c"
+   "sha256": "f068ca59604a5fff303ce1c8c36ffe4df3209ec8e2565f6c76c3bc16d16b4c96"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -54,7 +54,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "0788860e0b85d6473f735bc8779df21e99ea74b06031e7336e62c7785ca3d9b3"
+   "sha256": "50536ac97a04c3e3d6120740d070256594010caa279c46c96ed42c9903fe5a2b"
   },
   {
    "name": "vault_un7z.py",

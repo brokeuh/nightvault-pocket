@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261117-n82";
+const UI_BUILD = "20261117-n83";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2793,15 +2793,11 @@ function mtgStyleBind(){
   $$('[data-mgx]').forEach(el => { el.oninput = () => { (S.ex = S.ex || {})[el.dataset.mgx] = el.value; mtgDraw() } });
 }
 // Tone: Scryfall's pictures differ a little in colour from the community frames. The test bench learns, per frame and per colour channel, a straight-line fit (real = gain x ours + lift) and the frames are drawn with it (frame only, not art or text).
-const mtgToneKey = S => (S.style || (MTGPS.use && MTGPS.on ? 'proxyshop' : 'modern')) + '|' + (S.style ? (S.sframe | 0) : (S.frame || 'W'));
-const mtgToneAll = () => { try{ return JSON.parse(localStorage.getItem('nv_mtg_tone3') || '{}') }catch(e){ return {} } };
+const mtgToneKey = S => (S.style || (mtgPsUsed(S) ? 'proxyshop' : 'modern')) + '|' + (S.style ? (S.sframe | 0) : (S.frame || 'W'));
+const mtgToneAll = () => { try{ return JSON.parse(localStorage.getItem('nv_mtg_tone4') || '{}') }catch(e){ return {} } };
 function mtgToned(img, S){ const t = img && mtgToneAll()[mtgToneKey(S)]; if(!t || S.tone === false) return img; const q = document.createElement('canvas'); q.width = img.width; q.height = img.height; const x = q.getContext('2d'); x.drawImage(img, 0, 0);
   x.globalCompositeOperation = 'multiply'; x.fillStyle = `rgb(${t.map(v => Math.round(Math.max(0, Math.min(1, v[0])) * 255)).join(',')})`; x.fillRect(0, 0, q.width, q.height);
-  // the lift is weighted by how bright the pixel is, so the black border stays black (a flat lift turned it grey)
-  const m = document.createElement('canvas'); m.width = q.width; m.height = q.height; const mx = m.getContext('2d');
-  mx.fillStyle = `rgb(${t.map(v => Math.round(Math.max(0, Math.min(255, v[1])))).join(',')})`; mx.fillRect(0, 0, m.width, m.height);
-  mx.globalCompositeOperation = 'multiply'; mx.filter = 'brightness(3)'; mx.drawImage(img, 0, 0);
-  x.globalCompositeOperation = 'lighter'; x.drawImage(m, 0, 0);
+  x.globalCompositeOperation = 'lighter'; x.fillStyle = `rgb(${t.map(v => Math.round(Math.max(0, Math.min(255, v[1])))).join(',')})`; x.fillRect(0, 0, q.width, q.height);
   x.globalCompositeOperation = 'destination-in'; x.drawImage(img, 0, 0); return q }
 function mtgToneLearn(S, pa, pb, w, h, A){ const old = mtgToneAll()[mtgToneKey(S)] || [[1, 0], [1, 0], [1, 0]], res = [];
   for(let k = 0; k < 3; k++){ const xs = [], ys = [];
@@ -2811,9 +2807,11 @@ function mtgToneLearn(S, pa, pb, w, h, A){ const old = mtgToneAll()[mtgToneKey(S
       const den = n * sxx - sx * sx; if(n < 200 || Math.abs(den) < 1e-6) break; a = (n * sxy - sx * sy) / den; b = (sy - a * sx) / n }
     a = Math.max(0.5, Math.min(1.3, a)); b = Math.max(-60, Math.min(60, b)); res.push([a, b]) }
   const nw = res.map(([a2, b2], k) => { const g = a2 * old[k][0], l = a2 * old[k][1] + b2; return [Math.max(0.5, Math.min(1, g)), Math.max(0, Math.min(80, l))] }), all = mtgToneAll(); all[mtgToneKey(S)] = nw;
-  try{ localStorage.setItem('nv_mtg_tone3', JSON.stringify(all)) }catch(e){} return nw }
+  try{ localStorage.setItem('nv_mtg_tone4', JSON.stringify(all)) }catch(e){} return nw }
 // ---- Proxyshop frames (imported from the owner's own PSD templates, see Tools > Proxyshop import)
-const MTGPS = {on: null, packs: [], meta: {}, imgs: {}, cache: {}, use: (() => { try{ return localStorage.getItem('nv_mtg_ps') === '1' }catch(e){ return false } })()};
+const MTGPS = {on: null, packs: [], meta: {}, imgs: {}, cache: {}, mode: (() => { try{ return localStorage.getItem('nv_mtg_ps2') || 'auto' }catch(e){ return 'auto' } })()};
+// 'auto' = the Proxyshop frame only for gold (multicolour) cards, where it clearly beats the built-in frame; 'all' = every plain frame; 'off'
+const mtgPsUsed = S => !S.style && MTGPS.on && (MTGPS.mode === 'all' || (MTGPS.mode === 'auto' && S.frame === 'M'));
 async function mtgPsInit(){ if(MTGPS.on === null){ try{ MTGPS.packs = (await api('/api/template/ps_packs?t=' + TOKEN)).packs; const np = MTGPS.packs.find(p => /^normal/i.test(p.name)); MTGPS.pack = np ? np.name : ''; MTGPS.on = !!np }catch(e){ MTGPS.on = false } } return MTGPS.on }
 const mtgPsUrl = (p) => '/api/template/ps_file?pack=' + enc(MTGPS.pack || 'normal') + '&p=' + enc(p) + '&t=' + enc(TOKEN);
 const mtgPsImg = p => (MTGPS.imgs[p] = MTGPS.imgs[p] || new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = mtgPsUrl(p) }));
@@ -2837,7 +2835,7 @@ async function mtgPsFrame(frame){
 async function mtgDraw(){
   const cv = $('#tpcv'); if(!cv || !TP.mtg) return; const my = ++MTG.token, S = TP.mtg, fk = MTG_FR[S.frame] || MTG_FR.W;
   if(S.style) return mtgStyleDraw(cv, my, S);
-  await mtgFonts(); let psf = null; if(MTGPS.use && await mtgPsInit()){ try{ psf = await mtgPsFrame(S.frame) }catch(e){ psf = null } }
+  await mtgFonts(); let psf = null; if(await mtgPsInit() && mtgPsUsed(S)){ try{ psf = await mtgPsFrame(S.frame) }catch(e){ psf = null } }
   const [fr, ptb] = psf ? [psf.fr, null] : await Promise.all([mtgImg(MTG_DIR + fk.f), S.pt ? mtgImg(MTG_DIR + fk.p) : null]); await mtgSyms([S.cost, S.rules, S.flavor, S.big ? '{' + S.big + '}' : '']); for(const o of S.over || []) await mtgStyleInfo(o.pack); const brush = S.artist ? await mtgImg('img/manaSymbols/artistbrush.svg') : null;
   if(my !== MTG.token || !fr) return;
   const W = fr.width, H = fr.height; cv.width = W; cv.height = H; const c = cv.getContext('2d'); c.clearRect(0, 0, W, H);
@@ -2973,7 +2971,7 @@ async function mtgBench(){
         d.innerHTML = `<b>${r.score}%</b> ${esc(label)}<br><span class="hint">${esc(c.name)} · ${esc(row.style)}</span><div style="display:flex;gap:4px;margin-top:4px"></div>`; const f = d.lastChild; [r.ours, r.real].forEach(x => { x.style.width = '50%'; x.style.height = 'auto'; f.appendChild(x) }); $('#mbrows').appendChild(d) }
     }catch(e){ row.err = e.message; if($('#mbrows')){ const d = document.createElement('div'); d.style.cssText = 'border:1px solid #533;border-radius:8px;padding:6px;font-size:12px'; d.innerHTML = `<b>—</b> ${esc(label)}<br><span class="hint">${esc(e.message)}</span>`; $('#mbrows').appendChild(d) } } }
   TP.mtg = keep; TP.art = keepArt; if($('#mbst')){ const ok = rows.filter(r => r.score != null); $('#mbst').textContent = `Done: ${ok.length} of ${rows.length} compared, average match ${ok.length ? Math.round(ok.reduce((a, r) => a + r.score, 0) / ok.length) : 0}%.` } mtgDraw() }
-function mtgScryBar(){ return `<div class="bar" style="gap:8px;flex-wrap:wrap;margin:8px 0"><input type="text" id="mgscin" placeholder="set + number, e.g. gvl 6" style="width:190px"><button class="btn" id="mgscgo"><i class="ti ti-cloud-download"></i>Load from Scryfall</button><button class="btn" id="mgsccmp" ${MTG.scry ? '' : 'disabled'}><i class="ti ti-arrows-diff"></i>Compare with the real card</button><button class="btn" id="mgtl" title="Makes a card list (set + number) with an example of every kind of card, to load with Card list…"><i class="ti ti-list-search"></i>Make test list…</button><button class="btn" id="mgbench" title="Builds a sample of every card type from Scryfall and compares them all"><i class="ti ti-flask"></i>Test bench</button><button class="btn" id="mgtonereset" title="The test bench learns how the real pictures are coloured and draws the frames the same way. This forgets what it learned.">Forget learned colours</button>${!MTGPS.on ? `<a class="hint" href="#/psimport" title="Import your Proxyshop Normal template first, then a Proxyshop frames tick box appears here">Proxyshop frames: import a template first</a>` : ''}${MTGPS.on ? `<label class="hint" title="Draws the plain frames (no special style) from your imported Proxyshop Normal template"><input type="checkbox" id="mgps" ${MTGPS.use ? 'checked' : ''}> Proxyshop frames</label>` : ''}<span class="hint" id="mgscmsg"></span></div>` }
+function mtgScryBar(){ return `<div class="bar" style="gap:8px;flex-wrap:wrap;margin:8px 0"><input type="text" id="mgscin" placeholder="set + number, e.g. gvl 6" style="width:190px"><button class="btn" id="mgscgo"><i class="ti ti-cloud-download"></i>Load from Scryfall</button><button class="btn" id="mgsccmp" ${MTG.scry ? '' : 'disabled'}><i class="ti ti-arrows-diff"></i>Compare with the real card</button><button class="btn" id="mgtl" title="Makes a card list (set + number) with an example of every kind of card, to load with Card list…"><i class="ti ti-list-search"></i>Make test list…</button><button class="btn" id="mgbench" title="Builds a sample of every card type from Scryfall and compares them all"><i class="ti ti-flask"></i>Test bench</button><button class="btn" id="mgtonereset" title="The test bench learns how the real pictures are coloured and draws the frames the same way. This forgets what it learned.">Forget learned colours</button>${!MTGPS.on ? `<a class="hint" href="#/psimport" title="Import your Proxyshop Normal template first, then a Proxyshop frames tick box appears here">Proxyshop frames: import a template first</a>` : ''}${MTGPS.on ? `<label class="hint" title="Where the plain frames come from your imported Proxyshop Normal template: only for gold (multicolour) cards, for every colour, or never">Proxyshop frames <select id="mgps"><option value="auto" ${MTGPS.mode === 'auto' ? 'selected' : ''}>Gold only (auto)</option><option value="all" ${MTGPS.mode === 'all' ? 'selected' : ''}>All colours</option><option value="off" ${MTGPS.mode === 'off' ? 'selected' : ''}>Off</option></select></label>` : ''}<span class="hint" id="mgscmsg"></span></div>` }
 function mtgTestList(){
   modal(`<h3>Test list</h3><p class="hint">Nightvault asks Scryfall, set by set, for example cards of every kind (old frames, modern, extended art, borderless, showcase, planeswalker, saga, adventure, split, flip, transform, class, tokens…) and writes a list file. Then press <b>Card list…</b>, load that file, and "Make all cards" builds every card with its own frame style (it downloads the styles it needs) – or click single cards. It takes a few minutes and needs internet.</p>
     <div class="bar" style="gap:8px;flex-wrap:wrap"><label>Which cards <select id="tlmode"><option value="types">One example of every kind of card (about 100 cards)</option><option value="sets">Every kind of card in every set (thousands of cards)</option></select></label><button class="btn primary" id="tlgo">Make the list</button><button class="btn" onclick="closeModal()">Close</button></div><p class="hint" id="tlmsg"></p>`);
@@ -2988,8 +2986,8 @@ function mtgScryBind(){
     try{ const c = await api('/api/template/mtg_scry?t=' + enc(TOKEN) + '&set=' + enc(m[1]) + '&num=' + enc(m[2])); msg('Building the card…'); const S = await mtgFromScry(c, st => msg('Downloading the style… ' + st.done + ' of ' + st.total)); TP.mtg = S; MTG.scry = c; await mtgLoadArt(c); viewTemplate() }catch(e){ msg(e.message) } };
   if($('#mgsccmp')) $('#mgsccmp').onclick = async () => { msg('Comparing…'); const r = await mtgCompareCard(MTG.scry, TP.mtg); msg(''); if(r) mtgCompareModal(MTG.scry, TP.mtg, r); else msg('Could not get the real picture.') };
   if($('#mgbench')) $('#mgbench').onclick = () => mtgBench();
-  if($('#mgps')) $('#mgps').onchange = e => { MTGPS.use = e.target.checked; try{ localStorage.setItem('nv_mtg_ps', MTGPS.use ? '1' : '0') }catch(x){} mtgDraw() };
-  if($('#mgtonereset')) $('#mgtonereset').onclick = () => { try{ localStorage.removeItem('nv_mtg_tone3') }catch(e){} toast('Learned colours forgotten'); mtgDraw() };
+  if($('#mgps')) $('#mgps').onchange = e => { MTGPS.mode = e.target.value; try{ localStorage.setItem('nv_mtg_ps2', MTGPS.mode) }catch(x){} mtgDraw() };
+  if($('#mgtonereset')) $('#mgtonereset').onclick = () => { try{ localStorage.removeItem('nv_mtg_tone4') }catch(e){} toast('Learned colours forgotten'); mtgDraw() };
   if($('#mgtl')) $('#mgtl').onclick = () => mtgTestList();
 }
 function mtgPanel(){

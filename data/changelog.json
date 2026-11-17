@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 251,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Proxyshop frames: automatic for gold cards",
+   "items": [
+    "Proxyshop frames now have three settings: Gold only (auto, the default), All colours, Off. Gold (multicolour) cards are where they beat the built-in frames.",
+    "Undid last build's brightness-weighted colour lift, which made the bench scores worse. The learned colours start fresh again: run the test bench twice."
+   ]
+  },
+  {
    "id": 250,
    "date": "2026-11-16",
    "where": [
