@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 244,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: planeswalker loyalty badges and ability bands",
+   "items": [
+    "Planeswalker abilities now show the +1 / −3 / 0 loyalty badges on the left (cost no longer printed inside the text), with the light and grey bands behind each ability, like the real card.",
+    "Abilities without a cost (static text) use the full width.",
+    "Found by building the same planeswalker in Card Conjurer and comparing. If it asks, press 'Download this style' once to get the badge pictures."
+   ]
+  },
+  {
    "id": 243,
    "date": "2026-11-16",
    "where": [

@@ -1,7 +1,7 @@
 {
- "version": "2026-11-17 09:27",
+ "version": "2026-11-17 11:45",
  "notes": [
-  "Tone v2 (n75)"
+  "PW badges (n76)"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "f19ae40d73478e3f84b7e6b02d12610a32c62dd18c4bb26a9fb3cdc165593274"
+   "sha256": "5d6b4dca8ffac17016a24b80be7363f2c8e05896901d904cf460889399aebca4"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "05af7f0eff98592af7c4a43a2d83f7b9e40c46fa327336dc507aece9b46b0421"
+   "sha256": "9241a4a07dcbf3ab7d3f34e42a2aa7260e8acd25581f9f5684964bc4b941a92b"
   },
   {
    "name": "fonts/OFL.txt",
