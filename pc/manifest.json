@@ -1,7 +1,7 @@
 {
- "version": "2026-11-17 12:20",
+ "version": "2026-11-17 13:37",
  "notes": [
-  "Class bars + Levelers (n77)"
+  "Proxyshop import: read your own PSD templates (PSD / zip / 7z) on this PC"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "63d47718bb27721f6e54c3a705447cd012d0fb2e4afb68ed81d9421c4e674881"
+   "sha256": "162041674a9f064b0d46eecfae9cf14907e54e17944a75a542fba8d4a96c2d14"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -41,6 +41,10 @@
    "sha256": "1e5c55c582681e025e8057f63ee5fe1c8381624e5f937087e093710fd02cc7f4"
   },
   {
+   "name": "vault_psdpack.py",
+   "sha256": "37c44bb601b70ea60702de1c5b6c36d86ed37b3383b960d91e638c1680fe7aa9"
+  },
+  {
    "name": "vault_tcgdata.py",
    "sha256": "f02420cbc48fe9cf8db82ef125f4e7dfedbc8ac3fdd4258f0a3587bd701de62c"
   },
@@ -50,7 +54,11 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "0df275c78366636a033181339379c7d6c1d7a88969f44cede884cc91712ecb8e"
+   "sha256": "2003de2f9d639e959bcbba7f79a477d72b7040d1dcf92f2180ed37919eef41e6"
+  },
+  {
+   "name": "vault_un7z.py",
+   "sha256": "da72179df9772b2a6613171d5f4b5879ffa7f89b2bf9b9c74e2c4c8cbf4b62d9"
   },
   {
    "name": "fonts/OFL.txt",

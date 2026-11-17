@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 246,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Proxyshop frames: import your own PSD templates",
+   "items": [
+    "New Tools > Proxyshop import page: pick the folder with your Proxyshop templates (PSD, or zip / 7z) and Nightvault reads them on your PC and saves the card frames. Nothing is uploaded and Photoshop is not needed.",
+    "Card maker: new 'Proxyshop frames' tick box draws the plain frames from your imported Normal template (test version first).",
+    "Import one template at a time; big ones take a minute or two and the temporary copy is deleted afterwards."
+   ]
+  },
+  {
    "id": 245,
    "date": "2026-11-16",
    "where": [

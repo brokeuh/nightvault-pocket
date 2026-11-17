@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261117-n77";
+const UI_BUILD = "20261117-n78";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -604,7 +604,7 @@ async function loadLib(){S.lib = await api('/api/library?from_one='+(S.fromOne?1
 /* sidebar: groups you can fold and drag; collections can be dragged into another group */
 const SIDE_FIXED = {
   Overview: v => [['all', '#/library', 'layout-grid', 'Everything', S.lib.length || ''], ['upcoming', '#/upcoming', 'calendar', 'Upcoming', ''], ['wishlist', '#/wishlist', 'heart', 'Wishlist', S.state.wish || '']],
-  Tools: v => [['scan', '#/scan', 'folder-search', 'Scan folders', ''], ['cardscan', '#/cardscan', 'camera', 'Scan cards', ''], ['carddl', '#/carddl', 'download', 'Download cards', ''], ['proxy', '#/proxy', 'printer', 'Print proxies', ''], ['template', '#/template', 'stack-2', 'Card templates', ''], ['tidy', '#/tidy', 'wand', 'Tidy up', ''], ['settings', '#/settings', 'settings', 'Settings', '']]
+  Tools: v => [['scan', '#/scan', 'folder-search', 'Scan folders', ''], ['cardscan', '#/cardscan', 'camera', 'Scan cards', ''], ['carddl', '#/carddl', 'download', 'Download cards', ''], ['proxy', '#/proxy', 'printer', 'Print proxies', ''], ['template', '#/template', 'stack-2', 'Card templates', ''], ['psimport', '#/psimport', 'file-import', 'Proxyshop import', ''], ['tidy', '#/tidy', 'wand', 'Tidy up', ''], ['settings', '#/settings', 'settings', 'Settings', '']]
 };
 function sideGroupOrder(){
   const ec = enabledColls(), saved = ((S.state.layout || {}).groups || []);
@@ -2808,10 +2808,33 @@ function mtgToneLearn(S, pa, pb, w, h, A){ const old = mtgToneAll()[mtgToneKey(S
     a = Math.max(0.5, Math.min(1.3, a)); b = Math.max(-60, Math.min(60, b)); res.push([a, b]) }
   const nw = res.map(([a2, b2], k) => { const g = a2 * old[k][0], l = a2 * old[k][1] + b2; return [Math.max(0.5, Math.min(1, g)), Math.max(0, Math.min(80, l))] }), all = mtgToneAll(); all[mtgToneKey(S)] = nw;
   try{ localStorage.setItem('nv_mtg_tone2', JSON.stringify(all)) }catch(e){} return nw }
+// ---- Proxyshop frames (imported from the owner's own PSD templates, see Tools > Proxyshop import)
+const MTGPS = {on: null, packs: [], meta: {}, imgs: {}, cache: {}, use: (() => { try{ return localStorage.getItem('nv_mtg_ps') === '1' }catch(e){ return false } })()};
+async function mtgPsInit(){ if(MTGPS.on === null){ try{ MTGPS.packs = (await api('/api/template/ps_packs?t=' + TOKEN)).packs; MTGPS.on = MTGPS.packs.some(p => p.name === 'normal') }catch(e){ MTGPS.on = false } } return MTGPS.on }
+const mtgPsUrl = (p) => '/api/template/ps_file?pack=normal&p=' + enc(p) + '&t=' + enc(TOKEN);
+const mtgPsImg = p => (MTGPS.imgs[p] = MTGPS.imgs[p] || new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = mtgPsUrl(p) }));
+// frame letter of our maker -> layer name in the Proxyshop Normal template
+const MTGPS_COL = {W:'W', U:'U', B:'B', R:'R', G:'G', M:'Gold', A:'Artifact', L:'Land', E:'Colorless', V:'Vehicle'};
+async function mtgPsFrame(frame){
+  const key = frame; if(MTGPS.cache[key]) return MTGPS.cache[key];
+  if(!MTGPS.meta.normal){ const r = await fetch(mtgPsUrl('layers.json')); MTGPS.meta.normal = await r.json() }
+  const m = MTGPS.meta.normal, col = MTGPS_COL[frame] || 'W', fs = m.size[0] / m.source_size[0];
+  // the PSD canvas has a bleed margin around the real card (3264x4440 for a 3000x4200 card): cut it off
+  const cx = 132 * fs, cy = 120 * fs, W = Math.round(3000 * fs), H = Math.round(4200 * fs), cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
+  const isLand = col === 'Land', pick = (g, n) => m.layers.filter(l => l.file && l.path[0] === g && (n === undefined || l.name === n));
+  // bottom to top = low layer number first (the file lists them top to bottom, so sort ascending by index)
+  const want = [pick('Border', 'Full Art Border (leave on)'), pick('Background', col), pick('Shadows'), pick(isLand ? 'Land Pinlines & Textbox' : 'Pinlines & Textbox', col), pick('Name & Title Boxes', col), pick('Border', 'Normal Border')].flat();
+  const imgs = await Promise.all(want.map(l => mtgPsImg(l.file)));
+  want.forEach((l, k) => { if(imgs[k]) c.drawImage(imgs[k], l.rect[0] - cx, l.rect[1] - cy, l.rect[2] - l.rect[0], l.rect[3] - l.rect[1]) });
+  const pt = pick('PT Box', col)[0]; let ptb = null;
+  if(pt){ const im = await mtgPsImg(pt.file); if(im) ptb = {img: im, x: (pt.rect[0] - cx) / W, y: (pt.rect[1] - cy) / H, w: (pt.rect[2] - pt.rect[0]) / W, h: (pt.rect[3] - pt.rect[1]) / H} }
+  return MTGPS.cache[key] = {fr: cv, ptb};
+}
 async function mtgDraw(){
   const cv = $('#tpcv'); if(!cv || !TP.mtg) return; const my = ++MTG.token, S = TP.mtg, fk = MTG_FR[S.frame] || MTG_FR.W;
   if(S.style) return mtgStyleDraw(cv, my, S);
-  await mtgFonts(); const [fr, ptb] = await Promise.all([mtgImg(MTG_DIR + fk.f), S.pt ? mtgImg(MTG_DIR + fk.p) : null]); await mtgSyms([S.cost, S.rules, S.flavor, S.big ? '{' + S.big + '}' : '']); for(const o of S.over || []) await mtgStyleInfo(o.pack); const brush = S.artist ? await mtgImg('img/manaSymbols/artistbrush.svg') : null;
+  await mtgFonts(); let psf = null; if(MTGPS.use && await mtgPsInit()){ try{ psf = await mtgPsFrame(S.frame) }catch(e){ psf = null } }
+  const [fr, ptb] = psf ? [psf.fr, null] : await Promise.all([mtgImg(MTG_DIR + fk.f), S.pt ? mtgImg(MTG_DIR + fk.p) : null]); await mtgSyms([S.cost, S.rules, S.flavor, S.big ? '{' + S.big + '}' : '']); for(const o of S.over || []) await mtgStyleInfo(o.pack); const brush = S.artist ? await mtgImg('img/manaSymbols/artistbrush.svg') : null;
   if(my !== MTG.token || !fr) return;
   const W = fr.width, H = fr.height; cv.width = W; cv.height = H; const c = cv.getContext('2d'); c.clearRect(0, 0, W, H);
   const A = [0.0767 * W, 0.1129 * H, 0.8476 * W, 0.4429 * H]; mtgArtFull(W, H, A);
@@ -2821,6 +2844,7 @@ async function mtgDraw(){
   mtgLayer(c, W, H, 'Art');
   c.drawImage(mtgToned(fr, S), 0, 0, W, H);
   if(ptb && S.pt) c.drawImage(ptb, 0.7573 * W, 0.8848 * H, 0.188 * W, 0.0733 * H);
+  if(psf && psf.ptb && S.pt) c.drawImage(psf.ptb.img, psf.ptb.x * W, psf.ptb.y * H, psf.ptb.w * W, psf.ptb.h * H);
   await mtgDrawOver(c, W, H, S); mtgLayer(c, W, H, 'Frame');
   c.textBaseline = 'alphabetic'; c.fillStyle = '#000';
   // mana cost (right aligned, from the right edge of the title bar)
@@ -2945,7 +2969,7 @@ async function mtgBench(){
         d.innerHTML = `<b>${r.score}%</b> ${esc(label)}<br><span class="hint">${esc(c.name)} · ${esc(row.style)}</span><div style="display:flex;gap:4px;margin-top:4px"></div>`; const f = d.lastChild; [r.ours, r.real].forEach(x => { x.style.width = '50%'; x.style.height = 'auto'; f.appendChild(x) }); $('#mbrows').appendChild(d) }
     }catch(e){ row.err = e.message; if($('#mbrows')){ const d = document.createElement('div'); d.style.cssText = 'border:1px solid #533;border-radius:8px;padding:6px;font-size:12px'; d.innerHTML = `<b>—</b> ${esc(label)}<br><span class="hint">${esc(e.message)}</span>`; $('#mbrows').appendChild(d) } } }
   TP.mtg = keep; TP.art = keepArt; if($('#mbst')){ const ok = rows.filter(r => r.score != null); $('#mbst').textContent = `Done: ${ok.length} of ${rows.length} compared, average match ${ok.length ? Math.round(ok.reduce((a, r) => a + r.score, 0) / ok.length) : 0}%.` } mtgDraw() }
-function mtgScryBar(){ return `<div class="bar" style="gap:8px;flex-wrap:wrap;margin:8px 0"><input type="text" id="mgscin" placeholder="set + number, e.g. gvl 6" style="width:190px"><button class="btn" id="mgscgo"><i class="ti ti-cloud-download"></i>Load from Scryfall</button><button class="btn" id="mgsccmp" ${MTG.scry ? '' : 'disabled'}><i class="ti ti-arrows-diff"></i>Compare with the real card</button><button class="btn" id="mgtl" title="Makes a card list (set + number) with an example of every kind of card, to load with Card list…"><i class="ti ti-list-search"></i>Make test list…</button><button class="btn" id="mgbench" title="Builds a sample of every card type from Scryfall and compares them all"><i class="ti ti-flask"></i>Test bench</button><button class="btn" id="mgtonereset" title="The test bench learns how the real pictures are coloured and draws the frames the same way. This forgets what it learned.">Forget learned colours</button><span class="hint" id="mgscmsg"></span></div>` }
+function mtgScryBar(){ return `<div class="bar" style="gap:8px;flex-wrap:wrap;margin:8px 0"><input type="text" id="mgscin" placeholder="set + number, e.g. gvl 6" style="width:190px"><button class="btn" id="mgscgo"><i class="ti ti-cloud-download"></i>Load from Scryfall</button><button class="btn" id="mgsccmp" ${MTG.scry ? '' : 'disabled'}><i class="ti ti-arrows-diff"></i>Compare with the real card</button><button class="btn" id="mgtl" title="Makes a card list (set + number) with an example of every kind of card, to load with Card list…"><i class="ti ti-list-search"></i>Make test list…</button><button class="btn" id="mgbench" title="Builds a sample of every card type from Scryfall and compares them all"><i class="ti ti-flask"></i>Test bench</button><button class="btn" id="mgtonereset" title="The test bench learns how the real pictures are coloured and draws the frames the same way. This forgets what it learned.">Forget learned colours</button>${MTGPS.on ? `<label class="hint" title="Draws the plain frames (no special style) from your imported Proxyshop Normal template"><input type="checkbox" id="mgps" ${MTGPS.use ? 'checked' : ''}> Proxyshop frames</label>` : ''}<span class="hint" id="mgscmsg"></span></div>` }
 function mtgTestList(){
   modal(`<h3>Test list</h3><p class="hint">Nightvault asks Scryfall, set by set, for example cards of every kind (old frames, modern, extended art, borderless, showcase, planeswalker, saga, adventure, split, flip, transform, class, tokens…) and writes a list file. Then press <b>Card list…</b>, load that file, and "Make all cards" builds every card with its own frame style (it downloads the styles it needs) – or click single cards. It takes a few minutes and needs internet.</p>
     <div class="bar" style="gap:8px;flex-wrap:wrap"><label>Which cards <select id="tlmode"><option value="types">One example of every kind of card (about 100 cards)</option><option value="sets">Every kind of card in every set (thousands of cards)</option></select></label><button class="btn primary" id="tlgo">Make the list</button><button class="btn" onclick="closeModal()">Close</button></div><p class="hint" id="tlmsg"></p>`);
@@ -2960,6 +2984,7 @@ function mtgScryBind(){
     try{ const c = await api('/api/template/mtg_scry?t=' + enc(TOKEN) + '&set=' + enc(m[1]) + '&num=' + enc(m[2])); msg('Building the card…'); const S = await mtgFromScry(c, st => msg('Downloading the style… ' + st.done + ' of ' + st.total)); TP.mtg = S; MTG.scry = c; await mtgLoadArt(c); viewTemplate() }catch(e){ msg(e.message) } };
   if($('#mgsccmp')) $('#mgsccmp').onclick = async () => { msg('Comparing…'); const r = await mtgCompareCard(MTG.scry, TP.mtg); msg(''); if(r) mtgCompareModal(MTG.scry, TP.mtg, r); else msg('Could not get the real picture.') };
   if($('#mgbench')) $('#mgbench').onclick = () => mtgBench();
+  if($('#mgps')) $('#mgps').onchange = e => { MTGPS.use = e.target.checked; try{ localStorage.setItem('nv_mtg_ps', MTGPS.use ? '1' : '0') }catch(x){} mtgDraw() };
   if($('#mgtonereset')) $('#mgtonereset').onclick = () => { try{ localStorage.removeItem('nv_mtg_tone2') }catch(e){} toast('Learned colours forgotten'); mtgDraw() };
   if($('#mgtl')) $('#mgtl').onclick = () => mtgTestList();
 }
@@ -3406,6 +3431,32 @@ function tpPresetsHTML(){
   }
   return `<style>.tptile{background:var(--panel2,#1a2030);border:1px solid var(--line,#2a3142);border-radius:12px;padding:8px;cursor:pointer;color:inherit;text-align:center;font:inherit}.tptile:hover{border-color:var(--accent,#7aa2f7);transform:translateY(-2px)}.tpth{aspect-ratio:1000/1398;background:#2a2f3a;border-radius:8px;overflow:hidden}.tpth img{width:100%;height:100%;object-fit:cover;display:block}.tpl{margin-top:6px;font-size:13px}.tpdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;border:1px solid rgba(255,255,255,.4)}</style>` + h;
 }
+// ---- Proxyshop template import: reads the PSD / zip / 7z templates on this PC and saves their layers as a small frame pack
+const PSI = {items: [], folder: '', timer: null};
+async function viewPsImport(){
+  let packs = []; try{ packs = (await api('/api/template/ps_packs?t=' + TOKEN)).packs }catch(e){}
+  let st = {}; try{ st = await api('/api/template/ps_status?t=' + TOKEN) }catch(e){}
+  const row = (t, i) => `<label class="row" style="display:flex;gap:8px;align-items:center;padding:3px 0"><input type="checkbox" data-psi="${i}" ${t.kind === 'error' ? 'disabled' : 'checked'}> <b>${esc(t.name)}</b> <span class="sub">${t.kind === 'error' ? esc(t.error) : esc(t.kind.toUpperCase()) + ' · ' + fmtSize(t.size) + ' · ' + esc(t.path.split(/[\\/]/).pop())}</span></label>`;
+  $('#main').innerHTML = `<div class="head"><h1>Proxyshop import</h1><span class="sub">Reads your Proxyshop templates (PSD, or inside a zip / 7z) on this PC and saves the card frames from them. Nothing is uploaded and Photoshop is not needed.</span></div>
+  <div class="panel"><div class="bar"><input type="text" id="psifolder" placeholder="Folder with your templates, e.g. C:\\Proxyshop\\templates" style="flex:1;min-width:260px" value="${esc(PSI.folder)}"><button class="btn primary" id="psifind"><i class="ti ti-search"></i>Look for templates</button></div>
+  <div id="psilist">${PSI.items.length ? PSI.items.map(row).join('') + `<div class="bar" style="margin-top:8px"><button class="btn primary" id="psigo"><i class="ti ti-download"></i>Import the ticked ones</button><span class="sub">A big template takes a minute or two; it is unpacked one file at a time and the temporary copy is deleted again.</span></div>` : '<p class="hint">Type or paste the folder and press the button. Subfolders are searched too.</p>'}</div>
+  <div id="psistat"></div></div>
+  <div class="panel"><h3 style="margin-top:0">Imported on this PC</h3>${packs.length ? packs.map(p => `<div>${esc(p.name)} <span class="sub">${p.pictures} pictures</span></div>`).join('') : '<p class="hint">Nothing yet.</p>'}</div>`;
+  $('#psifind').onclick = async () => { PSI.folder = $('#psifolder').value.trim(); if(!PSI.folder) return; $('#psilist').innerHTML = '<i class="ti ti-loader-2"></i> Looking ...'; try{ PSI.items = (await api('/api/template/ps_find?folder=' + encodeURIComponent(PSI.folder) + '&t=' + TOKEN)).items }catch(e){ PSI.items = []; toast(e.message, true) } viewPsImport() };
+  if($('#psigo')) $('#psigo').onclick = async () => { const pick = $$('[data-psi]').filter(c => c.checked).map(c => PSI.items[+c.dataset.psi]); if(!pick.length) return; try{ await api('/api/template/ps_import', {items: pick}); psiWatch() }catch(e){ toast(e.message, true) } };
+  if(st.busy) psiWatch();
+}
+function psiWatch(){
+  clearInterval(PSI.timer);
+  const tick = async () => {
+    const el = $('#psistat'); if(!el){ clearInterval(PSI.timer); return }
+    let s; try{ s = await api('/api/template/ps_status?t=' + TOKEN) }catch(e){ return }
+    el.innerHTML = `<p>${s.busy ? `<i class="ti ti-loader-2"></i> Importing <b>${esc(s.cur)}</b> (${s.done + 1} of ${s.total}) ...` : '<b>Done.</b>'}</p>` + (s.log || []).map(l => `<div class="sub">${esc(l)}</div>`).join('');
+    if(!s.busy){ clearInterval(PSI.timer); if(s.log && s.log.length){ toast('Import finished'); MTGPS.on = null; MTGPS.cache = {}; MTGPS.meta = {}; try{ const p = (await api('/api/template/ps_packs?t=' + TOKEN)).packs; const box = $$('.panel')[1]; if(box) box.innerHTML = '<h3 style="margin-top:0">Imported on this PC</h3>' + p.map(x => `<div>${esc(x.name)} <span class="sub">${x.pictures} pictures</span></div>`).join('') }catch(e){} } }
+  };
+  tick(); PSI.timer = setInterval(tick, 1500);
+}
+
 async function viewTemplate(){
   if(TP.list === null){
     $('#main').innerHTML = '<div class="empty">Loading ...</div>';
@@ -3427,7 +3478,7 @@ async function viewTemplate(){
       ${have ? `<span style="margin-left:auto;display:flex;gap:6px;align-items:center"><input type="text" id="tplk" placeholder="Card lookup, e.g. OP12-034" style="width:210px"><button class="btn" id="tplkgo"><i class="ti ti-search"></i>Find card</button><select id="tplkpick" style="display:none;max-width:260px"></select></span>` : ''}
     </div>${have ? '' : '<p class="hint">Pick the merged template PSD (for example OnePiece_Character_template.psd). It is copied into Nightvault\'s own folder; the original is not touched. Only 8-bit RGB PSD files work.</p>'}</div>`;
   if(TP.view === 'wmc' && TP.wmc){ $('#main').innerHTML = h + wmcViewHTML(); bindTp(); if($('#wmcpng')) { wmcBind(); wmcDraw() } else if($('#wmcback')) $('#wmcback').onclick = () => { TP.view = 'presets'; TP.game = null; viewTemplate() }; return }
-  if(TP.view === 'mtg' && TP.mtg){ await mtgInit(); if(MTG.on){ if(!MTGS.groups) MTGS.groups = await mtgGroups(); if(TP.mtg.style) await mtgStyleInfo(TP.mtg.style) } $('#main').innerHTML = h + mtgViewHTML(); bindTp(); if(MTG.on){ mtgBind(); mtgDraw() } else { mtgDownloadBind(); $('#mgback').onclick = () => { TP.view = 'presets'; TP.game = null; viewTemplate() } } return }
+  if(TP.view === 'mtg' && TP.mtg){ await mtgInit(); await mtgPsInit(); if(MTG.on){ if(!MTGS.groups) MTGS.groups = await mtgGroups(); if(TP.mtg.style) await mtgStyleInfo(TP.mtg.style) } $('#main').innerHTML = h + mtgViewHTML(); bindTp(); if(MTG.on){ mtgBind(); mtgDraw() } else { mtgDownloadBind(); $('#mgback').onclick = () => { TP.view = 'presets'; TP.game = null; viewTemplate() } } return }
   if(TP.view === 'pk' && TP.pk){ $('#main').innerHTML = h + pkViewHTML(); bindTp(); pkBind(); pkDraw(); return }
   if(TP.view === 'presets' && showPres){ if(!TP.mineLoaded){ TP.mineLoaded = true; await tpMineList() }
     $('#main').innerHTML = h + tpPresetsHTML(); bindTp(); $$('[data-minedel]').forEach(b => b.onclick = async e => { e.stopPropagation(); if(!confirm('Delete this saved card?')) return; try{ await api('/api/template/mine_delete', {id:b.dataset.minedel}) }catch(x){ return toast(x.message, true) } await tpMineList(); viewTemplate() });
@@ -5969,7 +6020,7 @@ function render(){
   if(view === 'book'){ leaveReader(); leavePlayer(); renderSide(); viewBook(arg); return }
   leaveReader(); leavePlayer(); leaveBook();
   renderSide();
-  ({library:viewLibrary, item:viewItem, upcoming:viewUpcoming, scan:viewScan, tidy:viewTidy, template:viewTemplate, settings:viewSettings, cards:viewCards, cardscan:viewCardScan, wishlist:viewWishlist, cardgame:viewCardGame, carddl:viewCardDownloads, addgame:viewAddGame, line:viewLine, cardset:viewCardSet, cardview:viewCardView, proxy:viewProxy, decks:viewDecks}[view] || viewLibrary)(arg);
+  ({library:viewLibrary, item:viewItem, upcoming:viewUpcoming, scan:viewScan, tidy:viewTidy, template:viewTemplate, psimport:viewPsImport, settings:viewSettings, cards:viewCards, cardscan:viewCardScan, wishlist:viewWishlist, cardgame:viewCardGame, carddl:viewCardDownloads, addgame:viewAddGame, line:viewLine, cardset:viewCardSet, cardview:viewCardView, proxy:viewProxy, decks:viewDecks}[view] || viewLibrary)(arg);
   $('#main').scrollTop = 0;
 }
 window.addEventListener('hashchange', render);

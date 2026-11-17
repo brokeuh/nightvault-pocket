@@ -178,6 +178,10 @@ try:
 except Exception:
     vtpl = None
 try:
+    import vault_psdpack as vpp            # Proxyshop template importer: reads PSD / zip / 7z on this PC, saves the layers as a small frame pack
+except Exception:
+    vpp = None
+try:
     import vault_proxyshop as pxs           # Proxyshop offline: card data for Photoshop templates without internet
 except Exception:
     pxs = None
@@ -188,11 +192,26 @@ COVER_DIR = mc.DB_PATH.parent / "vault_covers"
 PHOTO_DIR = mc.DB_PATH.parent / "vault_photos"
 MINE_DIR = mc.DB_PATH.parent / "vault_templates" / "mine"                  # cards the owner saved from the template editor (layers + text + art)
 TEMPLATE_DIR = mc.DB_PATH.parent / "vault_templates"            # layered PSD templates the owner opened (stay on this PC)
+PSP = dict(busy=False, total=0, done=0, cur="", pct=0.0, log=[])     # Proxyshop template import progress
+
+
+def psp_worker(items):
+    PSP.update(busy=True, total=len(items), done=0, cur="", pct=0.0, log=[])
+    for t in items:
+        PSP["cur"] = t.get("name", "")
+        PSP["pct"] = 0.0
+        try:
+            n = vpp.import_one(t, TEMPLATE_DIR, lambda p: PSP.__setitem__("pct", round(p, 3)))
+            PSP["log"].append("%s: %d pictures saved" % (t.get("name"), n))
+        except Exception as e:
+            PSP["log"].append("%s: skipped (%s)" % (t.get("name"), str(e)[:140]))
+        PSP["done"] += 1
+    PSP.update(busy=False, cur="", pct=1.0)
 TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault downloads for itself (ffmpeg)
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261117-n77"   # the page and the program must carry the same build id
+BUILD = "20261117-n78"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -6488,6 +6507,30 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, scry_image(q.get("u", "")), "image/jpeg", {"Cache-Control": "private, max-age=3600"})
             except Exception as e:
                 return self._error(502, "Scryfall picture: " + str(e))
+        if path == "/api/template/ps_find":
+            if not vpp:
+                return self._error(404, "vault_psdpack.py is missing next to vault.py - update Nightvault")
+            fo = Path(q.get("folder", "").strip().strip('"'))
+            if not fo.is_dir():
+                return self._error(404, "That folder is not here")
+            return self._send(200, dict(items=vpp.find_templates(fo)))
+        if path == "/api/template/ps_status":
+            return self._send(200, dict(PSP))
+        if path == "/api/template/ps_packs":
+            out = []
+            for d in sorted((TEMPLATE_DIR / "proxyshop").glob("*/layers.json")) if (TEMPLATE_DIR / "proxyshop").is_dir() else []:
+                try:
+                    out.append(dict(name=d.parent.name, pictures=len(list((d.parent / "layers").glob("*.png")))))
+                except Exception:
+                    pass
+            return self._send(200, dict(packs=out))
+        if path == "/api/template/ps_file":
+            base = TEMPLATE_DIR / "proxyshop" / re.sub(r"[^A-Za-z0-9._ \-]", "_", q.get("pack", ""))
+            rel = [x for x in q.get("p", "").replace("\\", "/").split("/") if x and x != ".."]
+            f = base.joinpath(*rel)
+            if not rel or not f.is_file() or f.suffix.lower() not in (".png", ".json"):
+                return self._error(404, "Not in the pack")
+            return self._send(200, f.read_bytes(), "image/png" if f.suffix.lower() == ".png" else "application/json", {"Cache-Control": "private, max-age=86400"})
         if path == "/api/template/mtg_file":
             r = TEMPLATE_DIR / "magic"
             if not r.is_dir():
@@ -6616,6 +6659,17 @@ class Handler(BaseHTTPRequestHandler):
         out.parent.mkdir(parents=True, exist_ok=True)
         r = vtpl.phone_pack(str(f), str(out), str(Path(__file__).resolve().parent / "fonts"))
         return self._send(200, {"file": out.name, "folder": str(out.parent), "bytes": r["bytes"]})
+
+    def post_template_ps_import(self, conn, d):
+        if not vpp:
+            raise ValueError("vault_psdpack.py is missing next to vault.py - update Nightvault")
+        if PSP["busy"]:
+            raise ValueError("An import is already running")
+        items = [t for t in (d.get("items") or []) if isinstance(t, dict) and t.get("kind") in ("psd", "zip", "7z") and t.get("path")]
+        if not items:
+            raise ValueError("Nothing chosen to import")
+        threading.Thread(target=psp_worker, args=(items,), daemon=True).start()
+        return self._send(200, dict(ok=True, count=len(items)))
 
     def post_template_cards_update(self, conn, d):
         if not opc:
