@@ -1,7 +1,7 @@
 {
- "version": "2026-11-17 13:53",
+ "version": "2026-11-17 14:35",
  "notes": [
-  "Proxyshop frames hint"
+  "Proxyshop frames learn their own colours"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "9a7ba1cf7eabbefdc979856e69a07db77082ae98d4181c49890667e899f5211a"
+   "sha256": "564b0e8582685ee7b2b40f25b772161991aa22a81a27e921c04dc9a889a0c203"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -54,7 +54,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "82dbadd327a05ab81f5b2144c4cd28dae6bde06e61258c87ee5148add8634f88"
+   "sha256": "c5f65d8cdca48a5eabc0a5a41f69264993b5034b4fd7d5ebb246be5619852749"
   },
   {
    "name": "vault_un7z.py",

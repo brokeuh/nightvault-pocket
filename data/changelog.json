@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 249,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Proxyshop frames learn their own colours",
+   "items": [
+    "The test bench now learns the colours of the Proxyshop frames separately from the built-in frames (before, both shared one set, which made the Proxyshop frames look worse than they are). Run the bench twice with the tick box on."
+   ]
+  },
+  {
    "id": 248,
    "date": "2026-11-16",
    "where": [
