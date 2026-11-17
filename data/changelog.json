@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 242,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic test bench: all cards load now",
+   "items": [
+    "Some test cards failed to load with 'Too Many Requests' because the bench asked Scryfall too fast. The app now spaces its requests out and tries again when Scryfall says wait."
+   ]
+  },
+  {
    "id": 241,
    "date": "2026-11-16",
    "where": [

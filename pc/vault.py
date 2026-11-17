@@ -192,7 +192,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261117-n73"   # the page and the program must carry the same build id
+BUILD = "20261117-n74"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -5035,16 +5035,44 @@ def mtg_download(root):
 SCRY_BASE = os.environ.get("NIGHTVAULT_SCRY_BASE") or "https://api.scryfall.com"
 
 
+_SCRY_LOCK = threading.Lock()
+_SCRY_LAST = [0.0]
+
+
+def _scry_fetch(url, timeout=25):
+    """Scryfall asks for at most ~10 requests a second and answers 429 when we go faster: space the calls out and retry a few times."""
+    import time
+    err = None
+    for attempt in range(5):
+        with _SCRY_LOCK:
+            wait = 0.15 - (time.time() - _SCRY_LAST[0])
+            if wait > 0:
+                time.sleep(wait)
+            _SCRY_LAST[0] = time.time()
+        try:
+            return _fetch(url, timeout)
+        except urllib.error.HTTPError as e:
+            err = e
+            if e.code not in (429, 503):
+                raise
+            try:
+                ra = float(e.headers.get("Retry-After") or 0)
+            except Exception:
+                ra = 0
+            time.sleep(min(10, max(1.5 * (attempt + 1), ra)))
+    raise err
+
+
 def scry_card(set_code="", num="", q=""):
     """One Magic card from Scryfall, trimmed to what the card maker needs (front face merged; the back face in `back`)."""
     if q:
-        j = json.loads(_fetch(SCRY_BASE + "/cards/search?unique=prints&order=released&q=" + urllib.parse.quote(q), 20))
+        j = json.loads(_scry_fetch(SCRY_BASE + "/cards/search?unique=prints&order=released&q=" + urllib.parse.quote(q), 20))
         data = j.get("data") or []
         if not data:
             raise ValueError("Scryfall found no card for: " + q)
         c = data[0]
     else:
-        c = json.loads(_fetch(SCRY_BASE + "/cards/" + urllib.parse.quote(set_code.lower()) + "/" + urllib.parse.quote(str(num)), 20))
+        c = json.loads(_scry_fetch(SCRY_BASE + "/cards/" + urllib.parse.quote(set_code.lower()) + "/" + urllib.parse.quote(str(num)), 20))
 
     def face(f, top):
         im = (f.get("image_uris") or top.get("image_uris") or {})
@@ -5064,7 +5092,7 @@ def scry_image(url):
     host = urllib.parse.urlparse(url).hostname or ""
     if not (host.endswith("scryfall.io") or host.endswith("scryfall.com") or url.startswith(SCRY_BASE)):
         raise ValueError("Only Scryfall pictures can be loaded here")
-    return _fetch(url, 30)
+    return _scry_fetch(url, 30)
 
 
 MTG_TL = {"busy": False, "done": 0, "total": 0, "error": "", "finished": False, "count": 0, "tsv": ""}

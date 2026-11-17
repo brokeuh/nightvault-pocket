@@ -1,7 +1,7 @@
 {
- "version": "2026-11-17 08:28",
+ "version": "2026-11-17 09:13",
  "notes": [
-  "Learned frame tone (n73)"
+  "Scryfall throttle (n74)"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "d2df1a5ab31f086b1db77511ca8dcc2f466ed55ff60a5fa8cbb6c8b88b5205b9"
+   "sha256": "9b73b4b578417dd7ac77d073218636f770998e9823cca8fec35797664a28bec7"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "2c96b14201b06ea87218b0326a206cce0db0c182bcbac8b814dd72647f7382c8"
+   "sha256": "b6d170dd274f5dd507782fa908eaeac9027a822e68912f800873d8dff407afa4"
   },
   {
    "name": "fonts/OFL.txt",
