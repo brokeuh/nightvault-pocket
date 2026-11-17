@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261117-n74";
+const UI_BUILD = "20261117-n75";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2781,14 +2781,22 @@ function mtgStyleBind(){
   if($('#mgadjreset')) $('#mgadjreset').onclick = () => { S.tadj = {}; again() };
   $$('[data-mgx]').forEach(el => { el.oninput = () => { (S.ex = S.ex || {})[el.dataset.mgx] = el.value; mtgDraw() } });
 }
-// Tone: Scryfall's pictures are a little darker / different in colour than the community frames. The test bench learns a gain per colour channel for every frame and the frames are drawn with it.
+// Tone: Scryfall's pictures differ a little in colour from the community frames. The test bench learns, per frame and per colour channel, a straight-line fit (real = gain x ours + lift) and the frames are drawn with it (frame only, not art or text).
 const mtgToneKey = S => (S.style || 'modern') + '|' + (S.style ? (S.sframe | 0) : (S.frame || 'W'));
-const mtgToneAll = () => { try{ return JSON.parse(localStorage.getItem('nv_mtg_tone') || '{}') }catch(e){ return {} } };
-function mtgToned(img, S){ const g = img && mtgToneAll()[mtgToneKey(S)]; if(!g || S.tone === false) return img; const q = document.createElement('canvas'); q.width = img.width; q.height = img.height; const x = q.getContext('2d'); x.drawImage(img, 0, 0); x.globalCompositeOperation = 'multiply'; x.fillStyle = `rgb(${g.map(v => Math.round(Math.min(1, v) * 255)).join(',')})`; x.fillRect(0, 0, q.width, q.height); x.globalCompositeOperation = 'destination-in'; x.drawImage(img, 0, 0); return q }
-function mtgToneLearn(S, pa, pb, w, h, A){ const rs = [[], [], []]; for(let y = 4; y < h - 4; y++) for(let x = 4; x < w - 4; x++){ if(x >= A[0] && x <= A[2] && y >= A[1] && y <= A[3]) continue; const i = (y * w + x) * 4, la = (pa[i] + pa[i + 1] + pa[i + 2]) / 3, lb = (pb[i] + pb[i + 1] + pb[i + 2]) / 3; if(la < 40 || lb < 30) continue;
-    const r = [0, 1, 2].map(k => pb[i + k] / Math.max(1, pa[i + k])); if(r.some(v => v < 0.5 || v > 1.3)) continue; r.forEach((v, k) => rs[k].push(v)) }
-  if(rs[0].length < 400) return null; const med = a => { a.sort((p, q) => p - q); return a[a.length >> 1] }, g = rs.map(med), all = mtgToneAll(), key = mtgToneKey(S), old = all[key] || [1, 1, 1], nw = g.map((v, k) => Math.max(0.5, Math.min(1, old[k] * v)));
-  all[key] = nw; try{ localStorage.setItem('nv_mtg_tone', JSON.stringify(all)) }catch(e){} return nw }
+const mtgToneAll = () => { try{ return JSON.parse(localStorage.getItem('nv_mtg_tone2') || '{}') }catch(e){ return {} } };
+function mtgToned(img, S){ const t = img && mtgToneAll()[mtgToneKey(S)]; if(!t || S.tone === false) return img; const q = document.createElement('canvas'); q.width = img.width; q.height = img.height; const x = q.getContext('2d'); x.drawImage(img, 0, 0);
+  x.globalCompositeOperation = 'multiply'; x.fillStyle = `rgb(${t.map(v => Math.round(Math.max(0, Math.min(1, v[0])) * 255)).join(',')})`; x.fillRect(0, 0, q.width, q.height);
+  x.globalCompositeOperation = 'lighter'; x.fillStyle = `rgb(${t.map(v => Math.round(Math.max(0, Math.min(255, v[1])))).join(',')})`; x.fillRect(0, 0, q.width, q.height);
+  x.globalCompositeOperation = 'destination-in'; x.drawImage(img, 0, 0); return q }
+function mtgToneLearn(S, pa, pb, w, h, A){ const old = mtgToneAll()[mtgToneKey(S)] || [[1, 0], [1, 0], [1, 0]], res = [];
+  for(let k = 0; k < 3; k++){ const xs = [], ys = [];
+    for(let y = 3; y < h - 3; y += 1) for(let x = 3; x < w - 3; x += 1){ if(x >= A[0] - 2 && x <= A[2] + 2 && y >= A[1] - 2 && y <= A[3] + 2) continue; const i = (y * w + x) * 4 + k; xs.push(pa[i]); ys.push(pb[i]) }
+    if(xs.length < 800) return null; let a = 1, b = 0;
+    for(let it = 0; it < 4; it++){ let n = 0, sx = 0, sy = 0, sxx = 0, sxy = 0; for(let i = 0; i < xs.length; i++){ if(it && Math.abs(ys[i] - (a * xs[i] + b)) > 35) continue; n++; sx += xs[i]; sy += ys[i]; sxx += xs[i] * xs[i]; sxy += xs[i] * ys[i] }
+      const den = n * sxx - sx * sx; if(n < 200 || Math.abs(den) < 1e-6) break; a = (n * sxy - sx * sy) / den; b = (sy - a * sx) / n }
+    a = Math.max(0.5, Math.min(1.3, a)); b = Math.max(-60, Math.min(60, b)); res.push([a, b]) }
+  const nw = res.map(([a2, b2], k) => { const g = a2 * old[k][0], l = a2 * old[k][1] + b2; return [Math.max(0.5, Math.min(1, g)), Math.max(0, Math.min(80, l))] }), all = mtgToneAll(); all[mtgToneKey(S)] = nw;
+  try{ localStorage.setItem('nv_mtg_tone2', JSON.stringify(all)) }catch(e){} return nw }
 async function mtgDraw(){
   const cv = $('#tpcv'); if(!cv || !TP.mtg) return; const my = ++MTG.token, S = TP.mtg, fk = MTG_FR[S.frame] || MTG_FR.W;
   if(S.style) return mtgStyleDraw(cv, my, S);
@@ -2940,7 +2948,7 @@ function mtgScryBind(){
     try{ const c = await api('/api/template/mtg_scry?t=' + enc(TOKEN) + '&set=' + enc(m[1]) + '&num=' + enc(m[2])); msg('Building the card…'); const S = await mtgFromScry(c, st => msg('Downloading the style… ' + st.done + ' of ' + st.total)); TP.mtg = S; MTG.scry = c; await mtgLoadArt(c); viewTemplate() }catch(e){ msg(e.message) } };
   if($('#mgsccmp')) $('#mgsccmp').onclick = async () => { msg('Comparing…'); const r = await mtgCompareCard(MTG.scry, TP.mtg); msg(''); if(r) mtgCompareModal(MTG.scry, TP.mtg, r); else msg('Could not get the real picture.') };
   if($('#mgbench')) $('#mgbench').onclick = () => mtgBench();
-  if($('#mgtonereset')) $('#mgtonereset').onclick = () => { try{ localStorage.removeItem('nv_mtg_tone') }catch(e){} toast('Learned colours forgotten'); mtgDraw() };
+  if($('#mgtonereset')) $('#mgtonereset').onclick = () => { try{ localStorage.removeItem('nv_mtg_tone2') }catch(e){} toast('Learned colours forgotten'); mtgDraw() };
   if($('#mgtl')) $('#mgtl').onclick = () => mtgTestList();
 }
 function mtgPanel(){

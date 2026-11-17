@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 243,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: better colour matching",
+   "items": [
+    "The colour learning now fits darks and lights separately (brightness and lift per colour), so the title bar, type bar and black border match the real card too, not only the text box.",
+    "The learned colours start fresh with this update: run the Test bench twice."
+   ]
+  },
+  {
    "id": 242,
    "date": "2026-11-16",
    "where": [
