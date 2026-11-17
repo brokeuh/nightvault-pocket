@@ -1,7 +1,7 @@
 {
- "version": "2026-11-17 11:45",
+ "version": "2026-11-17 12:20",
  "notes": [
-  "PW badges (n76)"
+  "Class bars + Levelers (n77)"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "5d6b4dca8ffac17016a24b80be7363f2c8e05896901d904cf460889399aebca4"
+   "sha256": "63d47718bb27721f6e54c3a705447cd012d0fb2e4afb68ed81d9421c4e674881"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "9241a4a07dcbf3ab7d3f34e42a2aa7260e8acd25581f9f5684964bc4b941a92b"
+   "sha256": "0df275c78366636a033181339379c7d6c1d7a88969f44cede884cc91712ecb8e"
   },
   {
    "name": "fonts/OFL.txt",

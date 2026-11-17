@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261117-n76";
+const UI_BUILD = "20261117-n77";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2697,9 +2697,10 @@ async function mtgStyleDraw(cv, my, S){
   if(inf.addon){ const keep = S.style; S.style = ''; try{ await mtgDraw() } finally{ S.style = keep } if(TP.mtg !== S) return; { const q = cv.getContext('2d'); mtgLayer(q, cv.width, cv.height, 'Card (modern frame)') } const f = inf.main[Math.min(S.sframe | 0, inf.main.length - 1)], im = f && await mtgImg(f.src.replace(/^\//, '')), b = f && f.bounds;
     if(im && b){ const W0 = cv.width, H0 = cv.height; cv.getContext('2d').drawImage(im, b.x * W0, b.y * H0, b.width * W0, b.height * H0) } return }
   const cd = inf.card, W = cd.width || 2010, H = cd.height || 2814, fr = inf.main[Math.min(S.sframe | 0, inf.main.length - 1)], T = JSON.parse(JSON.stringify(inf.text));
+  let classDraw = null;
   if(T.level0c){ const ex = S.ex || {}, used = [0, 1, 2, 3].filter(i => i === 0 || ['a', 'b', 'c'].some(l => ex['level' + i + l])), top = inf.text.level0c.y, bottom = 0.8368, hh = (bottom - top) / used.length;   // Class: the script shares the card height between the levels in use
     [0, 1, 2, 3].forEach(i => { const k = used.indexOf(i), a = T['level' + i + 'a'], b = T['level' + i + 'b'], c = T['level' + i + 'c']; if(k < 0){ [a, b, c].forEach(o => { if(o) o.y = 2 }); return }
-      const y0 = top + k * hh; if(k === 0){ c.y = y0; c.height = hh } else { if(a) a.y = y0; if(b) b.y = y0; c.y = y0 + 0.0361; c.height = hh - 0.0361 } }) }
+      const y0 = top + k * hh; if(k === 0){ c.y = y0; c.height = hh } else { if(a) a.y = y0; if(b) b.y = y0; c.y = y0 + 0.0361; c.height = hh - 0.0361; (classDraw = classDraw || []).push(y0 + 0.0361) } }) }
   let pwDraw = null;
   if(T.loyalty && T.ability0){ const ex = S.ex || {}, used = [0, 1, 2, 3].filter(i => ex['ability' + i]), top = T.ability0.y, total = 0.2916, n = Math.max(1, used.length);   // planeswalker: abilities share the text area
     const pc = S.pwCost || [], ox = T.ability0.x, ow = T.ability0.width; [0, 1, 2, 3].forEach(i => { const o = T['ability' + i], k = used.indexOf(i); if(!o) return; if(k < 0){ o.y = 2; return } o.y = top + k * total / n; o.height = total / n; if(S.pwCost && !pc[i]){ o.x = ox - 0.044; o.width = ow + 0.044 } });   // no cost badge: the text gets the room of the badge
@@ -2726,6 +2727,7 @@ async function mtgStyleDraw(cv, my, S){
   const fitW = (txt, fam, px, maxW) => { let s = px; c.font = `${s}px ${fam}`; while(s > 8 && c.measureText(txt).width > maxW){ s -= 1; c.font = `${s}px ${fam}` } return s };
   const col = o => o.color || 'black', val = {title:S.name, type:S.type, pt:S.pt}; c.textBaseline = 'middle';
   const shadowed = (o, fn) => { const sx = (o.shadowX || 0) * W, sy = (o.shadowY || 0) * H; if(sx || sy){ c.save(); c.fillStyle = o.shadowColor || 'black'; c.translate(sx, sy); fn(); c.restore() } c.fillStyle = col(o); fn() };
+  if(classDraw){ const hd = await mtgImg('img/frames/class/header.png'); if(hd) classDraw.forEach(by => c.drawImage(hd, 0.5014 * W, (by - 0.0481) * H, 0.422 * W, 0.0481 * H)) }
   if(pwDraw){ const [pl, mi, ne, l2d, d2l, mask] = await Promise.all(['planeswalkerPlus.png', 'planeswalkerMinus.png', 'planeswalkerNeutral.png', 'abilityLineOdd.png', 'abilityLineEven.png', 'text.svg'].map(f => mtgImg('img/frames/planeswalker/' + f))), LAY = [[[0.7467], [0.6953, 0.822], [0.6639, 0.7467, 0.8362], [0.6505, 0.72, 0.7905, 0.861]], [[0.72], [0.6391, 0.801], [0.5986, 0.72, 0.8415], [0.5986, 0.6796, 0.7605, 0.8415]]], q = document.createElement('canvas'); q.width = W; q.height = H; const qc = q.getContext('2d'), tr = 0.0048 * H, lay = LAY[pwDraw.tall][pwDraw.n - 1], hh = pwDraw.total / pwDraw.n;
     for(let i = 0; i < pwDraw.n; i++){ let y = (pwDraw.top + i * hh) * H, h = hh * H; if(i === 0){ y -= 0.1 * H; h += 0.1 * H } else if(i === pwDraw.n - 1) h += 0.5 * H; const x = pwDraw.x * W, w = pwDraw.w * W;
       qc.globalAlpha = i % 2 ? 0.706 : 0.608; qc.fillStyle = i % 2 ? '#a4a4a4' : '#fff'; qc.fillRect(x, y + tr, w, h - 2 * tr); qc.globalAlpha = 1; const li = i % 2 ? d2l : l2d; if(li) qc.drawImage(li, x, y + h - tr, w, 2 * tr) }
@@ -2750,7 +2752,8 @@ async function mtgStyleDraw(cv, my, S){
       const put = l => wowRichDraw(c, l, al === 'center' ? B.x + B.w / 2 : B.x, y, px, Fm, al === 'center' ? 'c' : 'l', MTGR);
       rl.forEach(l => { put(l); y += px * lhk }); y += gp; if(gp && S.flavor && cd.showsFlavorBar !== false){ c.save(); c.globalAlpha = 0.5; c.fillRect(B.x + B.w * 0.2, y - px * lhk * 0.55 - gp * 0.35, B.w * 0.6, Math.max(2, H * 0.0007)); c.restore() }
       fl.forEach(l => { put(l); y += px * lhk }); c.textBaseline = 'middle'; c.textAlign = 'left'; continue }
-    let t = k === 'title' || k === 'type' || k === 'pt' ? val[k] : (S.ex || {})[k]; if(!t) continue; if(o.allCaps) t = String(t).toUpperCase();
+    let t = k === 'title' || k === 'type' || k === 'pt' ? val[k] : (S.ex || {})[k]; if(!t) continue;
+    if(/^level[23]$/.test(k) && /leveler/i.test(cd.version || '') && String(t).includes('\n')){ const [la, lb] = String(t).split('\n'); c.save(); c.fillStyle = '#000'; c.textAlign = 'center'; c.font = `${(o.size || 0.0139) * H}px ${fam}`; c.fillText(la, B.x + B.w / 2, B.y + B.h * 0.4); c.font = `${0.0162 * H}px ${fam}`; c.fillText(lb, B.x + B.w / 2, B.y + B.h * 0.9); c.restore(); continue } if(o.allCaps) t = String(t).toUpperCase();
     const px = (o.size || 0.03) * H, my2 = B.y + B.h / 2 + 0.002 * H;
     if((o.oneLine || B.h < px * 1.8) && /\{[^}]+\}/.test(t)){ const Fm = {BOLD:'700 @ ' + fam, COND:'400 @ ' + fam, ITALR:'400 @ ' + fam}; let p2 = px, l1; c.textBaseline = 'alphabetic'; for(;;){ l1 = wowRich(c, mtgText(t), 1e6, p2, Fm, MTGR)[0]; if(!l1 || l1.w <= B.w || p2 <= 10) break; p2 -= 1 }
       if(l1){ c.fillStyle = col(o); const x1 = al === 'right' ? B.x + B.w - l1.w : al === 'center' ? B.x + B.w / 2 - l1.w / 2 : B.x; wowRichDraw(c, l1, x1, B.y + B.h / 2 + p2 * 0.33, p2, Fm, 'l', MTGR) } c.textBaseline = 'middle' }
@@ -2906,6 +2909,7 @@ async function mtgFromScry(c, tick){
     else if(c.layout === 'modal_dfc'){ S.ex.flipsideType = b.type_line || ''; S.ex.flipSideReminder = b.oracle_text || '' } }
   if(S.style && (style === 'PlaneswalkerRegular' || style === 'PlaneswalkerBorderless' || style === 'PlaneswalkerBoxTopper' || style === 'SagaRegular')){ let ls = lines.map(l => mtgPrinted(c, {oracle_text:l, name:c.name})); if(style === 'SagaRegular' && ls[0] && ls[0][0] === '('){ S.ex.reminder = ls.shift(); S.saga = ls.slice(0, 4).map(l => Math.min(3, Math.max(1, (l.split(/\s*[—-]\s*/)[0].match(/[IVX]+/g) || []).length))) } S.pwCost = []; ls.slice(0, 4).forEach((l, i) => { if(style !== 'SagaRegular'){ const m = l.match(/^([+\u2212\u2013\-]?\s*(?:\d+|X))\s*:\s*([\s\S]*)$/); S.pwCost[i] = m ? m[1].replace(/[\u2212\u2013]/g, '-').replace(/\s/g, '') : ''; if(m) l = m[2] } S.ex['ability' + i] = style === 'SagaRegular' ? l.replace(/^[IVX, ]+\s*[—-]\s*/, '') : l }); S.rules = '' }
   if(S.style && style === 'Class'){ let lv = 0; const body = [[]]; lines.forEach(l => { const m = l.match(/^(.*):\s*Level (\d)$/); if(m){ lv = +m[2] - 1; body[lv] = []; S.ex['level' + lv + 'a'] = m[1]; S.ex['level' + lv + 'b'] = 'Level ' + m[2] } else (body[lv] = body[lv] || []).push(mtgPrinted(c, {oracle_text:l, name:c.name})) }); body.forEach((b, i) => { S.ex['level' + i + 'c'] = b.join('\n') }); S.rules = '' }
+  if(S.style && style === 'Levelers'){ const L = lines.map(l => mtgPrinted(c, {oracle_text:l, name:c.name})), i0 = L.findIndex(l => /^LEVEL \d/i.test(l)); if(i0 >= 0){ S.rules = L.slice(0, i0).join('\n'); const segs = []; let cur = null; L.slice(i0).forEach(l => { const m = l.match(/^LEVEL (\d+)(?:-(\d+)|\+)/i); if(m){ cur = {label: m[2] ? m[1] + '-' + m[2] : m[1] + '+', text:[], pt:''}; segs.push(cur) } else if(/^\d+\/\d+$/.test(l)) cur.pt = l; else cur.text.push(l) }); segs.slice(0, 2).forEach((sg, i) => { const n = i + 2; S.ex['level' + n] = 'LEVEL\n' + sg.label; S.ex['rules' + n] = sg.text.join('\n'); S.ex['pt' + n] = sg.pt }) } }
   if(S.style && style === 'Case') S.ex.case = S.rules; if(S.style && style === 'Battle' && c.defense) S.ex.defense = c.defense;
   await mtgOverlays(S, c); S.want = style; return S }
 async function mtgLoadArt(c){ if(!c.art) return; const im = await mtgScryImg(c.art); if(im) TP.art = {img:im, zoom:1, x:0, y:0, fid:'scry', saved:false} }

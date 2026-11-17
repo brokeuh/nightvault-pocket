@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 245,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: Class bars and Level up cards",
+   "items": [
+    "Class cards: the grey level header bars with the little arrow are drawn between the levels.",
+    "Level up (Leveler) cards: the text is split into the base box and the level ranges (LEVEL 1-2, LEVEL 3+), each with its own power/toughness and ability text, instead of one big text block.",
+    "If it asks, press 'Download this style' once for Class / Levelers to get the bar pictures."
+   ]
+  },
+  {
    "id": 244,
    "date": "2026-11-16",
    "where": [
