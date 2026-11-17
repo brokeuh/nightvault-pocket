@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261117-n71";
+const UI_BUILD = "20261117-n72";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2889,12 +2889,12 @@ const mtgLoadImg = src => new Promise(res => { const i = new Image(); i.onload =
 async function mtgCompareCard(c, S){        // draws S in the editor canvas, returns {ours, real, diff, score}
   TP.mtg = S; await mtgLoadArt(c); await mtgDraw(); const cv = $('#tpcv'), real = await mtgScryImg(c.image); if(!cv || !real) return null;
   const w = 252, h = 352, mk = () => { const x = document.createElement('canvas'); x.width = w; x.height = h; return x }, a = mk(), b = mk(), d = mk(), ca = a.getContext('2d', {willReadFrequently:true}), cb = b.getContext('2d', {willReadFrequently:true});
-  [ca, cb].forEach(q => { q.fillStyle = '#000'; q.fillRect(0, 0, w, h) }); [ca, cb].forEach(q => { q.filter = 'blur(1.6px)' }); ca.drawImage(cv, 0, 0, w, h); cb.drawImage(real, 0, 0, w, h); [ca, cb].forEach(q => { q.filter = 'none' });   // blurred a little: judge colours and layout, not single letters
+  [ca, cb].forEach(q => { q.fillStyle = '#000'; q.fillRect(0, 0, w, h) }); ca.drawImage(cv, 0, 0, w, h); cb.drawImage(real, 0, 0, w, h);
   const inf = S.style ? MTGS.info[S.style] : null, ab = (inf && inf.card && inf.card.artBounds) || {x:0.0767, y:0.1129, width:0.8476, height:0.4429}, A = [ab.x * w, ab.y * h, (ab.x + ab.width) * w, (ab.y + ab.height) * h];
   const pa = ca.getImageData(0, 0, w, h).data, pb = cb.getImageData(0, 0, w, h).data, dd = d.getContext('2d').createImageData(w, h); let sum = 0, n = 0;
   for(let y = 0; y < h; y++) for(let x = 0; x < w; x++){ const i = (y * w + x) * 4, df = (Math.abs(pa[i] - pb[i]) + Math.abs(pa[i + 1] - pb[i + 1]) + Math.abs(pa[i + 2] - pb[i + 2])) / 3, inArt = x >= A[0] && x <= A[2] && y >= A[1] && y <= A[3];
     dd.data[i] = df * 2; dd.data[i + 1] = inArt ? 40 : df * 2; dd.data[i + 2] = inArt ? 80 : df * 2; dd.data[i + 3] = 255; if(!inArt){ sum += df; n++ } }
-  d.getContext('2d').putImageData(dd, 0, 0); const score = Math.max(0, Math.round(100 - (sum / n) / 255 * 100 * 4)); return {ours:a, real:b, diff:d, score} }
+  d.getContext('2d').putImageData(dd, 0, 0); const score = Math.max(0, Math.round(100 - (sum / n) / 255 * 100 * 3)); return {ours:a, real:b, diff:d, score} }
 function mtgCompareModal(c, S, r){
   modal(`<h3>${esc(c.name)} <span class="muted" style="font-weight:400;font-size:12px">${esc(String(c.set).toUpperCase())} ${esc(c.num)} · style: ${esc(S.style || 'Modern (built in)')}${S.styleFail ? ' (' + esc(S.styleFail) + ' could not be loaded)' : ''}</span></h3>
     <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><div><div class="hint">Ours</div><div id="mcA"></div></div><div><div class="hint">Real (Scryfall)</div><div id="mcB"></div></div><div><div class="hint">Difference (the tinted art window is ignored)</div><div id="mcC"></div></div></div>

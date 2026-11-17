@@ -1,7 +1,7 @@
 {
- "version": "2026-11-17 08:18",
+ "version": "2026-11-17 08:21",
  "notes": [
-  "Bench score + probes (n71)"
+  "Strict bench score (n72)"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "5fff9055b75b7da50a3d562f201544d78b452ddc4a9c1c49d66e341e9a2cb102"
+   "sha256": "28070351a619fbb05b671442c1046364520586a722d43df2051a289f9f6395da"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -50,7 +50,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "bfff13a6d2d74772227481e9358a555c01d038bedecc7c5f4edfeebd52cf8617"
+   "sha256": "e701df84dd15f292a8498a09809e803f3a8ef9317e8442e9fafc3979fdfc956c"
   },
   {
    "name": "fonts/OFL.txt",
