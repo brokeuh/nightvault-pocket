@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 248,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic card maker: Proxyshop frames hint",
+   "items": [
+    "The 'Proxyshop frames' tick box only appears after a template is imported; until then a link to Tools > Proxyshop import is shown in its place.",
+    "The imported template is found whatever the capital letters of its file name."
+   ]
+  },
+  {
    "id": 247,
    "date": "2026-11-16",
    "where": [
