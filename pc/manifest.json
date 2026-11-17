@@ -1,7 +1,7 @@
 {
- "version": "2026-11-17 14:35",
+ "version": "2026-11-17 14:41",
  "notes": [
-  "Proxyshop frames learn their own colours"
+  "Bench colours: black borders stay black"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "564b0e8582685ee7b2b40f25b772161991aa22a81a27e921c04dc9a889a0c203"
+   "sha256": "bb7fe233f9fc513209b7da968f43fbd5c02bb960bd93204ca2de3eb64ede056c"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -54,7 +54,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "c5f65d8cdca48a5eabc0a5a41f69264993b5034b4fd7d5ebb246be5619852749"
+   "sha256": "0788860e0b85d6473f735bc8779df21e99ea74b06031e7336e62c7785ca3d9b3"
   },
   {
    "name": "vault_un7z.py",

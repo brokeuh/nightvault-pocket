@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261117-n81";
+const UI_BUILD = "20261117-n82";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2794,10 +2794,14 @@ function mtgStyleBind(){
 }
 // Tone: Scryfall's pictures differ a little in colour from the community frames. The test bench learns, per frame and per colour channel, a straight-line fit (real = gain x ours + lift) and the frames are drawn with it (frame only, not art or text).
 const mtgToneKey = S => (S.style || (MTGPS.use && MTGPS.on ? 'proxyshop' : 'modern')) + '|' + (S.style ? (S.sframe | 0) : (S.frame || 'W'));
-const mtgToneAll = () => { try{ return JSON.parse(localStorage.getItem('nv_mtg_tone2') || '{}') }catch(e){ return {} } };
+const mtgToneAll = () => { try{ return JSON.parse(localStorage.getItem('nv_mtg_tone3') || '{}') }catch(e){ return {} } };
 function mtgToned(img, S){ const t = img && mtgToneAll()[mtgToneKey(S)]; if(!t || S.tone === false) return img; const q = document.createElement('canvas'); q.width = img.width; q.height = img.height; const x = q.getContext('2d'); x.drawImage(img, 0, 0);
   x.globalCompositeOperation = 'multiply'; x.fillStyle = `rgb(${t.map(v => Math.round(Math.max(0, Math.min(1, v[0])) * 255)).join(',')})`; x.fillRect(0, 0, q.width, q.height);
-  x.globalCompositeOperation = 'lighter'; x.fillStyle = `rgb(${t.map(v => Math.round(Math.max(0, Math.min(255, v[1])))).join(',')})`; x.fillRect(0, 0, q.width, q.height);
+  // the lift is weighted by how bright the pixel is, so the black border stays black (a flat lift turned it grey)
+  const m = document.createElement('canvas'); m.width = q.width; m.height = q.height; const mx = m.getContext('2d');
+  mx.fillStyle = `rgb(${t.map(v => Math.round(Math.max(0, Math.min(255, v[1])))).join(',')})`; mx.fillRect(0, 0, m.width, m.height);
+  mx.globalCompositeOperation = 'multiply'; mx.filter = 'brightness(3)'; mx.drawImage(img, 0, 0);
+  x.globalCompositeOperation = 'lighter'; x.drawImage(m, 0, 0);
   x.globalCompositeOperation = 'destination-in'; x.drawImage(img, 0, 0); return q }
 function mtgToneLearn(S, pa, pb, w, h, A){ const old = mtgToneAll()[mtgToneKey(S)] || [[1, 0], [1, 0], [1, 0]], res = [];
   for(let k = 0; k < 3; k++){ const xs = [], ys = [];
@@ -2807,7 +2811,7 @@ function mtgToneLearn(S, pa, pb, w, h, A){ const old = mtgToneAll()[mtgToneKey(S
       const den = n * sxx - sx * sx; if(n < 200 || Math.abs(den) < 1e-6) break; a = (n * sxy - sx * sy) / den; b = (sy - a * sx) / n }
     a = Math.max(0.5, Math.min(1.3, a)); b = Math.max(-60, Math.min(60, b)); res.push([a, b]) }
   const nw = res.map(([a2, b2], k) => { const g = a2 * old[k][0], l = a2 * old[k][1] + b2; return [Math.max(0.5, Math.min(1, g)), Math.max(0, Math.min(80, l))] }), all = mtgToneAll(); all[mtgToneKey(S)] = nw;
-  try{ localStorage.setItem('nv_mtg_tone2', JSON.stringify(all)) }catch(e){} return nw }
+  try{ localStorage.setItem('nv_mtg_tone3', JSON.stringify(all)) }catch(e){} return nw }
 // ---- Proxyshop frames (imported from the owner's own PSD templates, see Tools > Proxyshop import)
 const MTGPS = {on: null, packs: [], meta: {}, imgs: {}, cache: {}, use: (() => { try{ return localStorage.getItem('nv_mtg_ps') === '1' }catch(e){ return false } })()};
 async function mtgPsInit(){ if(MTGPS.on === null){ try{ MTGPS.packs = (await api('/api/template/ps_packs?t=' + TOKEN)).packs; const np = MTGPS.packs.find(p => /^normal/i.test(p.name)); MTGPS.pack = np ? np.name : ''; MTGPS.on = !!np }catch(e){ MTGPS.on = false } } return MTGPS.on }
@@ -2985,7 +2989,7 @@ function mtgScryBind(){
   if($('#mgsccmp')) $('#mgsccmp').onclick = async () => { msg('Comparing…'); const r = await mtgCompareCard(MTG.scry, TP.mtg); msg(''); if(r) mtgCompareModal(MTG.scry, TP.mtg, r); else msg('Could not get the real picture.') };
   if($('#mgbench')) $('#mgbench').onclick = () => mtgBench();
   if($('#mgps')) $('#mgps').onchange = e => { MTGPS.use = e.target.checked; try{ localStorage.setItem('nv_mtg_ps', MTGPS.use ? '1' : '0') }catch(x){} mtgDraw() };
-  if($('#mgtonereset')) $('#mgtonereset').onclick = () => { try{ localStorage.removeItem('nv_mtg_tone2') }catch(e){} toast('Learned colours forgotten'); mtgDraw() };
+  if($('#mgtonereset')) $('#mgtonereset').onclick = () => { try{ localStorage.removeItem('nv_mtg_tone3') }catch(e){} toast('Learned colours forgotten'); mtgDraw() };
   if($('#mgtl')) $('#mgtl').onclick = () => mtgTestList();
 }
 function mtgPanel(){

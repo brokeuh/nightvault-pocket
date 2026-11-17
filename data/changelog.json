@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 250,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Test bench: learned colours no longer turn borders grey",
+   "items": [
+    "The colour lift learned by the test bench was added to every pixel, so black borders became grey and gold frames olive after several runs. It now lifts bright pixels only and black stays black.",
+    "The old learned colours are dropped (they were off); run the bench twice again to learn them fresh."
+   ]
+  },
+  {
    "id": 249,
    "date": "2026-11-16",
    "where": [
