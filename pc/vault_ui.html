@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261118-n86";
+const UI_BUILD = "20261118-n87";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2710,9 +2710,9 @@ async function mtgStyleDraw(cv, my, S){
     let y = top; const slots = []; [0, 1, 2, 3].forEach(i => { const o = T['ability' + i], k = used.indexOf(i); if(!o) return; if(k < 0){ o.y = 2; return } o.y = y; o.height = per * wt[k]; slots.push({y, h:o.height, n:ch[k]}); y += o.height }); sagaDraw = slots }
   Object.keys(T).forEach(k => { if(/^(level|ability)/.test(k) && !(T[k].y > 0 && T[k].y < 1)) delete T[k] });
   Object.keys(S.tadj || {}).forEach(k => { const o = T[k], a = S.tadj[k]; if(!o || !a) return; if(a.size > 0) o.size = (o.size || 0.03) * a.size / 100; if(a.font) o.font = a.font; if(a.align) o.align = a.align; ['x', 'y', 'width', 'height'].forEach((p, i) => { const d = +a['d' + p] || 0; if(d && typeof o[p] === 'number') o[p] += d / 100 }) });   // owner's advanced text tweaks
-  await mtgFonts(); const img = await mtgImg(fr.src.replace(/^\//, '')); if(my !== MTG.token) return;
+  await mtgFonts(); const psr = await mtgPsStyleFrame(S, fr), img = psr ? psr.fr : await mtgImg(fr.src.replace(/^\//, '')); if(my !== MTG.token) return;
   const ext = S.pt ? (() => { const w1 = (fr.name || '').split(' ')[0].toLowerCase(), l = inf.frames.filter(f => f.bounds && /power|toughness|\bpt\b/i.test(f.name || '')); return l.find(f => (f.name || '').toLowerCase().startsWith(w1)) || l[0] })() : null;
-  const extImg = ext ? await mtgImg(ext.src.replace(/^\//, '')) : null; const fams = {}; for(const k of Object.keys(T)) fams[k] = await mtgFam(T[k].font);
+  const extImg = ext && !psr ? await mtgImg(ext.src.replace(/^\//, '')) : null; const fams = {}; for(const k of Object.keys(T)) fams[k] = await mtgFam(T[k].font);
   await mtgSyms([S.cost, S.rules, S.flavor, ...Object.values(S.ex || {})]); { const pre = (T.mana && T.mana.manaPrefix) || ''; if(pre) await Promise.all(mtgCostToks(S.cost).map(async t => { const key = mtgKey(t); if(!MTG.sym[pre + '|' + key]) MTG.sym[pre + '|' + key] = await mtgImg('img/manaSymbols/' + pre + key + '.svg') })) } const brush = S.artist ? await mtgImg('img/manaSymbols/artistbrush.svg') : null; if(my !== MTG.token) return;
   cv.width = W; cv.height = H; c.clearRect(0, 0, W, H);
   const ab = cd.artBounds || {x:0.0767, y:0.1129, width:0.8476, height:0.4429}, A = [ab.x * W, ab.y * H, ab.width * W, ab.height * H];
@@ -2721,8 +2721,9 @@ async function mtgStyleDraw(cv, my, S){
     c.drawImage(im, A[0] + (A[2] - w) / 2 + (TP.art.x || 0) * 10, A[1] + (A[3] - h) / 2 + (TP.art.y || 0) * 10, w, h); c.restore() } else { c.fillStyle = '#5a5f6a'; c.fillRect(...A) }
   mtgLayer(c, W, H, 'Art');
   if(img) c.drawImage(mtgToned(img, S), 0, 0, W, H);
-  { const bn = String(S.border || '').toLowerCase(), bf = bn && inf.main.find(f => /border$/i.test(f.name || '') && String(f.name).toLowerCase().startsWith(bn)), bi = bf && bf !== fr ? await mtgImg(bf.src.replace(/^\//, '')) : null; if(bi) c.drawImage(bi, 0, 0, W, H) }
+  if(!psr){ const bn = String(S.border || '').toLowerCase(), bf = bn && inf.main.find(f => /border$/i.test(f.name || '') && String(f.name).toLowerCase().startsWith(bn)), bi = bf && bf !== fr ? await mtgImg(bf.src.replace(/^\//, '')) : null; if(bi) c.drawImage(bi, 0, 0, W, H) }
   if(extImg){ const b = ext.bounds; c.drawImage(extImg, b.x * W, b.y * H, b.width * W, b.height * H) }
+  if(psr && psr.ptb && S.pt) c.drawImage(psr.ptb.img, psr.ptb.x * W, psr.ptb.y * H, psr.ptb.w * W, psr.ptb.h * H);
   mtgLayer(c, W, H, 'Frame');
   const fitW = (txt, fam, px, maxW) => { let s = px; c.font = `${s}px ${fam}`; while(s > 8 && c.measureText(txt).width > maxW){ s -= 1; c.font = `${s}px ${fam}` } return s };
   const col = o => o.color || 'black', val = {title:S.name, type:S.type, pt:S.pt}; c.textBaseline = 'middle';
@@ -2793,7 +2794,7 @@ function mtgStyleBind(){
   $$('[data-mgx]').forEach(el => { el.oninput = () => { (S.ex = S.ex || {})[el.dataset.mgx] = el.value; mtgDraw() } });
 }
 // Tone: Scryfall's pictures differ a little in colour from the community frames. The test bench learns, per frame and per colour channel, a straight-line fit (real = gain x ours + lift) and the frames are drawn with it (frame only, not art or text).
-const mtgToneKey = S => (S.style || (mtgPsUsed(S) ? 'proxyshop' : 'modern')) + '|' + (S.style ? (S.sframe | 0) : (S.frame || 'W'));
+const mtgToneKey = S => (S.style || (mtgPsUsed(S) ? 'proxyshop' : 'modern')) + '|' + (S.style ? (S._ps ? 'ps' : '') + (S.sframe | 0) : (S.frame || 'W'));
 const mtgToneAll = () => { try{ return JSON.parse(localStorage.getItem('nv_mtg_tone4') || '{}') }catch(e){ return {} } };
 function mtgToned(img, S){ const t = img && mtgToneAll()[mtgToneKey(S)]; if(!t || S.tone === false) return img; const q = document.createElement('canvas'); q.width = img.width; q.height = img.height; const x = q.getContext('2d'); x.drawImage(img, 0, 0);
   x.globalCompositeOperation = 'multiply'; x.fillStyle = `rgb(${t.map(v => Math.round(Math.max(0, Math.min(1, v[0])) * 255)).join(',')})`; x.fillRect(0, 0, q.width, q.height);
@@ -2813,29 +2814,40 @@ const MTGPS = {on: null, packs: [], meta: {}, imgs: {}, cache: {}, mode: (() => 
 // 'auto' = the Proxyshop frame only for gold (multicolour) cards, where it clearly beats the built-in frame; 'all' = every plain frame; 'off'
 const mtgPsUsed = S => !S.style && MTGPS.on && (MTGPS.mode === 'all' || (MTGPS.mode === 'auto' && S.frame === 'M'));
 async function mtgPsInit(){ if(MTGPS.on === null){ try{ MTGPS.packs = (await api('/api/template/ps_packs?t=' + TOKEN)).packs; const np = MTGPS.packs.find(p => /^normal/i.test(p.name)); MTGPS.pack = np ? np.name : ''; MTGPS.on = !!np }catch(e){ MTGPS.on = false } } return MTGPS.on }
-const mtgPsUrl = (p) => '/api/template/ps_file?pack=' + enc(MTGPS.pack || 'normal') + '&p=' + enc(p) + '&t=' + enc(TOKEN);
-const mtgPsImg = p => (MTGPS.imgs[p] = MTGPS.imgs[p] || new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = mtgPsUrl(p) }));
-// frame letter of our maker -> layer name in the Proxyshop Normal template
+const mtgPsUrl = (p, pack) => '/api/template/ps_file?pack=' + enc(pack || MTGPS.pack || 'normal') + '&p=' + enc(p) + '&t=' + enc(TOKEN);
+const mtgPsImg = (p, pack) => { const k = (pack || MTGPS.pack || 'normal') + '/' + p; return (MTGPS.imgs[k] = MTGPS.imgs[k] || new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = mtgPsUrl(p, pack) })) };
+// frame letter of our maker -> layer name in the Proxyshop templates
 const MTGPS_COL = {W:'W', U:'U', B:'B', R:'R', G:'G', M:'Gold', A:'Artifact', L:'Land', E:'Colorless', V:'Vehicle'};
-async function mtgPsFrame(frame){
-  const key = frame; if(MTGPS.cache[key]) return MTGPS.cache[key];
-  if(!MTGPS.meta.normal){ const r = await fetch(mtgPsUrl('layers.json')); MTGPS.meta.normal = await r.json() }
-  const m = MTGPS.meta.normal, col = MTGPS_COL[frame] || 'W', fs = m.size[0] / m.source_size[0];
+const mtgPsHave = pack => MTGPS.packs.some(p => p.name === pack);
+// Builds one frame picture (without the art window) and the power/toughness box from a pack: stack = the template's own layer order, bottom to top.
+async function mtgPsCompose(pack, frame, legend){
+  legend = !!legend; const key = pack + '|' + frame + '|' + legend; if(MTGPS.cache[key]) return MTGPS.cache[key];
+  if(!MTGPS.meta[pack]){ const r = await fetch(mtgPsUrl('layers.json', pack)); MTGPS.meta[pack] = await r.json() }
+  const m = MTGPS.meta[pack], col = MTGPS_COL[frame] || 'W', fs = m.size[0] / m.source_size[0];
   // the PSD canvas has a bleed margin around the real card (3264x4440 for a 3000x4200 card): cut it off
   const cx = 132 * fs, cy = 120 * fs, W = Math.round(3000 * fs), H = Math.round(4200 * fs), cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
   const isLand = col === 'Land', pick = (g, n) => m.layers.filter(l => l.file && l.path[0] === g && (n === undefined || l.name === n));
-  // bottom to top = low layer number first (the file lists them top to bottom, so sort ascending by index)
-  const want = [pick('Border', 'Full Art Border (leave on)'), pick('Background', col), pick('Shadows'), pick(isLand ? 'Land Pinlines & Textbox' : 'Pinlines & Textbox', col), pick('Name & Title Boxes', col), pick('Border', 'Normal Border')].flat();
-  const imgs = await Promise.all(want.map(l => mtgPsImg(l.file)));
+  const first = (g, ...names) => { for(const n of names){ const r = pick(g, n); if(r.length) return r } return [] };
+  const want = [pick('Border', 'Full Art Border (leave on)'), first('Background', col, 'Gold'), pick('Shadows'), isLand ? first('Land Pinlines & Textbox', 'Land', col) : first('Pinlines & Textbox', col, 'Gold'), first('Name & Title Boxes', col, 'Gold'),
+    m.layers.filter(l => l.file && l.path[0] === 'Text and Icons' && /^MDFC (Front|Back)$/.test(l.path[1] || '') && l.path[2] && l.name === col),     // double-faced strips
+    legend ? first('Legendary Crown', col, 'Gold') : [], legend ? first('Border', 'Legendary Border', 'Normal Border') : pick('Border', 'Normal Border')].flat();
+  const imgs = await Promise.all(want.map(l => mtgPsImg(l.file, pack)));
   want.forEach((l, k) => { if(imgs[k]) c.drawImage(imgs[k], l.rect[0] - cx, l.rect[1] - cy, l.rect[2] - l.rect[0], l.rect[3] - l.rect[1]) });
-  const pt = pick('PT Box', col)[0]; let ptb = null;
-  if(pt){ const im = await mtgPsImg(pt.file); if(im) ptb = {img: im, x: (pt.rect[0] - cx) / W, y: (pt.rect[1] - cy) / H, w: (pt.rect[2] - pt.rect[0]) / W, h: (pt.rect[3] - pt.rect[1]) / H} }
+  const pt = first('PT Box', col, 'Gold')[0]; let ptb = null;
+  if(pt){ const im = await mtgPsImg(pt.file, pack); if(im) ptb = {img: im, x: (pt.rect[0] - cx) / W, y: (pt.rect[1] - cy) / H, w: (pt.rect[2] - pt.rect[0]) / W, h: (pt.rect[3] - pt.rect[1]) / H} }
   return MTGPS.cache[key] = {fr: cv, ptb};
 }
+const mtgPsFrame = (frame, legend) => mtgPsCompose(MTGPS.pack || 'normal', frame, legend);
+// The special layouts (Adventure ...) keep their own text layout; only the frame picture comes from the matching Proxyshop template.
+const MTGPS_STYLE = {Adventure: 'adventure', ModalRegular: 'mdfc-front'};
+const mtgPsLetter = n => { n = String(n || '').toLowerCase(); return /gold|multi/.test(n) ? 'M' : /white/.test(n) ? 'W' : /blue/.test(n) ? 'U' : /black/.test(n) ? 'B' : /red/.test(n) ? 'R' : /green/.test(n) ? 'G' : /artifact/.test(n) ? 'A' : /land/.test(n) ? 'L' : /colou?rless/.test(n) ? 'E' : 'W' };
+async function mtgPsStyleFrame(S, fr){
+  S._ps = false; const pack = MTGPS_STYLE[S.style]; if(!pack || MTGPS.mode !== 'all' || !(await mtgPsInit()) || !mtgPsHave(pack)) return null;
+  try{ const r = await mtgPsCompose(pack, mtgPsLetter(fr && fr.name), /legendary/i.test(S.type || '')); S._ps = true; return r }catch(e){ return null } }
 async function mtgDraw(){
   const cv = $('#tpcv'); if(!cv || !TP.mtg) return; const my = ++MTG.token, S = TP.mtg, fk = MTG_FR[S.frame] || MTG_FR.W;
   if(S.style) return mtgStyleDraw(cv, my, S);
-  await mtgFonts(); let psf = null; if(await mtgPsInit() && mtgPsUsed(S)){ try{ psf = await mtgPsFrame(S.frame) }catch(e){ psf = null } }
+  await mtgFonts(); let psf = null; if(await mtgPsInit() && mtgPsUsed(S)){ try{ psf = await mtgPsFrame(S.frame, /legendary/i.test(S.type || '')) }catch(e){ psf = null } }
   const [fr, ptb] = psf ? [psf.fr, null] : await Promise.all([mtgImg(MTG_DIR + fk.f), S.pt ? mtgImg(MTG_DIR + fk.p) : null]); await mtgSyms([S.cost, S.rules, S.flavor, S.big ? '{' + S.big + '}' : '']); for(const o of S.over || []) await mtgStyleInfo(o.pack); const brush = S.artist ? await mtgImg('img/manaSymbols/artistbrush.svg') : null;
   if(my !== MTG.token || !fr) return;
   const W = fr.width, H = fr.height; cv.width = W; cv.height = H; const c = cv.getContext('2d'); c.clearRect(0, 0, W, H);

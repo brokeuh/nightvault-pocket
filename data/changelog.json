@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 255,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Proxyshop frames for Adventure and double-faced cards, legendary crowns",
+   "items": [
+    "Proxyshop frames setting 'All colours' now also draws Adventure and Modal double-faced cards from your imported 'adventure' and 'mdfc-front' templates (frame only; the text layout stays as before).",
+    "Legendary creatures get the Proxyshop crown and legendary border.",
+    "Import the 'adventure' and 'mdfc-front' templates first (Tools > Proxyshop import)."
+   ]
+  },
+  {
    "id": 254,
    "date": "2026-11-16",
    "where": [

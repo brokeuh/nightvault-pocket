@@ -1,7 +1,7 @@
 {
- "version": "2026-11-18 11:59",
+ "version": "2026-11-18 12:04",
  "notes": [
-  "Proxyshop import: save one template as zip"
+  "Proxyshop frames for Adventure and MDFC, legendary crowns"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "4f71f628323a14e7ef4cc80d1179ffa4ac17f4a921ec4db95bbe5e86242b9587"
+   "sha256": "a1126ac0c2daf6cbe24a0aa540855f58849011f79c12383ab5ca4ed56673bcb1"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -54,7 +54,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "82e7f8849a4d8d2ce2e0a857ce90469b1a694e7c1389338787bf5819357a5727"
+   "sha256": "4ea06f73cba03c56671dda03cdb0fe3d8a03032c024132981a6f78cbf9ac233e"
   },
   {
    "name": "vault_un7z.py",
