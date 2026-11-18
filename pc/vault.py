@@ -215,7 +215,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261118-n85"   # the page and the program must carry the same build id
+BUILD = "20261118-n86"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -6582,6 +6582,18 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception:
                     pass
             return self._send(200, dict(packs=out))
+        if path == "/api/template/ps_pack_zip":
+            import io as _io
+            nm = re.sub(r"[^A-Za-z0-9._ \-]", "_", q.get("pack", ""))
+            base = TEMPLATE_DIR / "proxyshop" / nm
+            if not nm or not (base / "layers.json").is_file():
+                return self._error(404, "That template is not imported")
+            buf = _io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as z:          # PNGs are already compressed
+                for f in sorted(base.rglob("*")):
+                    if f.is_file():
+                        z.write(f, nm + "/" + str(f.relative_to(base)).replace("\\", "/"))
+            return self._send(200, buf.getvalue(), "application/zip", {"Content-Disposition": 'attachment; filename="nightvault-proxyshop-%s.zip"' % nm})
         if path == "/api/template/ps_lists":
             import io as _io
             buf = _io.BytesIO()

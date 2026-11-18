@@ -1,7 +1,7 @@
 {
- "version": "2026-11-18 11:28",
+ "version": "2026-11-18 11:59",
  "notes": [
-  "Proxyshop import faster; save layer lists"
+  "Proxyshop import: save one template as zip"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "b8f1edbc0004f924ee0ecf8c8d56b69ac41ffe96711e9458825167992c5e7087"
+   "sha256": "4f71f628323a14e7ef4cc80d1179ffa4ac17f4a921ec4db95bbe5e86242b9587"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -54,7 +54,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "44ab93df963bcb5843eca5e6dc1df979e4326185edc0578cc58007fe3e685f60"
+   "sha256": "82e7f8849a4d8d2ce2e0a857ce90469b1a694e7c1389338787bf5819357a5727"
   },
   {
    "name": "vault_un7z.py",

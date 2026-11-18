@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 254,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Proxyshop import: save one template as a zip",
+   "items": [
+    "Every imported template in the list now has a 'save zip' link (its pictures and layer list in one zip), for layout work or to copy to another PC."
+   ]
+  },
+  {
    "id": 253,
    "date": "2026-11-16",
    "where": [
