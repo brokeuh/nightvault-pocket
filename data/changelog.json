@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 256,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Test bench colours: black border stays black",
+   "items": [
+    "The colours learned by the test bench no longer touch pure black, so the card border stays black (it turned olive / grey after a few runs, e.g. on gold cards).",
+    "The learning uses the same rule, so dark frames keep their learned lift. Learned colours start fresh: run the bench twice."
+   ]
+  },
+  {
    "id": 255,
    "date": "2026-11-16",
    "where": [
