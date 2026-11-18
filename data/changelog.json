@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 260,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Proxyshop frames are drawn as they are (no learned colours)",
+   "items": [
+    "The test bench's learned colour correction is back to the version that worked for the built-in frames (border included in the learning).",
+    "Proxyshop frames are never colour-corrected any more: the correction learned for the built-in frames made them olive. Learned colours start fresh: run the bench twice."
+   ]
+  },
+  {
    "id": 259,
    "date": "2026-11-16",
    "where": [

@@ -1,7 +1,7 @@
 {
- "version": "2026-11-18 16:03",
+ "version": "2026-11-18 16:23",
  "notes": [
-  "Bench colours: outer border never toned"
+  "Proxyshop frames untoned, bench learning restored"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "54731e3ae237dfd3297a3e88df994af02c5d3a14b39dbec33fb8b0bb7bba0f14"
+   "sha256": "446c9fd999e998697d17e09b1a7a4fb1d0c515f067c5d5925252207867185df8"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -54,7 +54,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "e0600cd66f310bf6237fbfdf6a7af342a2c4d1a2ffdf5321e51df6884a488f19"
+   "sha256": "919ef5d117e4e3d131b77af6619302f4e841b3a038c4ed758038df7cc170c2ae"
   },
   {
    "name": "vault_un7z.py",
