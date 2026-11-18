@@ -156,16 +156,21 @@ def _packbits(buf, n):
 
 def layer_png(path, index):
     """The pixels of one layer as a PNG (RGBA, the size of the layer). Returns (png_bytes, left, top)."""
+    im, left, top = layer_image(path, index)
+    b = io.BytesIO()
+    im.save(b, "PNG", compress_level=3)
+    return b.getvalue(), left, top
+
+
+def layer_image(path, index):
+    """Same pixels as layer_png but as a PIL image (RGBA). Returns (image, left, top)."""
     from PIL import Image
     sc = scan(path)
     r = sc["layers"][index]
     left, top, right, bottom = r["rect"]
     w, h = right - left, bottom - top
     if w <= 0 or h <= 0:
-        im = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
-        b = io.BytesIO()
-        im.save(b, "PNG")
-        return b.getvalue(), 0, 0
+        return Image.new("RGBA", (1, 1), (0, 0, 0, 0)), 0, 0
     planes = {}
     with open(path, "rb") as f:
         for cid, off, ln in r["segs"]:
@@ -176,22 +181,33 @@ def layer_png(path, index):
             if comp == 0:
                 raw = body[:w * h]
             elif comp == 1:
-                cnt = struct.unpack(">%dH" % h, body[:2 * h])
-                o = 2 * h
-                rows = []
-                for c in cnt:
-                    rows.append(_packbits(body[o:o + c], w))
-                    o += c
-                raw = b"".join(rows)
+                raw = None
+                try:                                  # Pillow decodes PackBits in C: far faster than the loop below
+                    raw = Image.frombytes("L", (w, h), body[2 * h:], "packbits", "L").tobytes()
+                except Exception:
+                    raw = None
+                if raw is None:
+                    cnt = struct.unpack(">%dH" % h, body[:2 * h])
+                    o = 2 * h
+                    rows = []
+                    for c in cnt:
+                        rows.append(_packbits(body[o:o + c], w))
+                        o += c
+                    raw = b"".join(rows)
             elif comp == 2:
                 raw = zlib.decompress(body)
             else:                                    # 3 = zip with prediction
                 raw = bytearray(zlib.decompress(body))
-                for y in range(h):
-                    base = y * w
-                    for x in range(1, w):
-                        raw[base + x] = (raw[base + x] + raw[base + x - 1]) & 255
-                raw = bytes(raw)
+                try:
+                    import numpy as _np
+                    arr = _np.frombuffer(raw, dtype=_np.uint8)[:w * h].reshape(h, w)
+                    raw = _np.cumsum(arr, axis=1, dtype=_np.uint8).tobytes()
+                except Exception:
+                    for y in range(h):
+                        base = y * w
+                        for x in range(1, w):
+                            raw[base + x] = (raw[base + x] + raw[base + x - 1]) & 255
+                    raw = bytes(raw)
             if len(raw) < w * h:
                 raw = raw + b"\0" * (w * h - len(raw))
             planes[cid] = Image.frombytes("L", (w, h), raw[:w * h])
@@ -199,10 +215,7 @@ def layer_png(path, index):
     full = Image.new("L", (w, h), 255)
     rgb = [planes.get(0, z), planes.get(1, z), planes.get(2, z)]
     a = planes.get(-1, full)
-    im = Image.merge("RGBA", rgb + [a])
-    b = io.BytesIO()
-    im.save(b, "PNG", compress_level=3)
-    return b.getvalue(), left, top
+    return Image.merge("RGBA", rgb + [a]), left, top
 
 
 def save_psd(path, dest, visible):

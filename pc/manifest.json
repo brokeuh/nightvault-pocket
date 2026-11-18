@@ -1,7 +1,7 @@
 {
- "version": "2026-11-18 09:44",
+ "version": "2026-11-18 11:28",
  "notes": [
-  "Proxyshop import: skip already imported"
+  "Proxyshop import faster; save layer lists"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "90f6e180916cf8d6d8c12ffa56147d3e37f77e3a3d6697d2a5622af30e36122f"
+   "sha256": "b8f1edbc0004f924ee0ecf8c8d56b69ac41ffe96711e9458825167992c5e7087"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -42,7 +42,7 @@
   },
   {
    "name": "vault_psdpack.py",
-   "sha256": "37c44bb601b70ea60702de1c5b6c36d86ed37b3383b960d91e638c1680fe7aa9"
+   "sha256": "c8cb8232e6e72563692abcffeecf04998e2dbb396b3a86f4969e26b38f45b80b"
   },
   {
    "name": "vault_tcgdata.py",
@@ -50,11 +50,11 @@
   },
   {
    "name": "vault_template.py",
-   "sha256": "669ea69f6d49e506d388f6f5fed41e887afd29ed7fc44533233c20ec2f60295a"
+   "sha256": "353090b45066ea7e10ee24f246b425f122869e8d96a56e7e4bbd67d0cb3c2cdb"
   },
   {
    "name": "vault_ui.html",
-   "sha256": "31720781a7f568cbd2cb699f678e027c6e45c87d6eef3b3877313eb669442e22"
+   "sha256": "44ab93df963bcb5843eca5e6dc1df979e4326185edc0578cc58007fe3e685f60"
   },
   {
    "name": "vault_un7z.py",

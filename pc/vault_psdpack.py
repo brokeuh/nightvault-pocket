@@ -54,12 +54,13 @@ def import_psd(psd_path, out_dir, progress=None, scale_w=SCALE_W):
                    text=r["text"], rect=[round(L * f, 1), round(T * f, 1), round(R * f, 1), round(B * f, 1)])
         if R > L and B > T and not r["text"] and "Legal" not in g[:1]:
             try:
-                png, left, top = vtpl.layer_png(psd_path, r["i"])
-                im = Image.open(io.BytesIO(png)).convert("RGBA")
-                w2, h2 = max(1, round(im.width * f)), max(1, round(im.height * f))
-                im = im.resize((w2, h2), Image.LANCZOS)
+                im, _l, _t = vtpl.layer_image(psd_path, r["i"])
+                if abs(f - 0.5) < 0.01:
+                    im = im.reduce(2)                       # exact half size, much faster than a resize
+                else:
+                    im = im.resize((max(1, round(im.width * f)), max(1, round(im.height * f))), Image.BOX)
                 fn = "layers/%03d.png" % r["i"]
-                im.save(out / fn, "PNG", compress_level=6)
+                im.save(out / fn, "PNG", compress_level=3)
                 row["file"] = fn
                 n += 1
             except Exception as e:                  # a layer we cannot read must not stop the whole template

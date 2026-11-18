@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 253,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Proxyshop import: about 4x faster + layer list export",
+   "items": [
+    "Importing a template is much faster (the PSD layers are read about 4 times quicker; same pictures as before).",
+    "New button 'Save layer lists' on the import page: a small zip with the layer structure of every imported template, handy to send for layout work."
+   ]
+  },
+  {
    "id": 252,
    "date": "2026-11-16",
    "where": [

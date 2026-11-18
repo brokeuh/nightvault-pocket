@@ -215,7 +215,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261118-n84"   # the page and the program must carry the same build id
+BUILD = "20261118-n85"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -6582,6 +6582,13 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception:
                     pass
             return self._send(200, dict(packs=out))
+        if path == "/api/template/ps_lists":
+            import io as _io
+            buf = _io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+                for lj in sorted((TEMPLATE_DIR / "proxyshop").glob("*/layers.json")) if (TEMPLATE_DIR / "proxyshop").is_dir() else []:
+                    z.write(lj, lj.parent.name + "/layers.json")
+            return self._send(200, buf.getvalue(), "application/zip", {"Content-Disposition": 'attachment; filename="nightvault-proxyshop-layer-lists.zip"'})
         if path == "/api/template/ps_file":
             base = TEMPLATE_DIR / "proxyshop" / re.sub(r"[^A-Za-z0-9._ \-]", "_", q.get("pack", ""))
             rel = [x for x in q.get("p", "").replace("\\", "/").split("/") if x and x != ".."]

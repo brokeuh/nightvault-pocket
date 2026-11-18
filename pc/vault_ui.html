@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261118-n84";
+const UI_BUILD = "20261118-n85";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -3443,7 +3443,7 @@ async function viewPsImport(){
   <div class="panel"><div class="bar"><input type="text" id="psifolder" placeholder="Folder with your templates, e.g. C:\\Proxyshop\\templates" style="flex:1;min-width:260px" value="${esc(PSI.folder)}"><button class="btn primary" id="psifind"><i class="ti ti-search"></i>Look for templates</button></div>
   <div id="psilist">${PSI.items.length ? PSI.items.map(row).join('') + `<div class="bar" style="margin-top:8px"><label class="hint"><input type="checkbox" id="psiskip" ${PSI.skip ? 'checked' : ''}> Skip already imported</label><button class="btn primary" id="psigo"><i class="ti ti-download"></i>Import the ticked ones</button><span class="sub">A big template takes a minute or two; it is unpacked one file at a time and the temporary copy is deleted again.</span></div>` : '<p class="hint">Type or paste the folder and press the button. Subfolders are searched too.</p>'}</div>
   <div id="psistat"></div></div>
-  <div class="panel"><h3 style="margin-top:0">Imported on this PC</h3>${packs.length ? packs.map(p => `<div>${esc(p.name)} <span class="sub">${p.pictures} pictures</span></div>`).join('') : '<p class="hint">Nothing yet.</p>'}</div>`;
+  <div class="panel"><h3 style="margin-top:0">Imported on this PC</h3>${packs.length ? `<div class="bar" style="margin-bottom:6px"><a class="btn" href="/api/template/ps_lists?t=${enc(TOKEN)}" download><i class="ti ti-download"></i>Save layer lists (small zip, to send to Claude)</a><span class="sub">${packs.length} templates</span></div>` + packs.map(p => `<div>${esc(p.name)} <span class="sub">${p.pictures} pictures</span></div>`).join('') : '<p class="hint">Nothing yet.</p>'}</div>`;
   $('#psifind').onclick = async () => { PSI.folder = $('#psifolder').value.trim(); if(!PSI.folder) return; $('#psilist').innerHTML = '<i class="ti ti-loader-2"></i> Looking ...'; try{ PSI.items = (await api('/api/template/ps_find?folder=' + encodeURIComponent(PSI.folder) + '&t=' + TOKEN)).items }catch(e){ PSI.items = []; toast(e.message, true) } viewPsImport() };
   if($('#psiskip')) $('#psiskip').onchange = e => { PSI.skip = e.target.checked; $$('[data-psi]').forEach(c => { const t = PSI.items[+c.dataset.psi]; if(t.kind !== 'error') c.checked = !(PSI.skip && t.done) }) };
   if($('#psigo')) $('#psigo').onclick = async () => { const pick = $$('[data-psi]').filter(c => c.checked).map(c => Object.assign({}, PSI.items[+c.dataset.psi], {skip_done: PSI.skip})); if(!pick.length) return; try{ await api('/api/template/ps_import', {items: pick}); psiWatch() }catch(e){ toast(e.message, true) } };
