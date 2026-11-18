@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 262,
+   "date": "2026-11-18",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Card maker: Class and planeswalker text fits",
+   "items": [
+    "Class cards: the first level text no longer runs into the Level 2 bar.",
+    "Planeswalker cards: long first abilities stay inside the frame."
+   ]
+  },
+  {
    "id": 261,
    "date": "2026-11-18",
    "where": [
