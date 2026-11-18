@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 257,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Test bench: learned colours freeze after two runs",
+   "items": [
+    "Back to the simple colour correction (the brightness-weighted one made the scores worse).",
+    "The bench now learns the colours during its first two runs only, then keeps them fixed. More runs made them drift (olive gold, grey borders). 'Forget learned colours' starts the two runs over.",
+    "Learned colours start fresh: run the bench twice."
+   ]
+  },
+  {
    "id": 256,
    "date": "2026-11-16",
    "where": [

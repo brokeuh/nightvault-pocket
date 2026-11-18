@@ -1,7 +1,7 @@
 {
- "version": "2026-11-18 12:31",
+ "version": "2026-11-18 13:21",
  "notes": [
-  "Bench colours keep the black border black"
+  "Bench colours freeze after two runs"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "e4d898dfc0db74d9c0e0b7f80adc0f708d6287c133fb2d0fd1d028937d6767da"
+   "sha256": "61c4ce0943a92e24b8da7433899689e17a063f65f4cc2a8169ec90db334008e7"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -54,7 +54,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "c1cae411c5badfa05af433e4d792c3b80930816730f4daad3763a13b6e111928"
+   "sha256": "55337a95d6875eb4c9927262f2f27b8a301c3cd081d9e778bed8a6a5016120d1"
   },
   {
    "name": "vault_un7z.py",
