@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 261,
+   "date": "2026-11-18",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Card maker: double-faced strip fixed, colour learning off",
+   "items": [
+    "Double-faced (MDFC) cards: the strip on the front now shows only the back type and a short line (mana ability or cost) instead of the whole back text, so nothing overlaps.",
+    "The bench no longer learns colours (it made frames worse); frames are drawn as they are."
+   ]
+  },
+  {
    "id": 260,
    "date": "2026-11-16",
    "where": [

@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261118-n92";
+const UI_BUILD = "20261118-n93";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -2796,7 +2796,8 @@ function mtgStyleBind(){
 // Tone: Scryfall's pictures differ a little in colour from the community frames. The test bench learns, per frame and per colour channel, a straight-line fit (real = gain x ours + lift) and the frames are drawn with it (frame only, not art or text).
 const mtgToneKey = S => (S.style || (mtgPsUsed(S) ? 'proxyshop' : 'modern')) + '|' + (S.style ? (S._ps ? 'ps' : '') + (S.sframe | 0) : (S.frame || 'W'));
 const mtgToneAll = () => { try{ return JSON.parse(localStorage.getItem('nv_mtg_tone8') || '{}') }catch(e){ return {} } };
-function mtgToned(img, S){ if(S._ps || (!S.style && mtgPsUsed(S))) return img;   // Proxyshop frames are drawn as they are: the learned colours (made for the built-in frames) made them olive
+const MTG_TONE_ON = false;      // colour learning is switched off: it never gave a stable gain (see plans/onepiece-templates.md)
+function mtgToned(img, S){ if(!MTG_TONE_ON || S._ps || (!S.style && mtgPsUsed(S))) return img;   // Proxyshop frames are drawn as they are: the learned colours (made for the built-in frames) made them olive
   const t = img && mtgToneAll()[mtgToneKey(S)]; if(!t || S.tone === false) return img; const q = document.createElement('canvas'); q.width = img.width; q.height = img.height; const x = q.getContext('2d'); x.drawImage(img, 0, 0);
   x.globalCompositeOperation = 'multiply'; x.fillStyle = `rgb(${t.map(v => Math.round(Math.max(0, Math.min(1, v[0])) * 255)).join(',')})`; x.fillRect(0, 0, q.width, q.height);
   x.globalCompositeOperation = 'lighter'; x.fillStyle = `rgb(${t.map(v => Math.round(Math.max(0, Math.min(255, v[1])))).join(',')})`; x.fillRect(0, 0, q.width, q.height);
@@ -2804,7 +2805,7 @@ function mtgToned(img, S){ if(S._ps || (!S.style && mtgPsUsed(S))) return img;  
   return q }
 let MTG_RUN = 0;      // set at the start of every test bench run
 const mtgToneN = () => { try{ return JSON.parse(localStorage.getItem('nv_mtg_tonen8') || '{}') }catch(e){ return {} } };
-function mtgToneLearn(S, pa, pb, w, h, A){ const key = mtgToneKey(S), cnt = mtgToneN(), ck = cnt[key] || {n: 0, run: 0}; if(ck.n >= 2 && ck.run !== MTG_RUN) return mtgToneAll()[key] || null;   // frozen after two bench runs (more runs made the colours drift)
+function mtgToneLearn(S, pa, pb, w, h, A){ if(!MTG_TONE_ON) return null; const key = mtgToneKey(S), cnt = mtgToneN(), ck = cnt[key] || {n: 0, run: 0}; if(ck.n >= 2 && ck.run !== MTG_RUN) return mtgToneAll()[key] || null;   // frozen after two bench runs (more runs made the colours drift)
   const old = mtgToneAll()[key] || [[1, 0], [1, 0], [1, 0]], res = [];
   for(let k = 0; k < 3; k++){ const xs = [], ys = [];
     for(let y = 3; y < h - 3; y += 1) for(let x = 3; x < w - 3; x += 1){ if(x >= A[0] - 2 && x <= A[2] + 2 && y >= A[1] - 2 && y <= A[3] + 2) continue; const i = (y * w + x) * 4 + k; xs.push(pa[i]); ys.push(pb[i]) }
@@ -2949,7 +2950,9 @@ async function mtgFromScry(c, tick){
   if(S.style && b){ if(c.layout === 'adventure'){ S.ex.rules2 = S.rules; S.rules = mtgPrinted(c, b); S.ex.mana2 = b.mana_cost || ''; S.ex.title2 = b.name || ''; S.ex.type2 = b.type_line || '' }
     else if(c.layout === 'split'){ S.ex.title2 = S.name; S.ex.mana2 = S.cost; S.ex.type2 = S.type; S.ex.rules2 = S.rules; S.name = b.name || ''; S.cost = b.mana_cost || ''; S.type = b.type_line || ''; S.rules = mtgPrinted(c, b) }   // Card Conjurer: main = right half
     else if(c.layout === 'flip'){ S.ex.title2 = b.name || ''; S.ex.type2 = b.type_line || ''; S.ex.rules2 = b.oracle_text || ''; S.ex.pt2 = b.power ? b.power + '/' + b.toughness : '' }
-    else if(c.layout === 'modal_dfc'){ S.ex.flipsideType = b.type_line || ''; S.ex.flipSideReminder = b.oracle_text || '' } }
+    else if(c.layout === 'modal_dfc'){ S.ex.flipsideType = b.type_line || '';
+      // the strip on the front shows only the type and a short line: a land's mana ability, otherwise the mana cost (not the whole back text)
+      const mana = String(b.oracle_text || '').split('\n').find(l => /^\{T\}.*: Add /i.test(l) || /^\{T\}: Add/i.test(l)) || ''; S.ex.flipSideReminder = /land/i.test(b.type_line || '') ? mana : (b.mana_cost || '') } }
   if(S.style && (style === 'PlaneswalkerRegular' || style === 'PlaneswalkerBorderless' || style === 'PlaneswalkerBoxTopper' || style === 'SagaRegular')){ let ls = lines.map(l => mtgPrinted(c, {oracle_text:l, name:c.name})); if(style === 'SagaRegular' && ls[0] && ls[0][0] === '('){ S.ex.reminder = ls.shift(); S.saga = ls.slice(0, 4).map(l => Math.min(3, Math.max(1, (l.split(/\s*[—-]\s*/)[0].match(/[IVX]+/g) || []).length))) } S.pwCost = []; ls.slice(0, 4).forEach((l, i) => { if(style !== 'SagaRegular'){ const m = l.match(/^([+\u2212\u2013\-]?\s*(?:\d+|X))\s*:\s*([\s\S]*)$/); S.pwCost[i] = m ? m[1].replace(/[\u2212\u2013]/g, '-').replace(/\s/g, '') : ''; if(m) l = m[2] } S.ex['ability' + i] = style === 'SagaRegular' ? l.replace(/^[IVX, ]+\s*[—-]\s*/, '') : l }); S.rules = '' }
   if(S.style && style === 'Class'){ let lv = 0; const body = [[]]; lines.forEach(l => { const m = l.match(/^(.*):\s*Level (\d)$/); if(m){ lv = +m[2] - 1; body[lv] = []; S.ex['level' + lv + 'a'] = m[1]; S.ex['level' + lv + 'b'] = 'Level ' + m[2] } else (body[lv] = body[lv] || []).push(mtgPrinted(c, {oracle_text:l, name:c.name})) }); body.forEach((b, i) => { S.ex['level' + i + 'c'] = b.join('\n') }); S.rules = '' }
   if(S.style && style === 'Levelers'){ const L = lines.map(l => mtgPrinted(c, {oracle_text:l, name:c.name})), i0 = L.findIndex(l => /^LEVEL \d/i.test(l)); if(i0 >= 0){ S.rules = L.slice(0, i0).join('\n'); const segs = []; let cur = null; L.slice(i0).forEach(l => { const m = l.match(/^LEVEL (\d+)(?:-(\d+)|\+)/i); if(m){ cur = {label: m[2] ? m[1] + '-' + m[2] : m[1] + '+', text:[], pt:''}; segs.push(cur) } else if(/^\d+\/\d+$/.test(l)) cur.pt = l; else cur.text.push(l) }); segs.slice(0, 2).forEach((sg, i) => { const n = i + 2; S.ex['level' + n] = 'LEVEL\n' + sg.label; S.ex['rules' + n] = sg.text.join('\n'); S.ex['pt' + n] = sg.pt }) } }
