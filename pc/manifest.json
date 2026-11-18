@@ -1,7 +1,7 @@
 {
- "version": "2026-11-17 14:56",
+ "version": "2026-11-18 09:44",
  "notes": [
-  "Proxyshop frames automatic for gold; bench colour fix reverted"
+  "Proxyshop import: skip already imported"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "f068ca59604a5fff303ce1c8c36ffe4df3209ec8e2565f6c76c3bc16d16b4c96"
+   "sha256": "90f6e180916cf8d6d8c12ffa56147d3e37f77e3a3d6697d2a5622af30e36122f"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -54,7 +54,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "50536ac97a04c3e3d6120740d070256594010caa279c46c96ed42c9903fe5a2b"
+   "sha256": "31720781a7f568cbd2cb699f678e027c6e45c87d6eef3b3877313eb669442e22"
   },
   {
    "name": "vault_un7z.py",

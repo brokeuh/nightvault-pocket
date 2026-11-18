@@ -200,6 +200,10 @@ def psp_worker(items):
     for t in items:
         PSP["cur"] = t.get("name", "")
         PSP["pct"] = 0.0
+        if t.get("skip_done") and (vpp.pack_dir(TEMPLATE_DIR, t.get("name", "")) / "layers.json").is_file():
+            PSP["log"].append("%s: already imported, skipped" % t.get("name"))
+            PSP["done"] += 1
+            continue
         try:
             n = vpp.import_one(t, TEMPLATE_DIR, lambda p: PSP.__setitem__("pct", round(p, 3)))
             PSP["log"].append("%s: %d pictures saved" % (t.get("name"), n))
@@ -211,7 +215,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261117-n83"   # the page and the program must carry the same build id
+BUILD = "20261118-n84"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -6564,7 +6568,10 @@ class Handler(BaseHTTPRequestHandler):
             fo = Path(q.get("folder", "").strip().strip('"'))
             if not fo.is_dir():
                 return self._error(404, "That folder is not here")
-            return self._send(200, dict(items=vpp.find_templates(fo)))
+            items = vpp.find_templates(fo)
+            for t in items:
+                t["done"] = t["kind"] != "error" and (vpp.pack_dir(TEMPLATE_DIR, t["name"]) / "layers.json").is_file()
+            return self._send(200, dict(items=items))
         if path == "/api/template/ps_status":
             return self._send(200, dict(PSP))
         if path == "/api/template/ps_packs":

@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261117-n83";
+const UI_BUILD = "20261118-n84";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -3434,18 +3434,19 @@ function tpPresetsHTML(){
   return `<style>.tptile{background:var(--panel2,#1a2030);border:1px solid var(--line,#2a3142);border-radius:12px;padding:8px;cursor:pointer;color:inherit;text-align:center;font:inherit}.tptile:hover{border-color:var(--accent,#7aa2f7);transform:translateY(-2px)}.tpth{aspect-ratio:1000/1398;background:#2a2f3a;border-radius:8px;overflow:hidden}.tpth img{width:100%;height:100%;object-fit:cover;display:block}.tpl{margin-top:6px;font-size:13px}.tpdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;border:1px solid rgba(255,255,255,.4)}</style>` + h;
 }
 // ---- Proxyshop template import: reads the PSD / zip / 7z templates on this PC and saves their layers as a small frame pack
-const PSI = {items: [], folder: '', timer: null};
+const PSI = {items: [], folder: '', timer: null, skip: true};
 async function viewPsImport(){
   let packs = []; try{ packs = (await api('/api/template/ps_packs?t=' + TOKEN)).packs }catch(e){}
   let st = {}; try{ st = await api('/api/template/ps_status?t=' + TOKEN) }catch(e){}
-  const row = (t, i) => `<label class="row" style="display:flex;gap:8px;align-items:center;padding:3px 0"><input type="checkbox" data-psi="${i}" ${t.kind === 'error' ? 'disabled' : 'checked'}> <b>${esc(t.name)}</b> <span class="sub">${t.kind === 'error' ? esc(t.error) : esc(t.kind.toUpperCase()) + ' · ' + fmtSize(t.size) + ' · ' + esc(t.path.split(/[\\/]/).pop())}</span></label>`;
+  const row = (t, i) => `<label class="row" style="display:flex;gap:8px;align-items:center;padding:3px 0"><input type="checkbox" data-psi="${i}" ${t.kind === 'error' || (PSI.skip && t.done) ? (t.kind === 'error' ? 'disabled' : '') : 'checked'}> <b>${esc(t.name)}</b>${t.done ? ' <span class="sub" style="color:var(--ok,#6c6)">&#10003; already imported</span>' : ''} <span class="sub">${t.kind === 'error' ? esc(t.error) : esc(t.kind.toUpperCase()) + ' · ' + fmtSize(t.size) + ' · ' + esc(t.path.split(/[\\/]/).pop())}</span></label>`;
   $('#main').innerHTML = `<div class="head"><h1>Proxyshop import</h1><span class="sub">Reads your Proxyshop templates (PSD, or inside a zip / 7z) on this PC and saves the card frames from them. Nothing is uploaded and Photoshop is not needed.</span></div>
   <div class="panel"><div class="bar"><input type="text" id="psifolder" placeholder="Folder with your templates, e.g. C:\\Proxyshop\\templates" style="flex:1;min-width:260px" value="${esc(PSI.folder)}"><button class="btn primary" id="psifind"><i class="ti ti-search"></i>Look for templates</button></div>
-  <div id="psilist">${PSI.items.length ? PSI.items.map(row).join('') + `<div class="bar" style="margin-top:8px"><button class="btn primary" id="psigo"><i class="ti ti-download"></i>Import the ticked ones</button><span class="sub">A big template takes a minute or two; it is unpacked one file at a time and the temporary copy is deleted again.</span></div>` : '<p class="hint">Type or paste the folder and press the button. Subfolders are searched too.</p>'}</div>
+  <div id="psilist">${PSI.items.length ? PSI.items.map(row).join('') + `<div class="bar" style="margin-top:8px"><label class="hint"><input type="checkbox" id="psiskip" ${PSI.skip ? 'checked' : ''}> Skip already imported</label><button class="btn primary" id="psigo"><i class="ti ti-download"></i>Import the ticked ones</button><span class="sub">A big template takes a minute or two; it is unpacked one file at a time and the temporary copy is deleted again.</span></div>` : '<p class="hint">Type or paste the folder and press the button. Subfolders are searched too.</p>'}</div>
   <div id="psistat"></div></div>
   <div class="panel"><h3 style="margin-top:0">Imported on this PC</h3>${packs.length ? packs.map(p => `<div>${esc(p.name)} <span class="sub">${p.pictures} pictures</span></div>`).join('') : '<p class="hint">Nothing yet.</p>'}</div>`;
   $('#psifind').onclick = async () => { PSI.folder = $('#psifolder').value.trim(); if(!PSI.folder) return; $('#psilist').innerHTML = '<i class="ti ti-loader-2"></i> Looking ...'; try{ PSI.items = (await api('/api/template/ps_find?folder=' + encodeURIComponent(PSI.folder) + '&t=' + TOKEN)).items }catch(e){ PSI.items = []; toast(e.message, true) } viewPsImport() };
-  if($('#psigo')) $('#psigo').onclick = async () => { const pick = $$('[data-psi]').filter(c => c.checked).map(c => PSI.items[+c.dataset.psi]); if(!pick.length) return; try{ await api('/api/template/ps_import', {items: pick}); psiWatch() }catch(e){ toast(e.message, true) } };
+  if($('#psiskip')) $('#psiskip').onchange = e => { PSI.skip = e.target.checked; $$('[data-psi]').forEach(c => { const t = PSI.items[+c.dataset.psi]; if(t.kind !== 'error') c.checked = !(PSI.skip && t.done) }) };
+  if($('#psigo')) $('#psigo').onclick = async () => { const pick = $$('[data-psi]').filter(c => c.checked).map(c => Object.assign({}, PSI.items[+c.dataset.psi], {skip_done: PSI.skip})); if(!pick.length) return; try{ await api('/api/template/ps_import', {items: pick}); psiWatch() }catch(e){ toast(e.message, true) } };
   if(st.busy) psiWatch();
 }
 function psiWatch(){

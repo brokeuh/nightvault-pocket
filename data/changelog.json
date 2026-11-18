@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 252,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Proxyshop import: skip already imported",
+   "items": [
+    "Templates that are already imported are marked 'already imported' and left unticked.",
+    "New 'Skip already imported' tick box: on by default; untick it to import everything again."
+   ]
+  },
+  {
    "id": 251,
    "date": "2026-11-16",
    "where": [
