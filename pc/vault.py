@@ -215,7 +215,7 @@ TOOLS_DIR = mc.DB_PATH.parent / "nightvault_tools"          # tools Nightvault d
 NV_UA = "Nightvault/0.1 (personal collection tracker)"
 UI_FILE = HERE / "vault_ui.html"
 VERSION = "0.1 test build"
-BUILD = "20261118-n89"   # the page and the program must carry the same build id
+BUILD = "20261118-n90"   # the page and the program must carry the same build id
 
 # --------------------------------------------------------------------------- #
 # Collections (the list in the sidebar).  Every collection has a KIND: what it behaves like.
@@ -5113,8 +5113,37 @@ _SCRY_LOCK = threading.Lock()
 _SCRY_LAST = [0.0]
 
 
+SCRY_CACHE = mc.DB_PATH.parent / "vault_scry_cache"     # every Scryfall answer and picture is kept here, so the test bench and the card maker do not download the same card again
+
+
+def _scry_cache_path(url):
+    import hashlib
+    return SCRY_CACHE / (hashlib.sha1(url.encode("utf-8")).hexdigest() + ".bin")
+
+
 def _scry_fetch(url, timeout=25):
-    """Scryfall asks for at most ~10 requests a second and answers 429 when we go faster: space the calls out and retry a few times."""
+    """Scryfall asks for at most ~10 requests a second and answers 429 when we go faster: space the calls out and retry a few times.
+    Answers are cached on disk: pictures for good, card data for 30 days, searches for 3 days."""
+    import time
+    cp = _scry_cache_path(url)
+    keep = 30 * 86400 if "/cards/" in url and "/search" not in url else 3 * 86400 if "/search" in url else 10 * 365 * 86400
+    try:
+        if cp.is_file() and time.time() - cp.stat().st_mtime < keep:
+            return cp.read_bytes()
+    except OSError:
+        pass
+    data = _scry_fetch_net(url, timeout)
+    try:
+        SCRY_CACHE.mkdir(parents=True, exist_ok=True)
+        tmp = cp.with_suffix(".tmp")
+        tmp.write_bytes(data)
+        tmp.replace(cp)
+    except OSError:
+        pass
+    return data
+
+
+def _scry_fetch_net(url, timeout=25):
     import time
     err = None
     for attempt in range(5):

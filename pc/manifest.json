@@ -1,7 +1,7 @@
 {
- "version": "2026-11-18 13:21",
+ "version": "2026-11-18 15:53",
  "notes": [
-  "Bench colours freeze after two runs"
+  "Scryfall cache on disk"
  ],
  "files": [
   {
@@ -10,7 +10,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "61c4ce0943a92e24b8da7433899689e17a063f65f4cc2a8169ec90db334008e7"
+   "sha256": "32a272f12fbbcc23dde280eca4d30471ac8769c2e71203c2cd6d562053b78608"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -54,7 +54,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "55337a95d6875eb4c9927262f2f27b8a301c3cd081d9e778bed8a6a5016120d1"
+   "sha256": "2ebc5de98c97d6b784070e4572f18cc3e40b10f1385b44a698691b57c23838f3"
   },
   {
    "name": "vault_un7z.py",

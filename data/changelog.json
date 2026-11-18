@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 258,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Magic test bench: cards are kept on your PC",
+   "items": [
+    "Scryfall answers and card pictures are now saved in a folder next to the program (vault_scry_cache), so the test bench and the card maker download each card only once. Card data is refreshed after 30 days, searches after 3.",
+    "The second and later bench runs are much faster and work offline for cards already seen."
+   ]
+  },
+  {
    "id": 257,
    "date": "2026-11-16",
    "where": [
