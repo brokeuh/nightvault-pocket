@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 259,
+   "date": "2026-11-16",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Test bench: the outer card border is never colour-corrected",
+   "items": [
+    "The learned colour correction now leaves the outer card border alone (both when drawing and when learning), so the black border can no longer turn olive or grey.",
+    "Learned colours start fresh: run the bench twice."
+   ]
+  },
+  {
    "id": 258,
    "date": "2026-11-16",
    "where": [
