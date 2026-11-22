@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 265,
+   "date": "2026-11-22",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Print proxies: the empty 9-pocket page also shows before any cards are downloaded",
+   "items": [
+    "Without downloaded card pictures, Print proxies now shows the empty 9 pockets with a hint, instead of only a \"no cards\" message."
+   ]
+  },
+  {
    "id": 264,
    "date": "2026-11-22",
    "where": [

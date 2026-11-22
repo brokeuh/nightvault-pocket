@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261122-n96";
+const UI_BUILD = "20261122-n97";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -5651,7 +5651,7 @@ async function viewProxy(){
   $('#main').innerHTML = '<div class="empty">Loading ...</div>';
   let g; try{ g = await api('/api/cardhub/games') }catch(e){ $('#main').innerHTML = `<div class="empty">${esc(e.message)}</div>`; return }
   PX.games = g.games.filter(x => x.cards > 0);
-  if(!PX.games.length){ $('#main').innerHTML = `<div class="head"><h1>Print proxies</h1></div><div class="empty">There are no cards to print yet.<br>Download card images on a game page, or load the demo cards.<br><a class="btn primary" href="#/library/card">Go to Cards</a></div>`; return }
+  if(!PX.games.length){ const L0 = pxLayout(), q0 = (x, w) => `${(x / w * 100).toFixed(3)}%`; $('#main').innerHTML = `<div class="head"><h1>Print proxies</h1></div><div class="empty" style="margin-bottom:14px">There are no card pictures to print yet.<br>Download card images on a game page, or load the demo cards, and these pockets fill up (you can mix games on one sheet).<br><a class="btn primary" href="#/library/card">Go to Cards</a></div><div class="sheet" style="aspect-ratio:${L0.pw} / ${L0.ph};max-width:520px;margin:0 auto">` + Array.from({length:L0.per}, (x, k) => { const col = k % L0.cols, row = Math.floor(k / L0.cols); return `<div style="position:absolute;display:flex;align-items:center;justify-content:center;color:#999;font-size:22px;border:1px dashed #bbb;box-sizing:border-box;left:${q0(L0.ox + col * (L0.cellW + L0.gap) + L0.b, L0.pw)};top:${q0(L0.oy + row * (L0.cellH + L0.gap) + L0.b, L0.ph)};width:${q0(L0.cw, L0.pw)};height:${q0(L0.ch, L0.ph)}">${k + 1}</div>` }).join('') + '</div>'; return }
   if(!PX.game){ try{ const s = JSON.parse(localStorage.getItem('vault.proxy.deck') || 'null'); if(s && PX.games.some(x => x.id === s.game)){ PX.game = s.game; PX.restore = s.entries } }catch(e){} }
   if(!PX.games.some(x => x.id === PX.game)) PX.game = (PX.games.find(x => x.id === 'mtg') || PX.games[0]).id;
   PX.gameObj = PX.games.find(x => x.id === PX.game);
