@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 269,
+   "date": "2026-11-22",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Print proxies: shift the print left/right and up/down",
+   "items": [
+    "New \"Shift right (mm)\" and \"Shift down (mm)\" in the sheet settings, to correct a printer that prints a bit off to one side. Cards, bleed and cut marks all move together."
+   ]
+  },
+  {
    "id": 268,
    "date": "2026-11-22",
    "where": [

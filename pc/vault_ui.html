@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261122-n100";
+const UI_BUILD = "20261122-n101";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -5484,7 +5484,7 @@ $$('#modelv [data-view]').forEach(b => b.onclick = () => resetView(b.dataset.vie
 /* ---------------------------------------------------------------- proxy printer */
 const PAPERS = {a4:[210, 297, 'A4'], letter:[215.9, 279.4, 'Letter'], legal:[215.9, 355.6, 'Legal'], a3:[297, 420, 'A3']};
 const PX = {game:'', games:[], gameObj:null, entries:[], decks:[], backFile:null, page:0, showPrev:true, busy:false,
-  cfg:Object.assign({paper:'a4', cw:63, ch:88, scale:100, bleed:0, fill:'extend', gap:0, margin:8, guides:'ticks', dpi:300, backs:false, dfc:true, prefer:'owned'},
+  cfg:Object.assign({paper:'a4', cw:63, ch:88, scale:100, bleed:0, fill:'extend', gap:0, margin:8, guides:'ticks', dpi:300, backs:false, dfc:true, prefer:'owned', offx:0, offy:0},
                     (() => {try{ return JSON.parse(localStorage.getItem('vault.proxy.cfg') || '{}') }catch(e){ return {} }})())};
 const pxSave = () => {try{ localStorage.setItem('vault.proxy.cfg', JSON.stringify(PX.cfg)); localStorage.setItem('vault.proxy.deck', JSON.stringify({game:PX.game, entries:PX.entries.filter(e => !pxIsLoose(e)).map(pxStore)})) }catch(e){}};
 const pxIsLoose = e => !!(e.cands && e.cands[0] && e.cands[0].kind === 'loose');
@@ -5575,7 +5575,7 @@ async function pxRender(img, L, dpi, fill){
 }
 const ptMM = mm => (mm * 72 / 25.4).toFixed(2);
 function pxPageOps(L, n, imgIdx, mirrored){
-  let ops = '';
+  let ops = `q 1 0 0 1 ${ptMM(+PX.cfg.offx || 0)} ${ptMM(-(+PX.cfg.offy || 0))} cm\n`;      // printer shift: everything on the page moves by the same amount
   const usedCols = Math.min(L.cols, n), usedRows = Math.ceil(n / L.cols), mx = x => mirrored ? L.pw - x : x;
   for(let i = 0; i < n; i++){
     const col = i % L.cols, row = Math.floor(i / L.cols), x0 = L.ox + col * (L.cellW + L.gap), y0 = L.ph - (L.oy + row * (L.cellH + L.gap)) - L.cellH, x = mirrored ? L.pw - x0 - L.cellW : x0;
@@ -5594,6 +5594,7 @@ function pxPageOps(L, n, imgIdx, mirrored){
     for(let c = 0; c < usedCols - 1; c++){ const x = left + c * (L.cellW + L.gap) + L.cellW + L.gap / 2; ops += line(x, top, x, bottom) }
     for(let r = 0; r < usedRows - 1; r++){ const y = L.ph - (L.oy + r * (L.cellH + L.gap) + L.cellH + L.gap / 2); ops += line(left, y, right, y) }
   }
+  ops += 'Q\n';
   return ops;
 }
 function pdfBuild(pages, imgs, pwMM, phMM){
@@ -5676,6 +5677,7 @@ async function viewProxy(){
       <label>Card width (mm)<input type="number" step="0.5" min="20" max="200" data-cfg="cw"></label><label>Card height (mm)<input type="number" step="0.5" min="20" max="280" data-cfg="ch"></label>
       <label>Scale (%)<input type="number" step="1" min="80" max="120" data-cfg="scale"></label><label>Gap between cards (mm)<input type="number" step="0.5" min="0" max="20" data-cfg="gap"></label>
       <label>Bleed (mm)<input type="number" step="0.5" min="0" max="6" data-cfg="bleed"></label><label>Bleed fill<select data-cfg="fill"><option value="extend">Stretch the edges</option><option value="black">Black</option><option value="white">White</option></select></label>
+      <label>Shift right (mm)<input type="number" step="0.5" min="-20" max="20" data-cfg="offx" title="Printer prints too far left? Use a plus number. Too far right? A minus number."></label><label>Shift down (mm)<input type="number" step="0.5" min="-20" max="20" data-cfg="offy" title="Printer prints too high? Use a plus number. Too low? A minus number."></label>
       <label>Page margin (mm)<input type="number" step="1" min="0" max="30" data-cfg="margin"></label><label>Cut guides<select data-cfg="guides"><option value="ticks">Marks in the margin</option><option value="lines">Lines between cards</option><option value="both">Both</option><option value="none">None</option></select></label></div>
       <label class="pxchk"><input type="checkbox" data-cfg="dfc"> Print the back face of double-faced cards too</label>
       <label class="pxchk"><input type="checkbox" data-cfg="backs"> Add card-back pages for double-sided printing</label>
