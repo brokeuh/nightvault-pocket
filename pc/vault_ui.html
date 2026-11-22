@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261118-n94";
+const UI_BUILD = "20261122-n95";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -5340,7 +5340,8 @@ function deckViewPC(d){
   $('#dpaste').onclick = () => {
     modal(`<h3>Paste a deck list</h3><p class="hint" style="margin-top:0">One card per line, like <b>4 Lightning Bolt</b> or <b>2x Monkey.D.Luffy (OP01) 3</b>. A line “Sideboard” puts the cards after it in the sideboard. Cards are found in the cards you downloaded.</p>
       <textarea id="dli" rows="12" placeholder="4 Lightning Bolt\n2 Counterspell\n\nSideboard\n1 Pyroblast"></textarea>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="dlok">Add to deck</button></div>`);
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><label class="btn" style="margin:0 auto 0 0"><i class="ti ti-upload"></i>From a file…<input type="file" id="dlfile" accept=".txt,.dec,.dek,.csv,text/plain" hidden></label><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="dlok">Add to deck</button></div>`);
+    $('#dlfile').onchange = async e => { const f = e.target.files[0]; if(!f) return; try{ $('#dli').value = await f.text() }catch(x){ toast('Could not read that file', true) } };
     $('#dlok').onclick = async () => { $('#dlok').disabled = true; let res; try{ res = await api('/api/decks/resolve', {game:d.game, text:$('#dli').value}) }catch(e){ toast(e.message, true); $('#dlok').disabled = false; return }
       let ok = 0; for(const c of res.cards){ const k = `${c.m.set}|${c.m.number}`; let x = d.cards.find(y => y.k === k && !!y.side === c.side);
         if(!x){ x = {k, n:0, side:c.side, own:c.m.own || 0, m:Object.assign({}, c.m)}; delete x.m.own; delete x.m.local; delete x.m.released; d.cards.push(x) } x.n += c.n; ok += c.n }

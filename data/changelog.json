@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 263,
+   "date": "2026-11-22",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Decks: load a deck list from a text file",
+   "items": [
+    "In Cards > Decks, \"Paste a deck list\" now has a \"From a file…\" button for .txt, .dec, .dek and .csv lists you downloaded."
+   ]
+  },
+  {
    "id": 262,
    "date": "2026-11-18",
    "where": [
