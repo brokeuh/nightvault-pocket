@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261122-n102";
+const UI_BUILD = "20261122-n103";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -5484,7 +5484,7 @@ $$('#modelv [data-view]').forEach(b => b.onclick = () => resetView(b.dataset.vie
 /* ---------------------------------------------------------------- proxy printer */
 const PAPERS = {a4:[210, 297, 'A4'], letter:[215.9, 279.4, 'Letter'], legal:[215.9, 355.6, 'Legal'], a3:[297, 420, 'A3']};
 const PX = {game:'', games:[], gameObj:null, entries:[], decks:[], backFile:null, page:0, showPrev:true, busy:false,
-  cfg:Object.assign({paper:'a4', cw:63, ch:88, scale:100, bleed:0, fill:'extend', gap:0, margin:8, guides:'ticks', dpi:300, backs:false, dfc:true, prefer:'owned', offx:0, offy:0},
+  cfg:Object.assign({paper:'a4', cw:63, ch:88, scale:100, bleed:0, fill:'extend', gap:0, margin:8, guides:'ticks', dpi:300, backs:false, dfc:true, prefer:'owned', offx:0, offy:0, gcolor:'#000000', gpat:'solid', gw:0.1, outline:false},
                     (() => {try{ return JSON.parse(localStorage.getItem('vault.proxy.cfg') || '{}') }catch(e){ return {} }})())};
 const pxSave = () => {try{ localStorage.setItem('vault.proxy.cfg', JSON.stringify(PX.cfg)); localStorage.setItem('vault.proxy.deck', JSON.stringify({game:PX.game, entries:PX.entries.map(pxStore)})) }catch(e){}};
 const pxIdb = () => new Promise((res, rej) => { const r = indexedDB.open('nvProxyLoose', 1); r.onupgradeneeded = () => r.result.createObjectStore('pics', {keyPath:'id'}); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error) });
@@ -5579,23 +5579,29 @@ async function pxRender(img, L, dpi, fill){
   return {data:new Uint8Array(await blob.arrayBuffer()), w:W, h:H};
 }
 const ptMM = mm => (mm * 72 / 25.4).toFixed(2);
+const pxRgb = c => { const m = /^#?([0-9a-f]{6})$/i.exec(c || ''), v = m ? parseInt(m[1], 16) : 0; return [(v >> 16) & 255, (v >> 8) & 255, v & 255].map(x => (x / 255).toFixed(3)).join(' ') };
+function pxStroke(){          // colour, thickness and pattern of every cut guide
+  const c = PX.cfg, w = Math.max(0.03, +c.gw || 0.1), pat = c.gpat === 'dashed' ? `[${ptMM(1.4)} ${ptMM(0.9)}] 0 d 0 J` : c.gpat === 'dotted' ? `[0 ${ptMM(Math.max(0.7, w * 2.5))}] 0 d 1 J` : '[] 0 d 0 J';
+  return `${pxRgb(c.gcolor)} RG ${ptMM(w)} w ${pat}\n` }
 function pxPageOps(L, n, imgIdx, mirrored){
   let ops = `q 1 0 0 1 ${ptMM(+PX.cfg.offx || 0)} ${ptMM(-(+PX.cfg.offy || 0))} cm\n`;      // printer shift: everything on the page moves by the same amount
   const usedCols = Math.min(L.cols, n), usedRows = Math.ceil(n / L.cols), mx = x => mirrored ? L.pw - x : x;
+  const rects = [];
   for(let i = 0; i < n; i++){
     const col = i % L.cols, row = Math.floor(i / L.cols), x0 = L.ox + col * (L.cellW + L.gap), y0 = L.ph - (L.oy + row * (L.cellH + L.gap)) - L.cellH, x = mirrored ? L.pw - x0 - L.cellW : x0;
-    ops += `q ${ptMM(L.cellW)} 0 0 ${ptMM(L.cellH)} ${ptMM(x)} ${ptMM(y0)} cm /Im${imgIdx[i]} Do Q\n`;
+    ops += `q ${ptMM(L.cellW)} 0 0 ${ptMM(L.cellH)} ${ptMM(x)} ${ptMM(y0)} cm /Im${imgIdx[i]} Do Q\n`; rects.push([x + L.b, y0 + L.b]);
   }
+  if(PX.cfg.outline){ ops += pxStroke(); rects.forEach(([rx, ry]) => { ops += `${ptMM(rx)} ${ptMM(ry)} ${ptMM(L.cw)} ${ptMM(L.ch)} re S\n` }) }      // outline right on every card, at the cut edge
   const line = (x1, y1, x2, y2) => `${ptMM(mx(x1))} ${ptMM(y1)} m ${ptMM(mx(x2))} ${ptMM(y2)} l S\n`;
   const top = L.ph - L.oy, bottom = L.ph - (L.oy + usedRows * L.cellH + (usedRows - 1) * L.gap), left = L.ox, right = L.ox + usedCols * L.cellW + (usedCols - 1) * L.gap;
   const tv = Math.min(4, L.oy - 1.5 - 0.5), th = Math.min(4, L.ox - 1.5 - 0.5);      // tick length = the free paper really left around the cards
   if((PX.cfg.guides === 'ticks' || PX.cfg.guides === 'both') && (tv >= 1 || th >= 1)){
-    ops += '0 G 0.3 w\n';
+    ops += pxStroke();
     if(tv >= 1) for(let c = 0; c < usedCols; c++) for(const x of [left + c * (L.cellW + L.gap) + L.b, left + c * (L.cellW + L.gap) + L.b + L.cw]){ ops += line(x, top + 1.5, x, top + 1.5 + tv) + line(x, bottom - 1.5, x, bottom - 1.5 - tv) }
     if(th >= 1) for(let r = 0; r < usedRows; r++){ const yt = L.ph - (L.oy + r * (L.cellH + L.gap) + L.b); for(const y of [yt, yt - L.ch]){ ops += line(left - 1.5, y, left - 1.5 - th, y) + line(right + 1.5, y, right + 1.5 + th, y) } }
   }
   if((PX.cfg.guides === 'lines' || PX.cfg.guides === 'both') && L.gap > 0){
-    ops += '0.45 G 0.25 w\n';
+    ops += pxStroke();
     for(let c = 0; c < usedCols - 1; c++){ const x = left + c * (L.cellW + L.gap) + L.cellW + L.gap / 2; ops += line(x, top, x, bottom) }
     for(let r = 0; r < usedRows - 1; r++){ const y = L.ph - (L.oy + r * (L.cellH + L.gap) + L.cellH + L.gap / 2); ops += line(left, y, right, y) }
   }
@@ -5683,7 +5689,9 @@ async function viewProxy(){
       <label>Scale (%)<input type="number" step="1" min="80" max="120" data-cfg="scale"></label><label>Gap between cards (mm)<input type="number" step="0.5" min="0" max="20" data-cfg="gap"></label>
       <label>Bleed (mm)<input type="number" step="0.5" min="0" max="6" data-cfg="bleed"></label><label>Bleed fill<select data-cfg="fill"><option value="extend">Stretch the edges</option><option value="black">Black</option><option value="white">White</option></select></label>
       <label>Shift right (mm)<input type="number" step="0.5" min="-20" max="20" data-cfg="offx" title="Printer prints too far left? Use a plus number. Too far right? A minus number."></label><label>Shift down (mm)<input type="number" step="0.5" min="-20" max="20" data-cfg="offy" title="Printer prints too high? Use a plus number. Too low? A minus number."></label>
-      <label>Page margin (mm)<input type="number" step="1" min="0" max="30" data-cfg="margin"></label><label>Cut guides<select data-cfg="guides"><option value="ticks">Marks in the margin</option><option value="lines">Lines between cards</option><option value="both">Both</option><option value="none">None</option></select></label></div>
+      <label>Page margin (mm)<input type="number" step="1" min="0" max="30" data-cfg="margin"></label><label>Guide colour<input type="color" data-cfg="gcolor" style="height:34px;padding:2px"></label><label>Guide pattern<select data-cfg="gpat"><option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option></select></label>
+      <label>Guide thickness (mm)<input type="number" step="0.05" min="0.05" max="1" data-cfg="gw"></label><label style="display:flex;align-items:center;gap:6px;align-self:end"><input type="checkbox" data-cfg="outline"> Outline on every card</label>
+      <label>Cut guides<select data-cfg="guides"><option value="ticks">Marks in the margin</option><option value="lines">Lines between cards</option><option value="both">Both</option><option value="none">None</option></select></label></div>
       <label class="pxchk"><input type="checkbox" data-cfg="dfc"> Print the back face of double-faced cards too</label>
       <label class="pxchk"><input type="checkbox" data-cfg="backs"> Add card-back pages for double-sided printing</label>
       <div id="pxbackrow" style="margin:4px 0 0 22px"><label class="btn sm" style="margin:0"><i class="ti ti-photo-up"></i>Use my own back<input type="file" id="pxback" accept="image/*" hidden></label> <span class="muted" id="pxbackname" style="font-size:12.5px">a plain pattern is used</span></div>
@@ -5748,13 +5756,15 @@ function pxDraw(){
 }
 function pxGuidesHtml(L, n, pc){          // the same cut guides the PDF gets (marks in the margin and / or lines between cards)
   const g = PX.cfg.guides, uc = Math.min(L.cols, n), ur = Math.ceil(n / L.cols), top = L.oy, left = L.ox, right = L.ox + uc * L.cellW + (uc - 1) * L.gap, bottom = L.oy + ur * L.cellH + (ur - 1) * L.gap, tv = Math.min(4, L.oy - 2), th = Math.min(4, L.ox - 2);
-  const v = (x, y1, y2, col) => `<div style="position:absolute;left:${pc(x, L.pw)};top:${pc(y1, L.ph)};height:${pc(y2 - y1, L.ph)};border-left:1px solid ${col}"></div>`, h = (x1, x2, y, col) => `<div style="position:absolute;left:${pc(x1, L.pw)};top:${pc(y, L.ph)};width:${pc(x2 - x1, L.pw)};border-top:1px solid ${col}"></div>`; let o = '';
+  const gc = PX.cfg.gcolor || '#000000', gp = PX.cfg.gpat === 'dashed' ? 'dashed' : PX.cfg.gpat === 'dotted' ? 'dotted' : 'solid';
+  const v = (x, y1, y2) => `<div style="position:absolute;left:${pc(x, L.pw)};top:${pc(y1, L.ph)};height:${pc(y2 - y1, L.ph)};border-left:1px ${gp} ${gc}"></div>`, h = (x1, x2, y) => `<div style="position:absolute;left:${pc(x1, L.pw)};top:${pc(y, L.ph)};width:${pc(x2 - x1, L.pw)};border-top:1px ${gp} ${gc}"></div>`; let o = '';
+  if(PX.cfg.outline) for(let i = 0; i < n; i++){ const col = i % L.cols, row = Math.floor(i / L.cols); o += `<div style="position:absolute;box-sizing:border-box;left:${pc(L.ox + col * (L.cellW + L.gap) + L.b, L.pw)};top:${pc(L.oy + row * (L.cellH + L.gap) + L.b, L.ph)};width:${pc(L.cw, L.pw)};height:${pc(L.ch, L.ph)};border:1px ${gp} ${gc}"></div>` }
   if(g === 'ticks' || g === 'both'){
-    if(tv >= 1) for(let c = 0; c < uc; c++) for(const x of [left + c * (L.cellW + L.gap) + L.b, left + c * (L.cellW + L.gap) + L.b + L.cw]) o += v(x, top - 1.5 - tv, top - 1.5, '#000') + v(x, bottom + 1.5, bottom + 1.5 + tv, '#000');
-    if(th >= 1) for(let r = 0; r < ur; r++) for(const y of [L.oy + r * (L.cellH + L.gap) + L.b, L.oy + r * (L.cellH + L.gap) + L.b + L.ch]) o += h(left - 1.5 - th, left - 1.5, y, '#000') + h(right + 1.5, right + 1.5 + th, y, '#000') }
+    if(tv >= 1) for(let c = 0; c < uc; c++) for(const x of [left + c * (L.cellW + L.gap) + L.b, left + c * (L.cellW + L.gap) + L.b + L.cw]) o += v(x, top - 1.5 - tv, top - 1.5) + v(x, bottom + 1.5, bottom + 1.5 + tv);
+    if(th >= 1) for(let r = 0; r < ur; r++) for(const y of [L.oy + r * (L.cellH + L.gap) + L.b, L.oy + r * (L.cellH + L.gap) + L.b + L.ch]) o += h(left - 1.5 - th, left - 1.5, y) + h(right + 1.5, right + 1.5 + th, y) }
   if((g === 'lines' || g === 'both') && L.gap > 0){
-    for(let c = 0; c < uc - 1; c++) o += v(left + c * (L.cellW + L.gap) + L.cellW + L.gap / 2, top, bottom, '#777');
-    for(let r = 0; r < ur - 1; r++) o += h(left, right, L.oy + r * (L.cellH + L.gap) + L.cellH + L.gap / 2, '#777') }
+    for(let c = 0; c < uc - 1; c++) o += v(left + c * (L.cellW + L.gap) + L.cellW + L.gap / 2, top, bottom);
+    for(let r = 0; r < ur - 1; r++) o += h(left, right, L.oy + r * (L.cellH + L.gap) + L.cellH + L.gap / 2) }
   return o }
 function pxPreview(){
   const el = $('#pxprev'); if(!el) return; const L = pxLayout(), prints = pxPrints(), pages = Math.max(1, Math.ceil(prints.length / L.per)); PX.page = Math.min(PX.page, pages - 1);

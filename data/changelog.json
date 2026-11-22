@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 271,
+   "date": "2026-11-22",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Print proxies: guide colour, pattern, thickness and outline on every card",
+   "items": [
+    "New sheet settings: guide colour, pattern (solid, dashed, dotted) and thickness for the cut marks and lines.",
+    "New tick box \"Outline on every card\": draws the cut line right on each card at its edge, so you still see it when a program or the browser hides the margin marks."
+   ]
+  },
+  {
    "id": 270,
    "date": "2026-11-22",
    "where": [
