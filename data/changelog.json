@@ -3,6 +3,21 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 266,
+   "date": "2026-11-22",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Print proxies: load loose card pictures from your PC",
+   "items": [
+    "New button \"Add pictures from my PC\" (or click an empty pocket): pick several JPG/PNG/WEBP card pictures at once, from any game, and print a test page without downloading any set.",
+    "Works even before any card pictures are downloaded. Loose pictures are not kept when you close the page."
+   ]
+  },
+  {
    "id": 265,
    "date": "2026-11-22",
    "where": [

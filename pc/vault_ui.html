@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261122-n97";
+const UI_BUILD = "20261122-n98";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -5486,7 +5486,8 @@ const PAPERS = {a4:[210, 297, 'A4'], letter:[215.9, 279.4, 'Letter'], legal:[215
 const PX = {game:'', games:[], gameObj:null, entries:[], decks:[], backFile:null, page:0, showPrev:true, busy:false,
   cfg:Object.assign({paper:'a4', cw:63, ch:88, scale:100, bleed:0, fill:'extend', gap:0, margin:8, guides:'ticks', dpi:300, backs:false, dfc:true, prefer:'owned'},
                     (() => {try{ return JSON.parse(localStorage.getItem('vault.proxy.cfg') || '{}') }catch(e){ return {} }})())};
-const pxSave = () => {try{ localStorage.setItem('vault.proxy.cfg', JSON.stringify(PX.cfg)); localStorage.setItem('vault.proxy.deck', JSON.stringify({game:PX.game, entries:PX.entries.map(pxStore)})) }catch(e){}};
+const pxSave = () => {try{ localStorage.setItem('vault.proxy.cfg', JSON.stringify(PX.cfg)); localStorage.setItem('vault.proxy.deck', JSON.stringify({game:PX.game, entries:PX.entries.filter(e => !pxIsLoose(e)).map(pxStore)})) }catch(e){}};
+const pxIsLoose = e => !!(e.cands && e.cands[0] && e.cands[0].kind === 'loose');
 const pxStore = e => { const c = e.sel >= 0 ? e.cands[e.sel] : null; return {name:e.name, qty:e.qty, game:e.game || PX.game, pick: c ? (c.kind === 'custom' ? {kind:'custom', id:c.id} : {kind:'official', set:c.set, number:c.number}) : null} };
 const normNum = n => String(n).replace(/^0+(?=\d)/, '').toLowerCase();
 
@@ -5536,6 +5537,7 @@ async function pxResolveMixed(list){          // entries may come from different
 }
 const pxGameOf = c => (c && c.game) || PX.game, pxGameObjOf = c => PX.games.find(x => x.id === pxGameOf(c)) || PX.gameObj;
 function pxVisual(c){
+  if(c.kind === 'loose') return `<img src="${c.url}" alt="">`;
   if(c.kind === 'custom') return `<img loading="lazy" src="/proxyimg?id=${c.id}&t=${TOKEN}" alt="">`;
   if(c.image) return `<img loading="lazy" src="/cardfile?game=${enc(pxGameOf(c))}&set=${enc(c.set)}&n=${enc(c.number)}&t=${TOKEN}" alt="">`;
   return fakeCardSVG(Object.assign({}, c), pxGameObjOf(c));
@@ -5554,8 +5556,9 @@ function pxPrints(){          // every card that goes on the sheet, in order; do
     for(let k = 0; k < e.qty; k++){ out.push({e:i, c, face:'front', key:pxKey(c, 'front')}); if(PX.cfg.dfc && c.kind === 'official' && c.back) out.push({e:i, c, face:'back', key:pxKey(c, 'back')}) } });
   return out;
 }
-const pxKey = (c, face) => c.kind === 'custom' ? 'c' + c.id : `o:${pxGameOf(c)}:${c.set}:${c.number}:${face}`;
+const pxKey = (c, face) => c.kind === 'loose' ? 'l' + c.id : c.kind === 'custom' ? 'c' + c.id : `o:${pxGameOf(c)}:${c.set}:${c.number}:${face}`;
 function pxCardSrc(c, face, wpx, hpx){
+  if(c.kind === 'loose') return c.url;
   if(c.kind === 'custom') return `/proxyimg?id=${c.id}&t=${TOKEN}`;
   if(c.image) return `/cardfile?game=${enc(pxGameOf(c))}&set=${enc(c.set)}&n=${enc(c.number)}&t=${TOKEN}${face === 'back' ? '&face=back' : ''}`;
   const svg = fakeCardSVG(Object.assign({}, c), pxGameObjOf(c)).replace('<svg ', `<svg width="${wpx}" height="${hpx}" `);
@@ -5651,7 +5654,7 @@ async function viewProxy(){
   $('#main').innerHTML = '<div class="empty">Loading ...</div>';
   let g; try{ g = await api('/api/cardhub/games') }catch(e){ $('#main').innerHTML = `<div class="empty">${esc(e.message)}</div>`; return }
   PX.games = g.games.filter(x => x.cards > 0);
-  if(!PX.games.length){ const L0 = pxLayout(), q0 = (x, w) => `${(x / w * 100).toFixed(3)}%`; $('#main').innerHTML = `<div class="head"><h1>Print proxies</h1></div><div class="empty" style="margin-bottom:14px">There are no card pictures to print yet.<br>Download card images on a game page, or load the demo cards, and these pockets fill up (you can mix games on one sheet).<br><a class="btn primary" href="#/library/card">Go to Cards</a></div><div class="sheet" style="aspect-ratio:${L0.pw} / ${L0.ph};max-width:520px;margin:0 auto">` + Array.from({length:L0.per}, (x, k) => { const col = k % L0.cols, row = Math.floor(k / L0.cols); return `<div style="position:absolute;display:flex;align-items:center;justify-content:center;color:#999;font-size:22px;border:1px dashed #bbb;box-sizing:border-box;left:${q0(L0.ox + col * (L0.cellW + L0.gap) + L0.b, L0.pw)};top:${q0(L0.oy + row * (L0.cellH + L0.gap) + L0.b, L0.ph)};width:${q0(L0.cw, L0.pw)};height:${q0(L0.ch, L0.ph)}">${k + 1}</div>` }).join('') + '</div>'; return }
+  if(!PX.games.length) PX.games = [{id:'_none', name:'(no card pictures yet)', cards:0}];
   if(!PX.game){ try{ const s = JSON.parse(localStorage.getItem('vault.proxy.deck') || 'null'); if(s && PX.games.some(x => x.id === s.game)){ PX.game = s.game; PX.restore = s.entries } }catch(e){} }
   if(!PX.games.some(x => x.id === PX.game)) PX.game = (PX.games.find(x => x.id === 'mtg') || PX.games[0]).id;
   PX.gameObj = PX.games.find(x => x.id === PX.game);
@@ -5664,6 +5667,7 @@ async function viewProxy(){
       <div class="field"><label>Deck list - paste it here (4 Lightning Bolt, or 1 Sol Ring (CMD) 123 ...)</label><textarea id="pxtext" rows="7" style="width:100%" placeholder="4 Card name&#10;2x Another card&#10;1 Third card (SET) 123"></textarea><a href="#" id="pxsample" style="font-size:12.5px;display:none">Fill with a sample deck</a></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn primary" id="pximp"><i class="ti ti-file-import"></i>Import deck</button><button class="btn" id="pxadd" title="Keep the cards that are already there">Add to deck</button>
         <label class="btn" style="margin:0"><i class="ti ti-upload"></i>From file<input type="file" id="pxfile" accept=".txt,.dec,.dek,.csv,text/plain" hidden></label></div>
+      <div style="margin:12px 0 0"><label class="btn primary" style="margin:0"><i class="ti ti-photo-plus"></i>Add pictures from my PC<input type="file" id="pxloose" accept="image/png,image/jpeg,image/webp" multiple hidden></label> <span class="muted" style="font-size:12.5px">loose card pictures, any game - pick several at once</span></div>
       <div class="bar" style="margin:12px 0 0"><select id="pxonegame" style="max-width:140px">${PX.games.map(x => `<option value="${esc(x.id)}" ${x.id === PX.game ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><input class="grow" id="pxone" list="pxnames" type="text" placeholder="Add one card by name"><datalist id="pxnames"></datalist><button class="btn" id="pxone-go">Add</button></div>
       <div class="field" style="margin-top:12px"><label>When a card has several printings, start with</label><select id="pxprefer"><option value="owned">The one I own</option><option value="new">The newest printing</option><option value="old">The oldest printing</option><option value="cheap">The cheapest</option></select></div></div>
     <div class="panel"><h3>Sheet</h3><div class="pxgrid2">
@@ -5697,11 +5701,13 @@ async function viewProxy(){
   $('#pxfile').onchange = async e => { if(e.target.files[0]){ $('#pxtext').value = await e.target.files[0].text(); doImport(true); e.target.value = '' } };
   let nt; $('#pxone').oninput = e => { clearTimeout(nt); nt = setTimeout(async () => { const q = e.target.value.trim(); if(q.length < 2) return; try{ $('#pxnames').innerHTML = (await api('/api/proxy/search?game=' + enc($('#pxonegame').value) + '&q=' + enc(q))).map(n => `<option value="${esc(n)}">`).join('') }catch(x){} }, 180) };
   const addOne = async () => { const n = $('#pxone').value.trim(); if(!n) return; $('#pxtext').value = '1 ' + n; $('#pxone').value = ''; doImport(false, $('#pxonegame').value) };
+  window.pxAddLoose = files => { let n = 0; [...files].forEach(f => { if(!/^image\//.test(f.type)) return; PX.looseN = (PX.looseN || 0) + 1; const id = PX.looseN; PX.entries.push({name:f.name.replace(/\.[^.]+$/, ''), qty:1, game:PX.game, sel:0, cands:[{kind:'loose', id, url:URL.createObjectURL(f), label:f.name, game:PX.game}]}); n++ }); if(n){ pxSave(); pxDraw() } else toast('Pick picture files (JPG, PNG or WEBP)', true) };
+  $('#pxloose').onchange = e => { pxAddLoose(e.target.files); e.target.value = '' };
   $('#pxone-go').onclick = addOne; $('#pxone').onkeydown = e => {if(e.key === 'Enter') addOne()};
   $('#pxback').onchange = e => { PX.backFile = e.target.files[0] || null; $('#pxbackname').textContent = PX.backFile ? PX.backFile.name : 'a plain pattern is used' };
   $('#pxpdf').onclick = pxMakePdf;
   $('#pxsample').onclick = async ev => { ev.preventDefault(); const names = await api('/api/proxy/search?game=' + enc(PX.game) + '&q=e'); $('#pxtext').value = names.slice(0, 9).map((n, i) => `${[4, 3, 2, 1][i % 4]} ${n}`).join('\n') };
-  $('#pxsave').onclick = async () => { try{ await api('/api/proxy/decks/save', {name:$('#pxname').value, game:PX.game, entries:PX.entries.map(pxStore), settings:PX.cfg}); PX.decks = await api('/api/proxy/decks'); pxDecks(); toast('Deck saved') }catch(e){ toast(e.message, true) } };
+  $('#pxsave').onclick = async () => { try{ await api('/api/proxy/decks/save', {name:$('#pxname').value, game:PX.game, entries:PX.entries.filter(e => !pxIsLoose(e)).map(pxStore), settings:PX.cfg}); PX.decks = await api('/api/proxy/decks'); pxDecks(); toast('Deck saved') }catch(e){ toast(e.message, true) } };
   $('#pxpp').onclick = () => {PX.page = Math.max(0, PX.page - 1); pxPreview()}; $('#pxpnx').onclick = () => {PX.page++; pxPreview()};
   if(PX.restore){ const r = PX.restore; PX.restore = null; PX.entries = (await pxResolveMixed(r.map(x => ({name:x.name, qty:x.qty, pick:x.pick, game:x.game})))).map((e, i) => Object.assign(e, {qty:r[i].qty})) }
   pxDecks(); pxDraw();
@@ -5722,10 +5728,10 @@ function pxDraw(){
   $('#pxsample').style.display = PX.gameObj && PX.gameObj.demo ? '' : 'none';
   el.innerHTML = PX.entries.length ? PX.entries.map((e, i) => { const c = pxCur(e);
     return `<div class="ptile ${c ? '' : 'miss'}"><button class="pvis" data-pick="${i}" title="Click to choose another art or edition">${c ? pxVisual(c) : '<div class="pnone"><i class="ti ti-help-circle"></i><div>No match</div><span>Click to search</span></div>'}</button><span class="pq">× ${e.qty}</span>
-      <div class="pn" title="${esc(e.name)}">${esc(e.name)}</div>${new Set(PX.entries.map(x => x.game)).size > 1 ? `<div class="muted" style="font-size:11.5px">${esc((PX.games.find(x => x.id === e.game) || {name:e.game || ''}).name)}</div>` : ''}<div class="ps">${c ? (c.kind === 'custom' ? `<span class="pill p-amber">Proxy</span> ${esc(c.label)}` : `<span class="pill p-blue">Official</span> ${esc(c.set.toUpperCase())} #${esc(c.number)}${c.back ? ' · 2-faced' : ''}`) : ''}${e.cands.length > 1 ? `<div class="muted" style="font-size:11.5px">${e.cands.length} versions to choose from</div>` : ''}</div>
+      <div class="pn" title="${esc(e.name)}">${esc(e.name)}</div>${new Set(PX.entries.map(x => x.game)).size > 1 ? `<div class="muted" style="font-size:11.5px">${esc((PX.games.find(x => x.id === e.game) || {name:e.game || ''}).name)}</div>` : ''}<div class="ps">${c ? (c.kind === 'loose' ? `<span class="pill p-amber">My file</span>` : c.kind === 'custom' ? `<span class="pill p-amber">Proxy</span> ${esc(c.label)}` : `<span class="pill p-blue">Official</span> ${esc(c.set.toUpperCase())} #${esc(c.number)}${c.back ? ' · 2-faced' : ''}`) : ''}${e.cands.length > 1 ? `<div class="muted" style="font-size:11.5px">${e.cands.length} versions to choose from</div>` : ''}</div>
       <div class="qb" style="margin-top:6px"><button data-q="${i}" data-d="-1">−</button><button data-q="${i}" data-d="1">+</button><button data-rm="${i}" title="Remove this card"><i class="ti ti-x"></i></button></div></div>` }).join('')
     : '<div class="empty" style="grid-column:1/-1">Paste a deck list on the left and press <b>Import deck</b>.<br>Every card you have pictures of will appear here - click one to pick a different art or edition.</div>';
-  $$('#pxtiles [data-pick]').forEach(b => b.onclick = () => pxPickModal(+b.dataset.pick));
+  $$('#pxtiles [data-pick]').forEach(b => b.onclick = () => { if(!pxIsLoose(PX.entries[+b.dataset.pick])) pxPickModal(+b.dataset.pick) });
   $$('#pxtiles [data-q]').forEach(b => b.onclick = () => {const e = PX.entries[+b.dataset.q]; e.qty = Math.max(1, e.qty + +b.dataset.d); pxSave(); pxDraw()});
   $$('#pxtiles [data-rm]').forEach(b => b.onclick = () => {PX.entries.splice(+b.dataset.rm, 1); pxSave(); pxDraw()});
   const L = pxLayout(), n = pxPrints().length, pages = Math.ceil(n / L.per);
@@ -5736,7 +5742,7 @@ function pxDraw(){
 function pxPreview(){
   const el = $('#pxprev'); if(!el) return; const L = pxLayout(), prints = pxPrints(), pages = Math.max(1, Math.ceil(prints.length / L.per)); PX.page = Math.min(PX.page, pages - 1);
   $('#pxpn').textContent = `Page ${PX.page + 1} / ${pages}`;
-  if(!prints.length){ const pc0 = (x, w) => `${(x / w * 100).toFixed(3)}%`; el.innerHTML = '<div class="muted" style="margin-bottom:6px">An empty page. Pick a game, type a card name in <b>Add one card by name</b> (or paste a list) and the pockets fill up - you can mix cards from different games.</div><div class="sheet" style="aspect-ratio:' + L.pw + ' / ' + L.ph + '">' + Array.from({length:L.per}, (x, i) => { const col = i % L.cols, row = Math.floor(i / L.cols); return `<div data-slot style="position:absolute;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#999;font-size:22px;border:1px dashed #bbb;box-sizing:border-box;left:${pc0(L.ox + col * (L.cellW + L.gap) + L.b, L.pw)};top:${pc0(L.oy + row * (L.cellH + L.gap) + L.b, L.ph)};width:${pc0(L.cw, L.pw)};height:${pc0(L.ch, L.ph)}">${i + 1}</div>` }).join('') + '</div>'; $$('#pxprev [data-slot]').forEach(d => d.onclick = () => { const o = $('#pxone'); if(o){ o.scrollIntoView({block:'center'}); o.focus() } }); return }
+  if(!prints.length){ const pc0 = (x, w) => `${(x / w * 100).toFixed(3)}%`; el.innerHTML = '<div class="muted" style="margin-bottom:6px">An empty page. Click a pocket (or <b>Add pictures from my PC</b>) to load loose card pictures from any game, or add cards by name from the games you have downloaded.</div><div class="sheet" style="aspect-ratio:' + L.pw + ' / ' + L.ph + '">' + Array.from({length:L.per}, (x, i) => { const col = i % L.cols, row = Math.floor(i / L.cols); return `<div data-slot style="position:absolute;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#999;font-size:22px;border:1px dashed #bbb;box-sizing:border-box;left:${pc0(L.ox + col * (L.cellW + L.gap) + L.b, L.pw)};top:${pc0(L.oy + row * (L.cellH + L.gap) + L.b, L.ph)};width:${pc0(L.cw, L.pw)};height:${pc0(L.ch, L.ph)}">${i + 1}</div>` }).join('') + '</div>'; $$('#pxprev [data-slot]').forEach(d => d.onclick = () => { const o = $('#pxloose'); if(o) o.click() }); return }
   const sl = prints.slice(PX.page * L.per, PX.page * L.per + L.per), pc = (x, w) => `${(x / w * 100).toFixed(3)}%`;
   const mm = (x, y, w, h, extra, inner) => `<div style="position:absolute;left:${pc(x, L.pw)};top:${pc(y, L.ph)};width:${pc(w, L.pw)};height:${pc(h, L.ph)};${extra || ''}">${inner || ''}</div>`;
   el.innerHTML = `<div class="sheet" style="aspect-ratio:${L.pw} / ${L.ph}">` + sl.map((p, i) => { const col = i % L.cols, row = Math.floor(i / L.cols), x = L.ox + col * (L.cellW + L.gap), y = L.oy + row * (L.cellH + L.gap);
