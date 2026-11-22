@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261122-n101";
+const UI_BUILD = "20261122-n102";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -5486,9 +5486,12 @@ const PAPERS = {a4:[210, 297, 'A4'], letter:[215.9, 279.4, 'Letter'], legal:[215
 const PX = {game:'', games:[], gameObj:null, entries:[], decks:[], backFile:null, page:0, showPrev:true, busy:false,
   cfg:Object.assign({paper:'a4', cw:63, ch:88, scale:100, bleed:0, fill:'extend', gap:0, margin:8, guides:'ticks', dpi:300, backs:false, dfc:true, prefer:'owned', offx:0, offy:0},
                     (() => {try{ return JSON.parse(localStorage.getItem('vault.proxy.cfg') || '{}') }catch(e){ return {} }})())};
-const pxSave = () => {try{ localStorage.setItem('vault.proxy.cfg', JSON.stringify(PX.cfg)); localStorage.setItem('vault.proxy.deck', JSON.stringify({game:PX.game, entries:PX.entries.filter(e => !pxIsLoose(e)).map(pxStore)})) }catch(e){}};
+const pxSave = () => {try{ localStorage.setItem('vault.proxy.cfg', JSON.stringify(PX.cfg)); localStorage.setItem('vault.proxy.deck', JSON.stringify({game:PX.game, entries:PX.entries.map(pxStore)})) }catch(e){}};
+const pxIdb = () => new Promise((res, rej) => { const r = indexedDB.open('nvProxyLoose', 1); r.onupgradeneeded = () => r.result.createObjectStore('pics', {keyPath:'id'}); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error) });
+const pxIdbPut = async (id, name, blob) => { try{ const db = await pxIdb(); await new Promise((ok, no) => { const t = db.transaction('pics', 'readwrite'); t.objectStore('pics').put({id, name, blob}); t.oncomplete = ok; t.onerror = () => no(t.error) }) }catch(e){} };
+const pxIdbGet = async id => { try{ const db = await pxIdb(); return await new Promise(ok => { const q = db.transaction('pics').objectStore('pics').get(id); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null) }) }catch(e){ return null } };
 const pxIsLoose = e => !!(e.cands && e.cands[0] && e.cands[0].kind === 'loose');
-const pxStore = e => { const c = e.sel >= 0 ? e.cands[e.sel] : null; return {name:e.name, qty:e.qty, game:e.game || PX.game, pick: c ? (c.kind === 'custom' ? {kind:'custom', id:c.id} : {kind:'official', set:c.set, number:c.number}) : null} };
+const pxStore = e => { const c = e.sel >= 0 ? e.cands[e.sel] : null; if(c && c.kind === 'loose') return {name:e.name, qty:e.qty, game:e.game || PX.game, loose:c.lid}; return {name:e.name, qty:e.qty, game:e.game || PX.game, pick: c ? (c.kind === 'custom' ? {kind:'custom', id:c.id} : {kind:'official', set:c.set, number:c.number}) : null} };
 const normNum = n => String(n).replace(/^0+(?=\d)/, '').toLowerCase();
 
 function parseDeck(text){
@@ -5531,7 +5534,9 @@ async function pxResolve(list, game){
   return list.map((e, i) => { const cands = r.results[i].cands; cands.forEach(c => { c.game = gm }); return {name:e.name, qty:e.qty, game:gm, cands, sel:pxPick(cands, e)} });
 }
 async function pxResolveMixed(list){          // entries may come from different games (a free sheet)
-  const out = new Array(list.length), by = {}; list.forEach((x, i) => { (by[x.game || PX.game] = by[x.game || PX.game] || []).push(i) });
+  const out = new Array(list.length), by = {}; for(let i = 0; i < list.length; i++){ const x = list[i]; if(!x.loose) continue; const rec = await pxIdbGet(x.loose); PX.looseN = (PX.looseN || 0) + 1;
+    out[i] = rec ? {name:x.name, qty:x.qty, game:x.game || PX.game, sel:0, cands:[{kind:'loose', id:PX.looseN, lid:x.loose, url:URL.createObjectURL(rec.blob), label:rec.name, game:x.game || PX.game}]} : {name:x.name + ' (picture file is gone)', qty:x.qty, game:x.game || PX.game, cands:[], sel:-1} }
+  list.forEach((x, i) => { if(x.loose) return; (by[x.game || PX.game] = by[x.game || PX.game] || []).push(i) });
   for(const g of Object.keys(by)){ if(!PX.games.some(x => x.id === g)){ by[g].forEach(i => { out[i] = {name:list[i].name, qty:list[i].qty, game:g, cands:[], sel:-1} }); continue } const r = await pxResolve(by[g].map(i => list[i]), g); by[g].forEach((i, k) => { out[i] = r[k] }) }
   return out;
 }
@@ -5703,15 +5708,15 @@ async function viewProxy(){
   $('#pxfile').onchange = async e => { if(e.target.files[0]){ $('#pxtext').value = await e.target.files[0].text(); doImport(true); e.target.value = '' } };
   let nt; $('#pxone').oninput = e => { clearTimeout(nt); nt = setTimeout(async () => { const q = e.target.value.trim(); if(q.length < 2) return; try{ $('#pxnames').innerHTML = (await api('/api/proxy/search?game=' + enc($('#pxonegame').value) + '&q=' + enc(q))).map(n => `<option value="${esc(n)}">`).join('') }catch(x){} }, 180) };
   const addOne = async () => { const n = $('#pxone').value.trim(); if(!n) return; $('#pxtext').value = '1 ' + n; $('#pxone').value = ''; doImport(false, $('#pxonegame').value) };
-  window.pxAddLoose = files => { let n = 0; [...files].forEach(f => { if(!/^image\//.test(f.type)) return; PX.looseN = (PX.looseN || 0) + 1; const id = PX.looseN; PX.entries.push({name:f.name.replace(/\.[^.]+$/, ''), qty:1, game:PX.game, sel:0, cands:[{kind:'loose', id, url:URL.createObjectURL(f), label:f.name, game:PX.game}]}); n++ }); if(n){ pxSave(); pxDraw() } else toast('Pick picture files (JPG, PNG or WEBP)', true) };
+  window.pxAddLoose = files => { let n = 0; [...files].forEach(f => { if(!/^image\//.test(f.type)) return; PX.looseN = (PX.looseN || 0) + 1; const id = PX.looseN, lid = 'L' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); pxIdbPut(lid, f.name, f); PX.entries.push({name:f.name.replace(/\.[^.]+$/, ''), qty:1, game:PX.game, sel:0, cands:[{kind:'loose', id, lid, url:URL.createObjectURL(f), label:f.name, game:PX.game}]}); n++ }); if(n){ pxSave(); pxDraw() } else toast('Pick picture files (JPG, PNG or WEBP)', true) };
   $('#pxloose').onchange = e => { pxAddLoose(e.target.files); e.target.value = '' };
   $('#pxone-go').onclick = addOne; $('#pxone').onkeydown = e => {if(e.key === 'Enter') addOne()};
   $('#pxback').onchange = e => { PX.backFile = e.target.files[0] || null; $('#pxbackname').textContent = PX.backFile ? PX.backFile.name : 'a plain pattern is used' };
   $('#pxpdf').onclick = pxMakePdf;
   $('#pxsample').onclick = async ev => { ev.preventDefault(); const names = await api('/api/proxy/search?game=' + enc(PX.game) + '&q=e'); $('#pxtext').value = names.slice(0, 9).map((n, i) => `${[4, 3, 2, 1][i % 4]} ${n}`).join('\n') };
-  $('#pxsave').onclick = async () => { try{ await api('/api/proxy/decks/save', {name:$('#pxname').value, game:PX.game, entries:PX.entries.filter(e => !pxIsLoose(e)).map(pxStore), settings:PX.cfg}); PX.decks = await api('/api/proxy/decks'); pxDecks(); toast('Deck saved') }catch(e){ toast(e.message, true) } };
+  $('#pxsave').onclick = async () => { try{ await api('/api/proxy/decks/save', {name:$('#pxname').value, game:PX.game, entries:PX.entries.map(pxStore), settings:PX.cfg}); PX.decks = await api('/api/proxy/decks'); pxDecks(); toast('Deck saved') }catch(e){ toast(e.message, true) } };
   $('#pxpp').onclick = () => {PX.page = Math.max(0, PX.page - 1); pxPreview()}; $('#pxpnx').onclick = () => {PX.page++; pxPreview()};
-  if(PX.restore){ const r = PX.restore; PX.restore = null; PX.entries = (await pxResolveMixed(r.map(x => ({name:x.name, qty:x.qty, pick:x.pick, game:x.game})))).map((e, i) => Object.assign(e, {qty:r[i].qty})) }
+  if(PX.restore){ const r = PX.restore; PX.restore = null; PX.entries = (await pxResolveMixed(r.map(x => ({name:x.name, qty:x.qty, pick:x.pick, game:x.game, loose:x.loose})))).map((e, i) => Object.assign(e, {qty:r[i].qty})) }
   pxDecks(); pxDraw();
 }
 function pxDecks(){
@@ -5719,9 +5724,9 @@ function pxDecks(){
   el.innerHTML = PX.decks.length ? PX.decks.map(d => `<div class="dlrow"><div class="grow"><b>${esc(d.name)}</b><div class="muted" style="font-size:12px">${esc((PX.games.find(x => x.id === d.game) || {name:d.game}).name)} · ${d.entries.reduce((a, e) => a + e.qty, 0)} cards</div></div>
     <button class="btn sm" data-load="${d.id}">Open</button><button class="btn sm ghost danger" data-del="${d.id}" title="Delete"><i class="ti ti-x"></i></button></div>`).join('') : '<div class="muted" style="font-size:13px">Nothing saved yet.</div>';
   $$('#pxdecks [data-load]').forEach(b => b.onclick = async () => {
-    const d = PX.decks.find(x => x.id === +b.dataset.load); if(!PX.games.some(x => x.id === d.game)){ toast('That game has no cards here any more', true); return }
-    PX.game = d.game; PX.gameObj = PX.games.find(x => x.id === d.game); Object.assign(PX.cfg, d.settings || {}); $('#pxname').value = d.name;
-    PX.entries = (await pxResolveMixed(d.entries.map(e => ({name:e.name, qty:e.qty, pick:e.pick, game:e.game || d.game})))).map((e, i) => Object.assign(e, {qty:d.entries[i].qty})); pxSave(); viewProxy() });
+    const d = PX.decks.find(x => x.id === +b.dataset.load); if(!PX.games.some(x => x.id === d.game) && !d.entries.some(e => e.loose)){ toast('That game has no cards here any more', true); return }
+    PX.game = PX.games.some(x => x.id === d.game) ? d.game : PX.game; PX.gameObj = PX.games.find(x => x.id === PX.game); Object.assign(PX.cfg, d.settings || {}); $('#pxname').value = d.name;
+    PX.entries = (await pxResolveMixed(d.entries.map(e => ({name:e.name, qty:e.qty, pick:e.pick, game:e.game || d.game, loose:e.loose})))).map((e, i) => Object.assign(e, {qty:d.entries[i].qty})); pxSave(); viewProxy() });
   $$('#pxdecks [data-del]').forEach(b => b.onclick = async () => {await api('/api/proxy/decks/delete', {id:+b.dataset.del}); PX.decks = await api('/api/proxy/decks'); pxDecks()});
 }
 function pxDraw(){

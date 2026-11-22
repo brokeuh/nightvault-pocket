@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 270,
+   "date": "2026-11-22",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Print proxies: saved sheets keep your own pictures",
+   "items": [
+    "Pictures added with \"Add pictures from my PC\" are now kept inside the app, so a saved sheet opens with all its pictures again. Sheets saved with the previous build did not keep them: add the pictures once more and save again."
+   ]
+  },
+  {
    "id": 269,
    "date": "2026-11-22",
    "where": [

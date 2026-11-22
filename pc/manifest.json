@@ -1,5 +1,5 @@
 {
- "version": "2026-11-22 14:25",
+ "version": "2026-11-22 14:40",
  "notes": [],
  "files": [
   {
@@ -8,7 +8,7 @@
   },
   {
    "name": "vault.py",
-   "sha256": "f4fb322572e879f01058dbd4c4ffa27ff8062e965739e9df9a9f8187daae3560"
+   "sha256": "6e58b8178181536cf9f84ea9f868c085a5d92a761f8f6aa71dfa409f8551bcba"
   },
   {
    "name": "vault_ccgtrader.py",
@@ -52,7 +52,7 @@
   },
   {
    "name": "vault_ui.html",
-   "sha256": "de78926d65a245ec5119c29bd24163656840e0c86df805bb7b58605feb1f51d8"
+   "sha256": "f25db0ca3f8e27b0e25b638b7d4c8f3acf1ec0dcdf576896863400e6983d56fb"
   },
   {
    "name": "vault_un7z.py",
