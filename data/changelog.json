@@ -3,6 +3,22 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 264,
+   "date": "2026-11-22",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Print proxies: empty 9-pocket page, mix cards from different games",
+   "items": [
+    "Print proxies starts with an empty page showing the pockets (numbered). Click one to add a card.",
+    "\"Add one card by name\" now has a game picker, so one sheet can hold cards from different games. Each card remembers its game, also in saved decks.",
+    "Changing the game no longer clears the sheet."
+   ]
+  },
+  {
    "id": 263,
    "date": "2026-11-22",
    "where": [

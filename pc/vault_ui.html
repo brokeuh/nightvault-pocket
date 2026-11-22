@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261122-n95";
+const UI_BUILD = "20261122-n96";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -5487,7 +5487,7 @@ const PX = {game:'', games:[], gameObj:null, entries:[], decks:[], backFile:null
   cfg:Object.assign({paper:'a4', cw:63, ch:88, scale:100, bleed:0, fill:'extend', gap:0, margin:8, guides:'ticks', dpi:300, backs:false, dfc:true, prefer:'owned'},
                     (() => {try{ return JSON.parse(localStorage.getItem('vault.proxy.cfg') || '{}') }catch(e){ return {} }})())};
 const pxSave = () => {try{ localStorage.setItem('vault.proxy.cfg', JSON.stringify(PX.cfg)); localStorage.setItem('vault.proxy.deck', JSON.stringify({game:PX.game, entries:PX.entries.map(pxStore)})) }catch(e){}};
-const pxStore = e => { const c = e.sel >= 0 ? e.cands[e.sel] : null; return {name:e.name, qty:e.qty, pick: c ? (c.kind === 'custom' ? {kind:'custom', id:c.id} : {kind:'official', set:c.set, number:c.number}) : null} };
+const pxStore = e => { const c = e.sel >= 0 ? e.cands[e.sel] : null; return {name:e.name, qty:e.qty, game:e.game || PX.game, pick: c ? (c.kind === 'custom' ? {kind:'custom', id:c.id} : {kind:'official', set:c.set, number:c.number}) : null} };
 const normNum = n => String(n).replace(/^0+(?=\d)/, '').toLowerCase();
 
 function parseDeck(text){
@@ -5524,15 +5524,21 @@ function pxPick(cands, want){
   if(pref === 'cheap'){ const pr = pool.filter(([c]) => c.price != null).sort((a, b) => a[0].price - b[0].price); if(pr.length) return pr[0][1] }
   return [...pool].sort((a, b) => rel(b[0]).localeCompare(rel(a[0])))[0][1];
 }
-async function pxResolve(list){
+async function pxResolve(list, game){
   if(!list.length) return [];
-  const r = await api('/api/proxy/resolve', {game:PX.game, entries:list.map(e => ({name:e.name}))});
-  return list.map((e, i) => { const cands = r.results[i].cands; return {name:e.name, qty:e.qty, cands, sel:pxPick(cands, e)} });
+  const gm = game || PX.game, r = await api('/api/proxy/resolve', {game:gm, entries:list.map(e => ({name:e.name}))});
+  return list.map((e, i) => { const cands = r.results[i].cands; cands.forEach(c => { c.game = gm }); return {name:e.name, qty:e.qty, game:gm, cands, sel:pxPick(cands, e)} });
 }
+async function pxResolveMixed(list){          // entries may come from different games (a free sheet)
+  const out = new Array(list.length), by = {}; list.forEach((x, i) => { (by[x.game || PX.game] = by[x.game || PX.game] || []).push(i) });
+  for(const g of Object.keys(by)){ if(!PX.games.some(x => x.id === g)){ by[g].forEach(i => { out[i] = {name:list[i].name, qty:list[i].qty, game:g, cands:[], sel:-1} }); continue } const r = await pxResolve(by[g].map(i => list[i]), g); by[g].forEach((i, k) => { out[i] = r[k] }) }
+  return out;
+}
+const pxGameOf = c => (c && c.game) || PX.game, pxGameObjOf = c => PX.games.find(x => x.id === pxGameOf(c)) || PX.gameObj;
 function pxVisual(c){
   if(c.kind === 'custom') return `<img loading="lazy" src="/proxyimg?id=${c.id}&t=${TOKEN}" alt="">`;
-  if(c.image) return `<img loading="lazy" src="/cardfile?game=${enc(PX.game)}&set=${enc(c.set)}&n=${enc(c.number)}&t=${TOKEN}" alt="">`;
-  return fakeCardSVG(Object.assign({}, c), PX.gameObj);
+  if(c.image) return `<img loading="lazy" src="/cardfile?game=${enc(pxGameOf(c))}&set=${enc(c.set)}&n=${enc(c.number)}&t=${TOKEN}" alt="">`;
+  return fakeCardSVG(Object.assign({}, c), pxGameObjOf(c));
 }
 const pxCur = e => e.sel >= 0 ? e.cands[e.sel] : null;
 function pxLayout(){
@@ -5548,11 +5554,11 @@ function pxPrints(){          // every card that goes on the sheet, in order; do
     for(let k = 0; k < e.qty; k++){ out.push({e:i, c, face:'front', key:pxKey(c, 'front')}); if(PX.cfg.dfc && c.kind === 'official' && c.back) out.push({e:i, c, face:'back', key:pxKey(c, 'back')}) } });
   return out;
 }
-const pxKey = (c, face) => c.kind === 'custom' ? 'c' + c.id : `o:${c.set}:${c.number}:${face}`;
+const pxKey = (c, face) => c.kind === 'custom' ? 'c' + c.id : `o:${pxGameOf(c)}:${c.set}:${c.number}:${face}`;
 function pxCardSrc(c, face, wpx, hpx){
   if(c.kind === 'custom') return `/proxyimg?id=${c.id}&t=${TOKEN}`;
-  if(c.image) return `/cardfile?game=${enc(PX.game)}&set=${enc(c.set)}&n=${enc(c.number)}&t=${TOKEN}${face === 'back' ? '&face=back' : ''}`;
-  const svg = fakeCardSVG(Object.assign({}, c), PX.gameObj).replace('<svg ', `<svg width="${wpx}" height="${hpx}" `);
+  if(c.image) return `/cardfile?game=${enc(pxGameOf(c))}&set=${enc(c.set)}&n=${enc(c.number)}&t=${TOKEN}${face === 'back' ? '&face=back' : ''}`;
+  const svg = fakeCardSVG(Object.assign({}, c), pxGameObjOf(c)).replace('<svg ', `<svg width="${wpx}" height="${hpx}" `);
   return URL.createObjectURL(new Blob([svg], {type:'image/svg+xml'}));
 }
 const pxLoad = src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('A card picture could not be loaded')); im.src = src });
@@ -5654,11 +5660,11 @@ async function viewProxy(){
   $('#main').innerHTML = `<div class="head"><h1>Print proxies</h1><span class="sub" id="pxsum"></span><div class="sp"></div><button class="btn primary" id="pxpdf"><i class="ti ti-file-download"></i>Download PDF</button></div>
   <div class="pxwrap"><div class="pxside">
     <div class="panel"><h3>Deck</h3>
-      <div class="field"><label>Game</label><select id="pxgame">${PX.games.map(x => `<option value="${esc(x.id)}" ${x.id === PX.game ? 'selected' : ''}>${esc(x.name)}${x.demo ? ' (demo)' : ''}</option>`).join('')}</select></div>
+      <div class="field"><label>Game for the list below <span class="muted">(you can mix games on one sheet: change it and add more cards)</span></label><select id="pxgame">${PX.games.map(x => `<option value="${esc(x.id)}" ${x.id === PX.game ? 'selected' : ''}>${esc(x.name)}${x.demo ? ' (demo)' : ''}</option>`).join('')}</select></div>
       <div class="field"><label>Deck list - paste it here (4 Lightning Bolt, or 1 Sol Ring (CMD) 123 ...)</label><textarea id="pxtext" rows="7" style="width:100%" placeholder="4 Card name&#10;2x Another card&#10;1 Third card (SET) 123"></textarea><a href="#" id="pxsample" style="font-size:12.5px;display:none">Fill with a sample deck</a></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn primary" id="pximp"><i class="ti ti-file-import"></i>Import deck</button><button class="btn" id="pxadd" title="Keep the cards that are already there">Add to deck</button>
         <label class="btn" style="margin:0"><i class="ti ti-upload"></i>From file<input type="file" id="pxfile" accept=".txt,.dec,.dek,.csv,text/plain" hidden></label></div>
-      <div class="bar" style="margin:12px 0 0"><input class="grow" id="pxone" list="pxnames" type="text" placeholder="Add one card by name"><datalist id="pxnames"></datalist><button class="btn" id="pxone-go">Add</button></div>
+      <div class="bar" style="margin:12px 0 0"><select id="pxonegame" style="max-width:140px">${PX.games.map(x => `<option value="${esc(x.id)}" ${x.id === PX.game ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><input class="grow" id="pxone" list="pxnames" type="text" placeholder="Add one card by name"><datalist id="pxnames"></datalist><button class="btn" id="pxone-go">Add</button></div>
       <div class="field" style="margin-top:12px"><label>When a card has several printings, start with</label><select id="pxprefer"><option value="owned">The one I own</option><option value="new">The newest printing</option><option value="old">The oldest printing</option><option value="cheap">The cheapest</option></select></div></div>
     <div class="panel"><h3>Sheet</h3><div class="pxgrid2">
       <label>Paper<select data-cfg="paper">${Object.entries(PAPERS).map(([k, v]) => `<option value="${k}">${v[2]}</option>`).join('')}</select></label>
@@ -5679,25 +5685,25 @@ async function viewProxy(){
   $$('[data-cfg]').forEach(el => { const k = el.dataset.cfg; if(el.type === 'checkbox') el.checked = !!c[k]; else el.value = c[k];
     el.onchange = () => { c[k] = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? +el.value : (k === 'dpi' ? +el.value : el.value)); pxSave(); pxDraw() } });
   $('#pxprefer').value = c.prefer; $('#pxprefer').onchange = e => {c.prefer = e.target.value; pxSave()};
-  $('#pxgame').onchange = async e => { PX.game = e.target.value; PX.gameObj = PX.games.find(x => x.id === PX.game); PX.entries = []; pxSave(); pxDraw() };
-  const doImport = async replace => {
+  $('#pxgame').onchange = async e => { PX.game = e.target.value; PX.gameObj = PX.games.find(x => x.id === PX.game); if($('#pxonegame')) $('#pxonegame').value = PX.game; pxSave(); pxDraw() };
+  const doImport = async (replace, game) => {
     const list = parseDeck($('#pxtext').value); if(!list.length){ toast('No cards found in that list', true); return }
     $('#pxstatus').textContent = 'Looking up your cards ...';
-    try{ const add = await pxResolve(list); if(replace) PX.entries = []; add.forEach(n => { const ex = PX.entries.find(e => e.name.toLowerCase() === n.name.toLowerCase() && e.sel === n.sel); if(ex) ex.qty += n.qty; else PX.entries.push(n) });
+    try{ const add = await pxResolve(list, game); if(replace) PX.entries = []; add.forEach(n => { const ex = PX.entries.find(e => e.game === n.game && e.name.toLowerCase() === n.name.toLowerCase() && e.sel === n.sel); if(ex) ex.qty += n.qty; else PX.entries.push(n) });
       $('#pxstatus').textContent = ''; $('#pxtext').value = ''; pxSave(); pxDraw(); const miss = add.filter(e => e.sel < 0).length; if(miss) toast(`${miss} card${miss === 1 ? '' : 's'} not found - click them to search`, true) }
     catch(e){ $('#pxstatus').textContent = ''; toast(e.message, true) }
   };
   $('#pximp').onclick = () => doImport(true); $('#pxadd').onclick = () => doImport(false);
   $('#pxfile').onchange = async e => { if(e.target.files[0]){ $('#pxtext').value = await e.target.files[0].text(); doImport(true); e.target.value = '' } };
-  let nt; $('#pxone').oninput = e => { clearTimeout(nt); nt = setTimeout(async () => { const q = e.target.value.trim(); if(q.length < 2) return; try{ $('#pxnames').innerHTML = (await api('/api/proxy/search?game=' + enc(PX.game) + '&q=' + enc(q))).map(n => `<option value="${esc(n)}">`).join('') }catch(x){} }, 180) };
-  const addOne = async () => { const n = $('#pxone').value.trim(); if(!n) return; $('#pxtext').value = '1 ' + n; $('#pxone').value = ''; doImport(false) };
+  let nt; $('#pxone').oninput = e => { clearTimeout(nt); nt = setTimeout(async () => { const q = e.target.value.trim(); if(q.length < 2) return; try{ $('#pxnames').innerHTML = (await api('/api/proxy/search?game=' + enc($('#pxonegame').value) + '&q=' + enc(q))).map(n => `<option value="${esc(n)}">`).join('') }catch(x){} }, 180) };
+  const addOne = async () => { const n = $('#pxone').value.trim(); if(!n) return; $('#pxtext').value = '1 ' + n; $('#pxone').value = ''; doImport(false, $('#pxonegame').value) };
   $('#pxone-go').onclick = addOne; $('#pxone').onkeydown = e => {if(e.key === 'Enter') addOne()};
   $('#pxback').onchange = e => { PX.backFile = e.target.files[0] || null; $('#pxbackname').textContent = PX.backFile ? PX.backFile.name : 'a plain pattern is used' };
   $('#pxpdf').onclick = pxMakePdf;
   $('#pxsample').onclick = async ev => { ev.preventDefault(); const names = await api('/api/proxy/search?game=' + enc(PX.game) + '&q=e'); $('#pxtext').value = names.slice(0, 9).map((n, i) => `${[4, 3, 2, 1][i % 4]} ${n}`).join('\n') };
   $('#pxsave').onclick = async () => { try{ await api('/api/proxy/decks/save', {name:$('#pxname').value, game:PX.game, entries:PX.entries.map(pxStore), settings:PX.cfg}); PX.decks = await api('/api/proxy/decks'); pxDecks(); toast('Deck saved') }catch(e){ toast(e.message, true) } };
   $('#pxpp').onclick = () => {PX.page = Math.max(0, PX.page - 1); pxPreview()}; $('#pxpnx').onclick = () => {PX.page++; pxPreview()};
-  if(PX.restore){ const r = PX.restore; PX.restore = null; PX.entries = (await pxResolve(r.map(x => ({name:x.name, qty:x.qty, pick:x.pick})))).map((e, i) => Object.assign(e, {qty:r[i].qty})) }
+  if(PX.restore){ const r = PX.restore; PX.restore = null; PX.entries = (await pxResolveMixed(r.map(x => ({name:x.name, qty:x.qty, pick:x.pick, game:x.game})))).map((e, i) => Object.assign(e, {qty:r[i].qty})) }
   pxDecks(); pxDraw();
 }
 function pxDecks(){
@@ -5707,7 +5713,7 @@ function pxDecks(){
   $$('#pxdecks [data-load]').forEach(b => b.onclick = async () => {
     const d = PX.decks.find(x => x.id === +b.dataset.load); if(!PX.games.some(x => x.id === d.game)){ toast('That game has no cards here any more', true); return }
     PX.game = d.game; PX.gameObj = PX.games.find(x => x.id === d.game); Object.assign(PX.cfg, d.settings || {}); $('#pxname').value = d.name;
-    PX.entries = (await pxResolve(d.entries.map(e => ({name:e.name, qty:e.qty, pick:e.pick})))).map((e, i) => Object.assign(e, {qty:d.entries[i].qty})); pxSave(); viewProxy() });
+    PX.entries = (await pxResolveMixed(d.entries.map(e => ({name:e.name, qty:e.qty, pick:e.pick, game:e.game || d.game})))).map((e, i) => Object.assign(e, {qty:d.entries[i].qty})); pxSave(); viewProxy() });
   $$('#pxdecks [data-del]').forEach(b => b.onclick = async () => {await api('/api/proxy/decks/delete', {id:+b.dataset.del}); PX.decks = await api('/api/proxy/decks'); pxDecks()});
 }
 function pxDraw(){
@@ -5716,7 +5722,7 @@ function pxDraw(){
   $('#pxsample').style.display = PX.gameObj && PX.gameObj.demo ? '' : 'none';
   el.innerHTML = PX.entries.length ? PX.entries.map((e, i) => { const c = pxCur(e);
     return `<div class="ptile ${c ? '' : 'miss'}"><button class="pvis" data-pick="${i}" title="Click to choose another art or edition">${c ? pxVisual(c) : '<div class="pnone"><i class="ti ti-help-circle"></i><div>No match</div><span>Click to search</span></div>'}</button><span class="pq">× ${e.qty}</span>
-      <div class="pn" title="${esc(e.name)}">${esc(e.name)}</div><div class="ps">${c ? (c.kind === 'custom' ? `<span class="pill p-amber">Proxy</span> ${esc(c.label)}` : `<span class="pill p-blue">Official</span> ${esc(c.set.toUpperCase())} #${esc(c.number)}${c.back ? ' · 2-faced' : ''}`) : ''}${e.cands.length > 1 ? `<div class="muted" style="font-size:11.5px">${e.cands.length} versions to choose from</div>` : ''}</div>
+      <div class="pn" title="${esc(e.name)}">${esc(e.name)}</div>${new Set(PX.entries.map(x => x.game)).size > 1 ? `<div class="muted" style="font-size:11.5px">${esc((PX.games.find(x => x.id === e.game) || {name:e.game || ''}).name)}</div>` : ''}<div class="ps">${c ? (c.kind === 'custom' ? `<span class="pill p-amber">Proxy</span> ${esc(c.label)}` : `<span class="pill p-blue">Official</span> ${esc(c.set.toUpperCase())} #${esc(c.number)}${c.back ? ' · 2-faced' : ''}`) : ''}${e.cands.length > 1 ? `<div class="muted" style="font-size:11.5px">${e.cands.length} versions to choose from</div>` : ''}</div>
       <div class="qb" style="margin-top:6px"><button data-q="${i}" data-d="-1">−</button><button data-q="${i}" data-d="1">+</button><button data-rm="${i}" title="Remove this card"><i class="ti ti-x"></i></button></div></div>` }).join('')
     : '<div class="empty" style="grid-column:1/-1">Paste a deck list on the left and press <b>Import deck</b>.<br>Every card you have pictures of will appear here - click one to pick a different art or edition.</div>';
   $$('#pxtiles [data-pick]').forEach(b => b.onclick = () => pxPickModal(+b.dataset.pick));
@@ -5730,7 +5736,7 @@ function pxDraw(){
 function pxPreview(){
   const el = $('#pxprev'); if(!el) return; const L = pxLayout(), prints = pxPrints(), pages = Math.max(1, Math.ceil(prints.length / L.per)); PX.page = Math.min(PX.page, pages - 1);
   $('#pxpn').textContent = `Page ${PX.page + 1} / ${pages}`;
-  if(!prints.length){ el.innerHTML = '<div class="muted">The sheet appears here once the deck has cards.</div>'; return }
+  if(!prints.length){ const pc0 = (x, w) => `${(x / w * 100).toFixed(3)}%`; el.innerHTML = '<div class="muted" style="margin-bottom:6px">An empty page. Pick a game, type a card name in <b>Add one card by name</b> (or paste a list) and the pockets fill up - you can mix cards from different games.</div><div class="sheet" style="aspect-ratio:' + L.pw + ' / ' + L.ph + '">' + Array.from({length:L.per}, (x, i) => { const col = i % L.cols, row = Math.floor(i / L.cols); return `<div data-slot style="position:absolute;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#999;font-size:22px;border:1px dashed #bbb;box-sizing:border-box;left:${pc0(L.ox + col * (L.cellW + L.gap) + L.b, L.pw)};top:${pc0(L.oy + row * (L.cellH + L.gap) + L.b, L.ph)};width:${pc0(L.cw, L.pw)};height:${pc0(L.ch, L.ph)}">${i + 1}</div>` }).join('') + '</div>'; $$('#pxprev [data-slot]').forEach(d => d.onclick = () => { const o = $('#pxone'); if(o){ o.scrollIntoView({block:'center'}); o.focus() } }); return }
   const sl = prints.slice(PX.page * L.per, PX.page * L.per + L.per), pc = (x, w) => `${(x / w * 100).toFixed(3)}%`;
   const mm = (x, y, w, h, extra, inner) => `<div style="position:absolute;left:${pc(x, L.pw)};top:${pc(y, L.ph)};width:${pc(w, L.pw)};height:${pc(h, L.ph)};${extra || ''}">${inner || ''}</div>`;
   el.innerHTML = `<div class="sheet" style="aspect-ratio:${L.pw} / ${L.ph}">` + sl.map((p, i) => { const col = i % L.cols, row = Math.floor(i / L.cols), x = L.ox + col * (L.cellW + L.gap), y = L.oy + row * (L.cellH + L.gap);
@@ -5743,12 +5749,12 @@ function pxPickModal(i){
     $('#pxmbody').innerHTML = e.cands.length ? `<div class="pxopts">` + opts.map(({c, k}) => `<div class="pxopt ${k === e.sel ? 'on' : ''}" data-k="${k}"><div class="ov">${pxVisual(c)}</div>
         <div class="oc">${c.kind === 'custom' ? `<span class="pill p-amber">Proxy</span> ${esc(c.label)} <button class="x" data-delart="${c.id}" title="Delete this picture"><i class="ti ti-trash"></i></button>` : `<span class="pill p-blue">Official</span> <b>${esc(c.set.toUpperCase())}</b> #${esc(c.number)}`}
         ${c.kind === 'official' ? `<div class="muted">${esc(c.set_name)}${c.released ? ' · ' + esc(c.released.slice(0, 4)) : ''}${c.price ? ' · ' + eur(c.price) : ''}${c.qty ? ` · you own ${c.qty}` : ''}${c.back ? ' · 2-faced' : ''}</div>` : ''}</div></div>`).join('') + `</div>`
-      : `<div class="muted" style="margin:6px 0 12px">No card called “${esc(e.name)}” was found among your ${esc(PX.gameObj.name)} pictures. Search for the right name, or add your own picture below.</div>
+      : `<div class="muted" style="margin:6px 0 12px">No card called “${esc(e.name)}” was found among your ${esc((PX.games.find(x => x.id === (e.game || PX.game)) || PX.gameObj).name)} pictures. Search for the right name, or add your own picture below.</div>
          <div class="bar" style="margin:0"><input class="grow" id="pxfind" list="pxnames2" type="text" placeholder="Search card names"><datalist id="pxnames2"></datalist><button class="btn" id="pxfindgo">Use this name</button></div>`;
     $$('#pxmbody .pxopt').forEach(o => o.onclick = ev => { if(ev.target.closest('[data-delart]')) return; e.sel = +o.dataset.k; close() });
-    $$('#pxmbody [data-delart]').forEach(b => b.onclick = async () => { await api('/api/proxy/art/delete', {id:+b.dataset.delart}); const [r] = await pxResolve([{name:e.name, qty:e.qty}]); e.cands = r.cands; e.sel = pxPick(e.cands, {}); draw() });
-    if($('#pxfind')){ let t; $('#pxfind').oninput = ev => { clearTimeout(t); t = setTimeout(async () => { const q = ev.target.value.trim(); if(q.length < 2) return; try{ $('#pxnames2').innerHTML = (await api('/api/proxy/search?game=' + enc(PX.game) + '&q=' + enc(q))).map(n => `<option value="${esc(n)}">`).join('') }catch(x){} }, 180) };
-      $('#pxfindgo').onclick = async () => { const n = $('#pxfind').value.trim(); if(!n) return; const [r] = await pxResolve([{name:n, qty:e.qty}]); if(r.sel < 0){ toast('Still no match for that name', true); return } Object.assign(e, r); close() } }
+    $$('#pxmbody [data-delart]').forEach(b => b.onclick = async () => { await api('/api/proxy/art/delete', {id:+b.dataset.delart}); const [r] = await pxResolve([{name:e.name, qty:e.qty}], e.game); e.cands = r.cands; e.sel = pxPick(e.cands, {}); draw() });
+    if($('#pxfind')){ let t; $('#pxfind').oninput = ev => { clearTimeout(t); t = setTimeout(async () => { const q = ev.target.value.trim(); if(q.length < 2) return; try{ $('#pxnames2').innerHTML = (await api('/api/proxy/search?game=' + enc(e.game || PX.game) + '&q=' + enc(q))).map(n => `<option value="${esc(n)}">`).join('') }catch(x){} }, 180) };
+      $('#pxfindgo').onclick = async () => { const n = $('#pxfind').value.trim(); if(!n) return; const [r] = await pxResolve([{name:n, qty:e.qty}], e.game); if(r.sel < 0){ toast('Still no match for that name', true); return } Object.assign(e, r); close() } }
   };
   modal(`<h3>${esc(e.name)} <span class="muted" style="font-weight:400;font-size:13px">- choose the art or edition to print</span></h3><div id="pxmbody" class="pxmodalbody"></div>
     <div class="panel" style="padding:12px 14px;margin-top:14px"><b>Use my own picture</b> <span class="muted">(a proxy you made, or any scan - JPG, PNG or WEBP)</span>
@@ -5757,8 +5763,8 @@ function pxPickModal(i){
   const mb = document.querySelector('#modal .mbox'); if(mb) mb.style.cssText += ';max-width:880px;width:min(880px,94vw)';
   $('#pxmx').onclick = close; draw();
   $('#pxupload').onchange = async ev => { const f = ev.target.files[0]; if(!f) return;
-    try{ const r = await fetch('/api/proxy/art?game=' + enc(PX.game) + '&name=' + enc(e.name.split(' // ')[0]) + '&label=' + enc($('#pxlabel').value || 'My art'), {method:'POST', headers:{'X-Vault-Token':TOKEN, 'Content-Type':f.type}, body:f});
-      const j = await r.json(); if(!r.ok) throw new Error(j.error || 'Upload failed'); const [n] = await pxResolve([{name:e.name, qty:e.qty, pick:{kind:'custom', id:j.id}}]); Object.assign(e, n, {qty:e.qty}); toast('Your picture was added and selected'); close() }
+    try{ const r = await fetch('/api/proxy/art?game=' + enc(e.game || PX.game) + '&name=' + enc(e.name.split(' // ')[0]) + '&label=' + enc($('#pxlabel').value || 'My art'), {method:'POST', headers:{'X-Vault-Token':TOKEN, 'Content-Type':f.type}, body:f});
+      const j = await r.json(); if(!r.ok) throw new Error(j.error || 'Upload failed'); const [n] = await pxResolve([{name:e.name, qty:e.qty, pick:{kind:'custom', id:j.id}}], e.game); Object.assign(e, n, {qty:e.qty}); toast('Your picture was added and selected'); close() }
     catch(x){ toast(x.message, true) } };
 }
 
