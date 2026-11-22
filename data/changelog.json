@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 267,
+   "date": "2026-11-22",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Print proxies: the preview shows the cut guides",
+   "items": [
+    "The sheet preview now draws the same cut marks and lines between cards as the PDF, and the bleed area in pink (when bleed is above 0)."
+   ]
+  },
+  {
    "id": 266,
    "date": "2026-11-22",
    "where": [

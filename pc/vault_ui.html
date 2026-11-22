@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261122-n98";
+const UI_BUILD = "20261122-n99";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -5739,6 +5739,16 @@ function pxDraw(){
   $('#pxwarn').textContent = !L.fits ? 'The cards do not fit on this paper - lower the size, bleed or gap.' : (PX.cfg.guides !== 'none' && PX.cfg.guides !== 'lines' && L.m < 4 ? 'Cut marks need a page margin of about 4 mm or more.' : (PX.cfg.guides === 'lines' && L.gap <= 0 ? 'Lines between cards need a gap of at least 1 mm.' : ''));
   pxPreview();
 }
+function pxGuidesHtml(L, n, pc){          // the same cut guides the PDF gets (marks in the margin and / or lines between cards)
+  const g = PX.cfg.guides, uc = Math.min(L.cols, n), ur = Math.ceil(n / L.cols), top = L.oy, left = L.ox, right = L.ox + uc * L.cellW + (uc - 1) * L.gap, bottom = L.oy + ur * L.cellH + (ur - 1) * L.gap, t = Math.min(4, L.m - 2);
+  const v = (x, y1, y2, col) => `<div style="position:absolute;left:${pc(x, L.pw)};top:${pc(y1, L.ph)};height:${pc(y2 - y1, L.ph)};border-left:1px solid ${col}"></div>`, h = (x1, x2, y, col) => `<div style="position:absolute;left:${pc(x1, L.pw)};top:${pc(y, L.ph)};width:${pc(x2 - x1, L.pw)};border-top:1px solid ${col}"></div>`; let o = '';
+  if((g === 'ticks' || g === 'both') && t >= 1.5){
+    for(let c = 0; c < uc; c++) for(const x of [left + c * (L.cellW + L.gap) + L.b, left + c * (L.cellW + L.gap) + L.b + L.cw]) o += v(x, top - 1.5 - t, top - 1.5, '#000') + v(x, bottom + 1.5, bottom + 1.5 + t, '#000');
+    for(let r = 0; r < ur; r++) for(const y of [L.oy + r * (L.cellH + L.gap) + L.b, L.oy + r * (L.cellH + L.gap) + L.b + L.ch]) o += h(left - 1.5 - t, left - 1.5, y, '#000') + h(right + 1.5, right + 1.5 + t, y, '#000') }
+  if((g === 'lines' || g === 'both') && L.gap > 0){
+    for(let c = 0; c < uc - 1; c++) o += v(left + c * (L.cellW + L.gap) + L.cellW + L.gap / 2, top, bottom, '#777');
+    for(let r = 0; r < ur - 1; r++) o += h(left, right, L.oy + r * (L.cellH + L.gap) + L.cellH + L.gap / 2, '#777') }
+  return o }
 function pxPreview(){
   const el = $('#pxprev'); if(!el) return; const L = pxLayout(), prints = pxPrints(), pages = Math.max(1, Math.ceil(prints.length / L.per)); PX.page = Math.min(PX.page, pages - 1);
   $('#pxpn').textContent = `Page ${PX.page + 1} / ${pages}`;
@@ -5746,7 +5756,7 @@ function pxPreview(){
   const sl = prints.slice(PX.page * L.per, PX.page * L.per + L.per), pc = (x, w) => `${(x / w * 100).toFixed(3)}%`;
   const mm = (x, y, w, h, extra, inner) => `<div style="position:absolute;left:${pc(x, L.pw)};top:${pc(y, L.ph)};width:${pc(w, L.pw)};height:${pc(h, L.ph)};${extra || ''}">${inner || ''}</div>`;
   el.innerHTML = `<div class="sheet" style="aspect-ratio:${L.pw} / ${L.ph}">` + sl.map((p, i) => { const col = i % L.cols, row = Math.floor(i / L.cols), x = L.ox + col * (L.cellW + L.gap), y = L.oy + row * (L.cellH + L.gap);
-      return (L.b > 0 ? mm(x, y, L.cellW, L.cellH, 'background:#e8c8c8;outline:1px solid #d9a0a0') : '') + mm(x + L.b, y + L.b, L.cw, L.ch, 'overflow:hidden;background:#222', `<div class="shcard">${p.face === 'back' ? '<div class="pnone" style="height:100%">back face</div>' : pxVisual(p.c)}</div>`) }).join('') + `</div>`;
+      return (L.b > 0 ? mm(x, y, L.cellW, L.cellH, 'background:#e8c8c8;outline:1px solid #d9a0a0') : '') + mm(x + L.b, y + L.b, L.cw, L.ch, 'overflow:hidden;background:#222', `<div class="shcard">${p.face === 'back' ? '<div class="pnone" style="height:100%">back face</div>' : pxVisual(p.c)}</div>`) }).join('') + pxGuidesHtml(L, sl.length, pc) + `</div>`;
 }
 function pxPickModal(i){
   const e = PX.entries[i], close = () => {closeModal(); pxSave(); pxDraw()};
