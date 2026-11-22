@@ -558,7 +558,7 @@ table.tracks tr:last-child td{border:0}
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const UI_BUILD = "20261122-n99";
+const UI_BUILD = "20261122-n100";
 const S = {state:null, lib:[], fromOne:false, f:{q:'',format:'all',owner:'all',missing:false,sort:'name',genre:'all'}, limit:300,
            job:{running:false,log:[]}, polling:false, cal:null, calF:{type:'all',q:'',mine:false,sort:'date',rev:false}, coverV:Date.now()};
 const HUE = {movie:215,series:160,anime:290,comic:225,manga:330,book:190,colorbook:45,music:270,boardgame:335,rpg:5,miniatures:150,card:20,retro:40,rom:170,model3d:200};
@@ -5583,11 +5583,11 @@ function pxPageOps(L, n, imgIdx, mirrored){
   }
   const line = (x1, y1, x2, y2) => `${ptMM(mx(x1))} ${ptMM(y1)} m ${ptMM(mx(x2))} ${ptMM(y2)} l S\n`;
   const top = L.ph - L.oy, bottom = L.ph - (L.oy + usedRows * L.cellH + (usedRows - 1) * L.gap), left = L.ox, right = L.ox + usedCols * L.cellW + (usedCols - 1) * L.gap;
-  const t = Math.min(4, L.m - 2);
-  if((PX.cfg.guides === 'ticks' || PX.cfg.guides === 'both') && t >= 1.5){
+  const tv = Math.min(4, L.oy - 1.5 - 0.5), th = Math.min(4, L.ox - 1.5 - 0.5);      // tick length = the free paper really left around the cards
+  if((PX.cfg.guides === 'ticks' || PX.cfg.guides === 'both') && (tv >= 1 || th >= 1)){
     ops += '0 G 0.3 w\n';
-    for(let c = 0; c < usedCols; c++) for(const x of [left + c * (L.cellW + L.gap) + L.b, left + c * (L.cellW + L.gap) + L.b + L.cw]){ ops += line(x, top + 1.5, x, top + 1.5 + t) + line(x, bottom - 1.5, x, bottom - 1.5 - t) }
-    for(let r = 0; r < usedRows; r++){ const yt = L.ph - (L.oy + r * (L.cellH + L.gap) + L.b); for(const y of [yt, yt - L.ch]){ ops += line(left - 1.5, y, left - 1.5 - t, y) + line(right + 1.5, y, right + 1.5 + t, y) } }
+    if(tv >= 1) for(let c = 0; c < usedCols; c++) for(const x of [left + c * (L.cellW + L.gap) + L.b, left + c * (L.cellW + L.gap) + L.b + L.cw]){ ops += line(x, top + 1.5, x, top + 1.5 + tv) + line(x, bottom - 1.5, x, bottom - 1.5 - tv) }
+    if(th >= 1) for(let r = 0; r < usedRows; r++){ const yt = L.ph - (L.oy + r * (L.cellH + L.gap) + L.b); for(const y of [yt, yt - L.ch]){ ops += line(left - 1.5, y, left - 1.5 - th, y) + line(right + 1.5, y, right + 1.5 + th, y) } }
   }
   if((PX.cfg.guides === 'lines' || PX.cfg.guides === 'both') && L.gap > 0){
     ops += '0.45 G 0.25 w\n';
@@ -5736,15 +5736,15 @@ function pxDraw(){
   $$('#pxtiles [data-rm]').forEach(b => b.onclick = () => {PX.entries.splice(+b.dataset.rm, 1); pxSave(); pxDraw()});
   const L = pxLayout(), n = pxPrints().length, pages = Math.ceil(n / L.per);
   $('#pxsum').textContent = n ? `${n} cards · ${PX.entries.length} different · ${pages} page${pages === 1 ? '' : 's'} (${L.cols} × ${L.rows} per page)` : '';
-  $('#pxwarn').textContent = !L.fits ? 'The cards do not fit on this paper - lower the size, bleed or gap.' : (PX.cfg.guides !== 'none' && PX.cfg.guides !== 'lines' && L.m < 4 ? 'Cut marks need a page margin of about 4 mm or more.' : (PX.cfg.guides === 'lines' && L.gap <= 0 ? 'Lines between cards need a gap of at least 1 mm.' : ''));
+  $('#pxwarn').textContent = !L.fits ? 'The cards do not fit on this paper - lower the size, bleed or gap.' : (PX.cfg.guides !== 'none' && PX.cfg.guides !== 'lines' && Math.min(L.ox, L.oy) < 3 ? 'There is hardly any free paper around the cards (' + Math.min(L.ox, L.oy).toFixed(1) + ' mm), so the cut marks are tiny or missing - make the cards a bit smaller (Scale %) or lower the bleed.' : (PX.cfg.guides === 'lines' && L.gap <= 0 ? 'Lines between cards need a gap of at least 1 mm.' : ''));
   pxPreview();
 }
 function pxGuidesHtml(L, n, pc){          // the same cut guides the PDF gets (marks in the margin and / or lines between cards)
-  const g = PX.cfg.guides, uc = Math.min(L.cols, n), ur = Math.ceil(n / L.cols), top = L.oy, left = L.ox, right = L.ox + uc * L.cellW + (uc - 1) * L.gap, bottom = L.oy + ur * L.cellH + (ur - 1) * L.gap, t = Math.min(4, L.m - 2);
+  const g = PX.cfg.guides, uc = Math.min(L.cols, n), ur = Math.ceil(n / L.cols), top = L.oy, left = L.ox, right = L.ox + uc * L.cellW + (uc - 1) * L.gap, bottom = L.oy + ur * L.cellH + (ur - 1) * L.gap, tv = Math.min(4, L.oy - 2), th = Math.min(4, L.ox - 2);
   const v = (x, y1, y2, col) => `<div style="position:absolute;left:${pc(x, L.pw)};top:${pc(y1, L.ph)};height:${pc(y2 - y1, L.ph)};border-left:1px solid ${col}"></div>`, h = (x1, x2, y, col) => `<div style="position:absolute;left:${pc(x1, L.pw)};top:${pc(y, L.ph)};width:${pc(x2 - x1, L.pw)};border-top:1px solid ${col}"></div>`; let o = '';
-  if((g === 'ticks' || g === 'both') && t >= 1.5){
-    for(let c = 0; c < uc; c++) for(const x of [left + c * (L.cellW + L.gap) + L.b, left + c * (L.cellW + L.gap) + L.b + L.cw]) o += v(x, top - 1.5 - t, top - 1.5, '#000') + v(x, bottom + 1.5, bottom + 1.5 + t, '#000');
-    for(let r = 0; r < ur; r++) for(const y of [L.oy + r * (L.cellH + L.gap) + L.b, L.oy + r * (L.cellH + L.gap) + L.b + L.ch]) o += h(left - 1.5 - t, left - 1.5, y, '#000') + h(right + 1.5, right + 1.5 + t, y, '#000') }
+  if(g === 'ticks' || g === 'both'){
+    if(tv >= 1) for(let c = 0; c < uc; c++) for(const x of [left + c * (L.cellW + L.gap) + L.b, left + c * (L.cellW + L.gap) + L.b + L.cw]) o += v(x, top - 1.5 - tv, top - 1.5, '#000') + v(x, bottom + 1.5, bottom + 1.5 + tv, '#000');
+    if(th >= 1) for(let r = 0; r < ur; r++) for(const y of [L.oy + r * (L.cellH + L.gap) + L.b, L.oy + r * (L.cellH + L.gap) + L.b + L.ch]) o += h(left - 1.5 - th, left - 1.5, y, '#000') + h(right + 1.5, right + 1.5 + th, y, '#000') }
   if((g === 'lines' || g === 'both') && L.gap > 0){
     for(let c = 0; c < uc - 1; c++) o += v(left + c * (L.cellW + L.gap) + L.cellW + L.gap / 2, top, bottom, '#777');
     for(let r = 0; r < ur - 1; r++) o += h(left, right, L.oy + r * (L.cellH + L.gap) + L.cellH + L.gap / 2, '#777') }

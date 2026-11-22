@@ -3,6 +3,20 @@
  "note": "Newest first. where: live = the normal app, test = the test version (/test/), android = the Android app.",
  "entries": [
   {
+   "id": 268,
+   "date": "2026-11-22",
+   "where": [
+    "test"
+   ],
+   "apps": [
+    "pc"
+   ],
+   "title": "Print proxies: cut marks use the paper really left around the cards",
+   "items": [
+    "Cut marks were skipped whenever the \"page margin\" setting was small, even when the cards left plenty of free paper. They are now drawn in the free space around the cards (preview and PDF), and a hint appears when there is hardly any room."
+   ]
+  },
+  {
    "id": 267,
    "date": "2026-11-22",
    "where": [
